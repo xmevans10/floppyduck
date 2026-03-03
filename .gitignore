@@ -1,0 +1,27 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserdata
+*.xcworkspace
+!*.xcodeproj/project.pbxproj
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Xcode playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# App signing
+*.mobileprovision
+*.provisionprofile
+
+# Archives
+*.xcarchive
