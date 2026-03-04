@@ -1,145 +1,103 @@
 import SwiftUI
 
+/// Matchmaking waiting screen — retro styled.
 struct MatchmakingView: View {
     @EnvironmentObject var gameManager: GameManager
     let mode: MatchmakingMode
-    
-    @State private var searchTime: Int = 0
-    @State private var pulseScale: CGFloat = 1
-    @State private var dotCount: Int = 0
-    @State private var timer: Timer?
-    
-    var modeTitle: String {
-        mode == .quickPlay ? "Quick Play" : "Ranked"
-    }
-    
-    var modeIcon: String {
-        mode == .quickPlay ? "bolt.fill" : "trophy.fill"
-    }
-    
-    var modeColor: Color {
-        mode == .quickPlay ? .orange : .yellow
-    }
-    
+
+    @State private var dotCount = 0
+    @State private var elapsed = 0
+    @State private var duckBounce: CGFloat = 0
+
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
-            
-            // Pulsing icon
-            ZStack {
-                Circle()
-                    .fill(modeColor.opacity(0.1))
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(pulseScale)
-                
-                Circle()
-                    .stroke(modeColor.opacity(0.3), lineWidth: 2)
-                    .frame(width: 100, height: 100)
-                
-                Circle()
-                    .fill(modeColor.opacity(0.2))
-                    .frame(width: 100, height: 100)
-                
-                Image(systemName: modeIcon)
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(modeColor)
-            }
-            
-            VStack(spacing: 8) {
-                Text(modeTitle)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text("Finding opponent" + String(repeating: ".", count: dotCount))
-                    .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 180, alignment: .leading)
-            }
-            
-            // Timer
-            VStack(spacing: 6) {
-                Text("TIME")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .tracking(1)
-                
-                Text(formatTime(searchTime))
-                    .font(.system(size: 32, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-                
-                Text("1 player searching")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.vertical, 20)
-            .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
-            )
-            .padding(.horizontal, 40)
-            
-            Spacer()
-            
-            // Cancel button
-            Button {
-                Haptic.buttonTap()
-                gameManager.popToRoot()
-            } label: {
-                Text("Cancel")
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color(white: 0.18))
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 20)
-        }
-        .background(
+        ZStack {
+            // Sky background
             LinearGradient(
-                colors: [
-                    Color(red: 0.06, green: 0.07, blue: 0.14),
-                    Color(red: 0.08, green: 0.10, blue: 0.18),
-                ],
+                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-        )
-        .navigationBarBackButtonHidden(true)
-        .onAppear { startSearching() }
-        .onDisappear { stopSearching() }
-    }
-    
-    private func startSearching() {
-        // Pulse animation
-        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-            pulseScale = 1.3
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                // Bouncing duck
+                Group {
+                    if let img = TextureFactory.shared.duckUIImage().cgImage {
+                        Image(uiImage: UIImage(cgImage: img, scale: 0.5, orientation: .up))
+                            .interpolation(.none)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 70, height: 50)
+                    }
+                }
+                .offset(y: duckBounce)
+
+                // Title
+                ZStack {
+                    Text(mode == .quickPlay ? "Finding Match" : "Ranked Queue")
+                        .font(.system(size: 28, weight: .black, design: .rounded))
+                        .foregroundStyle(GK.Colors.panelBorder)
+                        .offset(x: 2, y: 2)
+                    Text(mode == .quickPlay ? "Finding Match" : "Ranked Queue")
+                        .font(.system(size: 28, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+
+                // Animated dots
+                Text("Searching" + String(repeating: ".", count: dotCount))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(width: 160, alignment: .leading)
+
+                // Timer
+                Text(timeString)
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.6))
+
+                Spacer()
+
+                // Cancel button
+                Button {
+                    Haptic.buttonTap()
+                    gameManager.popToRoot()
+                } label: {
+                    Text("Cancel")
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(width: 160, height: 48)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.red.opacity(0.8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.black.opacity(0.3), lineWidth: 3)
+                                )
+                                .shadow(color: .black.opacity(0.25), radius: 0, x: 2, y: 3)
+                        )
+                }
+                .buttonStyle(RetroPress())
+                .padding(.bottom, 60)
+            }
         }
-        
-        // Timer
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            searchTime += 1
+        .navigationBarBackButtonHidden(true)
+        .onReceive(timer) { _ in
+            elapsed += 1
             dotCount = (dotCount + 1) % 4
         }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                duckBounce = -10
+            }
+        }
     }
-    
-    private func stopSearching() {
-        timer?.invalidate()
-        timer = nil
-    }
-    
-    private func formatTime(_ seconds: Int) -> String {
-        let m = seconds / 60
-        let s = seconds % 60
+
+    private var timeString: String {
+        let m = elapsed / 60
+        let s = elapsed % 60
         return String(format: "%d:%02d", m, s)
     }
-}
-
-#Preview {
-    MatchmakingView(mode: .quickPlay)
-        .environmentObject(GameManager())
 }

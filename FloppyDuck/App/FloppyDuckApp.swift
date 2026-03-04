@@ -8,7 +8,7 @@ struct FloppyDuckApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(gameManager)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
         }
     }
 }

@@ -1,13 +1,13 @@
 import SwiftUI
 import SpriteKit
 
-/// Hosts the SpriteKit GameScene inside SwiftUI with overlays for game state.
+/// Hosts the SpriteKit GameScene inside SwiftUI with retro-styled overlays.
 struct GameContainerView: View {
     @EnvironmentObject var gameManager: GameManager
     @StateObject private var bridge = GameBridge()
-    
+
     let mode: GameMode
-    
+
     var body: some View {
         ZStack {
             // SpriteKit game
@@ -20,13 +20,13 @@ struct GameContainerView: View {
                         bridge.scene.flap()
                     }
                 }
-            
+
             // Ready overlay
             if bridge.phase == .ready {
                 readyOverlay
                     .transition(.opacity)
             }
-            
+
             // Game Over overlay
             if bridge.phase == .gameOver {
                 gameOverOverlay
@@ -43,105 +43,146 @@ struct GameContainerView: View {
             bridge.scene.gameDelegate = bridge
         }
     }
-    
+
     // MARK: - Ready Overlay
-    
+
     private var readyOverlay: some View {
         VStack(spacing: 16) {
             Spacer()
-            
-            Text("Tap to Start")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+
+            ZStack {
+                Text("Get Ready!")
+                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .foregroundColor(GK.Colors.panelBorder)
+                    .offset(x: 2, y: 2)
+                Text("Get Ready!")
+                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+            }
+
+            Text("👆")
+                .font(.system(size: 40))
+                .opacity(0.8)
+
+            Text("Tap to flap!")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                .opacity(0.9)
-            
-            Image(systemName: "hand.tap.fill")
-                .font(.system(size: 36))
-                .foregroundColor(.white.opacity(0.7))
-                .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
-            
+                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+
             Spacer()
             Spacer()
         }
     }
-    
+
     // MARK: - Game Over
-    
+
     private var gameOverOverlay: some View {
         ZStack {
-            // Blur backdrop
-            Color.black.opacity(0.4)
+            Color.black.opacity(0.35)
                 .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                Text("Game Over")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                
-                // Score card
-                VStack(spacing: 8) {
-                    Text("SCORE")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .tracking(1)
-                    
-                    Text("\(bridge.score)")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    
+
+            VStack(spacing: 16) {
+                // "Game Over" title
+                ZStack {
+                    Text("Game Over")
+                        .font(.system(size: 36, weight: .black, design: .rounded))
+                        .foregroundStyle(GK.Colors.panelBorder)
+                        .offset(x: 2, y: 2)
+                    Text("Game Over")
+                        .font(.system(size: 36, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+
+                // Score card (retro panel)
+                VStack(spacing: 6) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("SCORE")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundStyle(GK.Colors.panelBorder.opacity(0.6))
+                            Text("\(bridge.score)")
+                                .font(.system(size: 36, weight: .black, design: .rounded))
+                                .foregroundStyle(GK.Colors.panelBorder)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("BEST")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundStyle(GK.Colors.panelBorder.opacity(0.6))
+                            Text("\(max(bridge.score, gameManager.bestScore))")
+                                .font(.system(size: 36, weight: .black, design: .rounded))
+                                .foregroundStyle(GK.Colors.panelBorder)
+                        }
+                    }
+
                     if bridge.score >= gameManager.bestScore && bridge.score > 0 {
-                        Label("New Best!", systemImage: "crown.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.yellow)
+                        Text("★ NEW BEST! ★")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .foregroundStyle(GK.Colors.buttonOrange)
                     }
                 }
-                .padding(.vertical, 24)
-                .frame(maxWidth: .infinity)
-                .background(Color(white: 0.15), in: RoundedRectangle(cornerRadius: 16))
-                
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(GK.Colors.panelCream)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(GK.Colors.panelBorder, lineWidth: 3)
+                        )
+                        .shadow(color: GK.Colors.panelBorder.opacity(0.3), radius: 0, x: 2, y: 3)
+                )
+
+                // Medal area (placeholder for future medal logic)
+
                 // Buttons
-                VStack(spacing: 12) {
+                HStack(spacing: 12) {
                     Button {
                         Haptic.buttonTap()
                         gameManager.reportScore(bridge.score)
                         bridge.reset()
                     } label: {
-                        Text("Play Again")
-                            .font(.system(size: 17, weight: .bold))
+                        Text("↻ Retry")
+                            .font(.system(size: 17, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(14)
+                            .frame(height: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(GK.Colors.buttonGreen)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.black.opacity(0.3), lineWidth: 3)
+                                    )
+                                    .shadow(color: .black.opacity(0.25), radius: 0, x: 2, y: 3)
+                            )
                     }
-                    
+                    .buttonStyle(RetroPress())
+
                     Button {
                         Haptic.buttonTap()
                         gameManager.reportScore(bridge.score)
                         gameManager.popToRoot()
                     } label: {
-                        Text("Home")
-                            .font(.system(size: 17, weight: .semibold))
+                        Text("🏠 Home")
+                            .font(.system(size: 17, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color(white: 0.2))
-                            .foregroundColor(.white)
-                            .cornerRadius(14)
+                            .frame(height: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(GK.Colors.buttonOrange)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.black.opacity(0.3), lineWidth: 3)
+                                    )
+                                    .shadow(color: .black.opacity(0.25), radius: 0, x: 2, y: 3)
+                            )
                     }
+                    .buttonStyle(RetroPress())
                 }
             }
             .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-            )
-            .padding(.horizontal, 32)
+            .padding(.top, 8)
         }
     }
 }
@@ -152,26 +193,26 @@ struct GameContainerView: View {
 final class GameBridge: ObservableObject, GameSceneDelegate {
     @Published var phase: GamePhase = .ready
     @Published var score: Int = 0
-    
+
     let scene: GameScene
-    
+
     init() {
         self.scene = GameScene()
     }
-    
+
     func gameDidStart() {
         phase = .playing
     }
-    
+
     func gameDidScore(_ score: Int) {
         self.score = score
     }
-    
+
     func gameDidEnd(score: Int) {
         self.score = score
         phase = .gameOver
     }
-    
+
     func reset() {
         scene.resetGame()
         phase = .ready
