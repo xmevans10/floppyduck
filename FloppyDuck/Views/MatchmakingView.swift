@@ -24,17 +24,13 @@ struct MatchmakingView: View {
             VStack(spacing: 24) {
                 Spacer()
 
-                // Bouncing duck
-                Group {
-                    if let img = TextureFactory.shared.duckUIImage().cgImage {
-                        Image(uiImage: UIImage(cgImage: img, scale: 0.5, orientation: .up))
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 70, height: 50)
-                    }
-                }
-                .offset(y: duckBounce)
+                // Bouncing duck (rendered at display size for crisp pixels)
+                Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 5.0))
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 85, height: 60)
+                    .offset(y: duckBounce)
 
                 // Title
                 ZStack {

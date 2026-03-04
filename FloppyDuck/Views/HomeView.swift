@@ -72,9 +72,16 @@ struct HomeView: View {
         }
         .navigationBarHidden(true)
         .onAppear { startAnimations() }
-        .sheet(isPresented: $showRoomSheet) {
-            roomSheet
+        .overlay {
+            if showRoomSheet {
+                roomOverlay
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+            }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showRoomSheet)
     }
 
     // MARK: - Title
@@ -94,18 +101,16 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Duck Mascot (pixel art)
+    // MARK: - Duck Mascot (pixel art, rendered at display size)
 
     private var duckMascot: some View {
-        Group {
-            if let img = TextureFactory.shared.duckUIImage().cgImage {
-                Image(uiImage: UIImage(cgImage: img, scale: 0.5, orientation: .up))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 90, height: 64)
-            }
-        }
+        // Render at 6x pixel scale so 17×12 grid = 102×72pt — no resizing blur
+        let img = TextureFactory.shared.duckUIImage(pixelScale: 6.0)
+        return Image(uiImage: img)
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 102, height: 72)
     }
 
     // MARK: - Stats
@@ -294,28 +299,70 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Room Sheet
+    // MARK: - Private Room Overlay (retro styled)
 
-    private var roomSheet: some View {
-        VStack(spacing: 20) {
-            Text("Private Room")
-                .font(.system(size: 24, weight: .black, design: .rounded))
-                .foregroundStyle(GK.Colors.panelBorder)
+    private var roomOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .onTapGesture { showRoomSheet = false }
 
-            Text("Coming soon!")
-                .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundStyle(.secondary)
+            VStack(spacing: 16) {
+                ZStack {
+                    Text("Private Room")
+                        .font(.system(size: 26, weight: .black, design: .rounded))
+                        .foregroundStyle(GK.Colors.panelBorder)
+                        .offset(x: 1, y: 1)
+                    Text("Private Room")
+                        .font(.system(size: 26, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
 
-            Button("Close") { showRoomSheet = false }
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 30)
-                .padding(.vertical, 12)
-                .background(GK.Colors.buttonOrange)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                Text("🎮")
+                    .font(.system(size: 40))
+
+                Text("Coming soon!")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(GK.Colors.panelBorder.opacity(0.7))
+
+                Text("Multiplayer private rooms will let you create a 5-letter code and challenge friends.")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(GK.Colors.panelBorder.opacity(0.5))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+
+                Button {
+                    Haptic.buttonTap()
+                    showRoomSheet = false
+                } label: {
+                    Text("Got It")
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(width: 140, height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(GK.Colors.buttonOrange)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.black.opacity(0.3), lineWidth: 3)
+                                )
+                                .shadow(color: .black.opacity(0.25), radius: 0, x: 2, y: 3)
+                        )
+                }
+                .buttonStyle(RetroPress())
+            }
+            .padding(28)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(GK.Colors.panelCream)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(GK.Colors.panelBorder, lineWidth: 3)
+                    )
+                    .shadow(color: GK.Colors.panelBorder.opacity(0.4), radius: 0, x: 3, y: 4)
+            )
+            .padding(.horizontal, 40)
         }
-        .padding(30)
-        .presentationDetents([.height(200)])
     }
 
     // MARK: - Animations

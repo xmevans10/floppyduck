@@ -82,16 +82,15 @@ final class TextureFactory {
     }
 
     /// UIImage of duck for SwiftUI views
-    func duckUIImage() -> UIImage {
-        return renderPixelDuck(wingPhase: 1)
+    func duckUIImage(pixelScale: CGFloat = 3.0) -> UIImage {
+        return renderPixelDuck(wingPhase: 1, pixelSize: pixelScale)
     }
 
     // MARK: - Pixel Duck
 
     /// Draws a pixel-art duck similar to the classic Flappy Bird bird style.
     /// 17 wide x 12 tall pixel grid, then scaled up.
-    private func renderPixelDuck(wingPhase: Int) -> UIImage {
-        let pixelSize: CGFloat = 3.0  // each "pixel" is 3x3 points
+    private func renderPixelDuck(wingPhase: Int, pixelSize: CGFloat = 3.0) -> UIImage {
         let gridW = 17
         let gridH = 12
         let imgSize = CGSize(width: CGFloat(gridW) * pixelSize, height: CGFloat(gridH) * pixelSize)
