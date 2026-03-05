@@ -16,7 +16,7 @@ enum PixelIcon: String, CaseIterable {
     case tapHand       // pointing hand
     case trophy        // trophy cup
     case cancel        // X mark
-    case back          // left arrow
+    case back          // left chevron
 }
 
 final class PixelIconFactory {
@@ -98,7 +98,6 @@ final class PixelIconFactory {
     // MARK: - Icon Grids (10×10)
 
     private func playGrid() -> [[UIColor]] {
-        // Play triangle pointing right
         return [
             [C,C,B,C,C,C,C,C,C,C],
             [C,C,B,B,C,C,C,C,C,C],
@@ -114,7 +113,6 @@ final class PixelIconFactory {
     }
 
     private func headToHeadGrid() -> [[UIColor]] {
-        // Two small birds facing each other with lightning bolt
         let g = UIColor(red: 0.08, green: 0.42, blue: 0.22, alpha: 1)
         return [
             [C,B,B,C,C,C,C,B,B,C],
@@ -131,7 +129,6 @@ final class PixelIconFactory {
     }
 
     private func botGrid() -> [[UIColor]] {
-        // Robot head
         return [
             [C,C,C,C,B,C,C,C,C,C],
             [C,C,B,B,B,B,B,C,C,C],
@@ -147,7 +144,6 @@ final class PixelIconFactory {
     }
 
     private func classicGrid() -> [[UIColor]] {
-        // Star/crown
         return [
             [C,C,C,C,B,C,C,C,C,C],
             [C,C,C,B,Y,B,C,C,C,C],
@@ -163,7 +159,6 @@ final class PixelIconFactory {
     }
 
     private func statsGrid() -> [[UIColor]] {
-        // Bar chart
         return [
             [C,C,C,C,C,C,C,B,B,C],
             [C,C,C,C,C,C,C,B,W,B],
@@ -179,23 +174,22 @@ final class PixelIconFactory {
     }
 
     private func settingsGrid() -> [[UIColor]] {
-        // Gear
+        // Gear with protruding teeth
         return [
             [C,C,C,B,B,B,C,C,C,C],
-            [C,C,B,A,A,A,B,C,C,C],
+            [C,B,B,A,A,A,B,B,C,C],
             [C,B,A,A,B,A,A,B,C,C],
             [B,A,A,B,C,B,A,A,B,C],
             [B,A,B,C,C,C,B,A,B,C],
             [B,A,A,B,C,B,A,A,B,C],
             [C,B,A,A,B,A,A,B,C,C],
-            [C,C,B,A,A,A,B,C,C,C],
+            [C,B,B,A,A,A,B,B,C,C],
             [C,C,C,B,B,B,C,C,C,C],
             [C,C,C,C,C,C,C,C,C,C],
         ]
     }
 
     private func shareGrid() -> [[UIColor]] {
-        // Arrow coming out of a box
         return [
             [C,C,C,C,B,C,C,C,C,C],
             [C,C,C,B,W,B,C,C,C,C],
@@ -211,7 +205,6 @@ final class PixelIconFactory {
     }
 
     private func homeGrid() -> [[UIColor]] {
-        // House
         return [
             [C,C,C,C,B,C,C,C,C,C],
             [C,C,C,B,W,B,C,C,C,C],
@@ -227,7 +220,6 @@ final class PixelIconFactory {
     }
 
     private func retryGrid() -> [[UIColor]] {
-        // Circular arrow
         return [
             [C,C,C,B,B,B,B,C,C,C],
             [C,C,B,W,W,W,W,B,C,C],
@@ -243,8 +235,7 @@ final class PixelIconFactory {
     }
 
     private func tapHandGrid() -> [[UIColor]] {
-        // Pointing hand/finger
-        let S = UIColor(red: 0.95, green: 0.85, blue: 0.70, alpha: 1) // skin
+        let S = UIColor(red: 0.95, green: 0.85, blue: 0.70, alpha: 1)
         return [
             [C,C,C,B,B,C,C,C,C,C],
             [C,C,B,S,S,B,C,C,C,C],
@@ -260,7 +251,6 @@ final class PixelIconFactory {
     }
 
     private func trophyGrid() -> [[UIColor]] {
-        // Trophy cup
         return [
             [C,B,B,B,B,B,B,B,C,C],
             [C,B,Y,Y,Y,Y,Y,B,C,C],
@@ -276,7 +266,6 @@ final class PixelIconFactory {
     }
 
     private func cancelGrid() -> [[UIColor]] {
-        // X mark
         return [
             [C,C,C,C,C,C,C,C,C,C],
             [C,B,B,C,C,C,B,B,C,C],
@@ -292,16 +281,16 @@ final class PixelIconFactory {
     }
 
     private func backGrid() -> [[UIColor]] {
-        // Left arrow
+        // Bold left-pointing chevron — reads clearly at small sizes
         return [
             [C,C,C,C,C,C,C,C,C,C],
-            [C,C,C,B,C,C,C,C,C,C],
-            [C,C,B,W,B,C,C,C,C,C],
-            [C,B,W,W,W,B,B,B,C,C],
-            [B,W,W,W,W,W,W,W,B,C],
-            [C,B,W,W,W,B,B,B,C,C],
-            [C,C,B,W,B,C,C,C,C,C],
-            [C,C,C,B,C,C,C,C,C,C],
+            [C,C,C,C,C,B,C,C,C,C],
+            [C,C,C,C,B,W,B,C,C,C],
+            [C,C,C,B,W,W,B,C,C,C],
+            [C,C,B,W,W,B,C,C,C,C],
+            [C,C,C,B,W,W,B,C,C,C],
+            [C,C,C,C,B,W,B,C,C,C],
+            [C,C,C,C,C,B,C,C,C,C],
             [C,C,C,C,C,C,C,C,C,C],
             [C,C,C,C,C,C,C,C,C,C],
         ]

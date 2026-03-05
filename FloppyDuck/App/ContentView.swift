@@ -8,8 +8,6 @@ struct ContentView: View {
             HomeView()
                 .navigationDestination(for: AppRoute.self) { route in
                     switch route {
-                    case .game(let config):
-                        GameContainerView(config: config)
                     case .matchmaking(let mode):
                         MatchmakingView(mode: mode)
                     case .stats:
@@ -18,6 +16,10 @@ struct ContentView: View {
                         SettingsView()
                     }
                 }
+        }
+        .fullScreenCover(item: $manager.activeGameConfig) { config in
+            GameContainerView(config: config)
+                .environmentObject(manager)
         }
     }
 }

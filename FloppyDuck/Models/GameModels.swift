@@ -3,21 +3,31 @@ import Foundation
 // MARK: - Navigation
 
 enum AppRoute: Hashable {
-    case game(GameModeConfig)
     case matchmaking(MatchmakingMode)
     case stats
     case settings
 }
 
-struct GameModeConfig: Hashable {
+struct GameModeConfig: Identifiable, Hashable {
+    let id: UUID
     let mode: GameMode
     let seed: Int
     let opponentName: String?
 
     init(mode: GameMode, seed: Int = Int.random(in: 1...999999), opponentName: String? = nil) {
+        self.id = UUID()
         self.mode = mode
         self.seed = seed
         self.opponentName = opponentName
+    }
+
+    // Hashable based on id only
+    static func == (lhs: GameModeConfig, rhs: GameModeConfig) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 

@@ -9,6 +9,7 @@ struct GameContainerView: View {
     @State private var bridge: GameSceneBridge?
     @State private var phase: GamePhase = .ready
     @State private var score: Int = 0
+    @State private var botFinalScore: Int = 0
     @State private var countdownValue: Int = 3
 
     private let icons = PixelIconFactory.shared
@@ -28,29 +29,47 @@ struct GameContainerView: View {
             case .countdown:
                 countdownOverlay
             case .gameOver:
+                // Dim layer behind game over
+                Color.black.opacity(0.45)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+
                 gameOverOverlay
+                    .transition(.scale.combined(with: .opacity))
             default:
                 EmptyView()
             }
         }
         .onAppear { setupScene() }
-        .navigationBarHidden(true)
+        .statusBarHidden(true)
     }
 
     // MARK: - Scene Setup
 
     private func setupScene() {
-        let newScene = GameScene(seed: config.seed)
+        let newScene = GameScene(seed: config.seed, mode: config.mode)
         let newBridge = GameSceneBridge(
             onStart: { phase = .playing },
             onScore: { score = $0 },
             onEnd: { finalScore in
                 score = finalScore
-                manager.recordGame(
-                    score: finalScore,
-                    won: config.mode == .vsBot ? (finalScore > 5) : nil
-                )
-                phase = .gameOver
+                // Grab bot score from scene before showing overlay
+                botFinalScore = newScene.botScore
+
+                let won: Bool?
+                if config.mode == .vsBot {
+                    won = finalScore > newScene.botScore
+                } else {
+                    won = nil
+                }
+
+                manager.recordGame(score: finalScore, won: won)
+                withAnimation(.easeOut(duration: 0.35)) {
+                    phase = .gameOver
+                }
+            },
+            onBotScore: { bs in
+                botFinalScore = bs
             }
         )
         newScene.gameDelegate = newBridge
@@ -62,7 +81,6 @@ struct GameContainerView: View {
 
     private var getReadyOverlay: some View {
         VStack(spacing: 16) {
-            // Panel
             VStack(spacing: 12) {
                 Text("GET READY")
                     .font(.custom(GK.pixelFontName, size: 20))
@@ -84,7 +102,6 @@ struct GameContainerView: View {
                     }
                 }
 
-                // Tap to play
                 HStack(spacing: 8) {
                     pixelIcon(.tapHand, size: 22)
                     Text("TAP TO FLAP")
@@ -119,22 +136,48 @@ struct GameContainerView: View {
 
     private var gameOverOverlay: some View {
         VStack(spacing: 16) {
-            Text("GAME OVER")
-                .font(.custom(GK.pixelFontName, size: 22))
-                .foregroundColor(.white)
-                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            // Title: VS Bot shows WIN/LOSE, classic shows GAME OVER
+            if config.mode == .vsBot {
+                let playerWon = score > botFinalScore
+                Text(playerWon ? "YOU WIN!" : "BOT WINS")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(playerWon ? GK.Colors.scoreYellow : .white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            } else {
+                Text("GAME OVER")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            }
 
             // Score panel
             VStack(spacing: 14) {
-                // Score
+                // Player score
                 HStack {
-                    Text("SCORE")
+                    Text(config.mode == .vsBot ? "YOU" : "SCORE")
                         .font(.custom(GK.pixelFontName, size: 10))
                         .foregroundColor(GK.Colors.panelBorder)
                     Spacer()
                     Text("\(score)")
                         .font(.custom(GK.pixelFontName, size: 18))
                         .foregroundColor(GK.Colors.panelBorder)
+                }
+
+                // Bot score (VS Bot only)
+                if config.mode == .vsBot {
+                    Divider()
+                    HStack {
+                        HStack(spacing: 6) {
+                            pixelIcon(.bot, size: 14)
+                            Text("BOT")
+                                .font(.custom(GK.pixelFontName, size: 10))
+                                .foregroundColor(GK.Colors.panelBorder)
+                        }
+                        Spacer()
+                        Text("\(botFinalScore)")
+                            .font(.custom(GK.pixelFontName, size: 18))
+                            .foregroundColor(UIColor(red: 0.85, green: 0.30, blue: 0.30, alpha: 1).asSwiftUI)
+                    }
                 }
 
                 Divider()
@@ -180,18 +223,21 @@ struct GameContainerView: View {
                 // Retry
                 actionButton(icon: .retry, label: "RETRY", color: GK.Colors.buttonGreen) {
                     score = 0
-                    phase = .ready
+                    botFinalScore = 0
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        phase = .ready
+                    }
                     scene?.resetGame()
                 }
 
                 // Home
                 actionButton(icon: .home, label: "HOME", color: GK.Colors.buttonOrange) {
-                    manager.goHome()
+                    manager.dismissGame()
                 }
             }
             .padding(.horizontal, 40)
 
-            // Share score
+            // Share
             Button {
                 shareScore()
             } label: {
@@ -262,16 +308,28 @@ private final class GameSceneBridge: GameSceneDelegate {
     let onStart: () -> Void
     let onScore: (Int) -> Void
     let onEnd: (Int) -> Void
+    let onBotScore: (Int) -> Void
 
     init(onStart: @escaping () -> Void,
          onScore: @escaping (Int) -> Void,
-         onEnd: @escaping (Int) -> Void) {
+         onEnd: @escaping (Int) -> Void,
+         onBotScore: @escaping (Int) -> Void = { _ in }) {
         self.onStart = onStart
         self.onScore = onScore
         self.onEnd = onEnd
+        self.onBotScore = onBotScore
     }
 
     func gameDidStart() { onStart() }
     func gameDidScore(_ score: Int) { onScore(score) }
     func gameDidEnd(score: Int) { onEnd(score) }
+    func botDidScore(_ botScore: Int) { onBotScore(botScore) }
+}
+
+// MARK: - UIColor → SwiftUI Color
+
+private extension UIColor {
+    var asSwiftUI: Color {
+        Color(self)
+    }
 }

@@ -60,6 +60,7 @@ struct HomeView: View {
                 Spacer().frame(height: 20)
             }
         }
+        .navigationBarHidden(true)
     }
 
     // MARK: - Title
@@ -170,8 +171,7 @@ struct HomeView: View {
                         subtitle: "Practice",
                         color: GK.Colors.buttonBlue
                     ) {
-                        let config = GameModeConfig(mode: .vsBot, opponentName: "Bot")
-                        manager.navigate(to: .game(config))
+                        manager.startGame(GameModeConfig(mode: .vsBot, opponentName: "Bot"))
                     }
 
                     subModeButton(
@@ -180,8 +180,7 @@ struct HomeView: View {
                         subtitle: "Solo Run",
                         color: GK.Colors.buttonGreen
                     ) {
-                        let config = GameModeConfig(mode: .classic)
-                        manager.navigate(to: .game(config))
+                        manager.startGame(GameModeConfig(mode: .classic))
                     }
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -233,7 +232,8 @@ struct HomeView: View {
                 manager.navigate(to: .stats)
             }
 
-            bottomButton(icon: .settings, label: "SET") {
+            // Fixed: show full icon-only gear instead of truncated "SET"
+            bottomButton(icon: .settings, label: "SETTINGS") {
                 manager.navigate(to: .settings)
             }
 
@@ -248,8 +248,10 @@ struct HomeView: View {
             VStack(spacing: 6) {
                 pixelIcon(icon, size: 26)
                 Text(label)
-                    .font(.custom(GK.pixelFontName, size: 7))
+                    .font(.custom(GK.pixelFontName, size: 6))
                     .foregroundColor(GK.Colors.panelBorder)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)

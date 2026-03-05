@@ -5,6 +5,7 @@ import SwiftUI
 final class GameManager: ObservableObject {
     @Published var path = NavigationPath()
     @Published var stats: PlayerStats
+    @Published var activeGameConfig: GameModeConfig? = nil
 
     // Settings
     @AppStorage("playerName") var playerName: String = "Player"
@@ -12,7 +13,6 @@ final class GameManager: ObservableObject {
     @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
 
     init() {
-        // Load stats from UserDefaults
         if let data = UserDefaults.standard.data(forKey: "playerStats"),
            let decoded = try? JSONDecoder().decode(PlayerStats.self, from: data) {
             stats = decoded
@@ -27,6 +27,16 @@ final class GameManager: ObservableObject {
 
     func goHome() {
         path = NavigationPath()
+    }
+
+    /// Launch a game via fullScreenCover
+    func startGame(_ config: GameModeConfig) {
+        activeGameConfig = config
+    }
+
+    /// Dismiss the game overlay and return home
+    func dismissGame() {
+        activeGameConfig = nil
     }
 
     func recordGame(score: Int, won: Bool? = nil) {

@@ -2,7 +2,7 @@ import SpriteKit
 import UIKit
 
 /// Generates all game textures programmatically using pixel-art style rendering.
-/// Park theme with mallard duck.
+/// Park theme with round mallard duck matching Flappy Bird proportions.
 final class TextureFactory {
     static let shared = TextureFactory()
     private init() {}
@@ -16,6 +16,16 @@ final class TextureFactory {
         let key = "duck_\(wingPhase)"
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderMallardDuck(wingPhase: wingPhase))
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
+    /// Bot ghost duck (tinted, semi-transparent)
+    func botDuckTexture(wingPhase: Int) -> SKTexture {
+        let key = "botduck_\(wingPhase)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderMallardDuck(wingPhase: wingPhase, ghost: true))
         tex.filteringMode = .nearest
         cache[key] = tex
         return tex
@@ -41,7 +51,7 @@ final class TextureFactory {
         return tex
     }
 
-    /// Scrolling ground tile — park grass with flowers
+    /// Scrolling ground tile — park grass with flowers (pixel art)
     func groundTexture() -> SKTexture {
         let key = "ground"
         if let cached = cache[key] { return cached }
@@ -61,31 +71,31 @@ final class TextureFactory {
         return tex
     }
 
-    /// Puffy pixel cloud
+    /// Pixel-art cloud
     func cloudTexture() -> SKTexture {
         let key = "cloud"
         if let cached = cache[key] { return cached }
-        let tex = SKTexture(image: renderCloud())
+        let tex = SKTexture(image: renderPixelCloud())
         tex.filteringMode = .nearest
         cache[key] = tex
         return tex
     }
 
-    /// Park trees for parallax background
+    /// Pixel-art park trees for parallax background
     func treesTexture() -> SKTexture {
         let key = "trees"
         if let cached = cache[key] { return cached }
-        let tex = SKTexture(image: renderParkTrees())
+        let tex = SKTexture(image: renderPixelTrees())
         tex.filteringMode = .nearest
         cache[key] = tex
         return tex
     }
 
-    /// Distant hills
+    /// Pixel-art distant hills
     func hillsTexture() -> SKTexture {
         let key = "hills"
         if let cached = cache[key] { return cached }
-        let tex = SKTexture(image: renderHills())
+        let tex = SKTexture(image: renderPixelHills())
         tex.filteringMode = .nearest
         cache[key] = tex
         return tex
@@ -111,72 +121,71 @@ final class TextureFactory {
         return tex
     }
 
-    // MARK: - Mallard Duck (Pixel Art)
+    // MARK: - Mallard Duck (Pixel Art — FB round proportions)
 
-    /// Mallard duck: green iridescent head, white collar, chestnut breast, gray body
-    /// 20 wide × 14 tall pixel grid
-    private func renderMallardDuck(wingPhase: Int, pixelSize: CGFloat = 3.0) -> UIImage {
-        let gridW = 20
-        let gridH = 14
+    /// Round mallard duck matching Flappy Bird body shape.
+    /// 16 wide × 11 tall pixel grid. Green head, white collar, chestnut breast, gray body.
+    private func renderMallardDuck(wingPhase: Int, pixelSize: CGFloat = 3.0, ghost: Bool = false) -> UIImage {
+        let gridW = 16
+        let gridH = 11
         let imgSize = CGSize(width: CGFloat(gridW) * pixelSize, height: CGFloat(gridH) * pixelSize)
 
-        // Color definitions — mallard palette
+        // Mallard palette
         let G = UIColor(red: 0.08, green: 0.42, blue: 0.22, alpha: 1)  // dark green (head)
-        let g = UIColor(red: 0.12, green: 0.56, blue: 0.32, alpha: 1)  // light green (head highlight)
+        let g = UIColor(red: 0.15, green: 0.58, blue: 0.35, alpha: 1)  // light green (highlight)
         let W = UIColor.white                                            // white (eye, collar)
-        let B = UIColor.black                                            // black (outline, pupil, tail)
+        let B = UIColor.black                                            // black (outline, pupil)
         let R = UIColor(red: 0.55, green: 0.22, blue: 0.10, alpha: 1)  // chestnut (breast)
-        let r = UIColor(red: 0.65, green: 0.30, blue: 0.15, alpha: 1)  // lighter brown
-        let A = UIColor(red: 0.60, green: 0.60, blue: 0.60, alpha: 1)  // gray (body)
+        let A = UIColor(red: 0.58, green: 0.58, blue: 0.58, alpha: 1)  // gray (body)
         let a = UIColor(red: 0.72, green: 0.72, blue: 0.72, alpha: 1)  // light gray
-        let O = UIColor(red: 0.93, green: 0.65, blue: 0.10, alpha: 1)  // orange-yellow (bill)
-        let o = UIColor(red: 0.85, green: 0.75, blue: 0.15, alpha: 1)  // yellow-green (bill tip)
+        let O = UIColor(red: 0.93, green: 0.65, blue: 0.10, alpha: 1)  // orange (bill)
+        let o = UIColor(red: 0.80, green: 0.55, blue: 0.08, alpha: 1)  // darker bill tip
         let U = UIColor(red: 0.15, green: 0.30, blue: 0.70, alpha: 1)  // blue (speculum)
         let u = UIColor(red: 0.25, green: 0.45, blue: 0.85, alpha: 1)  // light blue
         let C = UIColor.clear
 
-        // Pixel grid — row 0 is top
-        var grid: [[UIColor]] = []
+        // Ghost tint: shift green → red for bot duck
+        let gG = ghost ? UIColor(red: 0.42, green: 0.12, blue: 0.12, alpha: 1) : G
+        let gg = ghost ? UIColor(red: 0.55, green: 0.18, blue: 0.18, alpha: 1) : g
 
-        // Row 0:  head crest
-        grid.append([C,C,C,C,C,C,C,C,B,B,B,C,C,C,C,C,C,C,C,C])
-        // Row 1:  head top
-        grid.append([C,C,C,C,C,C,B,B,G,G,G,B,B,C,C,C,C,C,C,C])
-        // Row 2:  head with eye
-        grid.append([C,C,C,C,C,B,G,g,G,W,W,G,g,B,C,C,C,C,C,C])
-        // Row 3:  eye pupil + bill
-        grid.append([C,C,C,C,B,G,G,g,W,B,W,G,B,B,B,B,B,C,C,C])
-        // Row 4:  head + full bill
-        grid.append([C,C,C,B,G,G,G,G,G,G,G,B,O,O,o,O,B,C,C,C])
-        // Row 5:  white collar + bill bottom
-        grid.append([C,C,B,W,W,W,W,W,G,G,B,O,O,O,O,B,C,C,C,C])
-        // Row 6:  chest (chestnut) starts
-        grid.append([C,B,R,R,R,r,W,W,W,W,W,B,B,C,C,C,C,C,C,C])
-        // Row 7:  chest + wing
-        grid.append([B,R,R,r,A,A,A,a,a,a,a,a,B,C,C,C,C,C,C,C])
-        // Row 8:  body with speculum
-        grid.append([B,R,r,A,A,U,u,U,a,a,a,A,A,B,C,C,C,C,C,C])
-        // Row 9:  gray body
-        grid.append([B,A,A,A,A,A,a,a,a,a,A,A,B,C,C,C,C,C,C,C])
-        // Row 10: lower body + tail curl
-        grid.append([C,B,A,A,A,A,A,A,A,B,B,B,C,C,C,C,C,C,C,C])
-        // Row 11: tail + feet gap
-        grid.append([C,C,B,B,B,A,A,B,B,C,C,C,C,C,C,C,C,C,C,C])
-        // Row 12: feet
-        grid.append([C,C,C,C,B,O,B,C,B,O,B,C,C,C,C,C,C,C,C,C])
-        // Row 13: feet pads
-        grid.append([C,C,C,B,O,O,O,B,O,O,O,B,C,C,C,C,C,C,C,C])
+        // Pixel grid — round body, beak right, FB proportions
+        var grid: [[UIColor]] = [
+            // Row 0: top of head
+            [C,C,C,C,B,B,B,B,C,C,C,C,C,C,C,C],
+            // Row 1: head
+            [C,C,C,B,gG,gG,gg,gG,B,C,C,C,C,C,C,C],
+            // Row 2: head wider
+            [C,C,B,gG,gG,gg,gG,gG,gG,B,C,C,C,C,C,C],
+            // Row 3: head with eye
+            [C,B,gG,gG,gg,gG,W,W,gG,gG,B,C,C,C,C,C],
+            // Row 4: pupil + beak start
+            [C,B,gG,gG,gG,gG,B,C,gG,gG,B,B,B,B,C,C],
+            // Row 5: full beak
+            [B,gG,gG,gG,gG,gG,gG,gG,gG,gG,B,O,O,o,B,C],
+            // Row 6: collar + beak bottom
+            [B,W,W,gG,gG,gG,gG,gG,gG,B,O,O,O,B,C,C],
+            // Row 7: breast + wing speculum
+            [B,R,R,W,A,U,u,A,a,A,B,B,C,C,C,C],
+            // Row 8: body
+            [C,B,R,A,A,A,a,A,A,B,C,C,C,C,C,C],
+            // Row 9: lower body
+            [C,C,B,A,A,a,A,A,B,C,C,C,C,C,C,C],
+            // Row 10: bottom
+            [C,C,C,B,B,B,B,B,C,C,C,C,C,C,C,C],
+        ]
 
-        // Wing animation
+        // Wing animation — move speculum
         if wingPhase == 0 {
-            // Wing up — shift wing detail up
-            grid[6][4] = A; grid[6][5] = U; grid[6][6] = u
-            grid[8][4] = r; grid[8][5] = A; grid[8][6] = A
+            // Wing up — speculum shifts to row 5-6
+            grid[5][5] = U; grid[5][6] = u; grid[5][7] = U
+            grid[7][5] = A; grid[7][6] = A  // clear default position
         } else if wingPhase == 2 {
-            // Wing down — shift wing detail down
-            grid[8][4] = A; grid[8][5] = A; grid[8][6] = A
-            grid[10][3] = U; grid[10][4] = u; grid[10][5] = U
+            // Wing down — speculum shifts to row 9
+            grid[7][5] = A; grid[7][6] = A  // clear default position
+            grid[9][4] = U; grid[9][5] = u
         }
+
+        let alpha: CGFloat = ghost ? 0.55 : 1.0
 
         let renderer = UIGraphicsImageRenderer(size: imgSize)
         return renderer.image { ctx in
@@ -184,7 +193,7 @@ final class TextureFactory {
                 for col in 0..<gridW {
                     let color = grid[row][col]
                     guard color != UIColor.clear else { continue }
-                    color.setFill()
+                    color.withAlphaComponent(alpha).setFill()
                     ctx.fill(CGRect(
                         x: CGFloat(col) * pixelSize,
                         y: CGFloat(row) * pixelSize,
@@ -204,10 +213,10 @@ final class TextureFactory {
         let imgSize = CGSize(width: CGFloat(gridW) * pixelSize, height: CGFloat(gridH) * pixelSize)
 
         let B = UIColor.black
-        let L = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1)  // light crust
-        let D = UIColor(red: 0.65, green: 0.45, blue: 0.18, alpha: 1)  // dark crust
-        let I = UIColor(red: 0.95, green: 0.88, blue: 0.60, alpha: 1)  // inner bread
-        let H = UIColor(red: 0.98, green: 0.92, blue: 0.72, alpha: 1)  // highlight
+        let L = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1)
+        let D = UIColor(red: 0.65, green: 0.45, blue: 0.18, alpha: 1)
+        let I = UIColor(red: 0.95, green: 0.88, blue: 0.60, alpha: 1)
+        let H = UIColor(red: 0.98, green: 0.92, blue: 0.72, alpha: 1)
         let C = UIColor.clear
 
         let grid: [[UIColor]] = [
@@ -239,7 +248,7 @@ final class TextureFactory {
         }
     }
 
-    // MARK: - Pipes (classic green — reads as park gates)
+    // MARK: - Pipes (classic green)
 
     private func renderPipe(width: CGFloat, height: CGFloat) -> UIImage {
         let size = CGSize(width: width, height: height)
@@ -292,85 +301,80 @@ final class TextureFactory {
         }
     }
 
-    // MARK: - Ground (park grass with flowers + dirt path)
+    // MARK: - Ground (pixel-art park grass + dirt)
 
     private func renderGround() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = GK.groundHeight
-        let grassH: CGFloat = 22
+        let ps: CGFloat = 4  // pixel size for ground texture
         let size = CGSize(width: w, height: h)
 
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Tan/earth base with slight warmth
+            // Tan/earth base
             c.setFillColor(UIColor(red: 0.78, green: 0.70, blue: 0.50, alpha: 1).cgColor)
             c.fill(CGRect(origin: .zero, size: size))
 
-            // Dirt path texture — diagonal lines
-            c.setStrokeColor(UIColor(red: 0.72, green: 0.64, blue: 0.44, alpha: 1).cgColor)
-            c.setLineWidth(3)
-            var x: CGFloat = -h
-            while x < w + h {
-                c.move(to: CGPoint(x: x, y: h))
-                c.addLine(to: CGPoint(x: x + h, y: 0))
-                x += 14
-            }
-            c.strokePath()
-
-            // Pebbles on dirt path
-            c.setFillColor(UIColor(red: 0.68, green: 0.60, blue: 0.42, alpha: 0.6).cgColor)
-            var px: CGFloat = 8
-            while px < w {
-                let pSize = CGFloat.random(in: 2...5)
-                c.fillEllipse(in: CGRect(x: px, y: CGFloat.random(in: grassH + 5 ... h - 5),
-                                          width: pSize, height: pSize * 0.7))
-                px += CGFloat.random(in: 15...30)
+            // Pixel dirt stripes (diagonal hash marks)
+            let stripe = UIColor(red: 0.72, green: 0.64, blue: 0.44, alpha: 1)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(stripe.cgColor)
+                // Draw diagonal pixel stripe
+                for i in 0..<Int(h / ps) {
+                    let px = sx + CGFloat(i) * ps
+                    let py = h - CGFloat(i + 1) * ps
+                    if px < w && py >= 22 {
+                        c.fill(CGRect(x: px, y: py, width: ps, height: ps))
+                    }
+                }
+                sx += ps * 4
             }
 
-            // Bright green grass top
+            // Bright green grass top — pixel blocks
+            let grassH: CGFloat = 22
             c.setFillColor(UIColor(red: 0.40, green: 0.72, blue: 0.22, alpha: 1).cgColor)
             c.fill(CGRect(x: 0, y: 0, width: w, height: grassH))
 
             // Darker grass line at very top
             c.setFillColor(UIColor(red: 0.28, green: 0.52, blue: 0.16, alpha: 1).cgColor)
-            c.fill(CGRect(x: 0, y: 0, width: w, height: 4))
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
 
-            // Grass tufts
-            c.setFillColor(UIColor(red: 0.45, green: 0.78, blue: 0.26, alpha: 1).cgColor)
+            // Pixel grass tufts
+            let tufts = UIColor(red: 0.45, green: 0.78, blue: 0.26, alpha: 1)
             var tx: CGFloat = 0
             while tx < w {
-                let tuftW = CGFloat.random(in: 5...9)
-                c.move(to: CGPoint(x: tx, y: grassH))
-                c.addLine(to: CGPoint(x: tx + tuftW / 2, y: grassH + 5))
-                c.addLine(to: CGPoint(x: tx + tuftW, y: grassH))
-                c.fillPath()
-                tx += CGFloat.random(in: 10...18)
+                c.setFillColor(tufts.cgColor)
+                let tuftW = Int.random(in: 1...3)
+                for t in 0..<tuftW {
+                    c.fill(CGRect(x: tx + CGFloat(t) * ps, y: grassH, width: ps, height: ps))
+                }
+                // Peak pixel
+                c.fill(CGRect(x: tx + CGFloat(tuftW / 2) * ps, y: grassH + ps, width: ps, height: ps))
+                tx += CGFloat(Int.random(in: 3...6)) * ps
             }
 
-            // Tiny flowers scattered in grass
+            // Pixel flowers
             let flowerColors: [UIColor] = [
-                UIColor(red: 0.95, green: 0.35, blue: 0.35, alpha: 1),  // red
-                UIColor(red: 0.95, green: 0.85, blue: 0.20, alpha: 1),  // yellow
-                UIColor(red: 0.90, green: 0.50, blue: 0.80, alpha: 1),  // pink
-                UIColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 1),  // white
+                UIColor(red: 0.95, green: 0.35, blue: 0.35, alpha: 1),
+                UIColor(red: 0.95, green: 0.85, blue: 0.20, alpha: 1),
+                UIColor(red: 0.90, green: 0.50, blue: 0.80, alpha: 1),
+                UIColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 1),
             ]
-            var fx: CGFloat = CGFloat.random(in: 20...40)
+            var fx: CGFloat = CGFloat.random(in: 5...10) * ps
             while fx < w {
                 let fc = flowerColors[Int.random(in: 0..<flowerColors.count)]
                 c.setFillColor(fc.cgColor)
-                let fy = CGFloat.random(in: 4...grassH - 4)
-                c.fillEllipse(in: CGRect(x: fx - 2, y: fy - 2, width: 4, height: 4))
-                // Center dot
-                c.setFillColor(UIColor(red: 1.0, green: 0.90, blue: 0.30, alpha: 1).cgColor)
-                c.fillEllipse(in: CGRect(x: fx - 0.5, y: fy - 0.5, width: 1.5, height: 1.5))
-                fx += CGFloat.random(in: 25...50)
+                let fy = CGFloat(Int.random(in: 1...4)) * ps
+                c.fill(CGRect(x: fx, y: fy, width: ps, height: ps))
+                fx += CGFloat(Int.random(in: 6...12)) * ps
             }
         }
     }
 
-    // MARK: - Sky (warm blue park sky)
+    // MARK: - Sky (warm blue gradient)
 
     private func renderSky() -> UIImage {
         let size = CGSize(width: GK.worldWidth, height: GK.worldHeight)
@@ -378,9 +382,9 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
             let colors = [
-                UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1).cgColor,  // top: warm blue
-                UIColor(red: 0.55, green: 0.78, blue: 0.92, alpha: 1).cgColor,  // mid
-                UIColor(red: 0.75, green: 0.90, blue: 0.95, alpha: 1).cgColor   // bottom: light
+                UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1).cgColor,
+                UIColor(red: 0.55, green: 0.78, blue: 0.92, alpha: 1).cgColor,
+                UIColor(red: 0.75, green: 0.90, blue: 0.95, alpha: 1).cgColor
             ]
             let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
@@ -394,166 +398,200 @@ final class TextureFactory {
         }
     }
 
-    // MARK: - Cloud
+    // MARK: - Pixel Cloud
 
-    private func renderCloud() -> UIImage {
-        let w: CGFloat = 80
-        let h: CGFloat = 30
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+    private func renderPixelCloud() -> UIImage {
+        let ps: CGFloat = 5  // pixel size
+        let W = UIColor(white: 1.0, alpha: 0.92)
+        let L = UIColor(white: 0.88, alpha: 0.85)   // subtle shadow
+        let C = UIColor.clear
+
+        // 16×7 pixel cloud — chunky retro style
+        let grid: [[UIColor]] = [
+            [C,C,C,C,W,W,W,C,C,C,C,C,C,C,C,C],
+            [C,C,C,W,W,W,W,W,C,C,W,W,C,C,C,C],
+            [C,C,W,W,W,W,W,W,W,W,W,W,W,C,C,C],
+            [C,W,W,W,W,W,W,W,W,W,W,W,W,W,C,C],
+            [W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,C],
+            [C,L,L,W,W,W,W,W,W,W,W,W,W,L,C,C],
+            [C,C,C,L,L,L,L,L,L,L,L,L,C,C,C,C],
+        ]
+
+        let gridW = grid[0].count
+        let gridH = grid.count
+        let imgSize = CGSize(width: CGFloat(gridW) * ps, height: CGFloat(gridH) * ps)
+
+        let renderer = UIGraphicsImageRenderer(size: imgSize)
         return renderer.image { ctx in
-            let c = ctx.cgContext
-            c.setFillColor(UIColor(white: 1.0, alpha: 0.90).cgColor)
-            let puffs: [(x: CGFloat, y: CGFloat, r: CGFloat)] = [
-                (20, 18, 14), (35, 12, 16), (52, 16, 13),
-                (42, 20, 12), (28, 22, 10), (60, 20, 10),
-            ]
-            for p in puffs {
-                c.fillEllipse(in: CGRect(x: p.x - p.r, y: p.y - p.r, width: p.r * 2, height: p.r * 2))
+            for row in 0..<gridH {
+                for col in 0..<gridW {
+                    let color = grid[row][col]
+                    guard color != UIColor.clear else { continue }
+                    color.setFill()
+                    ctx.fill(CGRect(x: CGFloat(col) * ps, y: CGFloat(row) * ps, width: ps, height: ps))
+                }
             }
         }
     }
 
-    // MARK: - Distant Hills
+    // MARK: - Pixel Hills
 
-    private func renderHills() -> UIImage {
+    private func renderPixelHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 120
+        let ps: CGFloat = 4  // pixel size
+
+        let gridW = Int(w / ps)
+        let gridH = Int(h / ps)
+
+        // Generate stepped hill silhouette using overlapping bumps
+        var heightMap = [Int](repeating: 1, count: gridW)
+
+        // Deterministic hill bumps (seeded so they look good)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8,     14, 10),
+            (gridW / 4,     18, 14),
+            (gridW * 3 / 8, 10, 7),
+            (gridW / 2,     16, 12),
+            (gridW * 5 / 8, 12, 9),
+            (gridW * 3 / 4, 17, 13),
+            (gridW * 7 / 8, 13, 8),
+        ]
+
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                let bh = Int(CGFloat(bump.peak) * (1.0 - nd * nd))
+                heightMap[x] = max(heightMap[x], bh)
+            }
+        }
+
+        let hillFill = UIColor(red: 0.50, green: 0.72, blue: 0.45, alpha: 0.40)
+        let hillTop  = UIColor(red: 0.42, green: 0.62, blue: 0.38, alpha: 0.45)  // darker top edge
+
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-
-            // Far hills (lighter)
-            c.setFillColor(UIColor(red: 0.55, green: 0.75, blue: 0.50, alpha: 0.35).cgColor)
-            c.move(to: CGPoint(x: 0, y: h))
-            var hx: CGFloat = 0
-            while hx <= w {
-                let hy = h - CGFloat.random(in: 40...90)
-                let cpx = hx + CGFloat.random(in: 30...60)
-                c.addQuadCurve(to: CGPoint(x: hx + CGFloat.random(in: 60...120), y: h - CGFloat.random(in: 30...50)),
-                               control: CGPoint(x: cpx, y: hy))
-                hx += CGFloat.random(in: 80...150)
+            for x in 0..<gridW {
+                for y in 0..<heightMap[x] {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let color = (y == heightMap[x] - 1) ? hillTop : hillFill
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
             }
-            c.addLine(to: CGPoint(x: w, y: h))
-            c.closePath()
-            c.fillPath()
-
-            // Near hills (darker)
-            c.setFillColor(UIColor(red: 0.42, green: 0.65, blue: 0.38, alpha: 0.40).cgColor)
-            c.move(to: CGPoint(x: 0, y: h))
-            hx = 0
-            while hx <= w {
-                let hy = h - CGFloat.random(in: 25...60)
-                let cpx = hx + CGFloat.random(in: 25...50)
-                c.addQuadCurve(to: CGPoint(x: hx + CGFloat.random(in: 50...100), y: h - CGFloat.random(in: 15...35)),
-                               control: CGPoint(x: cpx, y: hy))
-                hx += CGFloat.random(in: 60...120)
-            }
-            c.addLine(to: CGPoint(x: w, y: h))
-            c.closePath()
-            c.fillPath()
         }
     }
 
-    // MARK: - Park Trees (parallax mid-layer)
+    // MARK: - Pixel Trees
 
-    private func renderParkTrees() -> UIImage {
+    private func renderPixelTrees() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
+        let ps: CGFloat = 4  // pixel size
+
+        // Tree templates (relative pixel grids)
+        let tG = UIColor(red: 0.25, green: 0.55, blue: 0.20, alpha: 0.75)    // dark green canopy
+        let tg = UIColor(red: 0.35, green: 0.70, blue: 0.28, alpha: 0.70)    // light green canopy
+        let tD = UIColor(red: 0.20, green: 0.48, blue: 0.18, alpha: 0.75)    // darkest green
+        let tT = UIColor(red: 0.45, green: 0.32, blue: 0.18, alpha: 0.70)    // trunk brown
+        let tB = UIColor(red: 0.30, green: 0.58, blue: 0.22, alpha: 0.65)    // bush
+        let C  = UIColor.clear
+
+        // Round deciduous tree (9 wide × 12 tall)
+        let roundTree: [[UIColor]] = [
+            [C, C, C, tD,tD,tD, C, C, C],
+            [C, C, tD,tG,tG,tG,tD, C, C],
+            [C, tD,tG,tG,tg,tG,tG,tD, C],
+            [tD,tG,tG,tg,tg,tG,tG,tG,tD],
+            [tD,tG,tg,tG,tG,tG,tG,tG,tD],
+            [tD,tG,tG,tG,tG,tG,tG,tG,tD],
+            [C, tD,tG,tG,tG,tG,tG,tD, C],
+            [C, C, tD,tD,tG,tD,tD, C, C],
+            [C, C, C, C, tT, C, C, C, C],
+            [C, C, C, C, tT, C, C, C, C],
+            [C, C, C, C, tT, C, C, C, C],
+            [C, C, C, C, tT, C, C, C, C],
+        ]
+
+        // Pine tree (7 wide × 14 tall)
+        let pineTree: [[UIColor]] = [
+            [C, C, C, tD, C, C, C],
+            [C, C, tD,tG,tD, C, C],
+            [C, C, tD,tG,tD, C, C],
+            [C, tD,tG,tG,tG,tD, C],
+            [C, tD,tG,tg,tG,tD, C],
+            [tD,tG,tG,tG,tG,tG,tD],
+            [tD,tG,tG,tg,tG,tG,tD],
+            [C, C, tD,tG,tD, C, C],
+            [C, tD,tG,tG,tG,tD, C],
+            [tD,tG,tG,tg,tG,tG,tD],
+            [tD,tG,tG,tG,tG,tG,tD],
+            [C, C, C, tT, C, C, C],
+            [C, C, C, tT, C, C, C],
+            [C, C, C, tT, C, C, C],
+        ]
+
+        // Small bush (7 wide × 4 tall)
+        let bush: [[UIColor]] = [
+            [C, C, tB,tB,tB, C, C],
+            [C, tB,tB,tg,tB,tB, C],
+            [tB,tB,tg,tB,tB,tB,tB],
+            [C, tB,tB,tB,tB,tB, C],
+        ]
+
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            var tx: CGFloat = CGFloat.random(in: 10...30)
-            while tx < w {
-                let treeType = Int.random(in: 0...2)
-                let treeH = CGFloat.random(in: 60...120)
-                let trunkW: CGFloat = CGFloat.random(in: 8...14)
-                let trunkH: CGFloat = treeH * 0.35
-                let canopyW = CGFloat.random(in: 35...60)
-                let canopyH = treeH * 0.70
+            // Place trees at deterministic positions
+            let treePositions: [(x: CGFloat, type: Int)] = [
+                (30, 0), (110, 1), (170, 2), (230, 0), (290, 1),
+                (360, 0), (430, 2), (480, 0), (540, 1), (610, 0),
+                (670, 2), (720, 0), (780, 1),
+            ]
 
-                let baseY = h  // bottom of texture
-
-                // Trunk
-                c.setFillColor(UIColor(red: 0.45, green: 0.32, blue: 0.18, alpha: 0.7).cgColor)
-                c.fill(CGRect(x: tx - trunkW / 2, y: baseY - trunkH, width: trunkW, height: trunkH))
-
-                // Canopy
-                let canopyY = baseY - trunkH - canopyH * 0.6
-
-                if treeType == 0 {
-                    // Round deciduous tree
-                    let darkGreen = UIColor(red: 0.25, green: 0.55, blue: 0.20, alpha: 0.75)
-                    let lightGreen = UIColor(red: 0.35, green: 0.70, blue: 0.28, alpha: 0.65)
-
-                    c.setFillColor(darkGreen.cgColor)
-                    c.fillEllipse(in: CGRect(x: tx - canopyW / 2, y: canopyY, width: canopyW, height: canopyH))
-
-                    // Highlight blob
-                    c.setFillColor(lightGreen.cgColor)
-                    c.fillEllipse(in: CGRect(x: tx - canopyW * 0.3, y: canopyY + canopyH * 0.1,
-                                              width: canopyW * 0.5, height: canopyH * 0.5))
-                } else if treeType == 1 {
-                    // Bushy tree (multiple circles)
-                    let green1 = UIColor(red: 0.30, green: 0.58, blue: 0.22, alpha: 0.70)
-                    let green2 = UIColor(red: 0.22, green: 0.48, blue: 0.18, alpha: 0.75)
-
-                    c.setFillColor(green2.cgColor)
-                    c.fillEllipse(in: CGRect(x: tx - canopyW * 0.45, y: canopyY + canopyH * 0.2,
-                                              width: canopyW * 0.5, height: canopyH * 0.6))
-                    c.fillEllipse(in: CGRect(x: tx + canopyW * 0.0, y: canopyY + canopyH * 0.15,
-                                              width: canopyW * 0.5, height: canopyH * 0.65))
-                    c.setFillColor(green1.cgColor)
-                    c.fillEllipse(in: CGRect(x: tx - canopyW * 0.25, y: canopyY,
-                                              width: canopyW * 0.55, height: canopyH * 0.55))
-                } else {
-                    // Triangular / pine-ish tree
-                    let pineGreen = UIColor(red: 0.20, green: 0.50, blue: 0.22, alpha: 0.75)
-                    c.setFillColor(pineGreen.cgColor)
-
-                    c.move(to: CGPoint(x: tx, y: canopyY))
-                    c.addLine(to: CGPoint(x: tx - canopyW * 0.45, y: canopyY + canopyH))
-                    c.addLine(to: CGPoint(x: tx + canopyW * 0.45, y: canopyY + canopyH))
-                    c.closePath()
-                    c.fillPath()
-
-                    // Second triangle overlap
-                    let pineLight = UIColor(red: 0.28, green: 0.58, blue: 0.26, alpha: 0.60)
-                    c.setFillColor(pineLight.cgColor)
-                    c.move(to: CGPoint(x: tx, y: canopyY + canopyH * 0.2))
-                    c.addLine(to: CGPoint(x: tx - canopyW * 0.35, y: canopyY + canopyH * 0.9))
-                    c.addLine(to: CGPoint(x: tx + canopyW * 0.35, y: canopyY + canopyH * 0.9))
-                    c.closePath()
-                    c.fillPath()
+            for pos in treePositions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = roundTree
+                case 1: template = pineTree
+                default: template = bush
                 }
 
-                // Bush at base
-                if Bool.random() {
-                    c.setFillColor(UIColor(red: 0.30, green: 0.60, blue: 0.25, alpha: 0.55).cgColor)
-                    let bushW = CGFloat.random(in: 18...30)
-                    c.fillEllipse(in: CGRect(x: tx + CGFloat.random(in: -20...15),
-                                              y: baseY - CGFloat.random(in: 10...20),
-                                              width: bushW, height: bushW * 0.6))
-                }
+                let templateH = template.count
+                let templateW = template[0].count
+                let baseY = h - CGFloat(templateH) * ps  // anchor to bottom
 
-                tx += CGFloat.random(in: 50...100)
+                for row in 0..<templateH {
+                    for col in 0..<templateW {
+                        let color = template[row][col]
+                        guard color != UIColor.clear else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(
+                            x: pos.x + CGFloat(col) * ps,
+                            y: baseY + CGFloat(row) * ps,
+                            width: ps,
+                            height: ps
+                        ))
+                    }
+                }
             }
 
-            // Park benches scattered
-            var bx: CGFloat = CGFloat.random(in: 100...200)
-            while bx < w {
-                // Bench silhouette
-                c.setFillColor(UIColor(red: 0.40, green: 0.28, blue: 0.15, alpha: 0.5).cgColor)
-                let benchY = h - 12
+            // Pixel-art park benches
+            let benchColor = UIColor(red: 0.40, green: 0.28, blue: 0.15, alpha: 0.50)
+            let benchPositions: [CGFloat] = [150, 450, 700]
+            for bx in benchPositions {
+                let by = h - 3 * ps
+                c.setFillColor(benchColor.cgColor)
                 // Seat
-                c.fill(CGRect(x: bx, y: benchY, width: 24, height: 4))
+                for i in 0..<6 { c.fill(CGRect(x: bx + CGFloat(i) * ps, y: by, width: ps, height: ps)) }
                 // Back
-                c.fill(CGRect(x: bx + 1, y: benchY - 10, width: 22, height: 3))
+                for i in 0..<6 { c.fill(CGRect(x: bx + CGFloat(i) * ps, y: by - ps, width: ps, height: ps)) }
                 // Legs
-                c.fill(CGRect(x: bx + 2, y: benchY, width: 3, height: 10))
-                c.fill(CGRect(x: bx + 19, y: benchY, width: 3, height: 10))
-
-                bx += CGFloat.random(in: 200...400)
+                c.fill(CGRect(x: bx, y: by + ps, width: ps, height: ps * 2))
+                c.fill(CGRect(x: bx + 5 * ps, y: by + ps, width: ps, height: ps * 2))
             }
         }
     }
