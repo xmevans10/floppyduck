@@ -23,6 +23,10 @@
 		DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */; };
 		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
 		04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */; };
+		99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */; };
+		D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652A08D5F52D04D2A070A /* StatsView.swift */; };
+		9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */; };
+		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +48,11 @@
 		6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchmakingView.swift; sourceTree = "<group>"; };
 		8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E511804596196C25C1C1D540 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelIconFactory.swift; sourceTree = "<group>"; };
+		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
+		0096DDB5D5C93DB7732319BF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -72,6 +81,8 @@
 				AF2453D02A02A2B841B715F4 /* Services */,
 				5FAA3EDC67ED73B227892ABC /* Utilities */,
 				058341E568DAA126DED41013 /* Views */,
+				BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */,
+				0096DDB5D5C93DB7732319BF /* Info.plist */,
 				8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */,
 				4EBF7C09301D45F97241D281 /* Preview Content */,
 			);
@@ -127,6 +138,7 @@
 				F0703F9981111218E6869673 /* PRNG.swift */,
 				FBCE68166C3B433188B01FDE /* HapticManager.swift */,
 				EF6223E9869786181FDBDB97 /* TextureFactory.swift */,
+				DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -138,6 +150,8 @@
 				DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */,
 				6536C0571E3D58450DECC837 /* GameContainerView.swift */,
 				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
+				A47652A08D5F52D04D2A070A /* StatsView.swift */,
+				CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -214,6 +228,9 @@
 				83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */,
 				DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */,
 				535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */,
+				99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */,
+				D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */,
+				9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +252,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */,
+				F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,6 +335,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FloppyDuck/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Floppy Duck";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -370,6 +389,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FloppyDuck/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Floppy Duck";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

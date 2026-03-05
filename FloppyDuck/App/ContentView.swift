@@ -1,30 +1,23 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var gameManager: GameManager
-    
+    @EnvironmentObject var manager: GameManager
+
     var body: some View {
-        NavigationStack(path: $gameManager.navigationPath) {
+        NavigationStack(path: $manager.path) {
             HomeView()
                 .navigationDestination(for: AppRoute.self) { route in
                     switch route {
-                    case .game(let mode):
-                        GameContainerView(mode: mode)
+                    case .game(let config):
+                        GameContainerView(config: config)
                     case .matchmaking(let mode):
                         MatchmakingView(mode: mode)
+                    case .stats:
+                        StatsView()
+                    case .settings:
+                        SettingsView()
                     }
                 }
         }
-        .tint(.white)
     }
-}
-
-enum AppRoute: Hashable {
-    case game(GameMode)
-    case matchmaking(MatchmakingMode)
-}
-
-enum MatchmakingMode: Hashable {
-    case quickPlay
-    case ranked
 }

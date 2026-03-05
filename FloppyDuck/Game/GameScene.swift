@@ -58,9 +58,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var pipeTimer: TimeInterval = 0
     private var lastUpdate: TimeInterval = 0
 
-    // Parallax
+    // Parallax layers
     private var clouds: [SKSpriteNode] = []
-    private var buildings: [SKSpriteNode] = []
+    private var hills: [SKSpriteNode] = []
+    private var trees: [SKSpriteNode] = []
 
     // MARK: - Init
 
@@ -78,7 +79,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Scene Setup
 
     override func didMove(to view: SKView) {
-        backgroundColor = UIColor(red: 0.31, green: 0.75, blue: 0.79, alpha: 1)
+        backgroundColor = UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1)
         physicsWorld.gravity = CGVector(dx: 0, dy: GK.gravity / 60)
         physicsWorld.contactDelegate = self
 
@@ -90,7 +91,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         setupBackground()
         setupClouds()
-        setupBuildings()
+        setupHills()
+        setupTrees()
         setupGround()
         setupDuck()
         setupHUD()
@@ -104,7 +106,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.physicsBody?.isDynamic = false
     }
 
-    // MARK: - Background (bright cyan sky)
+    // MARK: - Background
 
     private func setupBackground() {
         let skyTex = factory.skyTexture()
@@ -123,7 +125,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                                       size: CGSize(width: 80 * scale, height: 30 * scale))
             cloud.position = CGPoint(
                 x: CGFloat.random(in: 0...GK.worldWidth),
-                y: CGFloat.random(in: (GK.worldHeight * 0.5)...(GK.worldHeight - 40))
+                y: CGFloat.random(in: (GK.worldHeight * 0.55)...(GK.worldHeight - 40))
             )
             cloud.alpha = CGFloat.random(in: 0.5...0.8)
             cloud.zPosition = -90
@@ -132,26 +134,32 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
-    private func setupBuildings() {
-        let buildingTex = factory.buildingTexture()
-        let buildingNode = SKSpriteNode(texture: buildingTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 140))
-        buildingNode.anchorPoint = CGPoint(x: 0, y: 0)
-        buildingNode.position = CGPoint(x: 0, y: GK.groundHeight - 10)
-        buildingNode.zPosition = -50
-        buildingNode.alpha = 0.6
-        backgroundLayer.addChild(buildingNode)
-        buildings.append(buildingNode)
+    private func setupHills() {
+        let hillTex = factory.hillsTexture()
+        for i in 0..<2 {
+            let hillNode = SKSpriteNode(texture: hillTex,
+                                         size: CGSize(width: GK.worldWidth * 2, height: 120))
+            hillNode.anchorPoint = CGPoint(x: 0, y: 0)
+            hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight + 10)
+            hillNode.zPosition = -60
+            hillNode.alpha = 0.8
+            backgroundLayer.addChild(hillNode)
+            hills.append(hillNode)
+        }
+    }
 
-        // Duplicate for seamless scroll
-        let buildingNode2 = SKSpriteNode(texture: buildingTex,
-                                          size: CGSize(width: GK.worldWidth * 2, height: 140))
-        buildingNode2.anchorPoint = CGPoint(x: 0, y: 0)
-        buildingNode2.position = CGPoint(x: GK.worldWidth * 2, y: GK.groundHeight - 10)
-        buildingNode2.zPosition = -50
-        buildingNode2.alpha = 0.6
-        backgroundLayer.addChild(buildingNode2)
-        buildings.append(buildingNode2)
+    private func setupTrees() {
+        let treeTex = factory.treesTexture()
+        for i in 0..<2 {
+            let treeNode = SKSpriteNode(texture: treeTex,
+                                         size: CGSize(width: GK.worldWidth * 2, height: 160))
+            treeNode.anchorPoint = CGPoint(x: 0, y: 0)
+            treeNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 5)
+            treeNode.zPosition = -50
+            treeNode.alpha = 0.7
+            backgroundLayer.addChild(treeNode)
+            trees.append(treeNode)
+        }
     }
 
     // MARK: - Ground
@@ -192,17 +200,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duckTextures = (0...2).map { factory.duckTexture(wingPhase: $0) }
 
         duck = SKSpriteNode(texture: duckTextures[1],
-                            size: CGSize(width: GK.duckRadius * 2.8, height: GK.duckRadius * 2.4))
+                            size: CGSize(width: GK.duckRadius * 3.0, height: GK.duckRadius * 2.6))
         duck.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         duck.zPosition = 40
 
-        duck.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.85)
+        duck.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.9)
         duck.physicsBody?.categoryBitMask = GK.duckCategory
         duck.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory
-        duck.physicsBody?.collisionBitMask = GK.groundCategory
+        duck.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
         duck.physicsBody?.allowsRotation = false
         duck.physicsBody?.restitution = 0
         duck.physicsBody?.linearDamping = 0
+        duck.physicsBody?.usesPreciseCollisionDetection = true
 
         worldNode.addChild(duck)
         startWingAnimation()
@@ -213,23 +222,43 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.run(SKAction.repeatForever(wingAction), withKey: "wings")
     }
 
-    // MARK: - HUD (score with dark outline like Flappy Bird)
+    // MARK: - HUD (pixel font score with thick outline)
 
     private func setupHUD() {
-        // Dark outline behind score
-        scoreShadow = SKLabelNode(fontNamed: "Futura-Bold")
-        scoreShadow.fontSize = 52
-        scoreShadow.fontColor = UIColor(red: 0.20, green: 0.33, blue: 0.10, alpha: 0.7)
-        scoreShadow.position = CGPoint(x: GK.worldWidth / 2 + 2, y: GK.worldHeight - 78)
+        // Thick outline (multiple offset layers)
+        let outlineOffsets: [(CGFloat, CGFloat)] = [
+            (-2, -2), (-2, 0), (-2, 2),
+            (0, -2),           (0, 2),
+            (2, -2),  (2, 0),  (2, 2),
+            (0, -3), (0, 3), (-3, 0), (3, 0)
+        ]
+        for offset in outlineOffsets {
+            let outline = SKLabelNode(fontNamed: GK.pixelFontName)
+            outline.fontSize = 36
+            outline.fontColor = UIColor(red: 0.20, green: 0.33, blue: 0.10, alpha: 0.9)
+            outline.position = CGPoint(x: GK.worldWidth / 2 + offset.0, y: GK.worldHeight - 76 + offset.1)
+            outline.zPosition = 199
+            outline.text = "0"
+            outline.verticalAlignmentMode = .center
+            outline.horizontalAlignmentMode = .center
+            outline.name = "scoreOutline"
+            hudLayer.addChild(outline)
+        }
+
+        // Shadow
+        scoreShadow = SKLabelNode(fontNamed: GK.pixelFontName)
+        scoreShadow.fontSize = 36
+        scoreShadow.fontColor = UIColor(red: 0.15, green: 0.25, blue: 0.08, alpha: 0.8)
+        scoreShadow.position = CGPoint(x: GK.worldWidth / 2 + 3, y: GK.worldHeight - 79)
         scoreShadow.zPosition = 200
         scoreShadow.text = "0"
         scoreShadow.verticalAlignmentMode = .center
         scoreShadow.horizontalAlignmentMode = .center
         hudLayer.addChild(scoreShadow)
 
-        // White score number
-        scoreLabel = SKLabelNode(fontNamed: "Futura-Bold")
-        scoreLabel.fontSize = 52
+        // White score
+        scoreLabel = SKLabelNode(fontNamed: GK.pixelFontName)
+        scoreLabel.fontSize = 36
         scoreLabel.fontColor = .white
         scoreLabel.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight - 76)
         scoreLabel.zPosition = 201
@@ -240,8 +269,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func updateScore() {
-        scoreLabel.text = "\(score)"
-        scoreShadow.text = "\(score)"
+        let text = "\(score)"
+        scoreLabel.text = text
+        scoreShadow.text = text
+        hudLayer.enumerateChildNodes(withName: "scoreOutline") { node, _ in
+            (node as? SKLabelNode)?.text = text
+        }
 
         let pop = SKAction.sequence([
             SKAction.scale(to: 1.3, duration: 0.08),
@@ -303,26 +336,42 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             pipeNode.addChild(topCap)
         }
 
-        // Collision bodies
+        // Collision bodies — match visual pipe width, caps wider
         if bottomH > 0 {
             let bCollider = SKNode()
             bCollider.position = CGPoint(x: 0, y: GK.groundHeight + bottomH / 2)
-            bCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: bottomH))
+            bCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth, height: bottomH))
             bCollider.physicsBody?.isDynamic = false
             bCollider.physicsBody?.categoryBitMask = GK.pipeCategory
             bCollider.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(bCollider)
+
+            let bCapCollider = SKNode()
+            bCapCollider.position = CGPoint(x: 0, y: GK.groundHeight + bottomH - 2)
+            bCapCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 10, height: 30))
+            bCapCollider.physicsBody?.isDynamic = false
+            bCapCollider.physicsBody?.categoryBitMask = GK.pipeCategory
+            bCapCollider.physicsBody?.contactTestBitMask = GK.duckCategory
+            pipeNode.addChild(bCapCollider)
         }
 
         let topH2 = GK.worldHeight - topY
         if topH2 > 0 {
             let tCollider = SKNode()
             tCollider.position = CGPoint(x: 0, y: topY + topH2 / 2)
-            tCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: topH2))
+            tCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth, height: topH2))
             tCollider.physicsBody?.isDynamic = false
             tCollider.physicsBody?.categoryBitMask = GK.pipeCategory
             tCollider.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(tCollider)
+
+            let tCapCollider = SKNode()
+            tCapCollider.position = CGPoint(x: 0, y: topY + 2)
+            tCapCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 10, height: 30))
+            tCapCollider.physicsBody?.isDynamic = false
+            tCapCollider.physicsBody?.categoryBitMask = GK.pipeCategory
+            tCapCollider.physicsBody?.contactTestBitMask = GK.duckCategory
+            pipeNode.addChild(tCapCollider)
         }
 
         // Score trigger
@@ -365,7 +414,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.physicsBody?.velocity = CGVector(dx: 0, dy: GK.flapImpulse)
         Haptic.flap()
 
-        // Quick wing flutter
         duck.removeAction(forKey: "wings")
         let flutter = SKAction.sequence([
             SKAction.setTexture(duckTextures[2]),
@@ -417,19 +465,27 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             cloud.position.x -= GK.cloudSpeed * CGFloat(dt)
             if cloud.position.x < -80 {
                 cloud.position.x = GK.worldWidth + 80
-                cloud.position.y = CGFloat.random(in: (GK.worldHeight * 0.5)...(GK.worldHeight - 40))
+                cloud.position.y = CGFloat.random(in: (GK.worldHeight * 0.55)...(GK.worldHeight - 40))
             }
         }
 
-        // Parallax buildings
-        for building in buildings {
-            building.position.x -= GK.buildingSpeed * CGFloat(dt)
-            if building.position.x < -(GK.worldWidth * 2) {
-                building.position.x += GK.worldWidth * 4
+        // Parallax hills (slowest)
+        for hill in hills {
+            hill.position.x -= GK.hillSpeed * CGFloat(dt)
+            if hill.position.x < -(GK.worldWidth * 2) {
+                hill.position.x += GK.worldWidth * 4
             }
         }
 
-        // Duck rotation based on velocity
+        // Parallax trees (medium)
+        for tree in trees {
+            tree.position.x -= GK.treeSpeed * CGFloat(dt)
+            if tree.position.x < -(GK.worldWidth * 2) {
+                tree.position.x += GK.worldWidth * 4
+            }
+        }
+
+        // Duck rotation
         if let vy = duck.physicsBody?.velocity.dy {
             let target = vy > 0
                 ? min(vy / GK.flapImpulse * 0.4, 0.4)
@@ -520,7 +576,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.zRotation = 0
         duck.physicsBody?.isDynamic = false
         duck.physicsBody?.velocity = .zero
-        duck.physicsBody?.collisionBitMask = GK.groundCategory
+        duck.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
 
         let float = SKAction.sequence([
             SKAction.moveBy(x: 0, y: 10, duration: 0.5),

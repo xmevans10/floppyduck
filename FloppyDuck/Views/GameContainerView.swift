@@ -1,221 +1,277 @@
 import SwiftUI
 import SpriteKit
 
-/// Hosts the SpriteKit GameScene inside SwiftUI with retro-styled overlays.
 struct GameContainerView: View {
-    @EnvironmentObject var gameManager: GameManager
-    @StateObject private var bridge = GameBridge()
+    let config: GameModeConfig
+    @EnvironmentObject var manager: GameManager
 
-    let mode: GameMode
+    @State private var scene: GameScene?
+    @State private var bridge: GameSceneBridge?
+    @State private var phase: GamePhase = .ready
+    @State private var score: Int = 0
+    @State private var countdownValue: Int = 3
+
+    private let icons = PixelIconFactory.shared
 
     var body: some View {
         ZStack {
-            // SpriteKit game
-            SpriteView(scene: bridge.scene, options: [.allowsTransparency])
-                .ignoresSafeArea()
-                .onTapGesture {
-                    if bridge.phase == .gameOver {
-                        // handled by overlay
-                    } else {
-                        bridge.scene.flap()
-                    }
-                }
-
-            // Ready overlay
-            if bridge.phase == .ready {
-                readyOverlay
-                    .transition(.opacity)
+            // SpriteKit scene
+            if let scene {
+                SpriteView(scene: scene, preferredFramesPerSecond: 60)
+                    .ignoresSafeArea()
             }
 
-            // Game Over overlay
-            if bridge.phase == .gameOver {
+            // Overlays
+            switch phase {
+            case .ready:
+                getReadyOverlay
+            case .countdown:
+                countdownOverlay
+            case .gameOver:
                 gameOverOverlay
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.9).combined(with: .opacity),
-                        removal: .opacity
-                    ))
+            default:
+                EmptyView()
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: bridge.phase == .gameOver)
-        .navigationBarBackButtonHidden(true)
-        .statusBarHidden()
-        .onAppear {
-            bridge.scene.gameDelegate = bridge
-        }
+        .onAppear { setupScene() }
+        .navigationBarHidden(true)
     }
 
-    // MARK: - Ready Overlay
+    // MARK: - Scene Setup
 
-    private var readyOverlay: some View {
-        VStack(spacing: 16) {
-            Spacer()
-
-            ZStack {
-                Text("Get Ready!")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(GK.Colors.panelBorder)
-                    .offset(x: 2, y: 2)
-                Text("Get Ready!")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-            }
-
-            Text("👆")
-                .font(.system(size: 40))
-                .opacity(0.8)
-
-            Text("Tap to flap!")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-
-            Spacer()
-            Spacer()
-        }
-    }
-
-    // MARK: - Game Over
-
-    private var gameOverOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-
-            VStack(spacing: 16) {
-                // "Game Over" title
-                ZStack {
-                    Text("Game Over")
-                        .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundStyle(GK.Colors.panelBorder)
-                        .offset(x: 2, y: 2)
-                    Text("Game Over")
-                        .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-
-                // Score card (retro panel)
-                VStack(spacing: 6) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("SCORE")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundStyle(GK.Colors.panelBorder.opacity(0.6))
-                            Text("\(bridge.score)")
-                                .font(.system(size: 36, weight: .black, design: .rounded))
-                                .foregroundStyle(GK.Colors.panelBorder)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("BEST")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundStyle(GK.Colors.panelBorder.opacity(0.6))
-                            Text("\(max(bridge.score, gameManager.bestScore))")
-                                .font(.system(size: 36, weight: .black, design: .rounded))
-                                .foregroundStyle(GK.Colors.panelBorder)
-                        }
-                    }
-
-                    if bridge.score >= gameManager.bestScore && bridge.score > 0 {
-                        Text("★ NEW BEST! ★")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
-                            .foregroundStyle(GK.Colors.buttonOrange)
-                    }
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(GK.Colors.panelCream)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(GK.Colors.panelBorder, lineWidth: 3)
-                        )
-                        .shadow(color: GK.Colors.panelBorder.opacity(0.3), radius: 0, x: 2, y: 3)
+    private func setupScene() {
+        let newScene = GameScene(seed: config.seed)
+        let newBridge = GameSceneBridge(
+            onStart: { phase = .playing },
+            onScore: { score = $0 },
+            onEnd: { finalScore in
+                score = finalScore
+                manager.recordGame(
+                    score: finalScore,
+                    won: config.mode == .vsBot ? (finalScore > 5) : nil
                 )
+                phase = .gameOver
+            }
+        )
+        newScene.gameDelegate = newBridge
+        bridge = newBridge
+        scene = newScene
+    }
 
-                // Medal area (placeholder for future medal logic)
+    // MARK: - Get Ready Overlay
 
-                // Buttons
-                HStack(spacing: 12) {
-                    Button {
-                        Haptic.buttonTap()
-                        gameManager.reportScore(bridge.score)
-                        bridge.reset()
-                    } label: {
-                        Text("↻ Retry")
-                            .font(.system(size: 17, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(GK.Colors.buttonGreen)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.black.opacity(0.3), lineWidth: 3)
-                                    )
-                                    .shadow(color: .black.opacity(0.25), radius: 0, x: 2, y: 3)
-                            )
+    private var getReadyOverlay: some View {
+        VStack(spacing: 16) {
+            // Panel
+            VStack(spacing: 12) {
+                Text("GET READY")
+                    .font(.custom(GK.pixelFontName, size: 20))
+                    .foregroundColor(GK.Colors.panelBorder)
+
+                if config.mode == .vsBot {
+                    HStack(spacing: 8) {
+                        pixelIcon(.bot, size: 18)
+                        Text("VS BOT")
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
                     }
-                    .buttonStyle(RetroPress())
-
-                    Button {
-                        Haptic.buttonTap()
-                        gameManager.reportScore(bridge.score)
-                        gameManager.popToRoot()
-                    } label: {
-                        Text("🏠 Home")
-                            .font(.system(size: 17, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(GK.Colors.buttonOrange)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.black.opacity(0.3), lineWidth: 3)
-                                    )
-                                    .shadow(color: .black.opacity(0.25), radius: 0, x: 2, y: 3)
-                            )
+                } else if config.mode == .classic {
+                    HStack(spacing: 8) {
+                        pixelIcon(.classic, size: 18)
+                        Text("CLASSIC")
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
                     }
-                    .buttonStyle(RetroPress())
                 }
+
+                // Tap to play
+                HStack(spacing: 8) {
+                    pixelIcon(.tapHand, size: 22)
+                    Text("TAP TO FLAP")
+                        .font(.custom(GK.pixelFontName, size: 9))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                }
+                .padding(.top, 6)
             }
             .padding(24)
-            .padding(.top, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(GK.Colors.panelCream)
+                    .shadow(color: Color.black.opacity(0.2), radius: 8, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(GK.Colors.panelBorder, lineWidth: 3)
+            )
+        }
+    }
+
+    // MARK: - Countdown
+
+    private var countdownOverlay: some View {
+        Text("\(countdownValue)")
+            .font(.custom(GK.pixelFontName, size: 56))
+            .foregroundColor(.white)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+    }
+
+    // MARK: - Game Over Overlay
+
+    private var gameOverOverlay: some View {
+        VStack(spacing: 16) {
+            Text("GAME OVER")
+                .font(.custom(GK.pixelFontName, size: 22))
+                .foregroundColor(.white)
+                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+
+            // Score panel
+            VStack(spacing: 14) {
+                // Score
+                HStack {
+                    Text("SCORE")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.panelBorder)
+                    Spacer()
+                    Text("\(score)")
+                        .font(.custom(GK.pixelFontName, size: 18))
+                        .foregroundColor(GK.Colors.panelBorder)
+                }
+
+                Divider()
+
+                // Best
+                HStack {
+                    Text("BEST")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.panelBorder)
+                    Spacer()
+                    Text("\(manager.stats.bestScore)")
+                        .font(.custom(GK.pixelFontName, size: 18))
+                        .foregroundColor(GK.Colors.scoreYellow)
+                }
+
+                Divider()
+
+                // Bread earned
+                HStack {
+                    Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 20, height: 16)
+                    Text("+\(max(1, score))")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.breadGold)
+                    Spacer()
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GK.Colors.panelCream)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(GK.Colors.panelBorder, lineWidth: 3)
+            )
+            .padding(.horizontal, 40)
+
+            // Action buttons
+            HStack(spacing: 16) {
+                // Retry
+                actionButton(icon: .retry, label: "RETRY", color: GK.Colors.buttonGreen) {
+                    score = 0
+                    phase = .ready
+                    scene?.resetGame()
+                }
+
+                // Home
+                actionButton(icon: .home, label: "HOME", color: GK.Colors.buttonOrange) {
+                    manager.goHome()
+                }
+            }
+            .padding(.horizontal, 40)
+
+            // Share score
+            Button {
+                shareScore()
+            } label: {
+                HStack(spacing: 8) {
+                    pixelIcon(.share, size: 16)
+                    Text("SHARE")
+                        .font(.custom(GK.pixelFontName, size: 9))
+                }
+                .foregroundColor(GK.Colors.panelBorder)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(GK.Colors.panelCream)
+                        .overlay(Capsule().stroke(GK.Colors.panelBorder, lineWidth: 2))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Buttons
+
+    private func actionButton(icon: PixelIcon, label: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                pixelIcon(icon, size: 22)
+                Text(label)
+                    .font(.custom(GK.pixelFontName, size: 8))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(color)
+                    .shadow(color: color.opacity(0.5), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
+        Image(uiImage: icons.image(for: icon))
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+    }
+
+    private func shareScore() {
+        let text = "I scored \(score) in Floppy Duck! 🦆 Can you beat that?"
+        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = scene.windows.first?.rootViewController {
+            root.present(vc, animated: true)
         }
     }
 }
 
-// MARK: - Bridge (connects SpriteKit → SwiftUI)
+// MARK: - Scene Bridge
 
-@MainActor
-final class GameBridge: ObservableObject, GameSceneDelegate {
-    @Published var phase: GamePhase = .ready
-    @Published var score: Int = 0
+private final class GameSceneBridge: GameSceneDelegate {
+    let onStart: () -> Void
+    let onScore: (Int) -> Void
+    let onEnd: (Int) -> Void
 
-    let scene: GameScene
-
-    init() {
-        self.scene = GameScene()
+    init(onStart: @escaping () -> Void,
+         onScore: @escaping (Int) -> Void,
+         onEnd: @escaping (Int) -> Void) {
+        self.onStart = onStart
+        self.onScore = onScore
+        self.onEnd = onEnd
     }
 
-    func gameDidStart() {
-        phase = .playing
-    }
-
-    func gameDidScore(_ score: Int) {
-        self.score = score
-    }
-
-    func gameDidEnd(score: Int) {
-        self.score = score
-        phase = .gameOver
-    }
-
-    func reset() {
-        scene.resetGame()
-        phase = .ready
-        score = 0
-    }
+    func gameDidStart() { onStart() }
+    func gameDidScore(_ score: Int) { onScore(score) }
+    func gameDidEnd(score: Int) { onEnd(score) }
 }

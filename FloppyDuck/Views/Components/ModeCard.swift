@@ -1,43 +1,27 @@
 import SwiftUI
 
-/// Retro-styled card button — kept for potential reuse.
+// Legacy component — kept for project reference. See HomeView for new design.
 struct ModeCard: View {
-    let icon: String
     let title: String
-    let subtitle: String
+    let icon: PixelIcon
     let color: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Text(icon)
-                    .font(.system(size: 22))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 16, weight: .heavy, design: .rounded))
-                    Text(subtitle)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .opacity(0.7)
-                }
-                Spacer()
-                Text("›")
-                    .font(.system(size: 22, weight: .bold))
-                    .opacity(0.5)
+            HStack(spacing: 10) {
+                Image(uiImage: PixelIconFactory.shared.image(for: icon))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 24, height: 24)
+                Text(title)
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(.white)
             }
-            .foregroundStyle(GK.Colors.panelBorder)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(GK.Colors.panelCream)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(GK.Colors.panelBorder, lineWidth: 2)
-                    )
-                    .shadow(color: GK.Colors.panelBorder.opacity(0.3), radius: 0, x: 2, y: 3)
-            )
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(RoundedRectangle(cornerRadius: 10).fill(color))
         }
-        .buttonStyle(RetroPress())
+        .buttonStyle(.plain)
     }
 }

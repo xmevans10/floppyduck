@@ -1,391 +1,287 @@
 import SwiftUI
 
-/// Home screen styled after classic Flappy Bird — bright sky, pixel duck, retro buttons.
 struct HomeView: View {
-    @EnvironmentObject var gameManager: GameManager
+    @EnvironmentObject var manager: GameManager
+    @State private var playExpanded = false
+    @State private var duckBob: Bool = false
+    @State private var titlePulse: Bool = false
 
-    @State private var duckOffset: CGFloat = 0
-    @State private var cloudOffset: CGFloat = 0
-    @State private var showRoomSheet = false
+    private let icons = PixelIconFactory.shared
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                // ── Sky gradient background ──
-                LinearGradient(
-                    colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+        ZStack {
+            // Sky gradient background
+            LinearGradient(
+                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
-                // ── Floating clouds ──
-                cloudLayer(width: geo.size.width)
+            // Ground strip at bottom
+            VStack(spacing: 0) {
+                Spacer()
+                Rectangle()
+                    .fill(GK.Colors.grassLight)
+                    .frame(height: 6)
+                Rectangle()
+                    .fill(GK.Colors.groundTan)
+                    .frame(height: 50)
+            }
+            .ignoresSafeArea(edges: .bottom)
 
-                // ── City silhouette (faint) ──
-                VStack {
-                    Spacer()
-                    Rectangle()
-                        .fill(GK.Colors.grassGreen.opacity(0.15))
-                        .frame(height: 100)
-                }
-                .ignoresSafeArea()
+            VStack(spacing: 0) {
+                Spacer().frame(height: 20)
 
-                // ── Ground strip at bottom ──
-                VStack {
-                    Spacer()
-                    groundStrip(width: geo.size.width)
-                }
-                .ignoresSafeArea()
+                // Title
+                titleSection
+                    .padding(.top, 10)
 
-                // ── Main content ──
-                VStack(spacing: 0) {
-                    Spacer().frame(height: geo.safeAreaInsets.top + 40)
+                // Mallard mascot
+                mascotSection
+                    .padding(.top, 4)
 
-                    // Title
-                    retroTitle
+                // Bread counter
+                breadCounter
+                    .padding(.top, 12)
 
-                    Spacer().frame(height: 16)
+                Spacer().frame(height: 24)
 
-                    // Bouncing pixel duck
-                    duckMascot
-                        .offset(y: duckOffset)
+                // Play button (expandable)
+                playSection
+                    .padding(.horizontal, 40)
 
-                    Spacer().frame(height: 20)
+                Spacer().frame(height: 20)
 
-                    // Stats bar
-                    statsPanel
+                // Bottom row: Stats, Settings, Share
+                bottomButtons
+                    .padding(.horizontal, 50)
 
-                    Spacer().frame(height: 24)
-
-                    // Mode buttons
-                    modeButtons
-
-                    Spacer()
-
-                    // Private room section at bottom (above ground)
-                    privateRoomSection
-                        .padding(.bottom, 100) // above ground
-                }
-                .padding(.horizontal, 24)
+                Spacer().frame(height: 20)
             }
         }
-        .navigationBarHidden(true)
-        .onAppear { startAnimations() }
-        .overlay {
-            if showRoomSheet {
-                roomOverlay
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.9).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            }
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showRoomSheet)
     }
 
     // MARK: - Title
 
-    private var retroTitle: some View {
-        ZStack {
-            // Shadow/outline layer
-            Text("Floppy Duck")
-                .font(.system(size: 44, weight: .black, design: .rounded))
-                .foregroundStyle(GK.Colors.panelBorder)
-                .offset(x: 2, y: 2)
+    private var titleSection: some View {
+        VStack(spacing: 2) {
+            Text("FLOPPY")
+                .font(.custom(GK.pixelFontName, size: 28))
+                .foregroundColor(.white)
+                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+                .scaleEffect(titlePulse ? 1.02 : 1.0)
 
-            // Main title
-            Text("Floppy Duck")
-                .font(.system(size: 44, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
+            Text("DUCK")
+                .font(.custom(GK.pixelFontName, size: 28))
+                .foregroundColor(GK.Colors.scoreYellow)
+                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+                .scaleEffect(titlePulse ? 1.02 : 1.0)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                titlePulse = true
+            }
         }
     }
 
-    // MARK: - Duck Mascot (pixel art, rendered at display size)
+    // MARK: - Mascot Duck
 
-    private var duckMascot: some View {
-        // Render at 6x pixel scale so 17×12 grid = 102×72pt — no resizing blur
-        let img = TextureFactory.shared.duckUIImage(pixelScale: 6.0)
-        return Image(uiImage: img)
+    private var mascotSection: some View {
+        Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 5.0))
             .interpolation(.none)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(width: 102, height: 72)
+            .frame(width: 120, height: 90)
+            .offset(y: duckBob ? -8 : 8)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                    duckBob = true
+                }
+            }
     }
 
-    // MARK: - Stats
+    // MARK: - Bread Counter
 
-    private var statsPanel: some View {
-        HStack(spacing: 0) {
-            statItem(label: "RATING", value: "\(gameManager.playerRating)")
-            retroDivider
-            statItem(label: "BEST", value: "\(gameManager.bestScore)")
-            retroDivider
-            statItem(label: "GAMES", value: "\(gameManager.gamesPlayed)")
+    private var breadCounter: some View {
+        HStack(spacing: 8) {
+            Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
+                .interpolation(.none)
+                .resizable()
+                .frame(width: 24, height: 20)
+
+            Text("\(manager.stats.bread)")
+                .font(.custom(GK.pixelFontName, size: 14))
+                .foregroundColor(GK.Colors.breadGold)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(GK.Colors.panelCream)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(GK.Colors.panelBorder, lineWidth: 3)
-                )
-                .shadow(color: GK.Colors.panelBorder.opacity(0.4), radius: 0, x: 2, y: 3)
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.black.opacity(0.3))
         )
     }
 
-    private func statItem(label: String, value: String) -> some View {
-        VStack(spacing: 2) {
-            Text(label)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(GK.Colors.panelBorder.opacity(0.6))
-            Text(value)
-                .font(.system(size: 24, weight: .black, design: .rounded))
-                .foregroundStyle(GK.Colors.panelBorder)
-        }
-        .frame(maxWidth: .infinity)
-    }
+    // MARK: - Play Section
 
-    private var retroDivider: some View {
-        Rectangle()
-            .fill(GK.Colors.panelBorder.opacity(0.2))
-            .frame(width: 2, height: 40)
-    }
-
-    // MARK: - Mode Buttons
-
-    private var modeButtons: some View {
+    private var playSection: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                retroButton(
-                    icon: "▶",
-                    label: "Play",
-                    color: GK.Colors.buttonGreen
-                ) {
-                    gameManager.startSoloGame()
+            // Main PLAY button
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    playExpanded.toggle()
                 }
-
-                retroButton(
-                    icon: "⚡",
-                    label: "Quick",
-                    color: GK.Colors.buttonOrange
-                ) {
-                    gameManager.startMatchmaking(mode: .quickPlay)
+            } label: {
+                HStack(spacing: 10) {
+                    pixelIcon(.play, size: 20)
+                    Text("PLAY")
+                        .font(.custom(GK.pixelFontName, size: 18))
                 }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(GK.Colors.buttonGreen)
+                        .shadow(color: GK.Colors.pipeDarkGreen, radius: 0, x: 0, y: 4)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.pipeBorder, lineWidth: 3)
+                )
             }
+            .buttonStyle(.plain)
 
-            retroButton(
-                icon: "🏆",
-                label: "Ranked Match",
-                color: Color(red: 0.85, green: 0.30, blue: 0.30),
-                wide: true
-            ) {
-                gameManager.startMatchmaking(mode: .ranked)
+            // Expanded sub-modes
+            if playExpanded {
+                VStack(spacing: 10) {
+                    subModeButton(
+                        icon: .headToHead,
+                        title: "HEAD TO HEAD",
+                        subtitle: "1v1 Online",
+                        color: GK.Colors.buttonOrange
+                    ) {
+                        manager.navigate(to: .matchmaking(.quickPlay))
+                    }
+
+                    subModeButton(
+                        icon: .bot,
+                        title: "VS BOT",
+                        subtitle: "Practice",
+                        color: GK.Colors.buttonBlue
+                    ) {
+                        let config = GameModeConfig(mode: .vsBot, opponentName: "Bot")
+                        manager.navigate(to: .game(config))
+                    }
+
+                    subModeButton(
+                        icon: .classic,
+                        title: "CLASSIC",
+                        subtitle: "Solo Run",
+                        color: GK.Colors.buttonGreen
+                    ) {
+                        let config = GameModeConfig(mode: .classic)
+                        manager.navigate(to: .game(config))
+                    }
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
     }
 
-    private func retroButton(icon: String, label: String, color: Color, wide: Bool = false, action: @escaping () -> Void) -> some View {
+    private func subModeButton(icon: PixelIcon, title: String, subtitle: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Text(icon)
-                    .font(.system(size: 20))
-                Text(label)
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+            HStack(spacing: 12) {
+                pixelIcon(icon, size: 22)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.custom(GK.pixelFontName, size: 11))
+                        .foregroundColor(.white)
+                    Text(subtitle)
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+
+                Spacer()
+
+                Image(uiImage: PixelIconFactory.shared.image(for: .play, pixelScale: 2.0))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 14, height: 14)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: wide ? .infinity : nil)
-            .frame(height: 50)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(color)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.black.opacity(0.3), lineWidth: 3)
-                    )
-                    .shadow(color: Color.black.opacity(0.25), radius: 0, x: 2, y: 3)
+                    .shadow(color: color.opacity(0.5), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
             )
         }
-        .buttonStyle(RetroPress())
+        .buttonStyle(.plain)
     }
 
-    // MARK: - Private Room
+    // MARK: - Bottom Buttons
 
-    private var privateRoomSection: some View {
-        HStack(spacing: 12) {
-            Button {
-                showRoomSheet = true
-            } label: {
-                HStack(spacing: 6) {
-                    Text("🔗")
-                    Text("Create Room")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(GK.Colors.panelBorder)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(GK.Colors.panelCream)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(GK.Colors.panelBorder, lineWidth: 2)
-                        )
-                )
+    private var bottomButtons: some View {
+        HStack(spacing: 16) {
+            bottomButton(icon: .stats, label: "STATS") {
+                manager.navigate(to: .stats)
             }
 
-            Button {
-                showRoomSheet = true
-            } label: {
-                HStack(spacing: 6) {
-                    Text("🎮")
-                    Text("Join Code")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(GK.Colors.panelBorder)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(GK.Colors.panelCream)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(GK.Colors.panelBorder, lineWidth: 2)
-                        )
-                )
+            bottomButton(icon: .settings, label: "SET") {
+                manager.navigate(to: .settings)
+            }
+
+            bottomButton(icon: .share, label: "SHARE") {
+                shareApp()
             }
         }
     }
 
-    // MARK: - Clouds
-
-    private func cloudLayer(width: CGFloat) -> some View {
-        ZStack {
-            cloudPuff(x: cloudOffset.truncatingRemainder(dividingBy: width + 100) - 50, y: 120, scale: 1.0)
-            cloudPuff(x: (cloudOffset * 0.7 + 200).truncatingRemainder(dividingBy: width + 100) - 50, y: 80, scale: 0.7)
-            cloudPuff(x: (cloudOffset * 0.5 + 350).truncatingRemainder(dividingBy: width + 100) - 50, y: 160, scale: 0.85)
-        }
-    }
-
-    private func cloudPuff(x: CGFloat, y: CGFloat, scale: CGFloat) -> some View {
-        Circle()
-            .fill(Color.white.opacity(0.6))
-            .frame(width: 80 * scale, height: 40 * scale)
-            .scaleEffect(x: 2.0, y: 1.0)
-            .position(x: x, y: y)
-    }
-
-    // MARK: - Ground Strip
-
-    private func groundStrip(width: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            // Dark grass line
-            Rectangle()
-                .fill(GK.Colors.grassGreen)
-                .frame(height: 4)
-
-            // Bright grass
-            Rectangle()
-                .fill(GK.Colors.grassLight)
-                .frame(height: 16)
-
-            // Tan earth
-            Rectangle()
-                .fill(GK.Colors.groundTan)
-                .frame(height: 60)
-        }
-    }
-
-    // MARK: - Private Room Overlay (retro styled)
-
-    private var roomOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-                .onTapGesture { showRoomSheet = false }
-
-            VStack(spacing: 16) {
-                ZStack {
-                    Text("Private Room")
-                        .font(.system(size: 26, weight: .black, design: .rounded))
-                        .foregroundStyle(GK.Colors.panelBorder)
-                        .offset(x: 1, y: 1)
-                    Text("Private Room")
-                        .font(.system(size: 26, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-
-                Text("🎮")
-                    .font(.system(size: 40))
-
-                Text("Coming soon!")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(GK.Colors.panelBorder.opacity(0.7))
-
-                Text("Multiplayer private rooms will let you create a 5-letter code and challenge friends.")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(GK.Colors.panelBorder.opacity(0.5))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
-
-                Button {
-                    Haptic.buttonTap()
-                    showRoomSheet = false
-                } label: {
-                    Text("Got It")
-                        .font(.system(size: 16, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(width: 140, height: 44)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(GK.Colors.buttonOrange)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.black.opacity(0.3), lineWidth: 3)
-                                )
-                                .shadow(color: .black.opacity(0.25), radius: 0, x: 2, y: 3)
-                        )
-                }
-                .buttonStyle(RetroPress())
+    private func bottomButton(icon: PixelIcon, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                pixelIcon(icon, size: 26)
+                Text(label)
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(GK.Colors.panelBorder)
             }
-            .padding(28)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(GK.Colors.panelCream)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(GK.Colors.panelBorder, lineWidth: 3)
-                    )
-                    .shadow(color: GK.Colors.panelBorder.opacity(0.4), radius: 0, x: 3, y: 4)
+                    .shadow(color: Color.black.opacity(0.15), radius: 0, x: 0, y: 3)
             )
-            .padding(.horizontal, 40)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(GK.Colors.panelBorder, lineWidth: 2)
+            )
         }
+        .buttonStyle(.plain)
     }
 
-    // MARK: - Animations
+    // MARK: - Helpers
 
-    private func startAnimations() {
-        // Bouncing duck
-        withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-            duckOffset = -12
-        }
-
-        // Drifting clouds
-        withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
-            cloudOffset = UIScreen.main.bounds.width + 100
-        }
+    private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
+        Image(uiImage: icons.image(for: icon))
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
     }
-}
 
-// MARK: - Retro Button Press Style
-
-struct RetroPress: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .offset(y: configuration.isPressed ? 2 : 0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    private func shareApp() {
+        let text = "Check out Floppy Duck! 🦆 Can you beat my high score of \(manager.stats.bestScore)?"
+        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = scene.windows.first?.rootViewController {
+            root.present(vc, animated: true)
+        }
     }
 }

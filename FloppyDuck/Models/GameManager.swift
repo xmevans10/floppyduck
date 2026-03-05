@@ -1,40 +1,47 @@
 import SwiftUI
 
-/// Central game state manager — coordinates navigation, stats, and match state.
+/// Manages navigation, stats persistence, and game settings.
 @MainActor
 final class GameManager: ObservableObject {
-    @Published var navigationPath = NavigationPath()
-    @Published var stats = PlayerStats()
-    @Published var currentMatch: Match?
-    @Published var isSearching = false
-    
-    // Persisted with UserDefaults
-    @AppStorage("bestScore") var bestScore: Int = 0
-    @AppStorage("gamesPlayed") var gamesPlayed: Int = 0
-    @AppStorage("playerRating") var playerRating: Int = 1000
-    @AppStorage("playerWins") var playerWins: Int = 0
+    @Published var path = NavigationPath()
+    @Published var stats: PlayerStats
+
+    // Settings
     @AppStorage("playerName") var playerName: String = "Player"
-    
-    func startSoloGame() {
-        navigationPath.append(AppRoute.game(.solo))
-    }
-    
-    func startMatchmaking(mode: MatchmakingMode) {
-        navigationPath.append(AppRoute.matchmaking(mode))
-    }
-    
-    func reportScore(_ score: Int) {
-        gamesPlayed += 1
-        if score > bestScore {
-            bestScore = score
+    @AppStorage("soundEnabled") var soundEnabled: Bool = true
+    @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
+
+    init() {
+        // Load stats from UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "playerStats"),
+           let decoded = try? JSONDecoder().decode(PlayerStats.self, from: data) {
+            stats = decoded
+        } else {
+            stats = PlayerStats()
         }
     }
-    
-    func reportWin() {
-        playerWins += 1
+
+    func navigate(to route: AppRoute) {
+        path.append(route)
     }
-    
-    func popToRoot() {
-        navigationPath = NavigationPath()
+
+    func goHome() {
+        path = NavigationPath()
+    }
+
+    func recordGame(score: Int, won: Bool? = nil) {
+        stats.recordGame(score: score, won: won)
+        saveStats()
+    }
+
+    func resetStats() {
+        stats = PlayerStats()
+        saveStats()
+    }
+
+    private func saveStats() {
+        if let data = try? JSONEncoder().encode(stats) {
+            UserDefaults.standard.set(data, forKey: "playerStats")
+        }
     }
 }

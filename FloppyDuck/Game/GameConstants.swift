@@ -1,7 +1,7 @@
 import SpriteKit
 import SwiftUI
 
-/// Global constants — physics, sizing, collision masks, retro color palette.
+/// Global constants — physics, sizing, collision masks, park-theme palette.
 enum GK {
     // MARK: - World
     static let worldWidth:  CGFloat = 400
@@ -24,12 +24,21 @@ enum GK {
     static let maxUpSpeed:  CGFloat = 400
 
     // MARK: - Speeds
-    static let groundSpeed: CGFloat = 150    // same as pipe speed
-    static let cloudSpeed:  CGFloat = 20     // slow parallax
-    static let buildingSpeed: CGFloat = 40   // medium parallax
+    static let groundSpeed:   CGFloat = 150
+    static let cloudSpeed:    CGFloat = 20
+    static let hillSpeed:     CGFloat = 15
+    static let treeSpeed:     CGFloat = 40
 
     // MARK: - Duck positioning
-    static let duckStartY:  CGFloat = 400    // starting height
+    static let duckStartY:  CGFloat = 400
+
+    // MARK: - Pipe generation
+    static let pipeMinY: CGFloat = groundHeight + pipeGap / 2 + 40
+    static let pipeMaxY: CGFloat = worldHeight - pipeGap / 2 - 40
+    static let maxPregenPipes: Int = 200
+
+    // MARK: - Font
+    static let pixelFontName = "PressStart2P-Regular"
 
     // MARK: - Multiplayer
     static let roomCodeLength = 5
@@ -40,40 +49,42 @@ enum GK {
     static let groundCategory: UInt32 = 0x1 << 2
     static let scoreCategory:  UInt32 = 0x1 << 3
 
-    // MARK: - Retro Color Palette (Flappy Bird style)
+    // MARK: - Park Color Palette
+
     enum Colors {
-        // Sky
-        static let skyTop    = Color(red: 0.31, green: 0.75, blue: 0.79)  // #4EC0CA
-        static let skyBottom = Color(red: 0.72, green: 0.91, blue: 0.92)  // #B8E9EC
+        // Sky (warm blue)
+        static let skyTop    = Color(red: 0.35, green: 0.65, blue: 0.90)
+        static let skyBottom = Color(red: 0.75, green: 0.90, blue: 0.95)
 
         // Ground
-        static let groundTan   = Color(red: 0.87, green: 0.85, blue: 0.58) // #DED895
-        static let grassGreen  = Color(red: 0.33, green: 0.55, blue: 0.18) // #558B2F
-        static let grassLight  = Color(red: 0.51, green: 0.76, blue: 0.24) // #82C23D
+        static let groundTan   = Color(red: 0.78, green: 0.70, blue: 0.50)
+        static let grassGreen  = Color(red: 0.28, green: 0.52, blue: 0.16)
+        static let grassLight  = Color(red: 0.40, green: 0.72, blue: 0.22)
 
         // Pipes
-        static let pipeGreen     = Color(red: 0.45, green: 0.75, blue: 0.18)  // #74BF2E
-        static let pipeDarkGreen = Color(red: 0.34, green: 0.54, blue: 0.13)  // #578A22
-        static let pipeBorder    = Color(red: 0.20, green: 0.33, blue: 0.10)  // #335419
+        static let pipeGreen     = Color(red: 0.45, green: 0.75, blue: 0.18)
+        static let pipeDarkGreen = Color(red: 0.34, green: 0.54, blue: 0.13)
+        static let pipeBorder    = Color(red: 0.20, green: 0.33, blue: 0.10)
 
-        // UI Buttons & Panels
-        static let panelCream    = Color(red: 0.96, green: 0.93, blue: 0.84) // #F5ECD5
-        static let panelBorder   = Color(red: 0.31, green: 0.24, blue: 0.14) // #503E23
-        static let buttonOrange  = Color(red: 0.90, green: 0.55, blue: 0.16) // #E68D29
-        static let buttonGreen   = Color(red: 0.42, green: 0.73, blue: 0.20) // #6BBA33
+        // UI — warm cream panels
+        static let panelCream    = Color(red: 0.96, green: 0.93, blue: 0.84)
+        static let panelBorder   = Color(red: 0.31, green: 0.24, blue: 0.14)
+        static let buttonGreen   = Color(red: 0.42, green: 0.73, blue: 0.20)
+        static let buttonOrange  = Color(red: 0.90, green: 0.55, blue: 0.16)
+        static let buttonRed     = Color(red: 0.85, green: 0.30, blue: 0.30)
+        static let buttonBlue    = Color(red: 0.30, green: 0.55, blue: 0.85)
 
         // Text
         static let titleWhite   = Color.white
-        static let titleOutline  = Color(red: 0.31, green: 0.24, blue: 0.14) // #503E23
-        static let scoreYellow   = Color(red: 1.0, green: 0.84, blue: 0.0)   // #FFD700
+        static let titleOutline  = Color(red: 0.31, green: 0.24, blue: 0.14)
+        static let scoreYellow   = Color(red: 1.0, green: 0.84, blue: 0.0)
 
-        // Duck
-        static let duckYellow   = Color(red: 0.98, green: 0.80, blue: 0.18) // #FACC2E
-        static let duckOrange   = Color(red: 0.93, green: 0.49, blue: 0.13) // #ED7D21
-        static let duckWhite    = Color.white
+        // Duck (mallard)
+        static let duckGreen    = Color(red: 0.08, green: 0.42, blue: 0.22)
+        static let duckBrown    = Color(red: 0.55, green: 0.22, blue: 0.10)
+        static let duckGray     = Color(red: 0.60, green: 0.60, blue: 0.60)
 
-        // CGColor versions for SpriteKit texture rendering
-        static let skyTopCG    = CGColor(red: 0.31, green: 0.75, blue: 0.79, alpha: 1)
-        static let skyBottomCG = CGColor(red: 0.72, green: 0.91, blue: 0.92, alpha: 1)
+        // Bread currency
+        static let breadGold    = Color(red: 0.85, green: 0.68, blue: 0.30)
     }
 }
