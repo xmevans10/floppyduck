@@ -30,8 +30,10 @@ actor ConvexClient: MultiplayerBackendClient {
 
     private static let baseURLInfoKey = "CONVEX_BASE_URL"
     private static let fallbackBaseURL = "https://zany-ram-588.convex.cloud"
+    private static let deployKeyEnv = "CONVEX_DEPLOY_KEY"
 
     private let baseURL: String
+    private let deployKey: String?
 
     private let session: URLSession
 
@@ -40,6 +42,7 @@ actor ConvexClient: MultiplayerBackendClient {
         config.timeoutIntervalForRequest = 15
         self.session = URLSession(configuration: config)
         self.baseURL = Self.resolveBaseURL()
+        self.deployKey = Self.resolveDeployKey()
     }
 
     private static func resolveBaseURL() -> String {
@@ -50,6 +53,14 @@ actor ConvexClient: MultiplayerBackendClient {
             }
         }
         return fallbackBaseURL
+    }
+
+    private static func resolveDeployKey() -> String? {
+        guard let value = ProcessInfo.processInfo.environment[deployKeyEnv] else {
+            return nil
+        }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     // MARK: - Raw Requests
@@ -72,6 +83,10 @@ actor ConvexClient: MultiplayerBackendClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let deployKey {
+            // Local dev override only; do not ship deploy keys in the app bundle.
+            request.setValue("Convex \(deployKey)", forHTTPHeaderField: "Authorization")
+        }
 
         let body: [String: Any] = [
             "path": functionName,
