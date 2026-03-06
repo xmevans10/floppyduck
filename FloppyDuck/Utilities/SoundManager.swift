@@ -12,6 +12,7 @@ enum GameSound: String {
     case countTick
     case newBest
     case milestone
+    case quack
 }
 
 /// Generates and plays retro 8-bit style game sounds programmatically.
@@ -129,6 +130,7 @@ final class SoundManager {
             (.countTick, countTickWav(), 0.15),
             (.newBest,   newBestWav(),   0.50),
             (.milestone, milestoneWav(), 0.30),
+            (.quack,     quackWav(),     0.50),
         ]
         for (sound, data, vol) in defs {
             soundData[sound] = data
@@ -491,5 +493,28 @@ final class SoundManager {
         var full = sectionA + sectionB
         full += silence(0.04)
         return wav(full)
+    }
+
+    /// Retro 8-bit duck quack — nasal square wave with a quick downward pitch bend.
+    /// ~280 Hz attack → 180 Hz body → fast decay. Short and punchy.
+    private func quackWav() -> Data {
+        // Part 1: sharp nasal attack — square wave at 280 Hz for 0.06s
+        let attack = square(freq: 280, dur: 0.06, decay: 0)
+
+        // Part 2: pitch bend down 280→180 Hz over 0.08s with decay
+        let bendCount = Int(Float(sr) * 0.08)
+        let bend: [Float] = (0..<bendCount).map { i in
+            let t = Float(i) / Float(sr)
+            let p = t / 0.08                          // 0→1 progress
+            let freq = 280.0 - 100.0 * p              // 280→180 Hz
+            let env = max(0, 1.0 - p * 0.7)           // gentle decay
+            let phase = fmod(freq * t, 1.0)
+            return (phase < 0.5 ? 0.5 : -0.5) * env
+        }
+
+        // Part 3: short tail at 180 Hz decaying out
+        let tail = square(freq: 180, dur: 0.05, decay: 0.05)
+
+        return wav(attack + bend + tail)
     }
 }

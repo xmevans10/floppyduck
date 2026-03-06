@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0444CC7A13280555C3BAD04C /* ModeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6DC340C3366ABF3170CC53A /* ModeCard.swift */; };
+		F1A2B3C4D5E60718293A4B5C /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B3C4D5F6071829304A5B6D /* SplashView.swift */; };
 		04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */; };
 		108CA6DF21DC6F0EDE421CE6 /* FloppyDuckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */; };
 		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };

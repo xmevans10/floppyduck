@@ -4,6 +4,7 @@ import SwiftUI
 struct FloppyDuckApp: App {
     @StateObject private var gameManager: GameManager
     @StateObject private var authManager: AuthManager
+    @State private var splashFinished = false
 
     init() {
         let manager = GameManager()
@@ -16,10 +17,20 @@ struct FloppyDuckApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(gameManager)
-                .environmentObject(authManager)
-                .preferredColorScheme(.light)
+            ZStack {
+                // Main app — always mounted so it initialises behind the splash
+                ContentView()
+                    .environmentObject(gameManager)
+                    .environmentObject(authManager)
+                    .preferredColorScheme(.light)
+
+                // Splash overlay — removed once finished
+                if !splashFinished {
+                    SplashView(isFinished: $splashFinished)
+                        .ignoresSafeArea()
+                        .transition(.identity)   // no extra SwiftUI transition; view handles its own exit
+                }
+            }
         }
     }
 }

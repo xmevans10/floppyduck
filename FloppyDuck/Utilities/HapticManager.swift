@@ -80,4 +80,11 @@ enum Haptic {
         guard isEnabled else { return }
         notification.notificationOccurred(.warning)
     }
+
+    /// Splash screen duck landing — satisfying medium thud
+    static func splash() {
+        guard isEnabled else { return }
+        impactMedium.impactOccurred()
+        impactMedium.prepare()
+    }
 }
