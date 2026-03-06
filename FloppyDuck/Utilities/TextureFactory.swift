@@ -158,6 +158,12 @@ final class TextureFactory {
         cache = cache.filter { !$0.key.hasPrefix("skin") }
     }
 
+    /// Flush cached pipe textures (call after pipe color changes).
+    func clearPipeCache() {
+        cache.removeValue(forKey: "pipe_master")
+        cache.removeValue(forKey: "pipecap")
+    }
+
     /// Bread currency icon for SwiftUI (cached per scale)
     private var breadUICache: [Int: UIImage] = [:]
     func breadUIImage(pixelScale: CGFloat = 4.0) -> UIImage {
@@ -305,29 +311,33 @@ final class TextureFactory {
         }
     }
 
-    // MARK: - Pipes (classic green)
+    // MARK: - Pipes (mallard teal-green + orange outline)
 
     private func renderPipe(width: CGFloat, height: CGFloat) -> UIImage {
         let size = CGSize(width: width, height: height)
-        let borderW: CGFloat = 3
+        let borderW: CGFloat = 2          // thin orange outline
         let highlightW: CGFloat = 6
 
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
-            c.setFillColor(UIColor(red: 0.20, green: 0.33, blue: 0.10, alpha: 1).cgColor)
+            // Orange outer border
+            c.setFillColor(UIColor(red: 0.82, green: 0.47, blue: 0.10, alpha: 1).cgColor)
             c.fill(CGRect(origin: .zero, size: size))
 
+            // Deep mallard teal-green body
             let body = CGRect(x: borderW, y: 0, width: width - borderW * 2, height: height)
-            c.setFillColor(UIColor(red: 0.45, green: 0.75, blue: 0.18, alpha: 1).cgColor)
+            c.setFillColor(UIColor(red: 0.06, green: 0.34, blue: 0.25, alpha: 1).cgColor)
             c.fill(body)
 
+            // Iridescent highlight strip (left)
             let highlight = CGRect(x: borderW + 3, y: 0, width: highlightW, height: height)
-            c.setFillColor(UIColor(red: 0.55, green: 0.85, blue: 0.28, alpha: 1).cgColor)
+            c.setFillColor(UIColor(red: 0.10, green: 0.48, blue: 0.35, alpha: 1).cgColor)
             c.fill(highlight)
 
+            // Dark teal shadow strip (right)
             let shadow = CGRect(x: width - borderW - highlightW - 1, y: 0, width: highlightW, height: height)
-            c.setFillColor(UIColor(red: 0.34, green: 0.54, blue: 0.13, alpha: 1).cgColor)
+            c.setFillColor(UIColor(red: 0.03, green: 0.24, blue: 0.18, alpha: 1).cgColor)
             c.fill(shadow)
         }
     }
@@ -335,25 +345,29 @@ final class TextureFactory {
     private func renderPipeCap() -> UIImage {
         let capW: CGFloat = GK.pipeWidth + 10
         let capH: CGFloat = 30
-        let borderW: CGFloat = 3
+        let borderW: CGFloat = 2          // thin orange outline
         let size = CGSize(width: capW, height: capH)
 
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
-            c.setFillColor(UIColor(red: 0.20, green: 0.33, blue: 0.10, alpha: 1).cgColor)
+            // Orange outer border
+            c.setFillColor(UIColor(red: 0.82, green: 0.47, blue: 0.10, alpha: 1).cgColor)
             c.fill(CGRect(origin: .zero, size: size))
 
+            // Deep mallard teal-green inner fill
             let inner = CGRect(x: borderW, y: borderW, width: capW - borderW * 2, height: capH - borderW * 2)
-            c.setFillColor(UIColor(red: 0.45, green: 0.75, blue: 0.18, alpha: 1).cgColor)
+            c.setFillColor(UIColor(red: 0.06, green: 0.34, blue: 0.25, alpha: 1).cgColor)
             c.fill(inner)
 
+            // Iridescent highlight strip (left)
             let hl = CGRect(x: borderW + 3, y: borderW, width: 6, height: capH - borderW * 2)
-            c.setFillColor(UIColor(red: 0.55, green: 0.85, blue: 0.28, alpha: 1).cgColor)
+            c.setFillColor(UIColor(red: 0.10, green: 0.48, blue: 0.35, alpha: 1).cgColor)
             c.fill(hl)
 
+            // Dark teal shadow strip (right)
             let sh = CGRect(x: capW - borderW - 7, y: borderW, width: 6, height: capH - borderW * 2)
-            c.setFillColor(UIColor(red: 0.34, green: 0.54, blue: 0.13, alpha: 1).cgColor)
+            c.setFillColor(UIColor(red: 0.03, green: 0.24, blue: 0.18, alpha: 1).cgColor)
             c.fill(sh)
         }
     }

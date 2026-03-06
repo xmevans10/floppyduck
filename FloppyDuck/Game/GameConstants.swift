@@ -72,10 +72,15 @@ enum GK {
         static let grassGreen  = Color(red: 0.28, green: 0.52, blue: 0.16)
         static let grassLight  = Color(red: 0.40, green: 0.72, blue: 0.22)
 
-        // Pipes
-        static let pipeGreen     = Color(red: 0.45, green: 0.75, blue: 0.18)
-        static let pipeDarkGreen = Color(red: 0.34, green: 0.54, blue: 0.13)
-        static let pipeBorder    = Color(red: 0.20, green: 0.33, blue: 0.10)
+        // Pipes — mallard teal-green with orange outline
+        static let pipeGreen     = Color(red: 0.45, green: 0.75, blue: 0.18)   // legacy: UI refs
+        static let pipeDarkGreen = Color(red: 0.34, green: 0.54, blue: 0.13)   // legacy: UI refs
+        static let pipeBorder    = Color(red: 0.20, green: 0.33, blue: 0.10)   // legacy: text shadows
+
+        static let pipeMallardGreen     = Color(red: 0.06, green: 0.34, blue: 0.25)  // deep teal body
+        static let pipeMallardHighlight = Color(red: 0.10, green: 0.48, blue: 0.35)  // iridescent highlight
+        static let pipeMallardShadow    = Color(red: 0.03, green: 0.24, blue: 0.18)  // dark teal shadow
+        static let pipeMallardOrange    = Color(red: 0.82, green: 0.47, blue: 0.10)  // beak-orange outline
 
         // UI — warm cream panels
         static let panelCream    = Color(red: 0.96, green: 0.93, blue: 0.84)
