@@ -37,4 +37,32 @@ enum Haptic {
         guard isEnabled else { return }
         notification.notificationOccurred(.success)
     }
+
+    /// Every 5 pipes scored — satisfying mid-game beat
+    static func milestone() {
+        guard isEnabled else { return }
+        impactHeavy.impactOccurred()
+    }
+
+    /// New personal best
+    static func newBest() {
+        guard isEnabled else { return }
+        notification.notificationOccurred(.success)
+        // Double-tap for emphasis
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            impactHeavy.impactOccurred()
+        }
+    }
+
+    /// Won a VS Bot / ladder match
+    static func win() {
+        guard isEnabled else { return }
+        notification.notificationOccurred(.success)
+    }
+
+    /// Lost a VS Bot match
+    static func lose() {
+        guard isEnabled else { return }
+        notification.notificationOccurred(.warning)
+    }
 }

@@ -55,6 +55,44 @@ enum MatchmakingMode: Hashable {
     case privateRoom
 }
 
+// MARK: - Medals
+
+enum Medal: String {
+    case none
+    case bronze
+    case silver
+    case gold
+    case platinum
+
+    static func from(score: Int) -> Medal {
+        if score >= GK.medalPlatinum { return .platinum }
+        if score >= GK.medalGold     { return .gold }
+        if score >= GK.medalSilver   { return .silver }
+        if score >= GK.medalBronze   { return .bronze }
+        return .none
+    }
+
+    var displayName: String {
+        switch self {
+        case .none:     return ""
+        case .bronze:   return "BRONZE"
+        case .silver:   return "SILVER"
+        case .gold:     return "GOLD"
+        case .platinum: return "PLATINUM"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .none:     return ""
+        case .bronze:   return "🥉"
+        case .silver:   return "🥈"
+        case .gold:     return "🥇"
+        case .platinum: return "💎"
+        }
+    }
+}
+
 // MARK: - Leaderboard
 
 struct LeaderboardEntry: Identifiable, Codable {

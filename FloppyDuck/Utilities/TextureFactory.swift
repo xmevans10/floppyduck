@@ -217,7 +217,7 @@ final class TextureFactory {
             grid[9][4] = U; grid[9][5] = u
         }
 
-        let alpha: CGFloat = ghost ? 0.55 : 1.0
+        let alpha: CGFloat = ghost ? 0.65 : 1.0
 
         let renderer = UIGraphicsImageRenderer(size: imgSize)
         return renderer.image { ctx in
@@ -542,13 +542,14 @@ final class TextureFactory {
                 bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
                 collar: .white)
         case .alien:
+            // Silver/metallic body with lime-green head — distinct from classic
             p = DuckPalette(
-                head: c(0.20, 0.75, 0.20), headHi: c(0.35, 0.90, 0.35),
-                breast: c(0.15, 0.55, 0.15),
-                body: c(0.25, 0.65, 0.25), bodyHi: c(0.40, 0.80, 0.40),
+                head: c(0.25, 0.85, 0.25), headHi: c(0.40, 1.0, 0.40),
+                breast: c(0.55, 0.60, 0.65),
+                body: c(0.68, 0.72, 0.75), bodyHi: c(0.80, 0.84, 0.86),
                 spec: c(0.50, 0.95, 0.50), specHi: c(0.65, 1.0, 0.65),
                 bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
-                collar: c(0.80, 1.0, 0.80))
+                collar: c(0.85, 0.90, 0.92))
         case .dinosaur:
             p = DuckPalette(
                 head: c(0.30, 0.50, 0.15), headHi: c(0.42, 0.62, 0.22),
@@ -575,13 +576,14 @@ final class TextureFactory {
                 collar: c(0.95, 0.75, 0.60))
         }
         if ghost {
-            // Shift toward red for bot ghost
+            // Cyan/blue tint for bot ghost — distinct from all skin palettes
             return DuckPalette(
-                head: c(0.42, 0.12, 0.12), headHi: c(0.55, 0.18, 0.18),
-                breast: p.breast, body: p.body, bodyHi: p.bodyHi,
-                spec: p.spec, specHi: p.specHi,
-                bill: p.bill, billTip: p.billTip,
-                collar: p.collar)
+                head: c(0.15, 0.35, 0.55), headHi: c(0.22, 0.48, 0.68),
+                breast: c(0.20, 0.30, 0.50),
+                body: c(0.25, 0.40, 0.58), bodyHi: c(0.35, 0.52, 0.70),
+                spec: c(0.18, 0.38, 0.65), specHi: c(0.28, 0.50, 0.78),
+                bill: c(0.50, 0.65, 0.75), billTip: c(0.40, 0.55, 0.65),
+                collar: c(0.60, 0.75, 0.88))
         }
         return p
     }
@@ -716,7 +718,7 @@ final class TextureFactory {
             }
         }
 
-        let alpha: CGFloat = ghost ? 0.55 : 1.0
+        let alpha: CGFloat = ghost ? 0.65 : 1.0
         let imgSize = CGSize(width: CGFloat(cs.w) * pixelSize,
                              height: CGFloat(cs.h) * pixelSize)
 

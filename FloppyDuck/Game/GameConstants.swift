@@ -23,6 +23,16 @@ enum GK {
     static let flapImpulse: CGFloat = 330        // was 320
     static let maxUpSpeed:  CGFloat = 400
 
+    // MARK: - Speed Ramp (progressive difficulty)
+    static let pipeSpeedMax:      CGFloat = 195     // cap speed
+    static let speedRampPerPipe:  CGFloat = 1.5     // +1.5 pts/s per pipe scored → 195 at pipe 30
+
+    // MARK: - Medal Thresholds
+    static let medalBronze:   Int = 5
+    static let medalSilver:   Int = 15
+    static let medalGold:     Int = 30
+    static let medalPlatinum: Int = 50
+
     // MARK: - Speeds
     static let groundSpeed:   CGFloat = 150
     static let cloudSpeed:    CGFloat = 20

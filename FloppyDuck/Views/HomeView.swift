@@ -3,7 +3,6 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var manager: GameManager
     @ObservedObject var skinManager = SkinManager.shared
-    @State private var playExpanded = false
     @State private var duckBob: Bool = false
     @State private var titlePulse: Bool = false
 
@@ -109,86 +108,65 @@ struct HomeView: View {
     // MARK: - Bread Counter
 
     private var breadCounter: some View {
-        HStack(spacing: 8) {
-            Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
+        HStack(spacing: 10) {
+            Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 4.0))
                 .interpolation(.none)
                 .resizable()
-                .frame(width: 24, height: 20)
+                .frame(width: 32, height: 26)
 
             Text("\(manager.stats.bread)")
-                .font(.custom(GK.pixelFontName, size: 14))
+                .font(.custom(GK.pixelFontName, size: 16))
                 .foregroundColor(GK.Colors.breadGold)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.black.opacity(0.3))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(GK.Colors.breadGold.opacity(0.3), lineWidth: 2)
+                )
         )
     }
 
     // MARK: - Play Section
 
     private var playSection: some View {
-        VStack(spacing: 12) {
-            // Main PLAY button
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                    playExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    pixelIcon(.play, size: 20)
-                    Text("PLAY")
-                        .font(.custom(GK.pixelFontName, size: 18))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(GK.Colors.buttonGreen)
-                        .shadow(color: GK.Colors.pipeDarkGreen, radius: 0, x: 0, y: 4)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(GK.Colors.pipeBorder, lineWidth: 3)
-                )
+        VStack(spacing: 10) {
+            // Classic — primary action
+            subModeButton(
+                icon: .classic,
+                title: "CLASSIC",
+                subtitle: "Solo Run",
+                color: GK.Colors.buttonGreen
+            ) {
+                SoundManager.shared.play(.button)
+                manager.startGame(GameModeConfig(mode: .classic))
             }
-            .buttonStyle(.plain)
 
-            // Expanded sub-modes
-            if playExpanded {
-                VStack(spacing: 10) {
-                    subModeButton(
-                        icon: .bot,
-                        title: "VS BOT",
-                        subtitle: "Bot Ladder",
-                        color: GK.Colors.buttonBlue
-                    ) {
-                        manager.navigate(to: .botLadder)
-                    }
-
-                    subModeButton(
-                        icon: .classic,
-                        title: "CLASSIC",
-                        subtitle: "Solo Run",
-                        color: GK.Colors.buttonGreen
-                    ) {
-                        manager.startGame(GameModeConfig(mode: .classic))
-                    }
-
-                    subModeButton(
-                        icon: .headToHead,
-                        title: "HEAD TO HEAD",
-                        subtitle: "1v1 Online",
-                        color: GK.Colors.buttonOrange
-                    ) {
-                        manager.navigate(to: .matchmaking(.quickPlay))
-                    }
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
+            // VS Bot ladder
+            subModeButton(
+                icon: .bot,
+                title: "VS BOT",
+                subtitle: "Bot Ladder",
+                color: GK.Colors.buttonBlue
+            ) {
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .botLadder)
             }
+
+            // Head to Head — coming soon
+            subModeButton(
+                icon: .headToHead,
+                title: "HEAD TO HEAD",
+                subtitle: "Coming Soon",
+                color: Color.gray.opacity(0.4)
+            ) {
+                // Not yet implemented
+            }
+            .disabled(true)
+            .opacity(0.55)
         }
     }
 

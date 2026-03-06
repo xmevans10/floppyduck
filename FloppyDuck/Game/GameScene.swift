@@ -75,6 +75,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var pipeTimer: TimeInterval = 0
     private var lastUpdate: TimeInterval = 0
 
+    // Progressive difficulty
+    private var currentPipeSpeed: CGFloat = GK.pipeSpeed
+
     // Parallax layers
     private var clouds: [SKSpriteNode] = []
     private var hills: [SKSpriteNode] = []
@@ -256,7 +259,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         botTextures = (0...2).map { factory.skinBotDuckTexture(skin: playerSkin, wingPhase: $0) }
 
         let bot = SKSpriteNode(texture: botTextures[1],
-                               size: CGSize(width: GK.duckRadius * 2.8, height: GK.duckRadius * 1.9))
+                               size: playerSkin.spriteSize)
         bot.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         bot.zPosition = 35
 
@@ -480,7 +483,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         pipeNode.addChild(scoreTrigger)
 
         let moveDistance = GK.worldWidth + GK.pipeWidth * 3
-        let moveDuration = TimeInterval(moveDistance / GK.pipeSpeed)
+        let moveDuration = TimeInterval(moveDistance / currentPipeSpeed)
         pipeNode.run(SKAction.sequence([
             SKAction.moveBy(x: -moveDistance, y: 0, duration: moveDuration),
             SKAction.removeFromParent()
@@ -507,6 +510,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         guard phase == .playing else { return }
         duck.physicsBody?.velocity = CGVector(dx: 0, dy: GK.flapImpulse)
         Haptic.flap()
+        SoundManager.shared.play(.flap)
 
         duck.removeAction(forKey: "wings")
         let flutter = SKAction.sequence([
@@ -715,6 +719,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             score += 1
             updateScore()
             Haptic.score()
+            SoundManager.shared.play(.score)
+
+            // Progressive speed ramp
+            currentPipeSpeed = min(GK.pipeSpeedMax,
+                                   GK.pipeSpeed + CGFloat(score) * GK.speedRampPerPipe)
+
+            // Milestone haptic every 5 pipes
+            if score % 5 == 0 {
+                Haptic.milestone()
+                SoundManager.shared.play(.milestone)
+            }
+
             gameDelegate?.gameDidScore(score)
             return
         }
@@ -727,6 +743,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func die() {
         phase = .dead
         Haptic.death()
+        SoundManager.shared.play(.death)
+
+        // Bump duck above ground layer so it doesn't clip behind ground tiles
+        duck.zPosition = 55
 
         pipeLayer.isPaused = true
         groundLayer.isPaused = true
@@ -777,6 +797,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         lastUpdate = 0
         score = 0
         botScore = 0
+        currentPipeSpeed = GK.pipeSpeed
         botPipesPassed.removeAll()
         phase = .ready
 
@@ -787,6 +808,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         duck.zRotation = 0
         duck.alpha = 1.0
+        duck.zPosition = 40  // restore original z after death bump
         duck.physicsBody?.isDynamic = false
         duck.physicsBody?.velocity = .zero
         duck.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
