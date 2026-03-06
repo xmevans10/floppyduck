@@ -3,6 +3,7 @@ import Foundation
 // MARK: - Navigation
 
 enum AppRoute: Hashable {
+    case multiplayerModes
     case matchmaking(MatchmakingMode)
     case stats
     case settings
@@ -19,12 +20,22 @@ struct GameModeConfig: Identifiable, Hashable {
     let botCharacterId: String?
     let targetScore: Int?
 
+    // Multiplayer metadata
+    let matchId: String?
+    let matchmakingMode: MatchmakingMode?
+    let isRanked: Bool
+    let roomCode: String?
+
     init(mode: GameMode,
          seed: Int = Int.random(in: 1...999999),
          opponentName: String? = nil,
          botDifficulty: BotDifficulty? = nil,
          botCharacterId: String? = nil,
-         targetScore: Int? = nil) {
+         targetScore: Int? = nil,
+         matchId: String? = nil,
+         matchmakingMode: MatchmakingMode? = nil,
+         isRanked: Bool = false,
+         roomCode: String? = nil) {
         self.id = UUID()
         self.mode = mode
         self.seed = seed
@@ -32,6 +43,10 @@ struct GameModeConfig: Identifiable, Hashable {
         self.botDifficulty = botDifficulty
         self.botCharacterId = botCharacterId
         self.targetScore = targetScore
+        self.matchId = matchId
+        self.matchmakingMode = matchmakingMode
+        self.isRanked = isRanked
+        self.roomCode = roomCode
     }
 
     static func == (lhs: GameModeConfig, rhs: GameModeConfig) -> Bool {
@@ -49,10 +64,69 @@ enum GameMode: String, Hashable {
     case vsBot
 }
 
-enum MatchmakingMode: Hashable {
+enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
     case quickPlay
     case ranked
     case privateRoom
+
+    var queueValue: String {
+        switch self {
+        case .quickPlay: return "quick"
+        case .ranked: return "ranked"
+        case .privateRoom: return "private"
+        }
+    }
+
+    var isRanked: Bool {
+        self == .ranked
+    }
+
+    var queueTimeout: TimeInterval {
+        switch self {
+        case .quickPlay, .ranked:
+            return 30
+        case .privateRoom:
+            return 120
+        }
+    }
+}
+
+// MARK: - Multiplayer
+
+struct QueueTicket: Hashable, Codable {
+    let ticketId: String
+    let mode: MatchmakingMode
+    let roomCode: String?
+}
+
+struct MultiplayerMatchAssignment: Hashable, Codable {
+    let matchId: String
+    let seed: Int
+    let opponentName: String
+    let mode: MatchmakingMode
+    let isRanked: Bool
+    let roomCode: String?
+}
+
+struct MultiplayerMatchState: Hashable, Codable {
+    let matchId: String
+    let localScore: Int
+    let opponentScore: Int
+    let isFinished: Bool
+    let opponentName: String?
+}
+
+struct MultiplayerMatchResult: Hashable, Codable {
+    let matchId: String
+    let mode: MatchmakingMode
+    let opponentName: String
+    let localScore: Int
+    let opponentScore: Int
+    let didWin: Bool
+    let didDraw: Bool
+    let ratingDelta: Int?
+    let newRating: Int?
+    let isRanked: Bool
 }
 
 // MARK: - Medals
@@ -143,6 +217,22 @@ struct PlayerStats: Codable {
             }
         } else {
             bread += max(1, score)
+        }
+    }
+
+    mutating func applyMatchResult(_ result: MultiplayerMatchResult) {
+        if result.didDraw {
+            recordGame(score: result.localScore, won: nil)
+        } else {
+            recordGame(score: result.localScore, won: result.didWin)
+        }
+
+        if result.isRanked {
+            if let newRating = result.newRating {
+                elo = newRating
+            } else if let delta = result.ratingDelta {
+                elo += delta
+            }
         }
     }
 

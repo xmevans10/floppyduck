@@ -8,6 +8,8 @@ struct ContentView: View {
             HomeView()
                 .navigationDestination(for: AppRoute.self) { route in
                     switch route {
+                    case .multiplayerModes:
+                        MultiplayerModesView()
                     case .matchmaking(let mode):
                         MatchmakingView(mode: mode)
                     case .stats:

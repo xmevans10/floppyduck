@@ -7,81 +7,100 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		EB39ADF36C8B378B568E6FFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */; };
-		108CA6DF21DC6F0EDE421CE6 /* FloppyDuckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */; };
-		E4862C9430504EFD8842A776 /* GameConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F70986D2FC6C1758722D0D5 /* GameConstants.swift */; };
-		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };
-		915FA225B9808E616EE0A791 /* GameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF5559B8D2060C87F39CB2A8 /* GameManager.swift */; };
-		A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D35655334C23B66037D828D /* GameModels.swift */; };
-		D27603A65E3A06C3CB359FED /* ConvexClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */; };
-		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
-		89B61228B4E653AA90467704 /* PRNG.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0703F9981111218E6869673 /* PRNG.swift */; };
-		CAFA74F0B0D4535CFB00FF8C /* TextureFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6223E9869786181FDBDB97 /* TextureFactory.swift */; };
 		0444CC7A13280555C3BAD04C /* ModeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6DC340C3366ABF3170CC53A /* ModeCard.swift */; };
-		721117E305FA5B37E3DEE0F4 /* StatBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B62950ED3B295FD7BFD165 /* StatBadge.swift */; };
-		83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6536C0571E3D58450DECC837 /* GameContainerView.swift */; };
-		DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */; };
-		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
 		04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */; };
-		99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */; };
-		B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304050 /* SoundManager.swift */; };
-		D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652A08D5F52D04D2A070A /* StatsView.swift */; };
-		9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */; };
-		A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709E16E4587997D58A88C22F /* BotCharacter.swift */; };
-		BE83180DB6EA0770D2D8235C /* DuckSkin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */; };
-		CE0FE362AF86AF0634F66E10 /* SkinManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E04DFC7B500170F528318BC /* SkinManager.swift */; };
+		108CA6DF21DC6F0EDE421CE6 /* FloppyDuckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */; };
+		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };
+		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
+		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
+		721117E305FA5B37E3DEE0F4 /* StatBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B62950ED3B295FD7BFD165 /* StatBadge.swift */; };
 		722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */; };
+		83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6536C0571E3D58450DECC837 /* GameContainerView.swift */; };
+		89B61228B4E653AA90467704 /* PRNG.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0703F9981111218E6869673 /* PRNG.swift */; };
+		915FA225B9808E616EE0A791 /* GameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF5559B8D2060C87F39CB2A8 /* GameManager.swift */; };
+		9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */; };
+		99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */; };
+		A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709E16E4587997D58A88C22F /* BotCharacter.swift */; };
+		A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D35655334C23B66037D828D /* GameModels.swift */; };
+		B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304050 /* SoundManager.swift */; };
 		BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */; };
+		BE83180DB6EA0770D2D8235C /* DuckSkin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */; };
+		B2F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */; };
+		CAFA74F0B0D4535CFB00FF8C /* TextureFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6223E9869786181FDBDB97 /* TextureFactory.swift */; };
+		CE0FE362AF86AF0634F66E10 /* SkinManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E04DFC7B500170F528318BC /* SkinManager.swift */; };
+		D27603A65E3A06C3CB359FED /* ConvexClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */; };
+		D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652A08D5F52D04D2A070A /* StatsView.swift */; };
+		DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */; };
+		E4862C9430504EFD8842A776 /* GameConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F70986D2FC6C1758722D0D5 /* GameConstants.swift */; };
+		EB39ADF36C8B378B568E6FFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		45E49708FF03202FD286092D /* FloppyDuck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FloppyDuck.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloppyDuckApp.swift; sourceTree = "<group>"; };
-		0F70986D2FC6C1758722D0D5 /* GameConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConstants.swift; sourceTree = "<group>"; };
-		6F57D6444D8C2281BB9B5DEA /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
-		DF5559B8D2060C87F39CB2A8 /* GameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameManager.swift; sourceTree = "<group>"; };
-		3D35655334C23B66037D828D /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
-		8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexClient.swift; sourceTree = "<group>"; };
-		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
-		F0703F9981111218E6869673 /* PRNG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRNG.swift; sourceTree = "<group>"; };
-		EF6223E9869786181FDBDB97 /* TextureFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextureFactory.swift; sourceTree = "<group>"; };
-		C6DC340C3366ABF3170CC53A /* ModeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeCard.swift; sourceTree = "<group>"; };
-		90B62950ED3B295FD7BFD165 /* StatBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatBadge.swift; sourceTree = "<group>"; };
-		6536C0571E3D58450DECC837 /* GameContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameContainerView.swift; sourceTree = "<group>"; };
-		DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchmakingView.swift; sourceTree = "<group>"; };
-		8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		E511804596196C25C1C1D540 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelIconFactory.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6071829304050 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
-		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
-		CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		709E16E4587997D58A88C22F /* BotCharacter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacter.swift; sourceTree = "<group>"; };
-		521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuckSkin.swift; sourceTree = "<group>"; };
-		4E04DFC7B500170F528318BC /* SkinManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinManager.swift; sourceTree = "<group>"; };
-		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
-		DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopView.swift; sourceTree = "<group>"; };
-		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
 		0096DDB5D5C93DB7732319BF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0F70986D2FC6C1758722D0D5 /* GameConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConstants.swift; sourceTree = "<group>"; };
+		2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3D35655334C23B66037D828D /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
+		451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloppyDuckApp.swift; sourceTree = "<group>"; };
+		45E49708FF03202FD286092D /* FloppyDuck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FloppyDuck.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E04DFC7B500170F528318BC /* SkinManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinManager.swift; sourceTree = "<group>"; };
+		521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuckSkin.swift; sourceTree = "<group>"; };
+		6536C0571E3D58450DECC837 /* GameContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameContainerView.swift; sourceTree = "<group>"; };
+		6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchmakingView.swift; sourceTree = "<group>"; };
+		6F57D6444D8C2281BB9B5DEA /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
+		709E16E4587997D58A88C22F /* BotCharacter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacter.swift; sourceTree = "<group>"; };
+		8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexClient.swift; sourceTree = "<group>"; };
+		8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		90B62950ED3B295FD7BFD165 /* StatBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatBadge.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6071829304050 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
+		A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
+		C6DC340C3366ABF3170CC53A /* ModeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeCard.swift; sourceTree = "<group>"; };
+		CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopView.swift; sourceTree = "<group>"; };
+		DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		DF5559B8D2060C87F39CB2A8 /* GameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameManager.swift; sourceTree = "<group>"; };
+		DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelIconFactory.swift; sourceTree = "<group>"; };
+		E511804596196C25C1C1D540 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		EF6223E9869786181FDBDB97 /* TextureFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextureFactory.swift; sourceTree = "<group>"; };
+		F0703F9981111218E6869673 /* PRNG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRNG.swift; sourceTree = "<group>"; };
+		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		F8BD22F2990F41972F1DD9DF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		058341E568DAA126DED41013 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				5C8EC4C359C9110B0D68C72F /* Components */,
+				DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */,
+				6536C0571E3D58450DECC837 /* GameContainerView.swift */,
+				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
+				A47652A08D5F52D04D2A070A /* StatsView.swift */,
+				CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */,
+				FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */,
+				DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		0B1447498EC4F1F69A2A1BCC = {
 			isa = PBXGroup;
 			children = (
 				40E7256AF7638B5B6B81606E /* FloppyDuck */,
 				869F6DB7D2C008CCC31F4B39 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		869F6DB7D2C008CCC31F4B39 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				45E49708FF03202FD286092D /* FloppyDuck.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 		40E7256AF7638B5B6B81606E /* FloppyDuck */ = {
@@ -109,42 +128,13 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
-		944325C55C15EC0ED9EDE74D /* App */ = {
+		5C8EC4C359C9110B0D68C72F /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */,
-				2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */,
+				C6DC340C3366ABF3170CC53A /* ModeCard.swift */,
+				90B62950ED3B295FD7BFD165 /* StatBadge.swift */,
 			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		5FD76A785CF6BDA704AB73E3 /* Game */ = {
-			isa = PBXGroup;
-			children = (
-				6F57D6444D8C2281BB9B5DEA /* GameScene.swift */,
-				0F70986D2FC6C1758722D0D5 /* GameConstants.swift */,
-			);
-			path = Game;
-			sourceTree = "<group>";
-		};
-		E0FB3BE563848C0B81616C98 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				3D35655334C23B66037D828D /* GameModels.swift */,
-				DF5559B8D2060C87F39CB2A8 /* GameManager.swift */,
-				709E16E4587997D58A88C22F /* BotCharacter.swift */,
-				521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */,
-				4E04DFC7B500170F528318BC /* SkinManager.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		AF2453D02A02A2B841B715F4 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */,
-			);
-			path = Services;
+			path = Components;
 			sourceTree = "<group>";
 		};
 		5FAA3EDC67ED73B227892ABC /* Utilities */ = {
@@ -159,28 +149,51 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
-		058341E568DAA126DED41013 /* Views */ = {
+		5FD76A785CF6BDA704AB73E3 /* Game */ = {
 			isa = PBXGroup;
 			children = (
-				5C8EC4C359C9110B0D68C72F /* Components */,
-				DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */,
-				6536C0571E3D58450DECC837 /* GameContainerView.swift */,
-				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
-				A47652A08D5F52D04D2A070A /* StatsView.swift */,
-				CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */,
-				FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */,
-				DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */,
+				6F57D6444D8C2281BB9B5DEA /* GameScene.swift */,
+				0F70986D2FC6C1758722D0D5 /* GameConstants.swift */,
 			);
-			path = Views;
+			path = Game;
 			sourceTree = "<group>";
 		};
-		5C8EC4C359C9110B0D68C72F /* Components */ = {
+		869F6DB7D2C008CCC31F4B39 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C6DC340C3366ABF3170CC53A /* ModeCard.swift */,
-				90B62950ED3B295FD7BFD165 /* StatBadge.swift */,
+				45E49708FF03202FD286092D /* FloppyDuck.app */,
 			);
-			path = Components;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		944325C55C15EC0ED9EDE74D /* App */ = {
+			isa = PBXGroup;
+			children = (
+				451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */,
+				2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */,
+				A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		AF2453D02A02A2B841B715F4 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		E0FB3BE563848C0B81616C98 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				3D35655334C23B66037D828D /* GameModels.swift */,
+				DF5559B8D2060C87F39CB2A8 /* GameManager.swift */,
+				709E16E4587997D58A88C22F /* BotCharacter.swift */,
+				521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */,
+				4E04DFC7B500170F528318BC /* SkinManager.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -188,7 +201,7 @@
 /* Begin PBXNativeTarget section */
 		CC26CC21560A6F6D89098BBE /* FloppyDuck */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C15F3F33BAC94685D2A372D1 /* Build configuration list for PBXNativeTarget */;
+			buildConfigurationList = C15F3F33BAC94685D2A372D1 /* Build configuration list for PBXNativeTarget "FloppyDuck" */;
 			buildPhases = (
 				5A47A4BEE87536527978A253 /* Sources */,
 				F8BD22F2990F41972F1DD9DF /* Frameworks */,
@@ -208,7 +221,9 @@
 /* Begin PBXProject section */
 		E74DADFE3AC5262D28E19680 /* Project object */ = {
 			isa = PBXProject;
-			buildConfigurationList = 3B3EFF91059D12F78D2F21D0 /* Build configuration list for PBXProject */;
+			attributes = {
+			};
+			buildConfigurationList = 3B3EFF91059D12F78D2F21D0 /* Build configuration list for PBXProject "FloppyDuck" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -225,6 +240,19 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		915FCF5A99513AFC46FDB39D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */,
+				F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */,
+				B2F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		5A47A4BEE87536527978A253 /* Sources */ = {
@@ -260,29 +288,60 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		F8BD22F2990F41972F1DD9DF /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXResourcesBuildPhase section */
-		915FCF5A99513AFC46FDB39D /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */,
-				F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin XCBuildConfiguration section */
+		1C44D1EC10EDD6481FD9FB7C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_ASSET_PATHS = "\"FloppyDuck/Preview Content\"";
+				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FloppyDuck/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Floppy Duck";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+					INFOPLIST_KEY_UILaunchScreen_Generation = NO;
+					INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xmevans10.FloppyDuck;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		3C9D00154C18310DC9003773 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -304,9 +363,63 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		54B0FB6D5EDA887C4233E9A1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_ASSET_PATHS = "\"FloppyDuck/Preview Content\"";
+				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FloppyDuck/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Floppy Duck";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+					INFOPLIST_KEY_UILaunchScreen_Generation = NO;
+					INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xmevans10.FloppyDuck;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -336,119 +449,10 @@
 			};
 			name = Release;
 		};
-		54B0FB6D5EDA887C4233E9A1 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CODE_SIGN_STYLE = Automatic;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_ASSET_PATHS = "\"FloppyDuck/Preview Content\"";
-				ENABLE_PREVIEWS = YES;
-				ENABLE_TESTABILITY = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = FloppyDuck/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Floppy Duck";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.xmevans10.FloppyDuck";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		1C44D1EC10EDD6481FD9FB7C /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CODE_SIGN_STYLE = Automatic;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_ASSET_PATHS = "\"FloppyDuck/Preview Content\"";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_PREVIEWS = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = FloppyDuck/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Floppy Duck";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.xmevans10.FloppyDuck";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		3B3EFF91059D12F78D2F21D0 /* Build configuration list for PBXProject */ = {
+		3B3EFF91059D12F78D2F21D0 /* Build configuration list for PBXProject "FloppyDuck" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				3C9D00154C18310DC9003773 /* Debug */,
@@ -457,7 +461,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C15F3F33BAC94685D2A372D1 /* Build configuration list for PBXNativeTarget */ = {
+		C15F3F33BAC94685D2A372D1 /* Build configuration list for PBXNativeTarget "FloppyDuck" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				54B0FB6D5EDA887C4233E9A1 /* Debug */,
@@ -467,7 +471,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = E74DADFE3AC5262D28E19680 /* Project object */;
 }

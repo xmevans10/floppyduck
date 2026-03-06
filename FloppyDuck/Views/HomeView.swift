@@ -156,17 +156,16 @@ struct HomeView: View {
                 manager.navigate(to: .botLadder)
             }
 
-            // Head to Head — coming soon
+            // Head to Head
             subModeButton(
                 icon: .headToHead,
                 title: "HEAD TO HEAD",
-                subtitle: "Coming Soon",
-                color: Color.gray.opacity(0.4)
+                subtitle: "Quick / Ranked / Room",
+                color: GK.Colors.buttonOrange
             ) {
-                // Not yet implemented
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .multiplayerModes)
             }
-            .disabled(true)
-            .opacity(0.55)
         }
     }
 

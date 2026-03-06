@@ -1,13 +1,145 @@
 import SwiftUI
 
+struct MultiplayerModesView: View {
+    @EnvironmentObject var manager: GameManager
+    private let icons = PixelIconFactory.shared
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Spacer().frame(height: 30)
+
+                HStack {
+                    backButton
+                    Spacer()
+                    Text("HEAD TO HEAD")
+                        .font(.custom(GK.pixelFontName, size: 16))
+                        .foregroundColor(.white)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+                    Spacer()
+                    Color.clear.frame(width: 44, height: 44)
+                }
+                .padding(.horizontal, 16)
+
+                VStack(spacing: 12) {
+                    modeButton(icon: .headToHead,
+                               title: "QUICK PLAY",
+                               subtitle: "Fast matchmaking") {
+                        manager.startMatchmaking(mode: .quickPlay)
+                    }
+
+                    modeButton(icon: .trophy,
+                               title: "RANKED",
+                               subtitle: "Competitive ELO") {
+                        manager.startMatchmaking(mode: .ranked)
+                    }
+
+                    modeButton(icon: .shop,
+                               title: "PRIVATE ROOM",
+                               subtitle: "Create or join by code") {
+                        manager.startMatchmaking(mode: .privateRoom)
+                    }
+                }
+                .padding(.horizontal, 28)
+
+                VStack(spacing: 6) {
+                    Text("CURRENT ELO")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white.opacity(0.65))
+
+                    Text("\(manager.stats.elo)")
+                        .font(.custom(GK.pixelFontName, size: 16))
+                        .foregroundColor(GK.Colors.scoreYellow)
+                }
+                .padding(.top, 6)
+
+                Spacer()
+            }
+        }
+        .navigationBarHidden(true)
+    }
+
+    private func modeButton(icon: PixelIcon,
+                            title: String,
+                            subtitle: String,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                pixelIcon(icon, size: 20)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(.white)
+                    Text(subtitle)
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white.opacity(0.75))
+                }
+
+                Spacer()
+
+                pixelIcon(.play, size: 14)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(GK.Colors.buttonBlue)
+                    .shadow(color: GK.Colors.buttonBlue.opacity(0.45), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
+        Image(uiImage: icons.image(for: icon))
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+    }
+
+    private var backButton: some View {
+        Button {
+            manager.goHome()
+        } label: {
+            Image(uiImage: icons.image(for: .back))
+                .interpolation(.none)
+                .resizable()
+                .frame(width: 28, height: 28)
+                .padding(8)
+                .background(Circle().fill(Color.white.opacity(0.2)))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct MatchmakingView: View {
     let mode: MatchmakingMode
+
     @EnvironmentObject var manager: GameManager
-    @State private var searching = true
+
     @State private var dots = ""
     @State private var roomCode = ""
+    @State private var createdRoomCode: String?
+    @State private var state: MatchmakingState = .idle
+    @State private var roomAction: PrivateRoomAction = .create
+    @State private var isWorking: Bool = false
+    @State private var searchTask: Task<Void, Never>?
 
     private let icons = PixelIconFactory.shared
+    private let dotTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack {
@@ -21,7 +153,6 @@ struct MatchmakingView: View {
             VStack(spacing: 20) {
                 Spacer()
 
-                // Mode icon
                 pixelIcon(mode == .ranked ? .trophy : .headToHead, size: 44)
 
                 Text(modeTitle)
@@ -29,7 +160,6 @@ struct MatchmakingView: View {
                     .foregroundColor(.white)
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
 
-                // Content panel
                 VStack(spacing: 16) {
                     switch mode {
                     case .quickPlay, .ranked:
@@ -47,13 +177,12 @@ struct MatchmakingView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(GK.Colors.panelBorder, lineWidth: 3)
                 )
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 28)
 
                 Spacer()
 
-                // Cancel / back
                 Button {
-                    manager.goHome()
+                    cancelAndReturnHome()
                 } label: {
                     HStack(spacing: 8) {
                         pixelIcon(.cancel, size: 16)
@@ -76,10 +205,45 @@ struct MatchmakingView: View {
             }
         }
         .navigationBarHidden(true)
-        .onAppear { startSearchAnimation() }
+        .onAppear(perform: onAppear)
+        .onDisappear(perform: onDisappear)
+        .onReceive(dotTimer) { _ in
+            dots = dots.count >= 3 ? "" : dots + "."
+        }
     }
 
-    // MARK: - Mode Title
+    // MARK: - State
+
+    private enum MatchmakingState: Equatable {
+        case idle
+        case searching
+        case waitingRoom(String)
+        case timedOut
+        case failed(String)
+        case matched
+    }
+
+    private enum PrivateRoomAction {
+        case create
+        case join
+    }
+
+    // MARK: - Lifecycle
+
+    private func onAppear() {
+        if mode == .quickPlay || mode == .ranked {
+            startQueueSearch()
+        }
+    }
+
+    private func onDisappear() {
+        if isWorking {
+            searchTask?.cancel()
+            Task { await manager.cancelMatchmaking() }
+        }
+    }
+
+    // MARK: - Views
 
     private var modeTitle: String {
         switch mode {
@@ -89,11 +253,8 @@ struct MatchmakingView: View {
         }
     }
 
-    // MARK: - Searching Content
-
     private var searchingContent: some View {
         VStack(spacing: 12) {
-            // Animated duck
             Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 3.0))
                 .interpolation(.none)
                 .resizable()
@@ -113,63 +274,285 @@ struct MatchmakingView: View {
                 }
             }
 
-            Text("Multiplayer coming soon!")
-                .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
-                .padding(.top, 4)
+            statusText
         }
     }
-
-    // MARK: - Private Room Content
 
     private var privateRoomContent: some View {
-        VStack(spacing: 16) {
-            Text("ROOM CODE")
-                .font(.custom(GK.pixelFontName, size: 10))
-                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
-
-            TextField("", text: $roomCode)
-                .font(.custom(GK.pixelFontName, size: 20))
-                .foregroundColor(GK.Colors.panelBorder)
-                .multilineTextAlignment(.center)
-                .textInputAutocapitalization(.characters)
-                .frame(height: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 2)
-                        )
-                )
-                .onChange(of: roomCode) { _, val in
-                    roomCode = String(val.prefix(GK.roomCodeLength)).uppercased()
+        VStack(spacing: 14) {
+            HStack(spacing: 8) {
+                roomActionButton(title: "CREATE", selected: roomAction == .create) {
+                    roomAction = .create
+                    state = .idle
                 }
-
-            Button {
-                // TODO: Join room
-            } label: {
-                Text("JOIN")
-                    .font(.custom(GK.pixelFontName, size: 12))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(GK.Colors.buttonGreen)
-                            .shadow(color: GK.Colors.pipeDarkGreen, radius: 0, x: 0, y: 3)
-                    )
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(GK.Colors.pipeBorder, lineWidth: 2))
+                roomActionButton(title: "JOIN", selected: roomAction == .join) {
+                    roomAction = .join
+                    state = .idle
+                }
             }
-            .buttonStyle(.plain)
 
-            Text("Coming soon!")
-                .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
+            if roomAction == .create {
+                VStack(spacing: 10) {
+                    Text("ROOM CODE")
+                        .font(.custom(GK.pixelFontName, size: 9))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+
+                    Text(createdRoomCode ?? "-----")
+                        .font(.custom(GK.pixelFontName, size: 20))
+                        .foregroundColor(GK.Colors.panelBorder)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 2)
+                                )
+                        )
+
+                    actionButton(title: createdRoomCode == nil ? "CREATE ROOM" : "RETRY") {
+                        createRoomAndWait()
+                    }
+                }
+            } else {
+                VStack(spacing: 10) {
+                    Text("ROOM CODE")
+                        .font(.custom(GK.pixelFontName, size: 9))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+
+                    TextField("", text: $roomCode)
+                        .font(.custom(GK.pixelFontName, size: 20))
+                        .foregroundColor(GK.Colors.panelBorder)
+                        .multilineTextAlignment(.center)
+                        .textInputAutocapitalization(.characters)
+                        .frame(height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 2)
+                                )
+                        )
+                        .onChange(of: roomCode) { _, value in
+                            roomCode = String(value.prefix(GK.roomCodeLength)).uppercased()
+                        }
+
+                    actionButton(title: "JOIN ROOM") {
+                        joinRoomAndWait()
+                    }
+                    .disabled(roomCode.count != GK.roomCodeLength)
+                    .opacity(roomCode.count == GK.roomCodeLength ? 1 : 0.5)
+                }
+            }
+
+            statusText
         }
     }
 
-    // MARK: - Helpers
+    private var statusText: some View {
+        Text(statusMessage)
+            .font(.custom(GK.pixelFontName, size: 7))
+            .foregroundColor(statusColor)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 2)
+    }
+
+    private var statusMessage: String {
+        switch state {
+        case .idle:
+            return mode == .privateRoom
+                ? "Create a room or join one with a 5-character code."
+                : "Searching for an opponent..."
+        case .searching:
+            return mode == .privateRoom
+                ? "Searching\(dots)"
+                : "Matchmaking in progress\(dots)"
+        case .waitingRoom(let code):
+            return "Share code \(code). Waiting for opponent\(dots)"
+        case .timedOut:
+            return "Timed out. Retry or cancel."
+        case .failed(let msg):
+            return msg
+        case .matched:
+            return "Match found. Launching..."
+        }
+    }
+
+    private var statusColor: Color {
+        switch state {
+        case .failed:
+            return GK.Colors.buttonRed
+        case .timedOut:
+            return GK.Colors.buttonOrange
+        default:
+            return GK.Colors.panelBorder.opacity(0.5)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func startQueueSearch() {
+        cancelPendingSearch()
+        state = .searching
+        isWorking = true
+
+        searchTask = Task {
+            do {
+                let assignment = try await manager.queueForMatch(mode: mode)
+                await MainActor.run {
+                    isWorking = false
+                    state = .matched
+                    manager.startHeadToHead(matchAssignment: assignment)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    state = errorToState(error)
+                }
+            }
+        }
+    }
+
+    private func createRoomAndWait() {
+        cancelPendingSearch()
+        createdRoomCode = nil
+        state = .searching
+        isWorking = true
+
+        searchTask = Task {
+            do {
+                let code = try await manager.createPrivateRoom()
+                await MainActor.run {
+                    createdRoomCode = code
+                    state = .waitingRoom(code)
+                }
+
+                let assignment = try await manager.waitForPrivateRoomMatch()
+                await MainActor.run {
+                    isWorking = false
+                    state = .matched
+                    manager.startHeadToHead(matchAssignment: assignment)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    state = errorToState(error)
+                }
+            }
+        }
+    }
+
+    private func joinRoomAndWait() {
+        cancelPendingSearch()
+        state = .searching
+        isWorking = true
+        let code = roomCode
+
+        searchTask = Task {
+            do {
+                try await manager.joinPrivateRoom(code: code)
+                await MainActor.run {
+                    createdRoomCode = code
+                    state = .waitingRoom(code)
+                }
+
+                let assignment = try await manager.waitForPrivateRoomMatch()
+                await MainActor.run {
+                    isWorking = false
+                    state = .matched
+                    manager.startHeadToHead(matchAssignment: assignment)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    state = errorToState(error)
+                }
+            }
+        }
+    }
+
+    private func cancelAndReturnHome() {
+        cancelPendingSearch()
+        Task {
+            await manager.cancelMatchmaking()
+            await MainActor.run {
+                manager.goHome()
+            }
+        }
+    }
+
+    private func cancelPendingSearch() {
+        if isWorking {
+            searchTask?.cancel()
+            searchTask = nil
+            isWorking = false
+        }
+    }
+
+    private func errorToState(_ error: Error) -> MatchmakingState {
+        if let sessionError = error as? MultiplayerSessionError,
+           case .timeout = sessionError {
+            return .timedOut
+        }
+
+        let msg = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if msg.isEmpty {
+            return .failed("Matchmaking failed. Please retry.")
+        }
+        return .failed(msg)
+    }
+
+    // MARK: - Components
+
+    private func roomActionButton(title: String,
+                                  selected: Bool,
+                                  action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(selected ? .white : GK.Colors.panelBorder)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(selected ? GK.Colors.buttonBlue : Color.white)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(GK.Colors.panelBorder.opacity(0.35), lineWidth: 2)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func actionButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.custom(GK.pixelFontName, size: 10))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(GK.Colors.buttonGreen)
+                        .shadow(color: GK.Colors.pipeDarkGreen, radius: 0, x: 0, y: 3)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(GK.Colors.pipeBorder, lineWidth: 2)
+                )
+        }
+        .buttonStyle(.plain)
+    }
 
     private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
         Image(uiImage: icons.image(for: icon))
@@ -177,11 +560,5 @@ struct MatchmakingView: View {
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(width: size, height: size)
-    }
-
-    private func startSearchAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            dots = dots.count >= 3 ? "" : dots + "."
-        }
     }
 }

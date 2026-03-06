@@ -52,7 +52,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var duck: SKSpriteNode!
     private var duckTextures: [SKTexture] = []
 
-    // Bot ghost
+    // Bot / opponent score HUD state
     private var botDuck: SKSpriteNode?
     private var botTextures: [SKTexture] = []
     private var botY: CGFloat = GK.duckStartY
@@ -333,13 +333,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.horizontalAlignmentMode = .center
         hudLayer.addChild(scoreLabel)
 
-        if mode == .vsBot {
+        if mode == .vsBot || mode == .headToHead {
             setupBotScoreHUD()
         }
     }
 
     private func setupBotScoreHUD() {
-        let label = opponentName ?? "BOT"
+        let label: String
+        if mode == .headToHead {
+            label = opponentName ?? "OPPONENT"
+        } else {
+            label = opponentName ?? "BOT"
+        }
 
         botScoreShadow = SKLabelNode(fontNamed: GK.pixelFontName)
         botScoreShadow!.fontSize = 14
@@ -379,10 +384,22 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func updateBotScoreHUD() {
-        let label = opponentName ?? "BOT"
+        let label: String
+        if mode == .headToHead {
+            label = opponentName ?? "OPPONENT"
+        } else {
+            label = opponentName ?? "BOT"
+        }
         let text = "\(label): \(botScore)"
         botScoreLabel?.text = text
         botScoreShadow?.text = text
+    }
+
+    /// Multiplayer-only update hook used by GameContainerView polling.
+    func setOpponentScore(_ score: Int) {
+        guard mode == .headToHead else { return }
+        botScore = max(0, score)
+        updateBotScoreHUD()
     }
 
     // MARK: - Pipes
@@ -834,6 +851,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if mode == .vsBot {
             botDuck?.removeFromParent()
             setupBotDuck()
+            updateBotScoreHUD()
+        } else if mode == .headToHead {
             updateBotScoreHUD()
         }
     }

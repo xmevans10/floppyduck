@@ -12,6 +12,11 @@ struct GameContainerView: View {
     @State private var botFinalScore: Int = 0
     @State private var countdownValue: Int = 3
 
+    // Match sync states (head-to-head)
+    @State private var matchResult: MultiplayerMatchResult?
+    @State private var finishingMatch: Bool = false
+    @State private var opponentPollTask: Task<Void, Never>?
+
     // Game-over animation states
     @State private var displayedScore: Int = 0
     @State private var previousBest: Int = 0
@@ -23,18 +28,43 @@ struct GameContainerView: View {
 
     private let icons = PixelIconFactory.shared
 
-    /// True if this game is a bot-ladder match with a target score.
     private var isBotLadder: Bool { config.botCharacterId != nil }
+    private var isHeadToHead: Bool { config.mode == .headToHead }
+    private var showsVersusScore: Bool { config.mode == .vsBot || config.mode == .headToHead }
 
-    /// For bot ladder: did the player reach the target score?
     private var ladderWon: Bool {
         guard let target = config.targetScore else { return score > botFinalScore }
         return score >= target
     }
 
     private var isNewBest: Bool { score > previousBest && score > 0 }
-
     private var medal: Medal { Medal.from(score: score) }
+
+    private var opponentName: String {
+        matchResult?.opponentName ?? config.opponentName ?? (isHeadToHead ? "OPPONENT" : "BOT")
+    }
+
+    private var headToHeadDidWin: Bool {
+        matchResult?.didWin ?? (score > botFinalScore)
+    }
+
+    private var headToHeadDidDraw: Bool {
+        matchResult?.didDraw ?? (score == botFinalScore)
+    }
+
+    private var breadEarned: Int {
+        if config.mode == .headToHead {
+            if headToHeadDidDraw { return max(1, score) }
+            return headToHeadDidWin ? max(3, score) : max(1, score / 2)
+        }
+
+        if config.mode == .vsBot {
+            let won = isBotLadder ? ladderWon : score > botFinalScore
+            return won ? max(3, score) : max(1, score / 2)
+        }
+
+        return max(1, score)
+    }
 
     var body: some View {
         ZStack {
@@ -49,7 +79,6 @@ struct GameContainerView: View {
             case .countdown:
                 countdownOverlay
             case .gameOver:
-                // Darkened backdrop — 0.65 for clean separation
                 Color.black.opacity(0.65)
                     .ignoresSafeArea()
                     .transition(.opacity)
@@ -61,7 +90,10 @@ struct GameContainerView: View {
             }
         }
         .onAppear { setupScene() }
-        .onDisappear { countUpTimer?.invalidate() }
+        .onDisappear {
+            countUpTimer?.invalidate()
+            opponentPollTask?.cancel()
+        }
         .statusBarHidden(true)
     }
 
@@ -76,50 +108,164 @@ struct GameContainerView: View {
             botDifficulty: config.botDifficulty,
             opponentName: config.opponentName
         )
+
         let newBridge = GameSceneBridge(
             onStart: { phase = .playing },
-            onScore: { score = $0 },
-            onEnd: { finalScore in
-                score = finalScore
-                previousBest = manager.stats.bestScore   // capture BEFORE recording
-                botFinalScore = newScene.botScore
+            onScore: { newScore in
+                score = newScore
 
-                let won: Bool?
-                if config.mode == .vsBot {
-                    if isBotLadder {
-                        won = ladderWon
-                    } else {
-                        won = finalScore > newScene.botScore
+                if isHeadToHead, let matchId = config.matchId {
+                    Task {
+                        await manager.reportHeadToHeadScore(matchId: matchId, score: newScore)
                     }
+                }
+            },
+            onEnd: { finalScore in
+                handleGameEnd(finalScore: finalScore, scene: newScene)
+            },
+            onBotScore: { bs in
+                botFinalScore = bs
+            }
+        )
+
+        newScene.gameDelegate = newBridge
+        bridge = newBridge
+        scene = newScene
+
+        if isHeadToHead,
+           let matchId = config.matchId {
+            startOpponentPolling(matchId: matchId, scene: newScene)
+            newScene.setOpponentScore(0)
+        }
+    }
+
+    private func handleGameEnd(finalScore: Int, scene: GameScene) {
+        score = finalScore
+        previousBest = manager.stats.bestScore
+        botFinalScore = scene.botScore
+
+        opponentPollTask?.cancel()
+
+        if isHeadToHead {
+            finalizeHeadToHeadResult(finalScore: finalScore, scene: scene)
+            return
+        }
+
+        let won: Bool?
+        if config.mode == .vsBot {
+            if isBotLadder {
+                won = ladderWon
+            } else {
+                won = finalScore > scene.botScore
+            }
+        } else {
+            won = nil
+        }
+
+        manager.recordGame(score: finalScore, won: won)
+
+        if isBotLadder,
+           let botId = config.botCharacterId,
+           score >= (config.targetScore ?? 0) {
+            manager.beatBot(botId)
+        }
+
+        if let won {
+            if won {
+                SoundManager.shared.play(.win)
+                Haptic.win()
+            } else {
+                SoundManager.shared.play(.lose)
+                Haptic.lose()
+            }
+        }
+
+        withAnimation(.easeOut(duration: 0.35)) {
+            phase = .gameOver
+        }
+        startGameOverAnimation()
+    }
+
+    private func finalizeHeadToHeadResult(finalScore: Int, scene: GameScene) {
+        guard let matchId = config.matchId else {
+            // Defensive fallback if metadata is missing.
+            let fallbackWin = finalScore > botFinalScore
+            let fallbackDraw = finalScore == botFinalScore
+            let fallback = MultiplayerMatchResult(
+                matchId: UUID().uuidString,
+                mode: config.matchmakingMode ?? (config.isRanked ? .ranked : .quickPlay),
+                opponentName: opponentName,
+                localScore: finalScore,
+                opponentScore: botFinalScore,
+                didWin: fallbackWin,
+                didDraw: fallbackDraw,
+                ratingDelta: nil,
+                newRating: nil,
+                isRanked: config.isRanked
+            )
+            manager.applyMatchResult(fallback)
+            matchResult = fallback
+
+            withAnimation(.easeOut(duration: 0.35)) {
+                phase = .gameOver
+            }
+            startGameOverAnimation()
+            return
+        }
+
+        let mode = config.matchmakingMode ?? (config.isRanked ? .ranked : .quickPlay)
+        finishingMatch = true
+
+        Task {
+            let result = await manager.finishHeadToHeadMatch(
+                matchId: matchId,
+                score: finalScore,
+                fallbackOpponentScore: botFinalScore,
+                mode: mode,
+                opponentName: config.opponentName
+            )
+
+            await MainActor.run {
+                matchResult = result
+                botFinalScore = result.opponentScore
+                scene.setOpponentScore(result.opponentScore)
+                finishingMatch = false
+
+                if result.didDraw {
+                    SoundManager.shared.play(.milestone)
+                } else if result.didWin {
+                    SoundManager.shared.play(.win)
+                    Haptic.win()
                 } else {
-                    won = nil
-                }
-
-                manager.recordGame(score: finalScore, won: won)
-
-                // Bot ladder: mark bot beaten on win
-                if isBotLadder, let botId = config.botCharacterId, score >= (config.targetScore ?? 0) {
-                    manager.beatBot(botId)
-                }
-
-                // Play win/lose sound
-                if let won {
-                    if won { SoundManager.shared.play(.win); Haptic.win() }
-                    else   { SoundManager.shared.play(.lose); Haptic.lose() }
+                    SoundManager.shared.play(.lose)
+                    Haptic.lose()
                 }
 
                 withAnimation(.easeOut(duration: 0.35)) {
                     phase = .gameOver
                 }
-
-                // Start animated reveal sequence
                 startGameOverAnimation()
-            },
-            onBotScore: { bs in botFinalScore = bs }
-        )
-        newScene.gameDelegate = newBridge
-        bridge = newBridge
-        scene = newScene
+            }
+        }
+    }
+
+    private func startOpponentPolling(matchId: String, scene: GameScene) {
+        opponentPollTask?.cancel()
+        opponentPollTask = Task {
+            while !Task.isCancelled {
+                do {
+                    let state = try await manager.fetchHeadToHeadState(matchId: matchId)
+                    await MainActor.run {
+                        botFinalScore = state.opponentScore
+                        scene.setOpponentScore(state.opponentScore)
+                    }
+                } catch {
+                    // Polling should be resilient; transient failures are ignored.
+                }
+
+                try? await Task.sleep(nanoseconds: 400_000_000)
+            }
+        }
     }
 
     // MARK: - Game Over Animation Sequence
@@ -138,7 +284,6 @@ struct GameContainerView: View {
             return
         }
 
-        // Tick up from 0 → final over ~1.2s (min 40ms per tick)
         let interval = min(1.2 / Double(final), 0.04)
 
         countUpTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
@@ -159,7 +304,6 @@ struct GameContainerView: View {
     private func finishCountUp() {
         countingDone = true
 
-        // Medal bounce-in after short pause
         if medal != .none {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) {
@@ -169,7 +313,6 @@ struct GameContainerView: View {
             }
         }
 
-        // New best celebration
         if isNewBest {
             let delay: Double = medal != .none ? 0.7 : 0.3
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -181,7 +324,6 @@ struct GameContainerView: View {
             }
         }
 
-        // Bread earned slides in
         let breadDelay: Double = isNewBest ? 1.1 : (medal != .none ? 0.65 : 0.3)
         DispatchQueue.main.asyncAfter(deadline: .now() + breadDelay) {
             withAnimation(.easeOut(duration: 0.3)) {
@@ -198,6 +340,8 @@ struct GameContainerView: View {
         showMedal = false
         showNewBest = false
         showBread = false
+        matchResult = nil
+        finishingMatch = false
     }
 
     // MARK: - Get Ready Overlay
@@ -209,7 +353,8 @@ struct GameContainerView: View {
                     .font(.custom(GK.pixelFontName, size: 20))
                     .foregroundColor(GK.Colors.panelBorder)
 
-                if isBotLadder, let botId = config.botCharacterId,
+                if isBotLadder,
+                   let botId = config.botCharacterId,
                    let bot = BotCharacter.find(botId) {
                     HStack(spacing: 8) {
                         Circle()
@@ -226,6 +371,13 @@ struct GameContainerView: View {
                     HStack(spacing: 8) {
                         pixelIcon(.bot, size: 18)
                         Text("VS BOT")
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
+                    }
+                } else if config.mode == .headToHead {
+                    HStack(spacing: 8) {
+                        pixelIcon(.headToHead, size: 18)
+                        Text("VS \(opponentName)")
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
                     }
@@ -272,25 +424,30 @@ struct GameContainerView: View {
 
     private var gameOverOverlay: some View {
         VStack(spacing: 16) {
-            // Title
             gameOverTitle
 
-            // Score panel with animated counter
             scorePanel
                 .padding(.horizontal, 40)
 
-            // Action buttons (appear after count-up)
-            if countingDone {
+            if finishingMatch {
+                Text("FINALIZING MATCH...")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(.white.opacity(0.85))
+            }
+
+            if countingDone && !finishingMatch {
                 HStack(spacing: 16) {
-                    actionButton(icon: .retry, label: "RETRY", color: GK.Colors.buttonGreen) {
-                        SoundManager.shared.play(.button)
-                        resetGameOverState()
-                        score = 0
-                        botFinalScore = 0
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            phase = .ready
+                    if !isHeadToHead {
+                        actionButton(icon: .retry, label: "RETRY", color: GK.Colors.buttonGreen) {
+                            SoundManager.shared.play(.button)
+                            resetGameOverState()
+                            score = 0
+                            botFinalScore = 0
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                phase = .ready
+                            }
+                            scene?.resetGame()
                         }
-                        scene?.resetGame()
                     }
 
                     actionButton(icon: .home, label: "HOME", color: GK.Colors.buttonOrange) {
@@ -302,7 +459,6 @@ struct GameContainerView: View {
                 .padding(.horizontal, 40)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
 
-                // Share
                 Button {
                     shareScore()
                 } label: {
@@ -330,7 +486,24 @@ struct GameContainerView: View {
 
     @ViewBuilder
     private var gameOverTitle: some View {
-        if config.mode == .vsBot {
+        if config.mode == .headToHead {
+            if headToHeadDidDraw {
+                Text("DRAW")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            } else if headToHeadDidWin {
+                Text("YOU WIN!")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(GK.Colors.scoreYellow)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            } else {
+                Text("YOU LOSE")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            }
+        } else if config.mode == .vsBot {
             let playerWon = isBotLadder ? ladderWon : score > botFinalScore
             Text(playerWon ? "YOU WIN!" : "TRY AGAIN")
                 .font(.custom(GK.pixelFontName, size: 22))
@@ -354,14 +527,12 @@ struct GameContainerView: View {
 
     private var scorePanel: some View {
         VStack(spacing: 14) {
-            // Score row — animated counter + medal
             HStack {
-                Text(config.mode == .vsBot ? "YOU" : "SCORE")
+                Text(showsVersusScore ? "YOU" : "SCORE")
                     .font(.custom(GK.pixelFontName, size: 10))
                     .foregroundColor(GK.Colors.panelBorder)
                 Spacer()
 
-                // Medal badge — shows on SCORE row (earned this game)
                 if showMedal && medal != .none {
                     medalBadge
                         .transition(.scale.combined(with: .opacity))
@@ -373,13 +544,12 @@ struct GameContainerView: View {
                     .contentTransition(.numericText())
             }
 
-            // Bot score (VS mode only)
-            if config.mode == .vsBot {
+            if showsVersusScore {
                 Divider()
                 HStack {
                     HStack(spacing: 6) {
-                        pixelIcon(.bot, size: 14)
-                        Text(config.opponentName ?? "BOT")
+                        pixelIcon(isHeadToHead ? .headToHead : .bot, size: 14)
+                        Text(opponentName)
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(GK.Colors.panelBorder)
                     }
@@ -392,7 +562,6 @@ struct GameContainerView: View {
 
             Divider()
 
-            // Best score
             HStack {
                 Text("BEST")
                     .font(.custom(GK.pixelFontName, size: 10))
@@ -403,7 +572,6 @@ struct GameContainerView: View {
                     .foregroundColor(GK.Colors.scoreYellow)
             }
 
-            // NEW BEST! banner
             if showNewBest {
                 HStack(spacing: 6) {
                     Text("★")
@@ -425,7 +593,6 @@ struct GameContainerView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            // Bread earned
             if showBread {
                 Divider()
                 HStack {
@@ -433,7 +600,7 @@ struct GameContainerView: View {
                         .interpolation(.none)
                         .resizable()
                         .frame(width: 20, height: 16)
-                    Text("+\(max(1, score))")
+                    Text("+\(breadEarned)")
                         .font(.custom(GK.pixelFontName, size: 10))
                         .foregroundColor(GK.Colors.breadGold)
                     Spacer()
@@ -463,7 +630,10 @@ struct GameContainerView: View {
 
     // MARK: - Buttons
 
-    private func actionButton(icon: PixelIcon, label: String, color: Color, action: @escaping () -> Void) -> some View {
+    private func actionButton(icon: PixelIcon,
+                              label: String,
+                              color: Color,
+                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 pixelIcon(icon, size: 22)
@@ -496,7 +666,8 @@ struct GameContainerView: View {
 
     private func shareScore() {
         let medalText = medal != .none ? " \(medal.emoji) \(medal.displayName) medal!" : ""
-        let text = "I scored \(score) in Floppy Duck!\(medalText) 🦆 Can you beat that?"
+        let modeText = isHeadToHead ? " in Head to Head" : ""
+        let text = "I scored \(score)\(modeText) in Floppy Duck!\(medalText) 🦆 Can you beat that?"
         let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {
