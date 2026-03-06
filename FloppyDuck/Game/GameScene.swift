@@ -37,6 +37,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private let factory = TextureFactory.shared
     private let mode: GameMode
+    private let playerSkin: DuckSkin
+    private let botDiff: BotDifficulty?
+    private let opponentName: String?
 
     // Layers
     private let worldNode = SKNode()
@@ -79,9 +82,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // MARK: - Init
 
-    init(seed: Int = Int.random(in: 1...999999), mode: GameMode = .classic) {
+    init(seed: Int = Int.random(in: 1...999999),
+         mode: GameMode = .classic,
+         skin: DuckSkin = .classic,
+         botDifficulty: BotDifficulty? = nil,
+         opponentName: String? = nil) {
         self.prng = SeededRandom(seed: seed)
         self.mode = mode
+        self.playerSkin = skin
+        self.botDiff = botDifficulty
+        self.opponentName = opponentName
         super.init(size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         self.scaleMode = .aspectFill
         self.gapPositions = prng.generateGapPositions()
@@ -213,14 +223,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         worldNode.addChild(ceiling)
     }
 
-    // MARK: - Duck
+    // MARK: - Duck (skin-aware)
 
     private func setupDuck() {
-        duckTextures = (0...2).map { factory.duckTexture(wingPhase: $0) }
+        duckTextures = (0...2).map { factory.skinDuckTexture(skin: playerSkin, wingPhase: $0) }
 
-        // 16:11 ratio from pixel grid
-        duck = SKSpriteNode(texture: duckTextures[1],
-                            size: CGSize(width: GK.duckRadius * 2.8, height: GK.duckRadius * 1.9))
+        duck = SKSpriteNode(texture: duckTextures[1], size: playerSkin.spriteSize)
         duck.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         duck.zPosition = 40
 
@@ -245,18 +253,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Bot Ghost Duck
 
     private func setupBotDuck() {
-        botTextures = (0...2).map { factory.botDuckTexture(wingPhase: $0) }
+        botTextures = (0...2).map { factory.skinBotDuckTexture(skin: playerSkin, wingPhase: $0) }
 
         let bot = SKSpriteNode(texture: botTextures[1],
                                size: CGSize(width: GK.duckRadius * 2.8, height: GK.duckRadius * 1.9))
         bot.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
-        bot.zPosition = 35  // behind player duck
+        bot.zPosition = 35
 
-        // Wing animation for bot
         let wingAction = SKAction.animate(with: botTextures, timePerFrame: 0.12)
         bot.run(SKAction.repeatForever(wingAction), withKey: "botWings")
 
-        // Gentle float before start
         let float = SKAction.sequence([
             SKAction.moveBy(x: 0, y: 10, duration: 0.5),
             SKAction.moveBy(x: 0, y: -10, duration: 0.5)
@@ -273,7 +279,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - HUD
 
     private func setupHUD() {
-        // Semi-transparent backing for score
         scoreBacking = SKShapeNode(circleOfRadius: 26)
         scoreBacking.fillColor = UIColor(white: 0, alpha: 0.25)
         scoreBacking.strokeColor = .clear
@@ -281,7 +286,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreBacking.zPosition = 198
         hudLayer.addChild(scoreBacking)
 
-        // Thick outline (multiple offset layers)
         let outlineOffsets: [(CGFloat, CGFloat)] = [
             (-2, -2), (-2, 0), (-2, 2),
             (0, -2),           (0, 2),
@@ -301,7 +305,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             hudLayer.addChild(outline)
         }
 
-        // Shadow
         scoreShadow = SKLabelNode(fontNamed: GK.pixelFontName)
         scoreShadow.fontSize = 36
         scoreShadow.fontColor = UIColor(red: 0.15, green: 0.25, blue: 0.08, alpha: 0.8)
@@ -312,7 +315,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreShadow.horizontalAlignmentMode = .center
         hudLayer.addChild(scoreShadow)
 
-        // White score
         scoreLabel = SKLabelNode(fontNamed: GK.pixelFontName)
         scoreLabel.fontSize = 36
         scoreLabel.fontColor = .white
@@ -323,19 +325,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.horizontalAlignmentMode = .center
         hudLayer.addChild(scoreLabel)
 
-        // Bot score (VS Bot mode only)
         if mode == .vsBot {
             setupBotScoreHUD()
         }
     }
 
     private func setupBotScoreHUD() {
+        let label = opponentName ?? "BOT"
+
         botScoreShadow = SKLabelNode(fontNamed: GK.pixelFontName)
         botScoreShadow!.fontSize = 14
         botScoreShadow!.fontColor = UIColor(red: 0.42, green: 0.12, blue: 0.12, alpha: 0.7)
         botScoreShadow!.position = CGPoint(x: GK.worldWidth / 2 + 1, y: GK.worldHeight - 108)
         botScoreShadow!.zPosition = 200
-        botScoreShadow!.text = "BOT: 0"
+        botScoreShadow!.text = "\(label): 0"
         botScoreShadow!.verticalAlignmentMode = .center
         botScoreShadow!.horizontalAlignmentMode = .center
         hudLayer.addChild(botScoreShadow!)
@@ -345,7 +348,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         botScoreLabel!.fontColor = UIColor(red: 0.95, green: 0.60, blue: 0.60, alpha: 0.9)
         botScoreLabel!.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight - 107)
         botScoreLabel!.zPosition = 201
-        botScoreLabel!.text = "BOT: 0"
+        botScoreLabel!.text = "\(label): 0"
         botScoreLabel!.verticalAlignmentMode = .center
         botScoreLabel!.horizontalAlignmentMode = .center
         hudLayer.addChild(botScoreLabel!)
@@ -368,7 +371,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func updateBotScoreHUD() {
-        let text = "BOT: \(botScore)"
+        let label = opponentName ?? "BOT"
+        let text = "\(label): \(botScore)"
         botScoreLabel?.text = text
         botScoreShadow?.text = text
     }
@@ -475,7 +479,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreTrigger.name = "scoreTrigger"
         pipeNode.addChild(scoreTrigger)
 
-        // Movement
         let moveDistance = GK.worldWidth + GK.pipeWidth * 3
         let moveDuration = TimeInterval(moveDistance / GK.pipeSpeed)
         pipeNode.run(SKAction.sequence([
@@ -523,7 +526,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.removeAction(forKey: "float")
         duck.physicsBody?.isDynamic = true
 
-        // Start bot
         if mode == .vsBot {
             botDuck?.removeAction(forKey: "botFloat")
         }
@@ -534,7 +536,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Update Loop
 
     override func update(_ currentTime: TimeInterval) {
-        // Duck nose-dive rotation during death
         if phase == .dead, let vy = duck.physicsBody?.velocity.dy {
             let target = max(vy / 400, -CGFloat.pi / 2)
             duck.zRotation += (target - duck.zRotation) * 0.15
@@ -572,7 +573,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        // Parallax hills (slowest)
         for hill in hills {
             hill.position.x -= GK.hillSpeed * CGFloat(dt)
             if hill.position.x < -(GK.worldWidth * 2) {
@@ -580,7 +580,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        // Parallax trees (medium)
         for tree in trees {
             tree.position.x -= GK.treeSpeed * CGFloat(dt)
             if tree.position.x < -(GK.worldWidth * 2) {
@@ -596,23 +595,25 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             duck.zRotation += (target - duck.zRotation) * 0.15
         }
 
-        // Bot AI update
         if mode == .vsBot {
             updateBot(dt: dt)
         }
     }
 
-    // MARK: - Bot AI
+    // MARK: - Bot AI (configurable difficulty)
 
     private func updateBot(dt: TimeInterval) {
         guard botAlive, let bot = botDuck else { return }
 
+        let diff = botDiff ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
+
         // Apply gravity
-        botVelocity += GK.gravity / 60 * CGFloat(dt) * 60  // convert per-frame to per-second
+        botVelocity += GK.gravity / 60 * CGFloat(dt) * 60
         botY += botVelocity * CGFloat(dt)
 
-        // Ground collision
         let botR = GK.duckRadius * 0.85
+
+        // Ground collision
         if botY <= GK.groundHeight + botR {
             botY = GK.groundHeight + botR
             botDied()
@@ -632,7 +633,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         for child in pipeLayer.children {
             let pipeX = child.position.x
             let dist = pipeX - GK.duckStartX
-            // Only consider pipes ahead (or currently at) the bot
             if dist > -(GK.pipeWidth / 2) && dist < nearestDist {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     targetGapY = trigger.position.y
@@ -641,16 +641,19 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        // Bot AI: aim for gap center with slight noise
-        let noise = CGFloat.random(in: -12...12)
+        // Noise based on difficulty
+        let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
         let adjustedTarget = targetGapY + noise
 
-        // Flap when below target
-        if botY < adjustedTarget - 8 && botVelocity < GK.flapImpulse * 0.5 {
-            botVelocity = GK.flapImpulse * 0.88  // slightly weaker flap
+        // Error rate: sometimes fail to flap
+        let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
+
+        // Flap when below target (unless error)
+        if !shouldError && botY < adjustedTarget - 8 && botVelocity < GK.flapImpulse * 0.5 {
+            botVelocity = GK.flapImpulse * diff.flapStrength
         }
 
-        // Check pipe collision
+        // Pipe collision
         for child in pipeLayer.children {
             let pipeX = child.position.x
             if abs(pipeX - GK.duckStartX) < GK.pipeWidth / 2 + botR * 0.6 {
@@ -665,7 +668,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 }
             }
 
-            // Bot scoring: did it pass this pipe?
+            // Bot scoring
             if let pipeName = child.name, pipeX < GK.duckStartX - GK.pipeWidth / 2 {
                 if !botPipesPassed.contains(pipeName) {
                     botPipesPassed.insert(pipeName)
@@ -676,10 +679,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        // Update visual position
         bot.position.y = botY
 
-        // Bot rotation
         let target = botVelocity > 0
             ? min(botVelocity / GK.flapImpulse * 0.4, 0.4)
             : max(botVelocity / 400, -CGFloat.pi / 2)
@@ -709,7 +710,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let bodies = [contact.bodyA, contact.bodyB]
         let masks = bodies.map { $0.categoryBitMask }
 
-        // Score
         if masks.contains(GK.scoreCategory) && masks.contains(GK.duckCategory) {
             bodies.first { $0.categoryBitMask == GK.scoreCategory }?.node?.removeFromParent()
             score += 1
@@ -719,7 +719,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return
         }
 
-        // Death
         if phase == .playing {
             die()
         }
@@ -732,7 +731,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         pipeLayer.isPaused = true
         groundLayer.isPaused = true
 
-        // White flash
         let flash = SKSpriteNode(color: .white, size: self.size)
         flash.position = CGPoint(x: size.width / 2, y: size.height / 2)
         flash.zPosition = 500
@@ -743,7 +741,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.removeFromParent()
         ]))
 
-        // Camera shake
         worldNode.run(SKAction.sequence([
             SKAction.moveBy(x: 5, y: 3, duration: 0.03),
             SKAction.moveBy(x: -10, y: -6, duration: 0.03),
@@ -752,13 +749,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.move(to: .zero, duration: 0.03),
         ]))
 
-        // Duck falls — stop wings, tumble nose-down
         duck.removeAction(forKey: "wings")
-        duck.texture = duckTextures[0]  // wings tucked
+        duck.texture = duckTextures[0]
         duck.physicsBody?.collisionBitMask = GK.groundCategory
         duck.physicsBody?.velocity = CGVector(dx: 0, dy: 200)
 
-        // Fade duck after landing
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
             self?.duck.run(SKAction.fadeAlpha(to: 0.3, duration: 0.3))
         }
@@ -804,7 +799,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         startWingAnimation()
         updateScore()
 
-        // Reset bot
         if mode == .vsBot {
             botDuck?.removeFromParent()
             setupBotDuck()

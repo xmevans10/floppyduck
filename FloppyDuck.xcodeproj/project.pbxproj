@@ -26,6 +26,11 @@
 		99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */; };
 		D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652A08D5F52D04D2A070A /* StatsView.swift */; };
 		9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */; };
+		A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709E16E4587997D58A88C22F /* BotCharacter.swift */; };
+		BE83180DB6EA0770D2D8235C /* DuckSkin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */; };
+		CE0FE362AF86AF0634F66E10 /* SkinManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E04DFC7B500170F528318BC /* SkinManager.swift */; };
+		722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */; };
+		BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 /* End PBXBuildFile section */
 
@@ -51,6 +56,11 @@
 		DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelIconFactory.swift; sourceTree = "<group>"; };
 		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		709E16E4587997D58A88C22F /* BotCharacter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacter.swift; sourceTree = "<group>"; };
+		521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuckSkin.swift; sourceTree = "<group>"; };
+		4E04DFC7B500170F528318BC /* SkinManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinManager.swift; sourceTree = "<group>"; };
+		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
+		DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopView.swift; sourceTree = "<group>"; };
 		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
 		0096DDB5D5C93DB7732319BF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -120,6 +130,9 @@
 			children = (
 				3D35655334C23B66037D828D /* GameModels.swift */,
 				DF5559B8D2060C87F39CB2A8 /* GameManager.swift */,
+				709E16E4587997D58A88C22F /* BotCharacter.swift */,
+				521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */,
+				4E04DFC7B500170F528318BC /* SkinManager.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -152,6 +165,8 @@
 				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
 				A47652A08D5F52D04D2A070A /* StatsView.swift */,
 				CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */,
+				FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */,
+				DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -231,6 +246,11 @@
 				99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */,
 				D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */,
 				9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */,
+				A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */,
+				BE83180DB6EA0770D2D8235C /* DuckSkin.swift in Sources */,
+				CE0FE362AF86AF0634F66E10 /* SkinManager.swift in Sources */,
+				722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */,
+				BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -101,9 +101,41 @@ final class TextureFactory {
         return tex
     }
 
-    /// UIImage of duck for SwiftUI views
+    /// UIImage of duck for SwiftUI views (classic only — use skinDuckUIImage for skins)
     func duckUIImage(pixelScale: CGFloat = 3.0) -> UIImage {
         return renderMallardDuck(wingPhase: 1, pixelSize: pixelScale)
+    }
+
+    // MARK: - Skinned Duck API
+
+    /// Duck texture for any skin (SpriteKit).
+    func skinDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
+        let key = "skin_\(skin.rawValue)_\(wingPhase)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase))
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
+    /// Ghost/bot version of any skin.
+    func skinBotDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
+        let key = "skinbot_\(skin.rawValue)_\(wingPhase)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true))
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
+    /// UIImage of a skinned duck for SwiftUI (shop previews, home mascot).
+    func skinDuckUIImage(skin: DuckSkin, pixelScale: CGFloat = 7.0) -> UIImage {
+        return renderSkinnedDuck(skin: skin, wingPhase: 1, pixelSize: pixelScale)
+    }
+
+    /// Flush cached textures for a skin (call when skin selection changes).
+    func clearSkinCache() {
+        cache = cache.filter { !$0.key.hasPrefix("skin") }
     }
 
     /// Bread currency icon for SwiftUI
@@ -479,6 +511,227 @@ final class TextureFactory {
                     let color = (y == heightMap[x] - 1) ? hillTop : hillFill
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: - Skinned Duck Rendering
+
+    private struct DuckPalette {
+        let head: UIColor; let headHi: UIColor
+        let breast: UIColor
+        let body: UIColor; let bodyHi: UIColor
+        let spec: UIColor; let specHi: UIColor
+        let bill: UIColor; let billTip: UIColor
+        let collar: UIColor
+    }
+
+    private func palette(for skin: DuckSkin, ghost: Bool) -> DuckPalette {
+        func c(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> UIColor {
+            UIColor(red: r, green: g, blue: b, alpha: 1)
+        }
+        let p: DuckPalette
+        switch skin {
+        case .classic, .cowboy:
+            p = DuckPalette(
+                head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
+                breast: c(0.55, 0.22, 0.10),
+                body: c(0.58, 0.58, 0.58), bodyHi: c(0.72, 0.72, 0.72),
+                spec: c(0.15, 0.30, 0.70), specHi: c(0.25, 0.45, 0.85),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: .white)
+        case .alien:
+            p = DuckPalette(
+                head: c(0.20, 0.75, 0.20), headHi: c(0.35, 0.90, 0.35),
+                breast: c(0.15, 0.55, 0.15),
+                body: c(0.25, 0.65, 0.25), bodyHi: c(0.40, 0.80, 0.40),
+                spec: c(0.50, 0.95, 0.50), specHi: c(0.65, 1.0, 0.65),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.80, 1.0, 0.80))
+        case .dinosaur:
+            p = DuckPalette(
+                head: c(0.30, 0.50, 0.15), headHi: c(0.42, 0.62, 0.22),
+                breast: c(0.60, 0.55, 0.20),
+                body: c(0.38, 0.55, 0.18), bodyHi: c(0.50, 0.68, 0.28),
+                spec: c(0.35, 0.52, 0.18), specHi: c(0.45, 0.62, 0.25),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.70, 0.65, 0.30))
+        case .wizard:
+            p = DuckPalette(
+                head: c(0.35, 0.20, 0.65), headHi: c(0.50, 0.35, 0.80),
+                breast: c(0.25, 0.25, 0.50),
+                body: c(0.40, 0.38, 0.55), bodyHi: c(0.55, 0.52, 0.70),
+                spec: c(0.85, 0.70, 0.20), specHi: c(0.95, 0.80, 0.30),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.75, 0.70, 0.90))
+        case .devil:
+            p = DuckPalette(
+                head: c(0.70, 0.12, 0.12), headHi: c(0.85, 0.20, 0.20),
+                breast: c(0.80, 0.30, 0.10),
+                body: c(0.65, 0.15, 0.15), bodyHi: c(0.80, 0.25, 0.25),
+                spec: c(0.20, 0.08, 0.08), specHi: c(0.35, 0.12, 0.12),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.95, 0.75, 0.60))
+        }
+        if ghost {
+            // Shift toward red for bot ghost
+            return DuckPalette(
+                head: c(0.42, 0.12, 0.12), headHi: c(0.55, 0.18, 0.18),
+                breast: p.breast, body: p.body, bodyHi: p.bodyHi,
+                spec: p.spec, specHi: p.specHi,
+                bill: p.bill, billTip: p.billTip,
+                collar: p.collar)
+        }
+        return p
+    }
+
+    /// Builds the 16×11 body grid from a palette.
+    private func baseBodyGrid(_ p: DuckPalette) -> [[UIColor]] {
+        let H = p.head; let h = p.headHi; let K = p.breast
+        let Y = p.body; let y = p.bodyHi; let S = p.spec; let s = p.specHi
+        let O = p.bill; let o = p.billTip; let W = p.collar
+        let B = UIColor.black; let E = UIColor.white; let C = UIColor.clear
+        return [
+            [C,C,C,C,B,B,B,B,C,C,C,C,C,C,C,C],
+            [C,C,C,B,H,H,h,H,B,C,C,C,C,C,C,C],
+            [C,C,B,H,H,h,H,H,H,B,C,C,C,C,C,C],
+            [C,B,H,H,h,H,E,E,H,H,B,C,C,C,C,C],
+            [C,B,H,H,H,H,B,C,H,H,B,B,B,B,C,C],
+            [B,H,H,H,H,H,H,H,H,H,B,O,O,o,B,C],
+            [B,W,W,H,H,H,H,H,H,B,O,O,O,B,C,C],
+            [B,K,K,W,Y,S,s,Y,y,Y,B,B,C,C,C,C],
+            [C,B,K,Y,Y,Y,y,Y,Y,B,C,C,C,C,C,C],
+            [C,C,B,Y,Y,y,Y,Y,B,C,C,C,C,C,C,C],
+            [C,C,C,B,B,B,B,B,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    /// Master skin renderer. Builds body + accessories.
+    private func renderSkinnedDuck(skin: DuckSkin, wingPhase: Int,
+                                    pixelSize: CGFloat = 3.0,
+                                    ghost: Bool = false) -> UIImage {
+        // For classic, use the original renderer (already battle-tested)
+        if skin == .classic && !ghost {
+            return renderMallardDuck(wingPhase: wingPhase, pixelSize: pixelSize)
+        }
+        if skin == .classic && ghost {
+            return renderMallardDuck(wingPhase: wingPhase, pixelSize: pixelSize, ghost: true)
+        }
+
+        let cs = skin.canvasSize
+        let off = skin.bodyRowOffset
+        let p = palette(for: skin, ghost: ghost)
+        let B = UIColor.black; let C = UIColor.clear
+
+        // Start with transparent canvas
+        var grid = [[UIColor]](repeating: [UIColor](repeating: C, count: cs.w), count: cs.h)
+
+        // Place body
+        let body = baseBodyGrid(p)
+        for r in 0..<11 {
+            for c in 0..<16 {
+                grid[off + r][c] = body[r][c]
+            }
+        }
+
+        // Wing animation — shift speculum
+        if wingPhase == 0 {
+            // Wing up: speculum to row 5 of body
+            grid[off + 5][5] = p.spec; grid[off + 5][6] = p.specHi; grid[off + 5][7] = p.spec
+            grid[off + 7][5] = p.body; grid[off + 7][6] = p.body
+        } else if wingPhase == 2 {
+            // Wing down: speculum to row 9 of body
+            grid[off + 7][5] = p.body; grid[off + 7][6] = p.body
+            grid[off + 9][4] = p.spec; grid[off + 9][5] = p.specHi
+        }
+
+        // -- Accessories per skin --
+        switch skin {
+        case .classic:
+            break // handled above
+        case .cowboy:
+            // Brown cowboy hat — 4 rows above body
+            let T = UIColor(red: 0.55, green: 0.35, blue: 0.15, alpha: 1)
+            let t = UIColor(red: 0.70, green: 0.50, blue: 0.25, alpha: 1) // highlight
+            let d = UIColor(red: 0.42, green: 0.25, blue: 0.10, alpha: 1) // dark band
+            //            0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+            grid[0] = [C, C, C, C, C, C, B, B, B, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, C, B, T, t, T, B, C, C, C, C, C, C]
+            grid[2] = [C, C, C, C, B, T, t, t, T, T, B, C, C, C, C, C]
+            grid[3] = [C, C, B, B, d, T, T, T, T, d, B, B, C, C, C, C]
+
+        case .alien:
+            // Antennae with glowing tips — 3 rows above body
+            let G = UIColor(red: 0.40, green: 1.0, blue: 0.40, alpha: 1)  // glow
+            let g = UIColor(red: 0.25, green: 0.80, blue: 0.25, alpha: 1) // stalk
+            grid[0] = [C, C, C, C, G, C, C, C, C, G, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, C, g, C, C, g, C, C, C, C, C, C, C]
+            grid[2] = [C, C, C, C, C, C, g, g, C, C, C, C, C, C, C, C]
+            // Bigger alien eyes (replace standard eye in body rows 3-4)
+            let E = UIColor.white
+            // Row 3 of body (off+3): expand eyes
+            grid[off + 3][5] = E; grid[off + 3][6] = E
+            grid[off + 3][7] = E; grid[off + 3][8] = E
+            // Row 4: pupils bigger
+            grid[off + 4][6] = B; grid[off + 4][7] = B
+
+        case .dinosaur:
+            // Dorsal spikes — 3 rows above body
+            let S = UIColor(red: 0.92, green: 0.72, blue: 0.15, alpha: 1)  // spike yellow
+            let s = UIColor(red: 0.85, green: 0.58, blue: 0.12, alpha: 1)  // spike orange
+            grid[0] = [C, C, C, C, C, C, S, C, C, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, S, C, s, S, C, C, S, C, C, C, C, C]
+            grid[2] = [C, C, C, C, s, S, s, s, S, S, s, S, C, C, C, C]
+
+        case .wizard:
+            // Tall wizard hat — 6 rows above body
+            let P = UIColor(red: 0.40, green: 0.18, blue: 0.70, alpha: 1) // hat purple
+            let q = UIColor(red: 0.52, green: 0.30, blue: 0.82, alpha: 1) // lighter
+            let G = UIColor(red: 0.95, green: 0.82, blue: 0.20, alpha: 1) // gold star
+            grid[0] = [C, C, C, C, C, C, C, B, C, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, C, C, B, P, B, C, C, C, C, C, C, C]
+            grid[2] = [C, C, C, C, C, B, P, G, P, B, C, C, C, C, C, C]
+            grid[3] = [C, C, C, C, B, P, q, P, q, P, B, C, C, C, C, C]
+            grid[4] = [C, C, C, B, P, P, P, q, P, P, P, B, C, C, C, C]
+            grid[5] = [C, C, B, P, P, P, P, P, P, P, P, P, B, C, C, C]
+
+        case .devil:
+            // Horns — 3 rows above body
+            let R = UIColor(red: 0.55, green: 0.05, blue: 0.05, alpha: 1) // dark horn
+            let r = UIColor(red: 0.75, green: 0.10, blue: 0.10, alpha: 1) // lighter horn
+            grid[0] = [C, C, C, R, C, C, C, C, C, R, C, C, C, C, C, C]
+            grid[1] = [C, C, C, R, r, C, C, C, r, R, C, C, C, C, C, C]
+            grid[2] = [C, C, C, C, r, C, C, C, r, C, C, C, C, C, C, C]
+            // Pointed tail at bottom-left (extend body rows 8-10)
+            let tl = p.head  // tail matches body color
+            if off + 10 < cs.h {
+                grid[off + 8][0] = tl
+                grid[off + 9][0] = B
+                grid[off + 10][0] = C  // already clear
+                // Shift tail out
+                grid[off + 9][1] = tl
+                grid[off + 10][1] = B
+                grid[off + 10][2] = tl
+            }
+        }
+
+        let alpha: CGFloat = ghost ? 0.55 : 1.0
+        let imgSize = CGSize(width: CGFloat(cs.w) * pixelSize,
+                             height: CGFloat(cs.h) * pixelSize)
+
+        let renderer = UIGraphicsImageRenderer(size: imgSize)
+        return renderer.image { ctx in
+            for row in 0..<cs.h {
+                for col in 0..<cs.w {
+                    let color = grid[row][col]
+                    guard color != UIColor.clear else { continue }
+                    color.withAlphaComponent(alpha).setFill()
+                    ctx.fill(CGRect(
+                        x: CGFloat(col) * pixelSize,
+                        y: CGFloat(row) * pixelSize,
+                        width: pixelSize, height: pixelSize
+                    ))
                 }
             }
         }

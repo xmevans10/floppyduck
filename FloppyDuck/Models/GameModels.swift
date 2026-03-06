@@ -6,6 +6,8 @@ enum AppRoute: Hashable {
     case matchmaking(MatchmakingMode)
     case stats
     case settings
+    case shop
+    case botLadder
 }
 
 struct GameModeConfig: Identifiable, Hashable {
@@ -13,15 +15,25 @@ struct GameModeConfig: Identifiable, Hashable {
     let mode: GameMode
     let seed: Int
     let opponentName: String?
+    let botDifficulty: BotDifficulty?
+    let botCharacterId: String?
+    let targetScore: Int?
 
-    init(mode: GameMode, seed: Int = Int.random(in: 1...999999), opponentName: String? = nil) {
+    init(mode: GameMode,
+         seed: Int = Int.random(in: 1...999999),
+         opponentName: String? = nil,
+         botDifficulty: BotDifficulty? = nil,
+         botCharacterId: String? = nil,
+         targetScore: Int? = nil) {
         self.id = UUID()
         self.mode = mode
         self.seed = seed
         self.opponentName = opponentName
+        self.botDifficulty = botDifficulty
+        self.botCharacterId = botCharacterId
+        self.targetScore = targetScore
     }
 
-    // Hashable based on id only
     static func == (lhs: GameModeConfig, rhs: GameModeConfig) -> Bool {
         lhs.id == rhs.id
     }
@@ -63,6 +75,7 @@ struct PlayerStats: Codable {
     var elo: Int = 1200
     var bread: Int = 0
     var recentScores: [Int] = []  // last 20
+    var beatenBots: [String] = [] // ids of beaten bot ladder bots
 
     var winRate: Double {
         guard gamesPlayed > 0 else { return 0 }
@@ -91,8 +104,13 @@ struct PlayerStats: Codable {
                 bread += max(1, score / 2)
             }
         } else {
-            // Classic mode
             bread += max(1, score)
+        }
+    }
+
+    mutating func beatBot(_ botId: String) {
+        if !beatenBots.contains(botId) {
+            beatenBots.append(botId)
         }
     }
 }

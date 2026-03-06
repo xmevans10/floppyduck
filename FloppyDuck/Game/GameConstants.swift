@@ -14,13 +14,13 @@ enum GK {
 
     // MARK: - Pipes
     static let pipeWidth:   CGFloat = 60
-    static let pipeGap:     CGFloat = 170
+    static let pipeGap:     CGFloat = 180        // was 170 — slightly wider for forgiveness
     static let pipeSpeed:   CGFloat = 150
     static let pipeSpawnInterval: TimeInterval = 1.6
 
-    // MARK: - Physics
-    static let gravity:     CGFloat = -900
-    static let flapImpulse: CGFloat = 320
+    // MARK: - Physics (floatier feel)
+    static let gravity:     CGFloat = -600       // was -900 — 33% less = more hang time
+    static let flapImpulse: CGFloat = 330        // was 320
     static let maxUpSpeed:  CGFloat = 400
 
     // MARK: - Speeds
@@ -33,8 +33,9 @@ enum GK {
     static let duckStartY:  CGFloat = 400
 
     // MARK: - Pipe generation
-    static let pipeMinY: CGFloat = groundHeight + pipeGap / 2 + 40
-    static let pipeMaxY: CGFloat = worldHeight - pipeGap / 2 - 40
+    static let pipeMinY: CGFloat = groundHeight + pipeGap / 2 + 50   // tighter floor bound
+    static let pipeMaxY: CGFloat = worldHeight - pipeGap / 2 - 50    // tighter ceiling bound
+    static let maxPipeDelta: CGFloat = 140   // max vertical jump between consecutive gaps
     static let maxPregenPipes: Int = 200
 
     // MARK: - Font

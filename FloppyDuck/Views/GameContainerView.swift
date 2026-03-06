@@ -14,22 +14,28 @@ struct GameContainerView: View {
 
     private let icons = PixelIconFactory.shared
 
+    /// True if this game is a bot-ladder match with a target score.
+    private var isBotLadder: Bool { config.botCharacterId != nil }
+
+    /// For bot ladder: did the player reach the target score?
+    private var ladderWon: Bool {
+        guard let target = config.targetScore else { return score > botFinalScore }
+        return score >= target
+    }
+
     var body: some View {
         ZStack {
-            // SpriteKit scene
             if let scene {
                 SpriteView(scene: scene, preferredFramesPerSecond: 60)
                     .ignoresSafeArea()
             }
 
-            // Overlays
             switch phase {
             case .ready:
                 getReadyOverlay
             case .countdown:
                 countdownOverlay
             case .gameOver:
-                // Dim layer behind game over
                 Color.black.opacity(0.45)
                     .ignoresSafeArea()
                     .transition(.opacity)
@@ -47,30 +53,44 @@ struct GameContainerView: View {
     // MARK: - Scene Setup
 
     private func setupScene() {
-        let newScene = GameScene(seed: config.seed, mode: config.mode)
+        let skin = SkinManager.shared.selectedSkin
+        let newScene = GameScene(
+            seed: config.seed,
+            mode: config.mode,
+            skin: skin,
+            botDifficulty: config.botDifficulty,
+            opponentName: config.opponentName
+        )
         let newBridge = GameSceneBridge(
             onStart: { phase = .playing },
             onScore: { score = $0 },
             onEnd: { finalScore in
                 score = finalScore
-                // Grab bot score from scene before showing overlay
                 botFinalScore = newScene.botScore
 
                 let won: Bool?
                 if config.mode == .vsBot {
-                    won = finalScore > newScene.botScore
+                    if isBotLadder {
+                        won = ladderWon
+                    } else {
+                        won = finalScore > newScene.botScore
+                    }
                 } else {
                     won = nil
                 }
 
                 manager.recordGame(score: finalScore, won: won)
+
+                // Bot ladder: mark bot beaten on win
+                if isBotLadder, let botId = config.botCharacterId, score >= (config.targetScore ?? 0) {
+                    manager.beatBot(botId)
+                }
+
                 withAnimation(.easeOut(duration: 0.35)) {
                     phase = .gameOver
                 }
             },
-            onBotScore: { bs in
-                botFinalScore = bs
-            }
+            onBotScore: { bs in botFinalScore = bs }
         )
         newScene.gameDelegate = newBridge
         bridge = newBridge
@@ -86,7 +106,20 @@ struct GameContainerView: View {
                     .font(.custom(GK.pixelFontName, size: 20))
                     .foregroundColor(GK.Colors.panelBorder)
 
-                if config.mode == .vsBot {
+                if isBotLadder, let botId = config.botCharacterId,
+                   let bot = BotCharacter.find(botId) {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(bot.accentColor)
+                            .frame(width: 20, height: 20)
+                        Text("VS \(bot.name)")
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
+                    }
+                    Text("SCORE \(bot.targetScore) TO WIN")
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                } else if config.mode == .vsBot {
                     HStack(spacing: 8) {
                         pixelIcon(.bot, size: 18)
                         Text("VS BOT")
@@ -136,13 +169,20 @@ struct GameContainerView: View {
 
     private var gameOverOverlay: some View {
         VStack(spacing: 16) {
-            // Title: VS Bot shows WIN/LOSE, classic shows GAME OVER
+            // Title
             if config.mode == .vsBot {
-                let playerWon = score > botFinalScore
-                Text(playerWon ? "YOU WIN!" : "BOT WINS")
+                let playerWon = isBotLadder ? ladderWon : score > botFinalScore
+                Text(playerWon ? "YOU WIN!" : "TRY AGAIN")
                     .font(.custom(GK.pixelFontName, size: 22))
                     .foregroundColor(playerWon ? GK.Colors.scoreYellow : .white)
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+
+                // Bot ladder: show target vs actual
+                if isBotLadder, let target = config.targetScore {
+                    Text(playerWon ? "TARGET: \(target) ✓" : "NEED: \(target)")
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(playerWon ? GK.Colors.scoreYellow.opacity(0.8) : .white.opacity(0.6))
+                }
             } else {
                 Text("GAME OVER")
                     .font(.custom(GK.pixelFontName, size: 22))
@@ -152,7 +192,6 @@ struct GameContainerView: View {
 
             // Score panel
             VStack(spacing: 14) {
-                // Player score
                 HStack {
                     Text(config.mode == .vsBot ? "YOU" : "SCORE")
                         .font(.custom(GK.pixelFontName, size: 10))
@@ -163,26 +202,24 @@ struct GameContainerView: View {
                         .foregroundColor(GK.Colors.panelBorder)
                 }
 
-                // Bot score (VS Bot only)
                 if config.mode == .vsBot {
                     Divider()
                     HStack {
                         HStack(spacing: 6) {
                             pixelIcon(.bot, size: 14)
-                            Text("BOT")
+                            Text(config.opponentName ?? "BOT")
                                 .font(.custom(GK.pixelFontName, size: 10))
                                 .foregroundColor(GK.Colors.panelBorder)
                         }
                         Spacer()
                         Text("\(botFinalScore)")
                             .font(.custom(GK.pixelFontName, size: 18))
-                            .foregroundColor(UIColor(red: 0.85, green: 0.30, blue: 0.30, alpha: 1).asSwiftUI)
+                            .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.30))
                     }
                 }
 
                 Divider()
 
-                // Best
                 HStack {
                     Text("BEST")
                         .font(.custom(GK.pixelFontName, size: 10))
@@ -195,7 +232,6 @@ struct GameContainerView: View {
 
                 Divider()
 
-                // Bread earned
                 HStack {
                     Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
                         .interpolation(.none)
@@ -220,7 +256,6 @@ struct GameContainerView: View {
 
             // Action buttons
             HStack(spacing: 16) {
-                // Retry
                 actionButton(icon: .retry, label: "RETRY", color: GK.Colors.buttonGreen) {
                     score = 0
                     botFinalScore = 0
@@ -230,7 +265,6 @@ struct GameContainerView: View {
                     scene?.resetGame()
                 }
 
-                // Home
                 actionButton(icon: .home, label: "HOME", color: GK.Colors.buttonOrange) {
                     manager.dismissGame()
                 }
@@ -324,12 +358,4 @@ private final class GameSceneBridge: GameSceneDelegate {
     func gameDidScore(_ score: Int) { onScore(score) }
     func gameDidEnd(score: Int) { onEnd(score) }
     func botDidScore(_ botScore: Int) { onBotScore(botScore) }
-}
-
-// MARK: - UIColor → SwiftUI Color
-
-private extension UIColor {
-    var asSwiftUI: Color {
-        Color(self)
-    }
 }

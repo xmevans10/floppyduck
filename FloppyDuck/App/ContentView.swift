@@ -14,6 +14,10 @@ struct ContentView: View {
                         StatsView()
                     case .settings:
                         SettingsView()
+                    case .shop:
+                        ShopView()
+                    case .botLadder:
+                        BotLadderView()
                     }
                 }
         }

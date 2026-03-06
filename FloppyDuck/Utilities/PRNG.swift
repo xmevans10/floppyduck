@@ -27,9 +27,20 @@ struct SeededRandom {
     }
     
     /// Pre-generate gap Y positions for all pipes in a match.
+    /// Consecutive gaps are clamped to maxPipeDelta so no impossible jumps occur.
     mutating func generateGapPositions(count: Int = GK.maxPregenPipes) -> [CGFloat] {
-        (0..<count).map { _ in
-            nextInRange(min: GK.pipeMinY, max: GK.pipeMaxY)
+        var positions: [CGFloat] = []
+        var lastY = (GK.pipeMinY + GK.pipeMaxY) / 2  // start near center
+
+        for _ in 0..<count {
+            let rawY = nextInRange(min: GK.pipeMinY, max: GK.pipeMaxY)
+            // Clamp so gap doesn't jump more than maxPipeDelta from previous
+            let clamped = max(lastY - GK.maxPipeDelta,
+                              min(lastY + GK.maxPipeDelta, rawY))
+            let finalY = max(GK.pipeMinY, min(GK.pipeMaxY, clamped))
+            positions.append(finalY)
+            lastY = finalY
         }
+        return positions
     }
 }

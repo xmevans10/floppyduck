@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var manager: GameManager
+    @ObservedObject var skinManager = SkinManager.shared
     @State private var playExpanded = false
     @State private var duckBob: Bool = false
     @State private var titlePulse: Bool = false
@@ -30,37 +31,56 @@ struct HomeView: View {
             }
             .ignoresSafeArea(edges: .bottom)
 
-            VStack(spacing: 0) {
-                Spacer().frame(height: 20)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    Spacer().frame(height: 40)
 
-                // Title
-                titleSection
-                    .padding(.top, 10)
+                    // Mascot duck ABOVE title
+                    mascotSection
 
-                // Mallard mascot
-                mascotSection
-                    .padding(.top, 4)
+                    // Title
+                    titleSection
+                        .padding(.top, 4)
 
-                // Bread counter
-                breadCounter
-                    .padding(.top, 12)
+                    // Bread counter
+                    breadCounter
+                        .padding(.top, 12)
 
-                Spacer().frame(height: 24)
+                    Spacer().frame(height: 20)
 
-                // Play button (expandable)
-                playSection
-                    .padding(.horizontal, 40)
+                    // Play button (expandable)
+                    playSection
+                        .padding(.horizontal, 40)
 
-                Spacer().frame(height: 20)
+                    Spacer().frame(height: 16)
 
-                // Bottom row: Stats, Settings, Share
-                bottomButtons
-                    .padding(.horizontal, 50)
+                    // Bottom row: Shop, Stats, Settings, Share
+                    bottomButtons
+                        .padding(.horizontal, 32)
 
-                Spacer().frame(height: 20)
+                    Spacer().frame(height: 24)
+                }
             }
         }
         .navigationBarHidden(true)
+    }
+
+    // MARK: - Mascot Duck (ABOVE title)
+
+    private var mascotSection: some View {
+        Image(uiImage: TextureFactory.shared.skinDuckUIImage(
+            skin: skinManager.selectedSkin, pixelScale: 7.0
+        ))
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 112, height: 112)
+            .offset(y: duckBob ? -6 : 6)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                    duckBob = true
+                }
+            }
     }
 
     // MARK: - Title
@@ -84,22 +104,6 @@ struct HomeView: View {
                 titlePulse = true
             }
         }
-    }
-
-    // MARK: - Mascot Duck
-
-    private var mascotSection: some View {
-        Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 5.0))
-            .interpolation(.none)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 120, height: 90)
-            .offset(y: duckBob ? -8 : 8)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    duckBob = true
-                }
-            }
     }
 
     // MARK: - Bread Counter
@@ -157,21 +161,12 @@ struct HomeView: View {
             if playExpanded {
                 VStack(spacing: 10) {
                     subModeButton(
-                        icon: .headToHead,
-                        title: "HEAD TO HEAD",
-                        subtitle: "1v1 Online",
-                        color: GK.Colors.buttonOrange
-                    ) {
-                        manager.navigate(to: .matchmaking(.quickPlay))
-                    }
-
-                    subModeButton(
                         icon: .bot,
                         title: "VS BOT",
-                        subtitle: "Practice",
+                        subtitle: "Bot Ladder",
                         color: GK.Colors.buttonBlue
                     ) {
-                        manager.startGame(GameModeConfig(mode: .vsBot, opponentName: "Bot"))
+                        manager.navigate(to: .botLadder)
                     }
 
                     subModeButton(
@@ -181,6 +176,15 @@ struct HomeView: View {
                         color: GK.Colors.buttonGreen
                     ) {
                         manager.startGame(GameModeConfig(mode: .classic))
+                    }
+
+                    subModeButton(
+                        icon: .headToHead,
+                        title: "HEAD TO HEAD",
+                        subtitle: "1v1 Online",
+                        color: GK.Colors.buttonOrange
+                    ) {
+                        manager.navigate(to: .matchmaking(.quickPlay))
                     }
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -224,15 +228,18 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Bottom Buttons
+    // MARK: - Bottom Buttons (4 buttons)
 
     private var bottomButtons: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
+            bottomButton(icon: .shop, label: "SHOP") {
+                manager.navigate(to: .shop)
+            }
+
             bottomButton(icon: .stats, label: "STATS") {
                 manager.navigate(to: .stats)
             }
 
-            // Fixed: show full icon-only gear instead of truncated "SET"
             bottomButton(icon: .settings, label: "SETTINGS") {
                 manager.navigate(to: .settings)
             }
@@ -245,16 +252,16 @@ struct HomeView: View {
 
     private func bottomButton(icon: PixelIcon, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 6) {
-                pixelIcon(icon, size: 26)
+            VStack(spacing: 5) {
+                pixelIcon(icon, size: 24)
                 Text(label)
-                    .font(.custom(GK.pixelFontName, size: 6))
+                    .font(.custom(GK.pixelFontName, size: 5))
                     .foregroundColor(GK.Colors.panelBorder)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(GK.Colors.panelCream)

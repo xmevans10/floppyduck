@@ -17,6 +17,8 @@ enum PixelIcon: String, CaseIterable {
     case trophy        // trophy cup
     case cancel        // X mark
     case back          // left chevron
+    case shop          // shopping bag
+    case lock          // padlock
 }
 
 final class PixelIconFactory {
@@ -61,6 +63,8 @@ final class PixelIconFactory {
         case .trophy:     grid = trophyGrid()
         case .cancel:     grid = cancelGrid()
         case .back:       grid = backGrid()
+        case .shop:       grid = shopGrid()
+        case .lock:       grid = lockGrid()
         }
 
         let gridH = grid.count
@@ -277,6 +281,38 @@ final class PixelIconFactory {
             [C,B,B,C,C,C,B,B,C,C],
             [C,C,C,C,C,C,C,C,C,C],
             [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func shopGrid() -> [[UIColor]] {
+        // Shopping bag
+        let S = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1) // gold bag
+        return [
+            [C,C,C,B,B,B,C,C,C,C],
+            [C,C,B,C,C,C,B,C,C,C],
+            [C,C,B,C,C,C,B,C,C,C],
+            [C,B,B,B,B,B,B,B,C,C],
+            [C,B,S,S,S,S,S,B,C,C],
+            [C,B,S,S,S,S,S,B,C,C],
+            [C,B,S,S,S,S,S,B,C,C],
+            [C,B,S,S,S,S,S,B,C,C],
+            [C,B,S,S,S,S,S,B,C,C],
+            [C,B,B,B,B,B,B,B,C,C],
+        ]
+    }
+
+    private func lockGrid() -> [[UIColor]] {
+        return [
+            [C,C,C,B,B,B,C,C,C,C],
+            [C,C,B,C,C,C,B,C,C,C],
+            [C,C,B,C,C,C,B,C,C,C],
+            [C,B,B,B,B,B,B,B,C,C],
+            [C,B,A,A,A,A,A,B,C,C],
+            [C,B,A,A,B,A,A,B,C,C],
+            [C,B,A,B,W,B,A,B,C,C],
+            [C,B,A,A,B,A,A,B,C,C],
+            [C,B,A,A,A,A,A,B,C,C],
+            [C,B,B,B,B,B,B,B,C,C],
         ]
     }
 

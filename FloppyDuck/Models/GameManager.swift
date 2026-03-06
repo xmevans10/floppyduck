@@ -44,6 +44,38 @@ final class GameManager: ObservableObject {
         saveStats()
     }
 
+    /// Mark a bot ladder bot as beaten
+    func beatBot(_ botId: String) {
+        stats.beatBot(botId)
+        saveStats()
+    }
+
+    /// Check if a bot has been beaten
+    func isBotBeaten(_ botId: String) -> Bool {
+        stats.beatenBots.contains(botId)
+    }
+
+    /// Next bot index the player can challenge (0-based)
+    var nextBotIndex: Int {
+        let beaten = Set(stats.beatenBots)
+        for (i, bot) in BotCharacter.all.enumerated() {
+            if !beaten.contains(bot.id) { return i }
+        }
+        return BotCharacter.all.count // all beaten
+    }
+
+    /// Start a bot ladder match
+    func startBotLadderMatch(_ bot: BotCharacter) {
+        let config = GameModeConfig(
+            mode: .vsBot,
+            opponentName: bot.name,
+            botDifficulty: bot.difficulty,
+            botCharacterId: bot.id,
+            targetScore: bot.targetScore
+        )
+        startGame(config)
+    }
+
     func resetStats() {
         stats = PlayerStats()
         saveStats()
