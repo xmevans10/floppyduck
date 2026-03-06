@@ -354,12 +354,19 @@ struct GameContainerView: View {
 
     private var scorePanel: some View {
         VStack(spacing: 14) {
-            // Score row — animated counter
+            // Score row — animated counter + medal
             HStack {
                 Text(config.mode == .vsBot ? "YOU" : "SCORE")
                     .font(.custom(GK.pixelFontName, size: 10))
                     .foregroundColor(GK.Colors.panelBorder)
                 Spacer()
+
+                // Medal badge — shows on SCORE row (earned this game)
+                if showMedal && medal != .none {
+                    medalBadge
+                        .transition(.scale.combined(with: .opacity))
+                }
+
                 Text("\(displayedScore)")
                     .font(.custom(GK.pixelFontName, size: 18))
                     .foregroundColor(GK.Colors.panelBorder)
@@ -385,19 +392,12 @@ struct GameContainerView: View {
 
             Divider()
 
-            // Best score + medal
+            // Best score
             HStack {
                 Text("BEST")
                     .font(.custom(GK.pixelFontName, size: 10))
                     .foregroundColor(GK.Colors.panelBorder)
                 Spacer()
-
-                // Medal badge
-                if showMedal && medal != .none {
-                    medalBadge
-                        .transition(.scale.combined(with: .opacity))
-                }
-
                 Text("\(manager.stats.bestScore)")
                     .font(.custom(GK.pixelFontName, size: 18))
                     .foregroundColor(GK.Colors.scoreYellow)

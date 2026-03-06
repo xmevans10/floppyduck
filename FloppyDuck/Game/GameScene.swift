@@ -66,6 +66,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var scoreLabel: SKLabelNode!
     private var scoreShadow: SKLabelNode!
     private var scoreBacking: SKShapeNode!
+    private var scoreOutlines: [SKLabelNode] = []
 
     // Ground scrolling
     private var groundTiles: [SKSpriteNode] = []
@@ -110,6 +111,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         backgroundColor = UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1)
         physicsWorld.gravity = CGVector(dx: 0, dy: GK.gravity / 60)
         physicsWorld.contactDelegate = self
+
+        // Pre-warm haptics + audio so first trigger has zero latency
+        Haptic.warmUp()
+        SoundManager.shared.prepare()
 
         addChild(worldNode)
         worldNode.addChild(backgroundLayer)
@@ -289,12 +294,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreBacking.zPosition = 198
         hudLayer.addChild(scoreBacking)
 
+        // 4 cardinal outlines (N/S/E/W) + 4 diagonal — 8 total, stored directly (no name enumeration)
         let outlineOffsets: [(CGFloat, CGFloat)] = [
-            (-2, -2), (-2, 0), (-2, 2),
-            (0, -2),           (0, 2),
-            (2, -2),  (2, 0),  (2, 2),
-            (0, -3), (0, 3), (-3, 0), (3, 0)
+            (0, -3), (0, 3), (-3, 0), (3, 0),
+            (-2, -2), (-2, 2), (2, -2), (2, 2)
         ]
+        scoreOutlines.removeAll()
         for offset in outlineOffsets {
             let outline = SKLabelNode(fontNamed: GK.pixelFontName)
             outline.fontSize = 36
@@ -304,8 +309,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             outline.text = "0"
             outline.verticalAlignmentMode = .center
             outline.horizontalAlignmentMode = .center
-            outline.name = "scoreOutline"
             hudLayer.addChild(outline)
+            scoreOutlines.append(outline)
         }
 
         scoreShadow = SKLabelNode(fontNamed: GK.pixelFontName)
@@ -361,16 +366,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let text = "\(score)"
         scoreLabel.text = text
         scoreShadow.text = text
-        hudLayer.enumerateChildNodes(withName: "scoreOutline") { node, _ in
-            (node as? SKLabelNode)?.text = text
+        for outline in scoreOutlines {
+            outline.text = text
         }
 
+        // Single pop on the backing circle — cheaper than animating 10 labels
         let pop = SKAction.sequence([
-            SKAction.scale(to: 1.3, duration: 0.08),
-            SKAction.scale(to: 1.0, duration: 0.08)
+            SKAction.scale(to: 1.15, duration: 0.06),
+            SKAction.scale(to: 1.0, duration: 0.06)
         ])
-        scoreLabel.run(pop)
-        scoreShadow.run(pop)
+        scoreBacking.run(pop)
     }
 
     private func updateBotScoreHUD() {
@@ -630,37 +635,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             botVelocity = 0
         }
 
-        // Find nearest pipe ahead of bot
+        // Single-pass pipe iteration: find nearest pipe, check collision, check scoring all at once
         var targetGapY: CGFloat = GK.duckStartY
         var nearestDist: CGFloat = CGFloat.greatestFiniteMagnitude
 
         for child in pipeLayer.children {
             let pipeX = child.position.x
             let dist = pipeX - GK.duckStartX
+
+            // Find nearest pipe ahead
             if dist > -(GK.pipeWidth / 2) && dist < nearestDist {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     targetGapY = trigger.position.y
                     nearestDist = dist
                 }
             }
-        }
 
-        // Noise based on difficulty
-        let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
-        let adjustedTarget = targetGapY + noise
-
-        // Error rate: sometimes fail to flap
-        let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
-
-        // Flap when below target (unless error)
-        if !shouldError && botY < adjustedTarget - 8 && botVelocity < GK.flapImpulse * 0.5 {
-            botVelocity = GK.flapImpulse * diff.flapStrength
-        }
-
-        // Pipe collision
-        for child in pipeLayer.children {
-            let pipeX = child.position.x
-            if abs(pipeX - GK.duckStartX) < GK.pipeWidth / 2 + botR * 0.6 {
+            // Pipe collision (only check pipes near the bot)
+            if abs(dist) < GK.pipeWidth / 2 + botR * 0.6 {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     let gapY = trigger.position.y
                     let gapTop = gapY + GK.pipeGap / 2 - 5
@@ -681,6 +673,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                     gameDelegate?.botDidScore(botScore)
                 }
             }
+        }
+
+        // Noise based on difficulty
+        let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
+        let adjustedTarget = targetGapY + noise
+
+        // Error rate: sometimes fail to flap
+        let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
+
+        // Flap when below target (unless error)
+        if !shouldError && botY < adjustedTarget - 8 && botVelocity < GK.flapImpulse * 0.5 {
+            botVelocity = GK.flapImpulse * diff.flapStrength
         }
 
         bot.position.y = botY
@@ -774,15 +778,21 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.physicsBody?.collisionBitMask = GK.groundCategory
         duck.physicsBody?.velocity = CGVector(dx: 0, dy: 200)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            self?.duck.run(SKAction.fadeAlpha(to: 0.3, duration: 0.3))
-        }
+        // Use SKAction.wait instead of DispatchQueue.main.asyncAfter
+        // SKAction runs on the SpriteKit render loop — no main-thread blocking
+        duck.run(SKAction.sequence([
+            SKAction.wait(forDuration: 0.8),
+            SKAction.fadeAlpha(to: 0.3, duration: 0.3)
+        ]))
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            guard let self else { return }
-            self.phase = .gameOver
-            self.gameDelegate?.gameDidEnd(score: self.score)
-        }
+        run(SKAction.sequence([
+            SKAction.wait(forDuration: 1.2),
+            SKAction.run { [weak self] in
+                guard let self else { return }
+                self.phase = .gameOver
+                self.gameDelegate?.gameDidEnd(score: self.score)
+            }
+        ]))
     }
 
     // MARK: - Reset

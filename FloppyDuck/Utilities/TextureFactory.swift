@@ -31,14 +31,24 @@ final class TextureFactory {
         return tex
     }
 
-    /// Green gradient pipe body with pixel border
+    /// Green gradient pipe body with pixel border.
+    /// Pre-renders one master texture; subsequent calls crop a sub-region — no per-height rendering.
     func pipeTexture(height: CGFloat) -> SKTexture {
-        let key = "pipe_\(Int(height))"
-        if let cached = cache[key] { return cached }
-        let tex = SKTexture(image: renderPipe(width: GK.pipeWidth, height: height))
-        tex.filteringMode = .nearest
-        cache[key] = tex
-        return tex
+        let masterKey = "pipe_master"
+        let masterTex: SKTexture
+        if let cached = cache[masterKey] {
+            masterTex = cached
+        } else {
+            let tex = SKTexture(image: renderPipe(width: GK.pipeWidth, height: GK.worldHeight))
+            tex.filteringMode = .nearest
+            cache[masterKey] = tex
+            masterTex = tex
+        }
+        // Crop from bottom of master texture (unit coords, origin bottom-left)
+        let fraction = min(height / GK.worldHeight, 1.0)
+        let cropped = SKTexture(rect: CGRect(x: 0, y: 0, width: 1, height: fraction), in: masterTex)
+        cropped.filteringMode = .nearest
+        return cropped
     }
 
     /// Pipe cap with lip
@@ -138,9 +148,14 @@ final class TextureFactory {
         cache = cache.filter { !$0.key.hasPrefix("skin") }
     }
 
-    /// Bread currency icon for SwiftUI
+    /// Bread currency icon for SwiftUI (cached per scale)
+    private var breadUICache: [Int: UIImage] = [:]
     func breadUIImage(pixelScale: CGFloat = 4.0) -> UIImage {
-        return renderBread(pixelSize: pixelScale)
+        let key = Int(pixelScale * 100)
+        if let cached = breadUICache[key] { return cached }
+        let img = renderBread(pixelSize: pixelScale)
+        breadUICache[key] = img
+        return img
     }
 
     /// Bread currency texture for SpriteKit

@@ -16,11 +16,15 @@ enum GameSound: String {
 
 /// Generates and plays retro 8-bit style game sounds programmatically.
 /// All audio is synthesized from sine/square waveforms — zero bundled assets.
+/// Audio playback is dispatched to a dedicated serial queue to avoid blocking the render thread.
 final class SoundManager {
     static let shared = SoundManager()
 
     private var players: [GameSound: AVAudioPlayer] = [:]
     private var soundData: [GameSound: Data] = [:]
+
+    /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
+    private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
 
     private var isEnabled: Bool {
         UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
@@ -35,14 +39,20 @@ final class SoundManager {
     func prepare() {
         // Singleton init already built all sounds.
         // Calling this from AppDelegate ensures sounds are ready before first play.
+        // Pre-warm all players on the audio queue so first play has zero latency.
+        audioQueue.async { [weak self] in
+            self?.players.values.forEach { $0.prepareToPlay() }
+        }
     }
 
     func play(_ sound: GameSound) {
         guard isEnabled else { return }
-        guard let player = players[sound] else { return }
-        player.stop()
-        player.currentTime = 0
-        player.play()
+        audioQueue.async { [weak self] in
+            guard let player = self?.players[sound] else { return }
+            player.stop()
+            player.currentTime = 0
+            player.play()
+        }
     }
 
     // MARK: - Setup
