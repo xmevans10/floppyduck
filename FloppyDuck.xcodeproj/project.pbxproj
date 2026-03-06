@@ -11,6 +11,8 @@
 		04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */; };
 		108CA6DF21DC6F0EDE421CE6 /* FloppyDuckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */; };
 		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };
+		A10000000000000000000001 /* MultiplayerSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* MultiplayerSessionTests.swift */; };
+		A10000000000000000000002 /* PlayerStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* PlayerStatsTests.swift */; };
 		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
 		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
 		721117E305FA5B37E3DEE0F4 /* StatBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B62950ED3B295FD7BFD165 /* StatBadge.swift */; };
@@ -36,6 +38,16 @@
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A50000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E74DADFE3AC5262D28E19680 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC26CC21560A6F6D89098BBE;
+			remoteInfo = FloppyDuck;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		0096DDB5D5C93DB7732319BF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0F70986D2FC6C1758722D0D5 /* GameConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConstants.swift; sourceTree = "<group>"; };
@@ -54,6 +66,9 @@
 		90B62950ED3B295FD7BFD165 /* StatBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatBadge.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6071829304050 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		A20000000000000000000001 /* FloppyDuckTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000002 /* MultiplayerSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerSessionTests.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* PlayerStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStatsTests.swift; sourceTree = "<group>"; };
 		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
 		C6DC340C3366ABF3170CC53A /* ModeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeCard.swift; sourceTree = "<group>"; };
@@ -70,6 +85,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F8BD22F2990F41972F1DD9DF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -99,6 +121,7 @@
 			isa = PBXGroup;
 			children = (
 				40E7256AF7638B5B6B81606E /* FloppyDuck */,
+				A40000000000000000000001 /* FloppyDuckTests */,
 				869F6DB7D2C008CCC31F4B39 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -162,8 +185,18 @@
 			isa = PBXGroup;
 			children = (
 				45E49708FF03202FD286092D /* FloppyDuck.app */,
+				A20000000000000000000001 /* FloppyDuckTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000001 /* FloppyDuckTests */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000002 /* MultiplayerSessionTests.swift */,
+				A20000000000000000000003 /* PlayerStatsTests.swift */,
+			);
+			path = FloppyDuckTests;
 			sourceTree = "<group>";
 		};
 		944325C55C15EC0ED9EDE74D /* App */ = {
@@ -199,6 +232,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A60000000000000000000001 /* FloppyDuckTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB0000000000000000000001 /* Build configuration list for PBXNativeTarget "FloppyDuckTests" */;
+			buildPhases = (
+				A80000000000000000000001 /* Sources */,
+				A30000000000000000000001 /* Frameworks */,
+				A70000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A90000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = FloppyDuckTests;
+			productName = FloppyDuckTests;
+			productReference = A20000000000000000000001 /* FloppyDuckTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		CC26CC21560A6F6D89098BBE /* FloppyDuck */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C15F3F33BAC94685D2A372D1 /* Build configuration list for PBXNativeTarget "FloppyDuck" */;
@@ -237,11 +288,19 @@
 			projectRoot = "";
 			targets = (
 				CC26CC21560A6F6D89098BBE /* FloppyDuck */,
+				A60000000000000000000001 /* FloppyDuckTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		A70000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		915FCF5A99513AFC46FDB39D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -255,6 +314,15 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A80000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* MultiplayerSessionTests.swift in Sources */,
+				A10000000000000000000002 /* PlayerStatsTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5A47A4BEE87536527978A253 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -288,7 +356,54 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		A90000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC26CC21560A6F6D89098BBE /* FloppyDuck */;
+			targetProxy = A50000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		AA0000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xmevans10.FloppyDuckTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FloppyDuck.app/FloppyDuck";
+			};
+			name = Debug;
+		};
+		AA0000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xmevans10.FloppyDuckTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FloppyDuck.app/FloppyDuck";
+			};
+			name = Release;
+		};
 		1C44D1EC10EDD6481FD9FB7C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -466,6 +581,15 @@
 			buildConfigurations = (
 				54B0FB6D5EDA887C4233E9A1 /* Debug */,
 				1C44D1EC10EDD6481FD9FB7C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB0000000000000000000001 /* Build configuration list for PBXNativeTarget "FloppyDuckTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000001 /* Debug */,
+				AA0000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

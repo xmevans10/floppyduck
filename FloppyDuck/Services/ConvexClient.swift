@@ -1,8 +1,29 @@
 import Foundation
 
+/// Abstraction used by multiplayer session logic so tests can inject a mock backend.
+protocol MultiplayerBackendClient: Sendable {
+    func joinMatchmakingQueue(mode: MatchmakingMode, rating: Int) async throws -> QueueTicket
+    func leaveMatchmakingQueue(ticketId: String?) async throws
+    func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment?
+
+    func createRoom(rating: Int) async throws -> QueueTicket
+    func joinRoom(code: String, rating: Int) async throws -> QueueTicket
+    func leaveRoom(code: String) async throws
+    func checkRoom(code: String) async throws -> MultiplayerMatchAssignment?
+
+    func reportScore(matchId: String, score: Int) async throws
+    func getMatchState(matchId: String) async throws -> MultiplayerMatchState
+
+    func finishMatch(matchId: String,
+                     score: Int,
+                     mode: MatchmakingMode,
+                     fallbackOpponentScore: Int,
+                     opponentName: String?) async throws -> MultiplayerMatchResult
+}
+
 /// REST client for the Convex backend.
 /// Handles matchmaking, private rooms, score sync, and match results.
-actor ConvexClient {
+actor ConvexClient: MultiplayerBackendClient {
     static let shared = ConvexClient()
 
     // MARK: - Configuration

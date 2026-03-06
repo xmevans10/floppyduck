@@ -12,7 +12,7 @@ final class GameManager: ObservableObject {
     @AppStorage("soundEnabled") var soundEnabled: Bool = true
     @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
 
-    private let multiplayerSession = MultiplayerSession(client: .shared)
+    private let multiplayerSession = MultiplayerSession(client: ConvexClient.shared)
 
     init() {
         if let data = UserDefaults.standard.data(forKey: "playerStats"),
@@ -187,13 +187,13 @@ final class GameManager: ObservableObject {
 // MARK: - Multiplayer Session Coordinator
 
 actor MultiplayerSession {
-    private let client: ConvexClient
+    private let client: any MultiplayerBackendClient
 
     private var currentMode: MatchmakingMode?
     private var currentTicket: QueueTicket?
     private var currentRoomCode: String?
 
-    init(client: ConvexClient) {
+    init(client: any MultiplayerBackendClient) {
         self.client = client
     }
 
