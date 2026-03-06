@@ -28,8 +28,10 @@ actor ConvexClient: MultiplayerBackendClient {
 
     // MARK: - Configuration
 
-    // Update this URL to your Convex deployment.
-    private let baseURL = "https://peaceful-partridge-81.convex.cloud"
+    private static let baseURLInfoKey = "CONVEX_BASE_URL"
+    private static let fallbackBaseURL = "https://zany-ram-588.convex.cloud"
+
+    private let baseURL: String
 
     private let session: URLSession
 
@@ -37,6 +39,17 @@ actor ConvexClient: MultiplayerBackendClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
         self.session = URLSession(configuration: config)
+        self.baseURL = Self.resolveBaseURL()
+    }
+
+    private static func resolveBaseURL() -> String {
+        if let configured = Bundle.main.object(forInfoDictionaryKey: baseURLInfoKey) as? String {
+            let trimmed = configured.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return fallbackBaseURL
     }
 
     // MARK: - Raw Requests
