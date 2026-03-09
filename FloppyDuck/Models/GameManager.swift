@@ -12,6 +12,8 @@ final class GameManager: ObservableObject {
     @AppStorage("soundEnabled") var soundEnabled: Bool = true
     @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
 
+    weak var authManager: AuthManager?
+
     private let multiplayerSession = MultiplayerSession(client: ConvexClient.shared)
 
     init() {
@@ -43,8 +45,13 @@ final class GameManager: ObservableObject {
 
     // MARK: - Multiplayer Navigation
 
-    func startMatchmaking(mode: MatchmakingMode) {
+    @discardableResult
+    func startMatchmaking(mode: MatchmakingMode) -> Bool {
+        if mode == .ranked && !ensureRankedAccess() {
+            return false
+        }
         path.append(AppRoute.matchmaking(mode))
+        return true
     }
 
     func startHeadToHead(matchAssignment: MultiplayerMatchAssignment) {
@@ -63,18 +70,15 @@ final class GameManager: ObservableObject {
     // MARK: - Multiplayer Session
 
     func queueForMatch(mode: MatchmakingMode) async throws -> MultiplayerMatchAssignment {
-        let rating = stats.elo
-        return try await multiplayerSession.queueForMatch(mode: mode, rating: rating, timeout: mode.queueTimeout)
+        try await multiplayerSession.queueForMatch(mode: mode, timeout: mode.queueTimeout)
     }
 
     func createPrivateRoom() async throws -> String {
-        let rating = stats.elo
-        return try await multiplayerSession.createPrivateRoom(rating: rating)
+        try await multiplayerSession.createPrivateRoom()
     }
 
     func joinPrivateRoom(code: String) async throws {
-        let rating = stats.elo
-        try await multiplayerSession.joinPrivateRoom(code: code, rating: rating)
+        try await multiplayerSession.joinPrivateRoom(code: code)
     }
 
     func waitForPrivateRoomMatch() async throws -> MultiplayerMatchAssignment {
@@ -131,6 +135,39 @@ final class GameManager: ObservableObject {
     func applyMatchResult(_ result: MultiplayerMatchResult) {
         stats.applyMatchResult(result)
         saveStats()
+    }
+
+    func applyRemoteProfile(_ profile: RemotePlayerProfile) {
+        playerName = profile.username
+        stats = profile.stats
+        saveStats()
+    }
+
+    // MARK: - Auth Convenience APIs
+
+    func bootstrapIdentity() {
+        guard let authManager else { return }
+        Task { await authManager.bootstrapIdentityIfNeeded() }
+    }
+
+    func continueAsGuest() {
+        guard let authManager else { return }
+        Task { await authManager.continueAsGuest() }
+    }
+
+    func signInWithApple() {
+        guard let authManager else { return }
+        Task { await authManager.signInWithApple() }
+    }
+
+    func signOut() {
+        guard let authManager else { return }
+        Task { await authManager.signOut() }
+    }
+
+    @discardableResult
+    func ensureRankedAccess() -> Bool {
+        authManager?.ensureRankedAccess() ?? false
     }
 
     // MARK: - Existing Stats APIs
@@ -198,21 +235,20 @@ actor MultiplayerSession {
     }
 
     func queueForMatch(mode: MatchmakingMode,
-                       rating: Int,
                        timeout: TimeInterval) async throws -> MultiplayerMatchAssignment {
         guard mode != .privateRoom else {
             throw MultiplayerSessionError.invalidMode
         }
 
         currentMode = mode
-        currentTicket = try await client.joinMatchmakingQueue(mode: mode, rating: rating)
+        currentTicket = try await client.joinMatchmakingQueue(mode: mode)
         currentRoomCode = nil
         return try await waitForMatch(timeout: timeout)
     }
 
-    func createPrivateRoom(rating: Int) async throws -> String {
+    func createPrivateRoom() async throws -> String {
         currentMode = .privateRoom
-        let ticket = try await client.createRoom(rating: rating)
+        let ticket = try await client.createRoom()
         currentTicket = ticket
         currentRoomCode = ticket.roomCode
 
@@ -222,7 +258,7 @@ actor MultiplayerSession {
         return code
     }
 
-    func joinPrivateRoom(code: String, rating: Int) async throws {
+    func joinPrivateRoom(code: String) async throws {
         let normalized = String(code.prefix(GK.roomCodeLength)).uppercased()
         guard normalized.count == GK.roomCodeLength else {
             throw MultiplayerSessionError.invalidRoomCode
@@ -230,7 +266,7 @@ actor MultiplayerSession {
 
         currentMode = .privateRoom
         currentRoomCode = normalized
-        currentTicket = try await client.joinRoom(code: normalized, rating: rating)
+        currentTicket = try await client.joinRoom(code: normalized)
     }
 
     func waitForPrivateRoomMatch(timeout: TimeInterval) async throws -> MultiplayerMatchAssignment {

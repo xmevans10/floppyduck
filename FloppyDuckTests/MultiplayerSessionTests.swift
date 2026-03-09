@@ -15,7 +15,7 @@ final class MultiplayerSessionTests: XCTestCase {
         let client = MockMultiplayerBackendClient(queueAssignment: expected)
         let session = MultiplayerSession(client: client)
 
-        let assignment = try await session.queueForMatch(mode: .quickPlay, rating: 1280, timeout: 2)
+        let assignment = try await session.queueForMatch(mode: .quickPlay, timeout: 2)
 
         XCTAssertEqual(assignment, expected)
         let snapshot = await client.snapshot()
@@ -27,7 +27,7 @@ final class MultiplayerSessionTests: XCTestCase {
         let client = MockMultiplayerBackendClient()
         let session = MultiplayerSession(client: client)
 
-        try await session.joinPrivateRoom(code: "aBcDe", rating: 1200)
+        try await session.joinPrivateRoom(code: "aBcDe")
 
         let snapshot = await client.snapshot()
         XCTAssertEqual(snapshot.lastJoinRoomCode, "ABCDE")
@@ -51,7 +51,7 @@ final class MultiplayerSessionTests: XCTestCase {
         let client = MockMultiplayerBackendClient()
         let session = MultiplayerSession(client: client)
 
-        let roomCode = try await session.createPrivateRoom(rating: 1320)
+        let roomCode = try await session.createPrivateRoom()
         XCTAssertEqual(roomCode, "DUCKY")
 
         await session.cancelMatchmaking()
@@ -74,7 +74,7 @@ final class MultiplayerSessionTests: XCTestCase {
         let client = MockMultiplayerBackendClient(queueAssignment: expected)
         let session = MultiplayerSession(client: client)
 
-        _ = try await session.queueForMatch(mode: .ranked, rating: 1400, timeout: 2)
+        _ = try await session.queueForMatch(mode: .ranked, timeout: 2)
         await session.cancelMatchmaking()
 
         let snapshot = await client.snapshot()
@@ -117,7 +117,54 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
         )
     }
 
-    func joinMatchmakingQueue(mode: MatchmakingMode, rating: Int) async throws -> QueueTicket {
+    func setAuthContext(deviceId: String, sessionToken: String?) async {
+        // Not needed for these tests.
+    }
+
+    func bootstrapGuest(deviceId: String, localStats: LocalStatsSnapshot?) async throws -> AuthBootstrapResponse {
+        AuthBootstrapResponse(
+            profile: RemotePlayerProfile(
+                userId: "user-guest",
+                username: "Guest",
+                provider: .guest,
+                stats: PlayerStats()
+            ),
+            didMergeStats: false
+        )
+    }
+
+    func linkApple(identityToken: String,
+                   nonce: String,
+                   deviceId: String,
+                   displayName: String?) async throws -> AuthLinkResponse {
+        AuthLinkResponse(
+            profile: RemotePlayerProfile(
+                userId: "user-apple",
+                username: displayName ?? "Player",
+                provider: .apple,
+                stats: PlayerStats()
+            ),
+            sessionToken: "session",
+            sessionExpiresAt: nil,
+            appleUserId: "apple-user",
+            didMergeStats: false
+        )
+    }
+
+    func getProfile() async throws -> RemotePlayerProfile {
+        RemotePlayerProfile(
+            userId: "user-guest",
+            username: "Guest",
+            provider: .guest,
+            stats: PlayerStats()
+        )
+    }
+
+    func signOutSession() async throws {
+        // Not needed for these tests.
+    }
+
+    func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket {
         QueueTicket(ticketId: "queue-ticket", mode: mode, roomCode: nil)
     }
 
@@ -131,11 +178,11 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
         return queueAssignment
     }
 
-    func createRoom(rating: Int) async throws -> QueueTicket {
+    func createRoom() async throws -> QueueTicket {
         QueueTicket(ticketId: "room-ticket", mode: .privateRoom, roomCode: "DUCKY")
     }
 
-    func joinRoom(code: String, rating: Int) async throws -> QueueTicket {
+    func joinRoom(code: String) async throws -> QueueTicket {
         lastJoinRoomCode = code
         return QueueTicket(ticketId: "joined-room-ticket", mode: .privateRoom, roomCode: code)
     }
@@ -173,5 +220,9 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
             newRating: nil,
             isRanked: mode.isRanked
         )
+    }
+
+    func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] {
+        []
     }
 }

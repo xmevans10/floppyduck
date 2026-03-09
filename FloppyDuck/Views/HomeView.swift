@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var manager: GameManager
+    @EnvironmentObject var auth: AuthManager
     @ObservedObject var skinManager = SkinManager.shared
     @State private var duckBob: Bool = false
     @State private var titlePulse: Bool = false
@@ -44,6 +45,9 @@ struct HomeView: View {
                     // Bread counter
                     breadCounter
                         .padding(.top, 12)
+
+                    accountBadge
+                        .padding(.top, 8)
 
                     Spacer().frame(height: 20)
 
@@ -126,6 +130,24 @@ struct HomeView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(GK.Colors.breadGold.opacity(0.3), lineWidth: 2)
+                )
+        )
+    }
+
+    private var accountBadge: some View {
+        HStack(spacing: 6) {
+            pixelIcon(auth.isAppleLinked ? .trophy : .classic, size: 14)
+            Text(auth.accountBadgeText)
+                .font(.custom(GK.pixelFontName, size: 7))
+                .foregroundColor(.white)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.3))
+                .overlay(
+                    Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1)
                 )
         )
     }

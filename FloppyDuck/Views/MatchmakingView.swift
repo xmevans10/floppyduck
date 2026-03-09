@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MultiplayerModesView: View {
     @EnvironmentObject var manager: GameManager
+    @EnvironmentObject var auth: AuthManager
     private let icons = PixelIconFactory.shared
 
     var body: some View {
@@ -37,8 +38,22 @@ struct MultiplayerModesView: View {
 
                     modeButton(icon: .trophy,
                                title: "RANKED",
-                               subtitle: "Competitive ELO") {
-                        manager.startMatchmaking(mode: .ranked)
+                               subtitle: auth.isAppleLinked ? "Competitive ELO" : "Sign in required") {
+                        if manager.startMatchmaking(mode: .ranked) {
+                            return
+                        }
+                        auth.showRankedSignInPrompt = true
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if !auth.isAppleLinked {
+                            Text("LOCKED")
+                                .font(.custom(GK.pixelFontName, size: 6))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(GK.Colors.buttonRed))
+                                .offset(x: -6, y: 6)
+                        }
                     }
 
                     modeButton(icon: .shop,
@@ -50,11 +65,11 @@ struct MultiplayerModesView: View {
                 .padding(.horizontal, 28)
 
                 VStack(spacing: 6) {
-                    Text("CURRENT ELO")
+                    Text(auth.isAppleLinked ? "CURRENT ELO" : "GUEST MODE")
                         .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(.white.opacity(0.65))
 
-                    Text("\(manager.stats.elo)")
+                    Text(auth.isAppleLinked ? "\(manager.stats.elo)" : "SIGN IN FOR RANKED")
                         .font(.custom(GK.pixelFontName, size: 16))
                         .foregroundColor(GK.Colors.scoreYellow)
                 }
@@ -64,6 +79,16 @@ struct MultiplayerModesView: View {
             }
         }
         .navigationBarHidden(true)
+        .alert("Ranked Requires Sign In", isPresented: $auth.showRankedSignInPrompt) {
+            Button("NOT NOW", role: .cancel) {}
+            Button("SIGN IN WITH APPLE") {
+                Task {
+                    await auth.signInWithApple()
+                }
+            }
+        } message: {
+            Text("Ranked requires Sign in with Apple. Quick Play and Private Room work as guest.")
+        }
     }
 
     private func modeButton(icon: PixelIcon,

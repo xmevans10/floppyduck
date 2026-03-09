@@ -91,6 +91,109 @@ enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
     }
 }
 
+// MARK: - Auth
+
+enum AuthProvider: String, Hashable, Codable {
+    case guest
+    case apple
+}
+
+enum AuthState: Hashable {
+    case bootstrapping
+    case onboardingRequired
+    case authenticated(AuthProvider)
+    case failed(String)
+}
+
+struct PlayerIdentity: Hashable, Codable {
+    let userId: String
+    let provider: AuthProvider
+    let deviceId: String
+    let appleUserId: String?
+    let sessionToken: String?
+    let sessionExpiresAt: Date?
+}
+
+struct LocalStatsSnapshot: Hashable, Codable {
+    let username: String
+    let gamesPlayed: Int
+    let wins: Int
+    let losses: Int
+    let bestScore: Int
+    let totalScore: Int
+    let elo: Int
+    let bread: Int
+    let recentScores: [Int]
+    let beatenBots: [String]
+
+    init(username: String, stats: PlayerStats) {
+        self.username = username
+        self.gamesPlayed = stats.gamesPlayed
+        self.wins = stats.wins
+        self.losses = stats.losses
+        self.bestScore = stats.bestScore
+        self.totalScore = stats.totalScore
+        self.elo = stats.elo
+        self.bread = stats.bread
+        self.recentScores = stats.recentScores
+        self.beatenBots = stats.beatenBots
+    }
+
+    var asPlayerStats: PlayerStats {
+        PlayerStats(
+            gamesPlayed: gamesPlayed,
+            wins: wins,
+            losses: losses,
+            bestScore: bestScore,
+            totalScore: totalScore,
+            elo: elo,
+            bread: bread,
+            recentScores: recentScores,
+            beatenBots: beatenBots
+        )
+    }
+}
+
+struct RemotePlayerProfile: Hashable, Codable {
+    let userId: String
+    let username: String
+    let provider: AuthProvider
+    let stats: PlayerStats
+}
+
+struct AuthBootstrapResponse: Hashable, Codable {
+    let profile: RemotePlayerProfile
+    let didMergeStats: Bool
+}
+
+struct AuthLinkResponse: Hashable, Codable {
+    let profile: RemotePlayerProfile
+    let sessionToken: String
+    let sessionExpiresAt: Date?
+    let appleUserId: String?
+    let didMergeStats: Bool
+}
+
+enum AuthError: LocalizedError {
+    case canceled
+    case missingIdentityToken
+    case invalidIdentityToken
+    case signInFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .canceled:
+            return "Sign in canceled."
+        case .missingIdentityToken:
+            return "Missing Apple identity token."
+        case .invalidIdentityToken:
+            return "Invalid Apple identity token."
+        case .signInFailed(let message):
+            return message
+        }
+    }
+}
+
 // MARK: - Multiplayer
 
 struct QueueTicket: Hashable, Codable {
@@ -178,7 +281,7 @@ struct LeaderboardEntry: Identifiable, Codable {
 
 // MARK: - Stats
 
-struct PlayerStats: Codable {
+struct PlayerStats: Codable, Hashable {
     var gamesPlayed: Int = 0
     var wins: Int = 0
     var losses: Int = 0

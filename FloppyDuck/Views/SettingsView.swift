@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var manager: GameManager
+    @EnvironmentObject var auth: AuthManager
     @State private var showResetConfirm = false
     private let icons = PixelIconFactory.shared
 
@@ -50,6 +51,57 @@ struct SettingsView: View {
                                                     .stroke(GK.Colors.panelBorder.opacity(0.2), lineWidth: 2)
                                             )
                                     )
+                            }
+                        }
+
+                        settingsPanel {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Text("ACCOUNT")
+                                        .font(.custom(GK.pixelFontName, size: 10))
+                                        .foregroundColor(GK.Colors.panelBorder)
+                                    Spacer()
+                                    Text(auth.accountBadgeText)
+                                        .font(.custom(GK.pixelFontName, size: 7))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 5)
+                                        .background(Capsule().fill(auth.isAppleLinked ? GK.Colors.buttonGreen : GK.Colors.buttonOrange))
+                                }
+
+                                if let statusMessage = auth.statusMessage {
+                                    Text(statusMessage)
+                                        .font(.custom(GK.pixelFontName, size: 7))
+                                        .foregroundColor(GK.Colors.panelBorder.opacity(0.75))
+                                }
+
+                                if auth.isAppleLinked {
+                                    Button {
+                                        Task { await auth.signOut() }
+                                    } label: {
+                                        Text("SIGN OUT")
+                                            .font(.custom(GK.pixelFontName, size: 8))
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonRed))
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    Button {
+                                        Task { await auth.signInWithApple() }
+                                    } label: {
+                                        Text("SIGN IN WITH APPLE")
+                                            .font(.custom(GK.pixelFontName, size: 8))
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonBlue))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(auth.isBusy)
+                                    .opacity(auth.isBusy ? 0.6 : 1)
+                                }
                             }
                         }
 

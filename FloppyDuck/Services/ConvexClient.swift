@@ -1,13 +1,26 @@
 import Foundation
 
-/// Abstraction used by multiplayer session logic so tests can inject a mock backend.
+/// Abstraction used by multiplayer/session/auth logic so tests can inject a mock backend.
 protocol MultiplayerBackendClient: Sendable {
-    func joinMatchmakingQueue(mode: MatchmakingMode, rating: Int) async throws -> QueueTicket
+    func setAuthContext(deviceId: String, sessionToken: String?) async
+
+    func bootstrapGuest(deviceId: String,
+                        localStats: LocalStatsSnapshot?) async throws -> AuthBootstrapResponse
+
+    func linkApple(identityToken: String,
+                   nonce: String,
+                   deviceId: String,
+                   displayName: String?) async throws -> AuthLinkResponse
+
+    func getProfile() async throws -> RemotePlayerProfile
+    func signOutSession() async throws
+
+    func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket
     func leaveMatchmakingQueue(ticketId: String?) async throws
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment?
 
-    func createRoom(rating: Int) async throws -> QueueTicket
-    func joinRoom(code: String, rating: Int) async throws -> QueueTicket
+    func createRoom() async throws -> QueueTicket
+    func joinRoom(code: String) async throws -> QueueTicket
     func leaveRoom(code: String) async throws
     func checkRoom(code: String) async throws -> MultiplayerMatchAssignment?
 
@@ -19,10 +32,19 @@ protocol MultiplayerBackendClient: Sendable {
                      mode: MatchmakingMode,
                      fallbackOpponentScore: Int,
                      opponentName: String?) async throws -> MultiplayerMatchResult
+
+    func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry]
+}
+
+struct ConvexAuthContext: Sendable {
+    let deviceId: String?
+    let sessionToken: String?
+
+    static let none = ConvexAuthContext(deviceId: nil, sessionToken: nil)
 }
 
 /// REST client for the Convex backend.
-/// Handles matchmaking, private rooms, score sync, and match results.
+/// Handles identity/auth, matchmaking, private rooms, score sync, and match results.
 actor ConvexClient: MultiplayerBackendClient {
     static let shared = ConvexClient()
 
@@ -30,19 +52,17 @@ actor ConvexClient: MultiplayerBackendClient {
 
     private static let baseURLInfoKey = "CONVEX_BASE_URL"
     private static let fallbackBaseURL = "https://zany-ram-588.convex.cloud"
-    private static let deployKeyEnv = "CONVEX_DEPLOY_KEY"
 
     private let baseURL: String
-    private let deployKey: String?
-
     private let session: URLSession
+
+    private var authContext: ConvexAuthContext = .none
 
     init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
         self.session = URLSession(configuration: config)
         self.baseURL = Self.resolveBaseURL()
-        self.deployKey = Self.resolveDeployKey()
     }
 
     private static func resolveBaseURL() -> String {
@@ -55,12 +75,10 @@ actor ConvexClient: MultiplayerBackendClient {
         return fallbackBaseURL
     }
 
-    private static func resolveDeployKey() -> String? {
-        guard let value = ProcessInfo.processInfo.environment[deployKeyEnv] else {
-            return nil
-        }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+    // MARK: - Auth Context
+
+    func setAuthContext(deviceId: String, sessionToken: String?) {
+        authContext = ConvexAuthContext(deviceId: deviceId, sessionToken: sessionToken)
     }
 
     // MARK: - Raw Requests
@@ -83,14 +101,15 @@ actor ConvexClient: MultiplayerBackendClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let deployKey {
-            // Local dev override only; do not ship deploy keys in the app bundle.
-            request.setValue("Convex \(deployKey)", forHTTPHeaderField: "Authorization")
+
+        if let token = authContext.sessionToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        let payloadArgs = mergedArgsWithIdentity(args)
         let body: [String: Any] = [
             "path": functionName,
-            "args": args,
+            "args": payloadArgs,
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -111,12 +130,109 @@ actor ConvexClient: MultiplayerBackendClient {
         return root["value"]
     }
 
+    private func mergedArgsWithIdentity(_ args: [String: Any]) -> [String: Any] {
+        var merged = args
+        if merged["deviceId"] == nil,
+           let deviceId = authContext.deviceId,
+           !deviceId.isEmpty {
+            merged["deviceId"] = deviceId
+        }
+
+        if merged["sessionToken"] == nil,
+           let sessionToken = authContext.sessionToken,
+           !sessionToken.isEmpty {
+            merged["sessionToken"] = sessionToken
+        }
+
+        return merged
+    }
+
+    // MARK: - Auth
+
+    func bootstrapGuest(deviceId: String,
+                        localStats: LocalStatsSnapshot?) async throws -> AuthBootstrapResponse {
+        var args: [String: Any] = ["deviceId": deviceId]
+        if let localStats {
+            args["localStats"] = localStats.asDictionary
+        }
+
+        let value = try await mutationRaw("auth:bootstrapGuest", args: args)
+        guard let payload = dictionary(from: value) else {
+            throw ConvexError.invalidResponse
+        }
+
+        let profileSource = dictionary(in: payload, keys: ["profile", "user"]) ?? payload
+        guard let profile = parseProfile(profileSource) else {
+            throw ConvexError.invalidResponse
+        }
+
+        let didMergeStats = bool(in: payload, keys: ["didMergeStats", "did_merge_stats", "merged"]) ?? false
+        return AuthBootstrapResponse(profile: profile, didMergeStats: didMergeStats)
+    }
+
+    func linkApple(identityToken: String,
+                   nonce: String,
+                   deviceId: String,
+                   displayName: String?) async throws -> AuthLinkResponse {
+        var args: [String: Any] = [
+            "identityToken": identityToken,
+            "nonce": nonce,
+            "deviceId": deviceId,
+        ]
+        if let displayName, !displayName.isEmpty {
+            args["displayName"] = displayName
+        }
+
+        let value = try await mutationRaw("auth:linkApple", args: args)
+        guard let payload = dictionary(from: value) else {
+            throw ConvexError.invalidResponse
+        }
+
+        let profileSource = dictionary(in: payload, keys: ["profile", "user"]) ?? payload
+        guard let profile = parseProfile(profileSource) else {
+            throw ConvexError.invalidResponse
+        }
+
+        guard let sessionToken = string(in: payload, keys: ["sessionToken", "session_token", "token"]),
+              !sessionToken.isEmpty else {
+            throw ConvexError.invalidResponse
+        }
+
+        return AuthLinkResponse(
+            profile: profile,
+            sessionToken: sessionToken,
+            sessionExpiresAt: date(in: payload, keys: ["sessionExpiresAt", "expiresAt", "expires_at"]),
+            appleUserId: string(in: payload, keys: ["appleUserId", "apple_user_id"]),
+            didMergeStats: bool(in: payload, keys: ["didMergeStats", "did_merge_stats", "merged"]) ?? false
+        )
+    }
+
+    func getProfile() async throws -> RemotePlayerProfile {
+        let value = try await queryRaw("auth:getProfile")
+
+        if let dict = dictionary(from: value),
+           let nested = dictionary(in: dict, keys: ["profile", "user"]) {
+            if let profile = parseProfile(nested) {
+                return profile
+            }
+        }
+
+        if let profile = parseProfile(value) {
+            return profile
+        }
+
+        throw ConvexError.invalidResponse
+    }
+
+    func signOutSession() async throws {
+        _ = try await mutationRaw("auth:signOutSession")
+    }
+
     // MARK: - Matchmaking
 
-    func joinMatchmakingQueue(mode: MatchmakingMode, rating: Int) async throws -> QueueTicket {
+    func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket {
         let value = try await mutationRaw("matchmaking:joinQueue", args: [
             "mode": mode.queueValue,
-            "rating": rating,
         ])
 
         let ticketId: String
@@ -151,8 +267,8 @@ actor ConvexClient: MultiplayerBackendClient {
 
     // MARK: - Private Rooms
 
-    func createRoom(rating: Int) async throws -> QueueTicket {
-        let value = try await mutationRaw("matchmaking:createRoom", args: ["rating": rating])
+    func createRoom() async throws -> QueueTicket {
+        let value = try await mutationRaw("matchmaking:createRoom")
         guard let dict = dictionary(from: value) else {
             throw ConvexError.invalidResponse
         }
@@ -166,12 +282,11 @@ actor ConvexClient: MultiplayerBackendClient {
         return QueueTicket(ticketId: ticketId, mode: .privateRoom, roomCode: roomCode)
     }
 
-    func joinRoom(code: String, rating: Int) async throws -> QueueTicket {
+    func joinRoom(code: String) async throws -> QueueTicket {
         let normalized = String(code.prefix(GK.roomCodeLength)).uppercased()
 
         let value = try await mutationRaw("matchmaking:joinRoom", args: [
             "code": normalized,
-            "rating": rating,
         ])
 
         if let dict = dictionary(from: value) {
@@ -293,6 +408,41 @@ actor ConvexClient: MultiplayerBackendClient {
 
     // MARK: - Parsing Helpers
 
+    private func parseProfile(_ value: Any?) -> RemotePlayerProfile? {
+        guard let source = dictionary(from: value) else { return nil }
+
+        guard let userId = string(in: source, keys: ["userId", "user_id", "id", "_id"]) else {
+            return nil
+        }
+
+        let provider = parseProvider(from: string(in: source, keys: ["provider", "authProvider", "auth_provider"])) ?? .guest
+        let username = string(in: source, keys: ["username", "name", "displayName", "display_name"]) ?? "Player"
+
+        let statsSource = dictionary(in: source, keys: ["stats", "playerStats", "player_stats"]) ?? source
+        let stats = parseStats(from: statsSource)
+
+        return RemotePlayerProfile(
+            userId: userId,
+            username: username,
+            provider: provider,
+            stats: stats
+        )
+    }
+
+    private func parseStats(from source: [String: Any]) -> PlayerStats {
+        PlayerStats(
+            gamesPlayed: int(in: source, keys: ["gamesPlayed", "games_played"]) ?? 0,
+            wins: int(in: source, keys: ["wins"]) ?? 0,
+            losses: int(in: source, keys: ["losses"]) ?? 0,
+            bestScore: int(in: source, keys: ["bestScore", "best_score"]) ?? 0,
+            totalScore: int(in: source, keys: ["totalScore", "total_score"]) ?? 0,
+            elo: int(in: source, keys: ["elo", "rating"]) ?? 1200,
+            bread: int(in: source, keys: ["bread"]) ?? 0,
+            recentScores: intArray(in: source, keys: ["recentScores", "recent_scores"]),
+            beatenBots: stringArray(in: source, keys: ["beatenBots", "beaten_bots"])
+        )
+    }
+
     private func parseAssignment(_ value: Any?,
                                  fallbackMode: MatchmakingMode?,
                                  fallbackRoomCode: String?) -> MultiplayerMatchAssignment? {
@@ -355,6 +505,18 @@ actor ConvexClient: MultiplayerBackendClient {
         }
     }
 
+    private func parseProvider(from raw: String?) -> AuthProvider? {
+        guard let raw else { return nil }
+        switch raw.lowercased() {
+        case "apple", "siwa":
+            return .apple
+        case "guest", "anonymous":
+            return .guest
+        default:
+            return nil
+        }
+    }
+
     private func dictionary(from value: Any?) -> [String: Any]? {
         value as? [String: Any]
     }
@@ -366,6 +528,30 @@ actor ConvexClient: MultiplayerBackendClient {
             }
         }
         return nil
+    }
+
+    private func stringArray(in dict: [String: Any], keys: [String]) -> [String] {
+        for key in keys {
+            if let values = dict[key] as? [String] {
+                return values
+            }
+            if let values = dict[key] as? [Any] {
+                return values.compactMap { string(from: $0) }
+            }
+        }
+        return []
+    }
+
+    private func intArray(in dict: [String: Any], keys: [String]) -> [Int] {
+        for key in keys {
+            if let values = dict[key] as? [Int] {
+                return values
+            }
+            if let values = dict[key] as? [Any] {
+                return values.compactMap { int(from: $0) }
+            }
+        }
+        return []
     }
 
     private func string(in dict: [String: Any]?, keys: [String]) -> String? {
@@ -395,6 +581,28 @@ actor ConvexClient: MultiplayerBackendClient {
                 return value
             }
         }
+        return nil
+    }
+
+    private func date(in dict: [String: Any]?, keys: [String]) -> Date? {
+        guard let dict else { return nil }
+
+        for key in keys {
+            if let value = dict[key] {
+                if let seconds = int(from: value) {
+                    return Date(timeIntervalSince1970: TimeInterval(seconds))
+                }
+                if let stringValue = string(from: value) {
+                    if let seconds = TimeInterval(stringValue) {
+                        return Date(timeIntervalSince1970: seconds)
+                    }
+                    if let parsed = ISO8601DateFormatter().date(from: stringValue) {
+                        return parsed
+                    }
+                }
+            }
+        }
+
         return nil
     }
 
@@ -439,6 +647,23 @@ actor ConvexClient: MultiplayerBackendClient {
             }
         }
         return nil
+    }
+}
+
+private extension LocalStatsSnapshot {
+    var asDictionary: [String: Any] {
+        [
+            "username": username,
+            "gamesPlayed": gamesPlayed,
+            "wins": wins,
+            "losses": losses,
+            "bestScore": bestScore,
+            "totalScore": totalScore,
+            "elo": elo,
+            "bread": bread,
+            "recentScores": recentScores,
+            "beatenBots": beatenBots,
+        ]
     }
 }
 
