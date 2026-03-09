@@ -25,3 +25,9 @@ playground.xcworkspace
 
 # Archives
 *.xcarchive
+
+# Convex
+convex/.env.local
+convex/.convex/
+convex/node_modules/
+convex/convex/_generated/

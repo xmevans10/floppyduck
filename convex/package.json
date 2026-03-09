@@ -1,0 +1,12 @@
+{
+  "name": "floppyduck-convex",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "deploy": "convex deploy"
+  },
+  "dependencies": {
+    "convex": "^1.20.0"
+  }
+}
