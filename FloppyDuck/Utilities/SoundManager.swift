@@ -23,6 +23,7 @@ final class SoundManager {
     private var players: [GameSound: AVAudioPlayer] = [:]
     private var soundData: [GameSound: Data] = [:]
     private var bgmPlayer: AVAudioPlayer?
+    private var playBgmPlayer: AVAudioPlayer?
 
     /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
     private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
@@ -77,6 +78,26 @@ final class SoundManager {
         }
     }
 
+    func startPlayMusic() {
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.isEnabled else { return }
+            guard let playBgmPlayer else { return }
+            playBgmPlayer.numberOfLoops = -1
+            playBgmPlayer.volume = 0.10
+            if !playBgmPlayer.isPlaying {
+                playBgmPlayer.currentTime = 0
+                playBgmPlayer.play()
+            }
+        }
+    }
+
+    func stopPlayMusic() {
+        audioQueue.async { [weak self] in
+            self?.playBgmPlayer?.stop()
+        }
+    }
+
     func refreshAudioPreference() {
         audioQueue.async { [weak self] in
             guard let self else { return }
@@ -85,6 +106,7 @@ final class SoundManager {
             }
             self.players.values.forEach { $0.stop() }
             self.bgmPlayer?.stop()
+            self.playBgmPlayer?.stop()
         }
     }
 
@@ -123,6 +145,14 @@ final class SoundManager {
             player.numberOfLoops = -1
             player.prepareToPlay()
             bgmPlayer = player
+        }
+
+        let playData = playBgmWav()
+        if let player = try? AVAudioPlayer(data: playData) {
+            player.volume = 0.10
+            player.numberOfLoops = -1
+            player.prepareToPlay()
+            playBgmPlayer = player
         }
     }
 
@@ -264,16 +294,202 @@ final class SoundManager {
             sine(freq: 990, dur: 0.08, decay: 0.10))
     }
 
-    private func menuBgmWav() -> Data {
-        let melody: [Float] = [392, 440, 523.25, 440, 349.23, 392, 440, 523.25]
-        var s: [Float] = []
-        for note in melody {
-            s += square(freq: note, dur: 0.10, decay: 0.12).map { $0 * 0.32 }
-            s += silence(0.03)
-            s += sine(freq: note / 2, dur: 0.13, decay: 0.20).map { $0 * 0.22 }
-            s += silence(0.02)
+    /// Triangle wave — softer chiptune timbre for bass/background parts.
+    private func triangle(freq: Float, dur: Float, decay: Float = 0) -> [Float] {
+        let count = Int(Float(sr) * dur)
+        return (0..<count).map { i in
+            let t = Float(i) / Float(sr)
+            let env = decay > 0 ? max(0, 1.0 - t / decay) : 1.0
+            let phase = fmod(freq * t, 1.0)
+            let raw = phase < 0.5 ? (4.0 * phase - 1.0) : (3.0 - 4.0 * phase)
+            return raw * 0.5 * env
         }
-        s += silence(0.08)
-        return wav(s)
+    }
+
+    /// Catchy, upbeat 8-bit menu chiptune — bouncy and cheerful like classic NES title screens.
+    private func menuBgmWav() -> Data {
+        // A/B structure for variety. Key of C major, ~120 BPM feel.
+        let bpm: Float = 130
+        let beat = 60.0 / bpm           // duration of one beat
+        let eighth = beat / 2
+        let sixteenth = beat / 4
+
+        // Melody (square wave — bright lead)
+        let melodyA: [(Float, Float)] = [
+            // Bar 1: C E G A — ascending cheerful
+            (523.25, eighth), (659.25, eighth), (783.99, eighth), (880.00, eighth),
+            // Bar 2: G . E C — descending answer
+            (783.99, eighth), (783.99, sixteenth), (0, sixteenth), (659.25, eighth), (523.25, eighth),
+            // Bar 3: D F A G — stepping up
+            (587.33, eighth), (698.46, eighth), (880.00, eighth), (783.99, eighth),
+            // Bar 4: E . C . — resolve
+            (659.25, beat), (523.25, beat),
+        ]
+
+        let melodyB: [(Float, Float)] = [
+            // Bar 5: A G E C — descending run
+            (880.00, eighth), (783.99, eighth), (659.25, eighth), (523.25, eighth),
+            // Bar 6: D . F G — stepwise
+            (587.33, eighth), (587.33, sixteenth), (0, sixteenth), (698.46, eighth), (783.99, eighth),
+            // Bar 7: high C B A G — cascading
+            (1046.50, eighth), (987.77, eighth), (880.00, eighth), (783.99, eighth),
+            // Bar 8: E . C . — resolve home
+            (659.25, beat), (523.25, beat),
+        ]
+
+        // Bass line (triangle — warm, rounded)
+        let bassA: [(Float, Float)] = [
+            (130.81, beat), (164.81, beat), (196.00, beat), (220.00, beat),
+            (196.00, beat), (174.61, beat), (164.81, beat), (130.81, beat),
+        ]
+
+        let bassB: [(Float, Float)] = [
+            (220.00, beat), (196.00, beat), (164.81, beat), (130.81, beat),
+            (146.83, beat), (174.61, beat), (164.81, beat), (130.81, beat),
+        ]
+
+        func renderMelody(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += square(freq: freq, dur: dur, decay: dur * 1.1).map { $0 * 0.28 }
+                }
+            }
+            return s
+        }
+
+        func renderBass(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += triangle(freq: freq, dur: dur, decay: dur * 1.2).map { $0 * 0.22 }
+                }
+            }
+            return s
+        }
+
+        // Mix melody + bass for each section, then combine A + B
+        func mixLayers(_ layer1: [Float], _ layer2: [Float]) -> [Float] {
+            let len = max(layer1.count, layer2.count)
+            return (0..<len).map { i in
+                let a = i < layer1.count ? layer1[i] : 0
+                let b = i < layer2.count ? layer2[i] : 0
+                return a + b
+            }
+        }
+
+        let sectionA = mixLayers(renderMelody(melodyA), renderBass(bassA))
+        let sectionB = mixLayers(renderMelody(melodyB), renderBass(bassB))
+
+        // Full loop: A → B (repeats via AVAudioPlayer)
+        var full = sectionA + sectionB
+        full += silence(0.06)  // tiny gap before loop point
+
+        return wav(full)
+    }
+
+    /// Energetic 8-bit gameplay music — driving rhythm that builds tension without being distracting.
+    private func playBgmWav() -> Data {
+        let bpm: Float = 150
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+        let sixteenth = beat / 4
+
+        // Minimal, rhythmic melody — mostly arpeggiated chords so it doesn't distract
+        let melodyA: [(Float, Float)] = [
+            // Fast arpeggio pattern — C minor feel for tension
+            (523.25, sixteenth), (622.25, sixteenth), (783.99, sixteenth), (622.25, sixteenth),
+            (523.25, sixteenth), (622.25, sixteenth), (783.99, sixteenth), (622.25, sixteenth),
+            // Shift to Ab
+            (830.61, sixteenth), (622.25, sixteenth), (523.25, sixteenth), (622.25, sixteenth),
+            (830.61, sixteenth), (622.25, sixteenth), (523.25, sixteenth), (0, sixteenth),
+            // Repeat with variation
+            (523.25, sixteenth), (622.25, sixteenth), (783.99, sixteenth), (932.33, sixteenth),
+            (783.99, sixteenth), (622.25, sixteenth), (523.25, sixteenth), (622.25, sixteenth),
+            (783.99, sixteenth), (622.25, sixteenth), (523.25, sixteenth), (466.16, sixteenth),
+            (523.25, eighth), (0, eighth),
+        ]
+
+        let melodyB: [(Float, Float)] = [
+            // Rising tension
+            (587.33, sixteenth), (698.46, sixteenth), (880.00, sixteenth), (698.46, sixteenth),
+            (587.33, sixteenth), (698.46, sixteenth), (880.00, sixteenth), (698.46, sixteenth),
+            (932.33, sixteenth), (698.46, sixteenth), (587.33, sixteenth), (698.46, sixteenth),
+            (932.33, sixteenth), (698.46, sixteenth), (587.33, sixteenth), (0, sixteenth),
+            // Resolve down
+            (523.25, sixteenth), (622.25, sixteenth), (783.99, sixteenth), (622.25, sixteenth),
+            (523.25, sixteenth), (622.25, sixteenth), (783.99, sixteenth), (622.25, sixteenth),
+            (523.25, eighth), (0, sixteenth), (523.25, sixteenth),
+            (0, eighth), (0, eighth),
+        ]
+
+        // Driving bass line
+        let bassA: [(Float, Float)] = [
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (103.83, eighth), (0, sixteenth), (103.83, sixteenth),
+            (103.83, eighth), (0, sixteenth), (103.83, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (116.54, eighth), (116.54, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, eighth),
+        ]
+
+        let bassB: [(Float, Float)] = [
+            (146.83, eighth), (0, sixteenth), (146.83, sixteenth),
+            (146.83, eighth), (0, sixteenth), (146.83, sixteenth),
+            (116.54, eighth), (0, sixteenth), (116.54, sixteenth),
+            (116.54, eighth), (0, sixteenth), (116.54, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, eighth),
+            (0, beat),
+        ]
+
+        func renderMelody(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += square(freq: freq, dur: dur * 0.85, decay: dur * 0.9).map { $0 * 0.20 }
+                    s += silence(dur * 0.15)
+                }
+            }
+            return s
+        }
+
+        func renderBass(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += triangle(freq: freq, dur: dur * 0.9, decay: dur).map { $0 * 0.18 }
+                    s += silence(dur * 0.1)
+                }
+            }
+            return s
+        }
+
+        func mixLayers(_ layer1: [Float], _ layer2: [Float]) -> [Float] {
+            let len = max(layer1.count, layer2.count)
+            return (0..<len).map { i in
+                let a = i < layer1.count ? layer1[i] : 0
+                let b = i < layer2.count ? layer2[i] : 0
+                return a + b
+            }
+        }
+
+        let sectionA = mixLayers(renderMelody(melodyA), renderBass(bassA))
+        let sectionB = mixLayers(renderMelody(melodyB), renderBass(bassB))
+
+        var full = sectionA + sectionB
+        full += silence(0.04)
+        return wav(full)
     }
 }

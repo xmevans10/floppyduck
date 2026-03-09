@@ -3,32 +3,17 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var manager: GameManager
     @EnvironmentObject var auth: AuthManager
-    @State private var titlePulse: Bool = false
     @State private var titleFlashOffset: CGFloat = -180
 
     private let icons = PixelIconFactory.shared
 
+    @State private var cloudOffset: CGFloat = 0
+
     var body: some View {
         ZStack {
-            // Sky gradient background
-            LinearGradient(
-                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            // Ground strip at bottom
-            VStack(spacing: 0) {
-                Spacer()
-                Rectangle()
-                    .fill(GK.Colors.grassLight)
-                    .frame(height: 6)
-                Rectangle()
-                    .fill(GK.Colors.groundTan)
-                    .frame(height: 50)
-            }
-            .ignoresSafeArea(edges: .bottom)
+            // Enhanced 8-bit sky background
+            homeBackground
+                .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -73,30 +58,56 @@ struct HomeView: View {
     // MARK: - Title
 
     private var titleSection: some View {
+        // Base text (visible color)
         VStack(spacing: 4) {
             titleLine("FLOPPY", color: .white, size: 30)
             titleLine("DUCK", color: GK.Colors.scoreYellow, size: 30)
         }
         .overlay {
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.clear, Color.white.opacity(0.55), Color.clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 86, height: 74)
-                .rotationEffect(.degrees(14))
-                .offset(x: titleFlashOffset)
-                .blendMode(.screen)
-                .allowsHitTesting(false)
-        }
-        .clipped()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
-                titlePulse = true
+            // Sheen masked to letter shapes — no bounding box, shaped precisely to text
+            VStack(spacing: 4) {
+                titleLine("FLOPPY", color: .white, size: 30)
+                titleLine("DUCK", color: GK.Colors.scoreYellow, size: 30)
             }
+            .mask {
+                VStack(spacing: 4) {
+                    Text("FLOPPY")
+                        .font(.custom(GK.pixelFontName, size: 30))
+                    Text("DUCK")
+                        .font(.custom(GK.pixelFontName, size: 30))
+                }
+            }
+            .overlay {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                Color.white.opacity(0.15),
+                                Color.white.opacity(0.65),
+                                Color.white.opacity(0.15),
+                                Color.clear,
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 50, height: 100)
+                    .rotationEffect(.degrees(14))
+                    .offset(x: titleFlashOffset)
+                    .blendMode(.screen)
+                    .allowsHitTesting(false)
+            }
+            .mask {
+                VStack(spacing: 4) {
+                    Text("FLOPPY")
+                        .font(.custom(GK.pixelFontName, size: 30))
+                    Text("DUCK")
+                        .font(.custom(GK.pixelFontName, size: 30))
+                }
+            }
+        }
+        .onAppear {
             withAnimation(.linear(duration: 1.65).repeatForever(autoreverses: false)) {
                 titleFlashOffset = 180
             }
@@ -109,7 +120,85 @@ struct HomeView: View {
             .foregroundColor(color)
             .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: 4)
             .shadow(color: Color.black.opacity(0.35), radius: 0, x: 0, y: 2)
-            .scaleEffect(titlePulse ? 1.04 : 0.98)
+    }
+
+    // MARK: - 8-bit Home Background
+
+    private var homeBackground: some View {
+        GeometryReader { geo in
+            ZStack {
+                // Rich sky gradient
+                LinearGradient(
+                    stops: [
+                        .init(color: Color(red: 0.22, green: 0.50, blue: 0.85), location: 0.0),
+                        .init(color: Color(red: 0.38, green: 0.65, blue: 0.90), location: 0.3),
+                        .init(color: Color(red: 0.58, green: 0.80, blue: 0.94), location: 0.6),
+                        .init(color: Color(red: 0.78, green: 0.92, blue: 0.97), location: 0.85),
+                        .init(color: Color(red: 0.90, green: 0.95, blue: 0.98), location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                // Scrolling pixel clouds
+                HStack(spacing: 60) {
+                    ForEach(0..<6, id: \.self) { i in
+                        Image(uiImage: TextureFactory.shared.cloudUIImage())
+                            .interpolation(.none)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: [70, 90, 55, 80, 65, 95][i],
+                                   height: [28, 36, 22, 32, 26, 38][i])
+                            .opacity([0.7, 0.85, 0.6, 0.75, 0.65, 0.8][i])
+                            .offset(y: [0, -20, 15, -35, 5, -15][i])
+                    }
+                }
+                .offset(x: cloudOffset)
+                .onAppear {
+                    withAnimation(.linear(duration: 30).repeatForever(autoreverses: false)) {
+                        cloudOffset = -300
+                    }
+                }
+                .frame(maxHeight: geo.size.height * 0.4, alignment: .top)
+                .padding(.top, 40)
+
+                // Distant pixel hills
+                VStack {
+                    Spacer()
+                    Image(uiImage: TextureFactory.shared.hillsUIImage())
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(height: 80)
+                        .opacity(0.5)
+                        .offset(y: -50)
+                }
+
+                // Ground at bottom — layered grass + dirt
+                VStack(spacing: 0) {
+                    Spacer()
+
+                    // Dark grass edge
+                    Rectangle()
+                        .fill(Color(red: 0.28, green: 0.52, blue: 0.16))
+                        .frame(height: 3)
+
+                    // Grass
+                    Rectangle()
+                        .fill(Color(red: 0.40, green: 0.72, blue: 0.22))
+                        .frame(height: 14)
+
+                    // Dirt with subtle pixel pattern
+                    ZStack {
+                        Rectangle()
+                            .fill(Color(red: 0.78, green: 0.70, blue: 0.50))
+                        // Subtle diagonal stripe effect
+                        Rectangle()
+                            .fill(Color(red: 0.72, green: 0.64, blue: 0.44).opacity(0.4))
+                    }
+                    .frame(height: 45)
+                }
+            }
+        }
     }
 
     // MARK: - Bread Counter

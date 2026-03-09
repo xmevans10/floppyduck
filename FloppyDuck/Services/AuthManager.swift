@@ -17,6 +17,9 @@ final class AuthManager: ObservableObject {
     private let client: ConvexClient
     private var didAttemptBootstrap = false
 
+    /// Retained coordinator — prevents deallocation while Apple Sign In sheet is open.
+    private var activeCoordinator: AppleSignInCoordinator?
+
     init(gameManager: GameManager,
          identityStore: IdentityStore = .shared,
          client: ConvexClient = .shared) {
@@ -113,7 +116,10 @@ final class AuthManager: ObservableObject {
         defer { isBusy = false }
 
         do {
-            let applePayload = try await AppleSignInCoordinator().signIn()
+            let coordinator = AppleSignInCoordinator()
+            activeCoordinator = coordinator  // retain until complete
+            let applePayload = try await coordinator.signIn()
+            activeCoordinator = nil
             let deviceId = identityStore.getOrCreateDeviceId()
 
             await client.setAuthContext(deviceId: deviceId, sessionToken: nil)
@@ -150,6 +156,7 @@ final class AuthManager: ObservableObject {
             showRankedSignInPrompt = false
             needsCloudRestore = false
         } catch {
+            activeCoordinator = nil
             if let authError = error as? AuthError,
                case .canceled = authError {
                 statusMessage = "Sign in canceled."

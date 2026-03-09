@@ -116,6 +116,16 @@ final class TextureFactory {
         return renderMallardDuck(wingPhase: 1, pixelSize: pixelScale)
     }
 
+    /// UIImage of pixel cloud for SwiftUI home background
+    func cloudUIImage() -> UIImage {
+        return renderPixelCloud()
+    }
+
+    /// UIImage of pixel hills for SwiftUI home background
+    func hillsUIImage() -> UIImage {
+        return renderPixelHills()
+    }
+
     // MARK: - Skinned Duck API
 
     /// Duck texture for any skin (SpriteKit).
@@ -421,47 +431,81 @@ final class TextureFactory {
         }
     }
 
-    // MARK: - Sky (warm blue gradient)
+    // MARK: - Sky (enhanced 8-bit gradient with dithered color banding)
 
     private func renderSky() -> UIImage {
         let size = CGSize(width: GK.worldWidth, height: GK.worldHeight)
+        let ps: CGFloat = 4  // pixel size for 8-bit feel
+
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Base gradient
             let colors = [
-                UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1).cgColor,
-                UIColor(red: 0.55, green: 0.78, blue: 0.92, alpha: 1).cgColor,
-                UIColor(red: 0.75, green: 0.90, blue: 0.95, alpha: 1).cgColor
+                UIColor(red: 0.25, green: 0.55, blue: 0.88, alpha: 1).cgColor,
+                UIColor(red: 0.40, green: 0.68, blue: 0.92, alpha: 1).cgColor,
+                UIColor(red: 0.60, green: 0.82, blue: 0.95, alpha: 1).cgColor,
+                UIColor(red: 0.78, green: 0.92, blue: 0.97, alpha: 1).cgColor,
             ]
             let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
                 colors: colors as CFArray,
-                locations: [0.0, 0.5, 1.0]
+                locations: [0.0, 0.3, 0.65, 1.0]
             )!
             c.drawLinearGradient(gradient,
                 start: CGPoint(x: 0, y: 0),
                 end: CGPoint(x: 0, y: size.height),
                 options: [])
+
+            // 8-bit dithering effect — scattered pixels at band transitions for retro feel
+            let ditherColor = UIColor(red: 0.50, green: 0.75, blue: 0.93, alpha: 0.35)
+            c.setFillColor(ditherColor.cgColor)
+            let bandPositions: [CGFloat] = [size.height * 0.25, size.height * 0.50, size.height * 0.75]
+            for bandY in bandPositions {
+                var dx: CGFloat = 0
+                while dx < size.width {
+                    let offset = CGFloat(Int(dx / ps) % 2 == 0 ? 0 : 1) * ps
+                    c.fill(CGRect(x: dx, y: bandY + offset, width: ps, height: ps))
+                    dx += ps * 3
+                }
+            }
+
+            // Subtle sun glow in upper right corner
+            let sunX = size.width * 0.82
+            let sunY = size.height * 0.12
+            let sunGlow = UIColor(red: 1.0, green: 0.95, blue: 0.80, alpha: 0.12)
+            c.setFillColor(sunGlow.cgColor)
+            for ring in stride(from: 40, through: 8, by: -ps) {
+                let inset = (40 - ring) / 2
+                c.fillEllipse(in: CGRect(x: sunX - ring / 2 + CGFloat(inset),
+                                          y: sunY - ring / 2 + CGFloat(inset),
+                                          width: ring, height: ring))
+            }
         }
     }
 
-    // MARK: - Pixel Cloud
+    // MARK: - Pixel Cloud (enhanced with highlights and shading)
 
     private func renderPixelCloud() -> UIImage {
         let ps: CGFloat = 5  // pixel size
-        let W = UIColor(white: 1.0, alpha: 0.92)
-        let L = UIColor(white: 0.88, alpha: 0.85)   // subtle shadow
+        let W = UIColor(white: 1.0, alpha: 0.95)
+        let H = UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0) // bright highlight
+        let M = UIColor(white: 0.95, alpha: 0.90)   // mid-tone
+        let L = UIColor(white: 0.85, alpha: 0.82)   // shadow
+        let D = UIColor(white: 0.78, alpha: 0.70)   // deep shadow
         let C = UIColor.clear
 
-        // 16×7 pixel cloud — chunky retro style
+        // 18×8 pixel cloud — chunkier with more dimension
         let grid: [[UIColor]] = [
-            [C,C,C,C,W,W,W,C,C,C,C,C,C,C,C,C],
-            [C,C,C,W,W,W,W,W,C,C,W,W,C,C,C,C],
-            [C,C,W,W,W,W,W,W,W,W,W,W,W,C,C,C],
-            [C,W,W,W,W,W,W,W,W,W,W,W,W,W,C,C],
-            [W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,C],
-            [C,L,L,W,W,W,W,W,W,W,W,W,W,L,C,C],
-            [C,C,C,L,L,L,L,L,L,L,L,L,C,C,C,C],
+            [C,C,C,C,C,H,H,H,C,C,C,C,C,C,C,C,C,C],
+            [C,C,C,C,H,W,W,W,H,C,C,H,H,C,C,C,C,C],
+            [C,C,C,H,W,H,W,W,W,H,H,W,W,H,C,C,C,C],
+            [C,C,H,W,W,H,H,W,W,W,W,W,W,W,H,C,C,C],
+            [C,H,W,W,W,W,W,W,W,W,W,W,W,W,W,H,C,C],
+            [H,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,H,C],
+            [C,M,M,W,W,W,W,W,W,W,W,W,W,W,M,M,C,C],
+            [C,C,C,L,L,D,L,L,L,L,L,L,D,L,C,C,C,C],
         ]
 
         let gridW = grid[0].count
@@ -514,18 +558,45 @@ final class TextureFactory {
             }
         }
 
-        let hillFill = UIColor(red: 0.50, green: 0.72, blue: 0.45, alpha: 0.40)
-        let hillTop  = UIColor(red: 0.42, green: 0.62, blue: 0.38, alpha: 0.45)  // darker top edge
+        let hillBase  = UIColor(red: 0.45, green: 0.68, blue: 0.38, alpha: 0.50)
+        let hillMid   = UIColor(red: 0.52, green: 0.74, blue: 0.42, alpha: 0.45)
+        let hillTop   = UIColor(red: 0.38, green: 0.58, blue: 0.32, alpha: 0.55)  // darker top edge
+        let hillLight = UIColor(red: 0.58, green: 0.80, blue: 0.50, alpha: 0.35)  // highlight
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
             for x in 0..<gridW {
-                for y in 0..<heightMap[x] {
+                let hillH = heightMap[x]
+                for y in 0..<hillH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let color = (y == heightMap[x] - 1) ? hillTop : hillFill
+                    // Gradient within hill: top edge dark, middle light, base medium
+                    let ratio = CGFloat(y) / max(1, CGFloat(hillH))
+                    let color: UIColor
+                    if y == hillH - 1 {
+                        color = hillTop
+                    } else if y == hillH - 2 && hillH > 3 {
+                        color = hillLight
+                    } else if ratio > 0.6 {
+                        color = hillMid
+                    } else {
+                        color = hillBase
+                    }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Scatter pixel bushes/details on hill tops
+            let bushColor = UIColor(red: 0.35, green: 0.55, blue: 0.28, alpha: 0.50)
+            c.setFillColor(bushColor.cgColor)
+            for x in stride(from: 3, to: gridW - 3, by: 7) {
+                let hillH = heightMap[x]
+                if hillH > 4 {
+                    let yPos = h - CGFloat(hillH + 1) * ps
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps * 2, height: ps))
+                    c.fill(CGRect(x: CGFloat(x - 1) * ps, y: yPos + ps, width: ps, height: ps))
+                    c.fill(CGRect(x: CGFloat(x + 2) * ps, y: yPos + ps, width: ps, height: ps))
                 }
             }
         }
