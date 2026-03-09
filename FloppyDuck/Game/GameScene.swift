@@ -17,6 +17,7 @@ protocol GameSceneDelegate: AnyObject {
     func gameDidScore(_ score: Int)
     func gameDidEnd(score: Int)
     func botDidScore(_ botScore: Int)
+    func gameDidWinBotLadder(score: Int)
 }
 
 // MARK: - GameScene
@@ -40,6 +41,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let playerSkin: DuckSkin
     private let botDiff: BotDifficulty?
     private let opponentName: String?
+    private let targetScore: Int?
 
     // Layers
     private let worldNode = SKNode()
@@ -90,12 +92,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
          mode: GameMode = .classic,
          skin: DuckSkin = .classic,
          botDifficulty: BotDifficulty? = nil,
-         opponentName: String? = nil) {
+         opponentName: String? = nil,
+         targetScore: Int? = nil) {
         self.prng = SeededRandom(seed: seed)
         self.mode = mode
         self.playerSkin = skin
         self.botDiff = botDifficulty
         self.opponentName = opponentName
+        self.targetScore = targetScore
         super.init(size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         self.scaleMode = .aspectFill
         self.gapPositions = prng.generateGapPositions()
@@ -753,6 +757,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
 
             gameDelegate?.gameDidScore(score)
+
+            // Check if bot ladder target score is reached — trigger win!
+            if mode == .vsBot,
+               let target = targetScore,
+               score >= target {
+                celebrateBotLadderWin()
+            }
+
             return
         }
 
@@ -765,12 +777,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         phase = .dead
         Haptic.death()
         SoundManager.shared.play(.death)
+        SoundManager.shared.stopPlayMusic()
 
         // Bump duck above ground layer so it doesn't clip behind ground tiles
         duck.zPosition = 55
 
+        // Freeze all scrolling layers — parallax stops immediately on death
         pipeLayer.isPaused = true
         groundLayer.isPaused = true
+        backgroundLayer.isPaused = true
 
         let flash = SKSpriteNode(color: .white, size: self.size)
         flash.position = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -812,12 +827,99 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
     }
 
+    // MARK: - Bot Ladder Win Celebration
+
+    private func celebrateBotLadderWin() {
+        phase = .dead  // Stop gameplay
+        SoundManager.shared.stopPlayMusic()
+        SoundManager.shared.play(.win)
+        Haptic.win()
+
+        // Freeze world
+        pipeLayer.isPaused = true
+        groundLayer.isPaused = true
+        backgroundLayer.isPaused = true
+
+        // Duck victory flight — float upward triumphantly
+        duck.physicsBody?.isDynamic = false
+        duck.removeAction(forKey: "wings")
+        startWingAnimation()
+        duck.zPosition = 100
+        duck.zRotation = 0
+
+        let victoryFlight = SKAction.sequence([
+            SKAction.group([
+                SKAction.moveBy(x: 0, y: 60, duration: 0.5),
+                SKAction.scale(to: 1.3, duration: 0.5),
+            ]),
+            SKAction.group([
+                SKAction.moveBy(x: 0, y: -20, duration: 0.3),
+                SKAction.scale(to: 1.0, duration: 0.3),
+            ]),
+        ])
+        duck.run(victoryFlight)
+
+        // Celebratory pixel particles — burst of stars/sparkles
+        for i in 0..<20 {
+            let star = SKShapeNode(circleOfRadius: CGFloat.random(in: 2...5))
+            star.fillColor = [
+                UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1),   // gold
+                UIColor.white,
+                UIColor(red: 1.0, green: 0.60, blue: 0.0, alpha: 1),   // orange
+                UIColor(red: 0.42, green: 0.73, blue: 0.20, alpha: 1), // green
+            ].randomElement()!
+            star.strokeColor = .clear
+            star.position = duck.position
+            star.zPosition = 99
+
+            let angle = CGFloat.random(in: 0...(2 * .pi))
+            let distance = CGFloat.random(in: 80...200)
+            let dx = cos(angle) * distance
+            let dy = sin(angle) * distance
+            let delay = Double(i) * 0.03
+
+            addChild(star)
+
+            star.run(SKAction.sequence([
+                SKAction.wait(forDuration: delay),
+                SKAction.group([
+                    SKAction.moveBy(x: dx, y: dy, duration: 0.8),
+                    SKAction.fadeOut(withDuration: 0.8),
+                    SKAction.scale(to: 0.1, duration: 0.8),
+                ]),
+                SKAction.removeFromParent(),
+            ]))
+        }
+
+        // Golden flash
+        let flash = SKSpriteNode(color: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.4),
+                                 size: self.size)
+        flash.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        flash.zPosition = 500
+        addChild(flash)
+        flash.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: 0.5),
+            SKAction.removeFromParent(),
+        ]))
+
+        // Trigger game over after celebration
+        run(SKAction.sequence([
+            SKAction.wait(forDuration: 1.5),
+            SKAction.run { [weak self] in
+                guard let self else { return }
+                self.phase = .gameOver
+                self.gameDelegate?.gameDidWinBotLadder(score: self.score)
+            }
+        ]))
+    }
+
     // MARK: - Reset
 
     func resetGame() {
         pipeLayer.removeAllChildren()
         pipeLayer.isPaused = false
         groundLayer.isPaused = false
+        backgroundLayer.isPaused = false
 
         pipeIndex = 0
         pipeTimer = 0

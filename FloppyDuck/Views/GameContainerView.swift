@@ -10,6 +10,8 @@ struct GameContainerView: View {
     @State private var phase: GamePhase = .ready
     @State private var score: Int = 0
     @State private var botFinalScore: Int = 0
+    @State private var showBotLadderCelebration: Bool = false
+    @State private var celebrationPulse: Bool = false
     @State private var countdownValue: Int = 3
 
     // Match sync states (head-to-head)
@@ -106,11 +108,15 @@ struct GameContainerView: View {
             mode: config.mode,
             skin: skin,
             botDifficulty: config.botDifficulty,
-            opponentName: config.opponentName
+            opponentName: config.opponentName,
+            targetScore: config.targetScore
         )
 
         let newBridge = GameSceneBridge(
-            onStart: { phase = .playing },
+            onStart: {
+                phase = .playing
+                SoundManager.shared.startPlayMusic()
+            },
             onScore: { newScore in
                 score = newScore
 
@@ -125,6 +131,9 @@ struct GameContainerView: View {
             },
             onBotScore: { bs in
                 botFinalScore = bs
+            },
+            onBotLadderWin: { finalScore in
+                handleBotLadderWin(finalScore: finalScore, scene: newScene)
             }
         )
 
@@ -139,11 +148,33 @@ struct GameContainerView: View {
         }
     }
 
+    private func handleBotLadderWin(finalScore: Int, scene: GameScene) {
+        score = finalScore
+        previousBest = manager.stats.bestScore
+        botFinalScore = scene.botScore
+
+        manager.recordGame(score: finalScore, won: true)
+
+        if let botId = config.botCharacterId {
+            manager.beatBot(botId)
+        }
+
+        SoundManager.shared.play(.win)
+        Haptic.win()
+
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+            phase = .gameOver
+            showBotLadderCelebration = true
+        }
+        startGameOverAnimation()
+    }
+
     private func handleGameEnd(finalScore: Int, scene: GameScene) {
         score = finalScore
         previousBest = manager.stats.bestScore
         botFinalScore = scene.botScore
 
+        SoundManager.shared.stopPlayMusic()
         opponentPollTask?.cancel()
 
         if isHeadToHead {
@@ -505,10 +536,31 @@ struct GameContainerView: View {
             }
         } else if config.mode == .vsBot {
             let playerWon = isBotLadder ? ladderWon : score > botFinalScore
-            Text(playerWon ? "YOU WIN!" : "TRY AGAIN")
-                .font(.custom(GK.pixelFontName, size: 22))
-                .foregroundColor(playerWon ? GK.Colors.scoreYellow : .white)
-                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+
+            if playerWon && showBotLadderCelebration {
+                // Celebration title with golden pulse
+                VStack(spacing: 6) {
+                    Text("⭐ YOU WIN! ⭐")
+                        .font(.custom(GK.pixelFontName, size: 24))
+                        .foregroundColor(GK.Colors.scoreYellow)
+                        .shadow(color: Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.8), radius: 8, x: 0, y: 0)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+                        .scaleEffect(celebrationPulse ? 1.08 : 0.95)
+                        .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: celebrationPulse)
+                        .onAppear { celebrationPulse = true }
+
+                    Text("BOT DEFEATED!")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.scoreYellow.opacity(0.9))
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+                }
+                .transition(.scale.combined(with: .opacity))
+            } else {
+                Text(playerWon ? "YOU WIN!" : "TRY AGAIN")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(playerWon ? GK.Colors.scoreYellow : .white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            }
 
             if isBotLadder, let target = config.targetScore {
                 Text(playerWon ? "TARGET: \(target) ✓" : "NEED: \(target)")
@@ -683,19 +735,23 @@ private final class GameSceneBridge: GameSceneDelegate {
     let onScore: (Int) -> Void
     let onEnd: (Int) -> Void
     let onBotScore: (Int) -> Void
+    let onBotLadderWin: (Int) -> Void
 
     init(onStart: @escaping () -> Void,
          onScore: @escaping (Int) -> Void,
          onEnd: @escaping (Int) -> Void,
-         onBotScore: @escaping (Int) -> Void = { _ in }) {
+         onBotScore: @escaping (Int) -> Void = { _ in },
+         onBotLadderWin: @escaping (Int) -> Void = { _ in }) {
         self.onStart = onStart
         self.onScore = onScore
         self.onEnd = onEnd
         self.onBotScore = onBotScore
+        self.onBotLadderWin = onBotLadderWin
     }
 
     func gameDidStart() { onStart() }
     func gameDidScore(_ score: Int) { onScore(score) }
     func gameDidEnd(score: Int) { onEnd(score) }
     func botDidScore(_ botScore: Int) { onBotScore(botScore) }
+    func gameDidWinBotLadder(score: Int) { onBotLadderWin(score) }
 }
