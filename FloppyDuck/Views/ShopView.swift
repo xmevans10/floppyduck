@@ -33,6 +33,7 @@ struct ShopView: View {
                             .padding(8)
                             .background(Circle().fill(Color.black.opacity(0.15)))
                     }
+                    .accessibilityLabel("Back to home")
                     Spacer()
                     Text("SHOP")
                         .font(.custom(GK.pixelFontName, size: 22))

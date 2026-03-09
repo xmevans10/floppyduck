@@ -72,10 +72,10 @@ final class TextureFactory {
     }
 
     /// Sky gradient background
-    func skyTexture() -> SKTexture {
-        let key = "sky"
+    func skyTexture(theme: GK.SkyTheme = .day) -> SKTexture {
+        let key = "sky_\(theme.rawValue)"
         if let cached = cache[key] { return cached }
-        let tex = SKTexture(image: renderSky())
+        let tex = SKTexture(image: renderSky(theme: theme))
         tex.filteringMode = .nearest
         cache[key] = tex
         return tex
@@ -96,6 +96,16 @@ final class TextureFactory {
         let key = "trees"
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderPixelTrees())
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
+    /// Pixel-art foreground bushes with small flowers
+    func foregroundBushTexture() -> SKTexture {
+        let key = "foreground_bushes"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderForegroundBushes())
         tex.filteringMode = .nearest
         cache[key] = tex
         return tex
@@ -433,7 +443,7 @@ final class TextureFactory {
 
     // MARK: - Sky (enhanced 8-bit gradient with dithered color banding)
 
-    private func renderSky() -> UIImage {
+    private func renderSky(theme: GK.SkyTheme = .day) -> UIImage {
         let size = CGSize(width: GK.worldWidth, height: GK.worldHeight)
         let ps: CGFloat = 4  // pixel size for 8-bit feel
 
@@ -441,12 +451,26 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Base gradient
+            // Theme-aware gradient colors
+            let topColor = theme.skyTopColor
+            let bottomColor = theme.skyBottomColor
+            var topR: CGFloat = 0, topG: CGFloat = 0, topB: CGFloat = 0
+            var botR: CGFloat = 0, botG: CGFloat = 0, botB: CGFloat = 0
+            topColor.getRed(&topR, green: &topG, blue: &topB, alpha: nil)
+            bottomColor.getRed(&botR, green: &botG, blue: &botB, alpha: nil)
+
+            let midR1 = topR + (botR - topR) * 0.35
+            let midG1 = topG + (botG - topG) * 0.35
+            let midB1 = topB + (botB - topB) * 0.35
+            let midR2 = topR + (botR - topR) * 0.70
+            let midG2 = topG + (botG - topG) * 0.70
+            let midB2 = topB + (botB - topB) * 0.70
+
             let colors = [
-                UIColor(red: 0.25, green: 0.55, blue: 0.88, alpha: 1).cgColor,
-                UIColor(red: 0.40, green: 0.68, blue: 0.92, alpha: 1).cgColor,
-                UIColor(red: 0.60, green: 0.82, blue: 0.95, alpha: 1).cgColor,
-                UIColor(red: 0.78, green: 0.92, blue: 0.97, alpha: 1).cgColor,
+                UIColor(red: topR, green: topG, blue: topB, alpha: 1).cgColor,
+                UIColor(red: midR1, green: midG1, blue: midB1, alpha: 1).cgColor,
+                UIColor(red: midR2, green: midG2, blue: midB2, alpha: 1).cgColor,
+                UIColor(red: botR, green: botG, blue: botB, alpha: 1).cgColor,
             ]
             let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
@@ -458,8 +482,13 @@ final class TextureFactory {
                 end: CGPoint(x: 0, y: size.height),
                 options: [])
 
-            // 8-bit dithering effect — scattered pixels at band transitions for retro feel
-            let ditherColor = UIColor(red: 0.50, green: 0.75, blue: 0.93, alpha: 0.35)
+            // 8-bit dithering effect — scattered pixels at band transitions
+            let ditherColor = UIColor(
+                red: (topR + botR) / 2,
+                green: (topG + botG) / 2,
+                blue: (topB + botB) / 2,
+                alpha: 0.25
+            )
             c.setFillColor(ditherColor.cgColor)
             let bandPositions: [CGFloat] = [size.height * 0.25, size.height * 0.50, size.height * 0.75]
             for bandY in bandPositions {
@@ -471,11 +500,19 @@ final class TextureFactory {
                 }
             }
 
-            // Subtle sun glow in upper right corner
+            // Sun/moon glow based on theme
             let sunX = size.width * 0.82
             let sunY = size.height * 0.12
-            let sunGlow = UIColor(red: 1.0, green: 0.95, blue: 0.80, alpha: 0.12)
-            c.setFillColor(sunGlow.cgColor)
+            let glowColor: UIColor
+            switch theme {
+            case .day:
+                glowColor = UIColor(red: 1.0, green: 0.95, blue: 0.80, alpha: 0.12)
+            case .sunset:
+                glowColor = UIColor(red: 1.0, green: 0.60, blue: 0.20, alpha: 0.20)
+            case .night:
+                glowColor = UIColor(red: 0.80, green: 0.85, blue: 1.0, alpha: 0.15)
+            }
+            c.setFillColor(glowColor.cgColor)
             for ring in stride(from: 40, through: 8, by: -ps) {
                 let inset = (40 - ring) / 2
                 c.fillEllipse(in: CGRect(x: sunX - ring / 2 + CGFloat(inset),
@@ -933,6 +970,55 @@ final class TextureFactory {
                 // Legs
                 c.fill(CGRect(x: bx, y: by + ps, width: ps, height: ps * 2))
                 c.fill(CGRect(x: bx + 5 * ps, y: by + ps, width: ps, height: ps * 2))
+            }
+        }
+    }
+
+    // MARK: - Foreground Bushes (near-field parallax)
+
+    private func renderForegroundBushes() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 30
+        let ps: CGFloat = 3  // slightly finer pixels for foreground detail
+
+        let darkGreen  = UIColor(red: 0.20, green: 0.48, blue: 0.15, alpha: 0.90)
+        let lightGreen = UIColor(red: 0.35, green: 0.65, blue: 0.22, alpha: 0.85)
+        let flowerRed  = UIColor(red: 0.90, green: 0.25, blue: 0.30, alpha: 0.90)
+        let flowerYel  = UIColor(red: 1.00, green: 0.85, blue: 0.20, alpha: 0.90)
+        let flowerPurp = UIColor(red: 0.65, green: 0.30, blue: 0.80, alpha: 0.90)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Scatter small bush clusters along the strip
+            var x: CGFloat = 0
+            while x < w {
+                let bushWidth = CGFloat.random(in: 5...9) * ps
+                let bushHeight = CGFloat.random(in: 3...5) * ps
+                let baseY = h - bushHeight
+
+                // Bush body (rounded rectangle of pixels)
+                for row in 0..<Int(bushHeight / ps) {
+                    let indent = row == 0 ? ps : 0  // taper top row
+                    let rowWidth = bushWidth - indent * 2
+                    for col in stride(from: indent, to: indent + rowWidth, by: ps) {
+                        let color = (row + Int(col / ps)) % 3 == 0 ? lightGreen : darkGreen
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: x + col, y: baseY + CGFloat(row) * ps, width: ps, height: ps))
+                    }
+                }
+
+                // Random flower on top of some bushes
+                if Int.random(in: 0..<3) == 0 {
+                    let flowerColors = [flowerRed, flowerYel, flowerPurp]
+                    let fc = flowerColors.randomElement()!
+                    let fx = x + CGFloat.random(in: ps...(bushWidth - ps))
+                    c.setFillColor(fc.cgColor)
+                    c.fill(CGRect(x: fx, y: baseY - ps, width: ps, height: ps))
+                }
+
+                x += bushWidth + CGFloat.random(in: 2...6) * ps
             }
         }
     }

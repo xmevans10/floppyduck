@@ -42,6 +42,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let botDiff: BotDifficulty?
     private let opponentName: String?
     private let targetScore: Int?
+    private let skyTheme: GK.SkyTheme
 
     // Layers
     private let worldNode = SKNode()
@@ -51,7 +52,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let hudLayer = SKNode()
 
     // Duck
-    private var duck: SKSpriteNode!
+    private var duck: SKSpriteNode! // swiftlint:disable:this implicitly_unwrapped_optional — set in didMove(to:) before any use
     private var duckTextures: [SKTexture] = []
 
     // Bot / opponent score HUD state
@@ -67,7 +68,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Score
     private var scoreLabel: SKLabelNode!
     private var scoreShadow: SKLabelNode!
-    private var scoreBacking: SKShapeNode!
     private var scoreOutlines: [SKLabelNode] = []
 
     // Ground scrolling
@@ -85,6 +85,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var clouds: [SKSpriteNode] = []
     private var hills: [SKSpriteNode] = []
     private var trees: [SKSpriteNode] = []
+    private var foregroundBushes: [SKSpriteNode] = []
 
     // MARK: - Init
 
@@ -97,9 +98,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         self.prng = SeededRandom(seed: seed)
         self.mode = mode
         self.playerSkin = skin
+        SoundManager.shared.activeSkin = skin
         self.botDiff = botDifficulty
         self.opponentName = opponentName
         self.targetScore = targetScore
+        self.skyTheme = GK.SkyTheme.random()
         super.init(size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         self.scaleMode = .aspectFill
         self.gapPositions = prng.generateGapPositions()
@@ -130,6 +133,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupClouds()
         setupHills()
         setupTrees()
+        setupForegroundBushes()
         setupGround()
         setupDuck()
         setupHUD()
@@ -150,12 +154,35 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Background
 
     private func setupBackground() {
-        let skyTex = factory.skyTexture()
+        let skyTex = factory.skyTexture(theme: skyTheme)
         let skyNode = SKSpriteNode(texture: skyTex,
                                     size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         skyNode.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight / 2)
         skyNode.zPosition = -100
         backgroundLayer.addChild(skyNode)
+
+        // Night theme: add twinkling stars
+        if skyTheme.showStars {
+            for _ in 0..<25 {
+                let star = SKShapeNode(circleOfRadius: CGFloat.random(in: 1...2.5))
+                star.fillColor = .white
+                star.strokeColor = .clear
+                star.position = CGPoint(
+                    x: CGFloat.random(in: 10...(GK.worldWidth - 10)),
+                    y: CGFloat.random(in: (GK.worldHeight * 0.45)...(GK.worldHeight - 20))
+                )
+                star.zPosition = -99
+                star.alpha = CGFloat.random(in: 0.3...0.8)
+                backgroundLayer.addChild(star)
+
+                // Twinkle animation
+                let twinkle = SKAction.sequence([
+                    SKAction.fadeAlpha(to: CGFloat.random(in: 0.1...0.3), duration: Double.random(in: 0.8...2.0)),
+                    SKAction.fadeAlpha(to: CGFloat.random(in: 0.6...1.0), duration: Double.random(in: 0.8...2.0))
+                ])
+                star.run(SKAction.repeatForever(twinkle))
+            }
+        }
     }
 
     private func setupClouds() {
@@ -200,6 +227,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             treeNode.alpha = 0.7
             backgroundLayer.addChild(treeNode)
             trees.append(treeNode)
+        }
+    }
+
+    private func setupForegroundBushes() {
+        let bushTex = factory.foregroundBushTexture()
+        for i in 0..<2 {
+            let bushNode = SKSpriteNode(texture: bushTex,
+                                         size: CGSize(width: GK.worldWidth * 2, height: 30))
+            bushNode.anchorPoint = CGPoint(x: 0, y: 0)
+            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight)
+            bushNode.zPosition = 15  // In front of ground (50) but behind pipes
+            bushNode.alpha = 0.85
+            backgroundLayer.addChild(bushNode)
+            foregroundBushes.append(bushNode)
         }
     }
 
@@ -291,13 +332,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - HUD
 
     private func setupHUD() {
-        scoreBacking = SKShapeNode(circleOfRadius: 26)
-        scoreBacking.fillColor = UIColor(white: 0, alpha: 0.25)
-        scoreBacking.strokeColor = .clear
-        scoreBacking.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight - 76)
-        scoreBacking.zPosition = 198
-        hudLayer.addChild(scoreBacking)
-
         // 4 cardinal outlines (N/S/E/W) + 4 diagonal — 8 total, stored directly (no name enumeration)
         let outlineOffsets: [(CGFloat, CGFloat)] = [
             (0, -3), (0, 3), (-3, 0), (3, 0),
@@ -350,25 +384,27 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             label = opponentName ?? "BOT"
         }
 
-        botScoreShadow = SKLabelNode(fontNamed: GK.pixelFontName)
-        botScoreShadow!.fontSize = 14
-        botScoreShadow!.fontColor = UIColor(red: 0.42, green: 0.12, blue: 0.12, alpha: 0.7)
-        botScoreShadow!.position = CGPoint(x: GK.worldWidth / 2 + 1, y: GK.worldHeight - 108)
-        botScoreShadow!.zPosition = 200
-        botScoreShadow!.text = "\(label): 0"
-        botScoreShadow!.verticalAlignmentMode = .center
-        botScoreShadow!.horizontalAlignmentMode = .center
-        hudLayer.addChild(botScoreShadow!)
+        let shadow = SKLabelNode(fontNamed: GK.pixelFontName)
+        shadow.fontSize = 14
+        shadow.fontColor = UIColor(red: 0.42, green: 0.12, blue: 0.12, alpha: 0.7)
+        shadow.position = CGPoint(x: GK.worldWidth / 2 + 1, y: GK.worldHeight - 108)
+        shadow.zPosition = 200
+        shadow.text = "\(label): 0"
+        shadow.verticalAlignmentMode = .center
+        shadow.horizontalAlignmentMode = .center
+        hudLayer.addChild(shadow)
+        botScoreShadow = shadow
 
-        botScoreLabel = SKLabelNode(fontNamed: GK.pixelFontName)
-        botScoreLabel!.fontSize = 14
-        botScoreLabel!.fontColor = UIColor(red: 0.95, green: 0.60, blue: 0.60, alpha: 0.9)
-        botScoreLabel!.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight - 107)
-        botScoreLabel!.zPosition = 201
-        botScoreLabel!.text = "\(label): 0"
-        botScoreLabel!.verticalAlignmentMode = .center
-        botScoreLabel!.horizontalAlignmentMode = .center
-        hudLayer.addChild(botScoreLabel!)
+        let scoreNode = SKLabelNode(fontNamed: GK.pixelFontName)
+        scoreNode.fontSize = 14
+        scoreNode.fontColor = UIColor(red: 0.95, green: 0.60, blue: 0.60, alpha: 0.9)
+        scoreNode.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight - 107)
+        scoreNode.zPosition = 201
+        scoreNode.text = "\(label): 0"
+        scoreNode.verticalAlignmentMode = .center
+        scoreNode.horizontalAlignmentMode = .center
+        hudLayer.addChild(scoreNode)
+        botScoreLabel = scoreNode
     }
 
     private func updateScore() {
@@ -379,12 +415,53 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             outline.text = text
         }
 
-        // Single pop on the backing circle — cheaper than animating 10 labels
+        // Quick pop on the score label for feedback
         let pop = SKAction.sequence([
             SKAction.scale(to: 1.15, duration: 0.06),
             SKAction.scale(to: 1.0, duration: 0.06)
         ])
-        scoreBacking.run(pop)
+        scoreLabel.run(pop)
+        scoreShadow.run(pop)
+        for outline in scoreOutlines { outline.run(pop.copy() as! SKAction) }
+    }
+
+    /// Floating "+1" (or "+5" at milestones) that rises and fades from the duck's position.
+    private func showFloatingScore(at position: CGPoint) {
+        let isMilestone = score % 5 == 0 && score > 0
+        let text = isMilestone ? "+5★" : "+1"
+        let color: UIColor = isMilestone
+            ? UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)
+            : .white
+        let fontSize: CGFloat = isMilestone ? 18 : 14
+
+        let label = SKLabelNode(fontNamed: GK.pixelFontName)
+        label.text = text
+        label.fontSize = fontSize
+        label.fontColor = color
+        label.position = CGPoint(x: position.x + 20, y: position.y + 20)
+        label.zPosition = 250
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+
+        // Outline shadow for legibility
+        let shadow = SKLabelNode(fontNamed: GK.pixelFontName)
+        shadow.text = text
+        shadow.fontSize = fontSize
+        shadow.fontColor = UIColor(red: 0.15, green: 0.25, blue: 0.08, alpha: 0.9)
+        shadow.position = CGPoint(x: 2, y: -2)
+        shadow.zPosition = -1
+        shadow.verticalAlignmentMode = .center
+        shadow.horizontalAlignmentMode = .center
+        label.addChild(shadow)
+
+        worldNode.addChild(label)
+
+        let rise = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
+        rise.timingMode = .easeOut
+        label.run(SKAction.sequence([
+            SKAction.group([rise, SKAction.fadeOut(withDuration: 0.6)]),
+            SKAction.removeFromParent()
+        ]))
     }
 
     private func updateBotScoreHUD() {
@@ -617,6 +694,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
+        // Foreground bushes — scroll faster for depth (1.2× tree speed)
+        let bushSpeed = GK.treeSpeed * 1.2
+        for bush in foregroundBushes {
+            bush.position.x -= bushSpeed * CGFloat(dt)
+            if bush.position.x < -(GK.worldWidth * 2) {
+                bush.position.x += GK.worldWidth * 4
+            }
+        }
+
         // Duck rotation
         if let vy = duck.physicsBody?.velocity.dy {
             let target = vy > 0
@@ -743,6 +829,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             bodies.first { $0.categoryBitMask == GK.scoreCategory }?.node?.removeFromParent()
             score += 1
             updateScore()
+            showFloatingScore(at: duck.position)
             Haptic.score()
             SoundManager.shared.play(.score)
 
@@ -787,22 +874,44 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         groundLayer.isPaused = true
         backgroundLayer.isPaused = true
 
+        // White flash — sharp impact
         let flash = SKSpriteNode(color: .white, size: self.size)
         flash.position = CGPoint(x: size.width / 2, y: size.height / 2)
         flash.zPosition = 500
-        flash.alpha = 0.8
+        flash.alpha = 0.9
         addChild(flash)
         flash.run(SKAction.sequence([
-            SKAction.fadeOut(withDuration: 0.3),
+            SKAction.fadeOut(withDuration: 0.25),
             SKAction.removeFromParent()
         ]))
 
+        // Red vignette that lingers — danger feel
+        let vignette = SKShapeNode(rectOf: CGSize(width: size.width + 20, height: size.height + 20), cornerRadius: size.width * 0.3)
+        vignette.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        vignette.fillColor = .clear
+        vignette.strokeColor = UIColor(red: 0.8, green: 0.1, blue: 0.1, alpha: 0.5)
+        vignette.lineWidth = 60
+        vignette.zPosition = 499
+        vignette.alpha = 0
+        addChild(vignette)
+        vignette.run(SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.7, duration: 0.1),
+            SKAction.fadeOut(withDuration: 1.0),
+            SKAction.removeFromParent()
+        ]))
+
+        // Camera zoom-in + stronger shake — more impact
         worldNode.run(SKAction.sequence([
-            SKAction.moveBy(x: 5, y: 3, duration: 0.03),
-            SKAction.moveBy(x: -10, y: -6, duration: 0.03),
-            SKAction.moveBy(x: 8, y: 4, duration: 0.03),
-            SKAction.moveBy(x: -3, y: -1, duration: 0.03),
-            SKAction.move(to: .zero, duration: 0.03),
+            SKAction.scale(to: 1.03, duration: 0.08),
+            SKAction.moveBy(x: 8, y: 5, duration: 0.025),
+            SKAction.moveBy(x: -16, y: -10, duration: 0.025),
+            SKAction.moveBy(x: 14, y: 7, duration: 0.025),
+            SKAction.moveBy(x: -10, y: -4, duration: 0.025),
+            SKAction.moveBy(x: 4, y: 2, duration: 0.025),
+            SKAction.group([
+                SKAction.move(to: .zero, duration: 0.05),
+                SKAction.scale(to: 1.0, duration: 0.15)
+            ]),
         ]))
 
         duck.removeAction(forKey: "wings")

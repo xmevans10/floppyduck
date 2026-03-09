@@ -25,6 +25,12 @@ final class SoundManager {
     private var bgmPlayer: AVAudioPlayer?
     private var playBgmPlayer: AVAudioPlayer?
 
+    /// Skin-specific sound variants (flap, death) keyed by skin + sound.
+    private var skinPlayers: [String: AVAudioPlayer] = [:]
+
+    /// Currently equipped skin — set before gameplay to activate skin sounds.
+    var activeSkin: DuckSkin = .classic
+
     /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
     private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
 
@@ -51,7 +57,18 @@ final class SoundManager {
     func play(_ sound: GameSound) {
         guard isEnabled else { return }
         audioQueue.async { [weak self] in
-            guard let player = self?.players[sound] else { return }
+            guard let self else { return }
+            // For flap/death, prefer skin-specific variant if available
+            if (sound == .flap || sound == .death), self.activeSkin != .classic {
+                let key = "\(self.activeSkin.rawValue)_\(sound.rawValue)"
+                if let skinPlayer = self.skinPlayers[key] {
+                    skinPlayer.stop()
+                    skinPlayer.currentTime = 0
+                    skinPlayer.play()
+                    return
+                }
+            }
+            guard let player = self.players[sound] else { return }
             player.stop()
             player.currentTime = 0
             player.play()
@@ -82,6 +99,8 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             guard self.isEnabled else { return }
+            // Stop menu music before starting gameplay music
+            self.bgmPlayer?.stop()
             guard let playBgmPlayer else { return }
             playBgmPlayer.numberOfLoops = -1
             playBgmPlayer.volume = 0.10
@@ -153,6 +172,45 @@ final class SoundManager {
             player.numberOfLoops = -1
             player.prepareToPlay()
             playBgmPlayer = player
+        }
+
+        buildSkinSounds()
+    }
+
+    /// Build flap + death variants per skin for distinct character feel.
+    private func buildSkinSounds() {
+        // (skin, sound, data, volume)
+        let variants: [(DuckSkin, GameSound, Data, Float)] = [
+            // Cowboy — lower pitch, twangy
+            (.cowboy, .flap,  wav(chirp(f0: 220, f1: 600, dur: 0.065)), 0.25),
+            (.cowboy, .death, wav(chirp(f0: 300, f1: 60, dur: 0.28)),   0.40),
+
+            // Alien — high-pitched, ethereal sine
+            (.alien, .flap,  wav(sine(freq: 1200, dur: 0.04, decay: 0.05)), 0.22),
+            (.alien, .death, wav(chirp(f0: 800, f1: 200, dur: 0.3)),        0.38),
+
+            // Dinosaur — very low, powerful
+            (.dinosaur, .flap,  wav(square(freq: 160, dur: 0.07, decay: 0.08)), 0.30),
+            (.dinosaur, .death, wav(chirp(f0: 200, f1: 40, dur: 0.35)),         0.45),
+
+            // Wizard — magical shimmer, triangle wave
+            (.wizard, .flap,  wav(triangle(freq: 880, dur: 0.06, decay: 0.07) +
+                                  sine(freq: 1320, dur: 0.03, decay: 0.04)),     0.25),
+            (.wizard, .death, wav(chirp(f0: 660, f1: 110, dur: 0.25)),           0.40),
+
+            // Devil — gritty square, growly
+            (.devil, .flap,  wav(square(freq: 280, dur: 0.05, decay: 0.06)), 0.28),
+            (.devil, .death, wav(square(freq: 180, dur: 0.08, decay: 0.12) +
+                                 chirp(f0: 180, f1: 50, dur: 0.20)),         0.42),
+        ]
+
+        for (skin, sound, data, vol) in variants {
+            let key = "\(skin.rawValue)_\(sound.rawValue)"
+            if let p = try? AVAudioPlayer(data: data) {
+                p.volume = vol
+                p.prepareToPlay()
+                skinPlayers[key] = p
+            }
         }
     }
 

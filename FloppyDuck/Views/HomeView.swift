@@ -108,10 +108,12 @@ struct HomeView: View {
             }
         }
         .onAppear {
+            guard !UIAccessibility.isReduceMotionEnabled else { return }
             withAnimation(.linear(duration: 1.65).repeatForever(autoreverses: false)) {
                 titleFlashOffset = 180
             }
         }
+        .accessibilityLabel("Floppy Duck")
     }
 
     private func titleLine(_ text: String, color: Color, size: CGFloat) -> some View {
@@ -317,6 +319,8 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(subtitle)")
+        .accessibilityAddTraits(.isButton)
     }
 
     // MARK: - Bottom Buttons (4 buttons)
@@ -364,6 +368,8 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isButton)
     }
 
     // MARK: - Helpers

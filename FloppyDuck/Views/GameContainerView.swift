@@ -11,6 +11,8 @@ struct GameContainerView: View {
     @State private var score: Int = 0
     @State private var botFinalScore: Int = 0
     @State private var showBotLadderCelebration: Bool = false
+    @State private var tutorialTapPulse: Bool = false
+    @AppStorage("hasSeenTutorial") private var hasSeenTutorial: Bool = false
     @State private var celebrationPulse: Bool = false
     @State private var countdownValue: Int = 3
 
@@ -95,6 +97,7 @@ struct GameContainerView: View {
         .onDisappear {
             countUpTimer?.invalidate()
             opponentPollTask?.cancel()
+            SoundManager.shared.stopPlayMusic()
         }
         .statusBarHidden(true)
     }
@@ -115,10 +118,15 @@ struct GameContainerView: View {
         let newBridge = GameSceneBridge(
             onStart: {
                 phase = .playing
+                hasSeenTutorial = true
                 SoundManager.shared.startPlayMusic()
+                announceAccessibility("Game started")
             },
             onScore: { newScore in
                 score = newScore
+                if newScore % 5 == 0 && newScore > 0 {
+                    announceAccessibility("Score \(newScore)")
+                }
 
                 if isHeadToHead, let matchId = config.matchId {
                     Task {
@@ -421,13 +429,25 @@ struct GameContainerView: View {
                     }
                 }
 
+                // Tutorial: animated tap hand for first-time players, static for returning
                 HStack(spacing: 8) {
                     pixelIcon(.tapHand, size: 22)
+                        .scaleEffect((!hasSeenTutorial && tutorialTapPulse) ? 1.25 : 1.0)
+                        .offset(y: (!hasSeenTutorial && tutorialTapPulse) ? -4 : 0)
+                        .animation(
+                            !hasSeenTutorial
+                                ? .easeInOut(duration: 0.5).repeatForever(autoreverses: true)
+                                : .default,
+                            value: tutorialTapPulse
+                        )
                     Text("TAP TO FLAP")
                         .font(.custom(GK.pixelFontName, size: 9))
                         .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
                 }
                 .padding(.top, 6)
+                .onAppear {
+                    if !hasSeenTutorial { tutorialTapPulse = true }
+                }
             }
             .padding(24)
             .background(
@@ -706,6 +726,8 @@ struct GameContainerView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isButton)
     }
 
     private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
@@ -716,11 +738,21 @@ struct GameContainerView: View {
             .frame(width: size, height: size)
     }
 
+    /// Posts a VoiceOver announcement for accessibility.
+    private func announceAccessibility(_ message: String) {
+        UIAccessibility.post(notification: .announcement, argument: message)
+    }
+
     private func shareScore() {
-        let medalText = medal != .none ? " \(medal.emoji) \(medal.displayName) medal!" : ""
-        let modeText = isHeadToHead ? " in Head to Head" : ""
-        let text = "I scored \(score)\(modeText) in Floppy Duck!\(medalText) 🦆 Can you beat that?"
-        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        let card = ShareCardView(
+            score: score,
+            medal: medal,
+            bestScore: max(manager.stats.bestScore, score),
+            mode: config.mode
+        )
+        let image = card.renderToImage()
+        let text = "I scored \(score) in Floppy Duck! 🦆 Can you beat that?"
+        let vc = UIActivityViewController(activityItems: [image, text], applicationActivities: nil)
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {
             root.present(vc, animated: true)

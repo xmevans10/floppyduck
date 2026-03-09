@@ -98,4 +98,63 @@ enum GK {
         // Bread currency
         static let breadGold    = Color(red: 0.85, green: 0.68, blue: 0.30)
     }
+
+    // MARK: - Sky Themes
+
+    enum SkyTheme: String, CaseIterable {
+        case day
+        case sunset
+        case night
+
+        /// Pick a random theme, weighted toward day.
+        static func random() -> SkyTheme {
+            let roll = Int.random(in: 0..<10)
+            if roll < 5 { return .day }      // 50%
+            if roll < 8 { return .sunset }   // 30%
+            return .night                     // 20%
+        }
+
+        var skyTopColor: UIColor {
+            switch self {
+            case .day:    return UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1)
+            case .sunset: return UIColor(red: 0.95, green: 0.45, blue: 0.25, alpha: 1)
+            case .night:  return UIColor(red: 0.08, green: 0.10, blue: 0.25, alpha: 1)
+            }
+        }
+
+        var skyBottomColor: UIColor {
+            switch self {
+            case .day:    return UIColor(red: 0.75, green: 0.90, blue: 0.95, alpha: 1)
+            case .sunset: return UIColor(red: 1.00, green: 0.75, blue: 0.40, alpha: 1)
+            case .night:  return UIColor(red: 0.12, green: 0.15, blue: 0.35, alpha: 1)
+            }
+        }
+
+        var cloudTint: UIColor {
+            switch self {
+            case .day:    return .white
+            case .sunset: return UIColor(red: 1.0, green: 0.85, blue: 0.70, alpha: 1)
+            case .night:  return UIColor(red: 0.45, green: 0.50, blue: 0.65, alpha: 1)
+            }
+        }
+
+        var hillColor: UIColor {
+            switch self {
+            case .day:    return UIColor(red: 0.22, green: 0.60, blue: 0.25, alpha: 1)
+            case .sunset: return UIColor(red: 0.35, green: 0.35, blue: 0.20, alpha: 1)
+            case .night:  return UIColor(red: 0.10, green: 0.18, blue: 0.12, alpha: 1)
+            }
+        }
+
+        var swiftUIColors: (top: Color, bottom: Color) {
+            switch self {
+            case .day:    return (Colors.skyTop, Colors.skyBottom)
+            case .sunset: return (Color(red: 0.95, green: 0.45, blue: 0.25), Color(red: 1.00, green: 0.75, blue: 0.40))
+            case .night:  return (Color(red: 0.08, green: 0.10, blue: 0.25), Color(red: 0.12, green: 0.15, blue: 0.35))
+            }
+        }
+
+        /// Stars visible only at night.
+        var showStars: Bool { self == .night }
+    }
 }

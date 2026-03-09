@@ -16,6 +16,7 @@
 		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
 		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
 		721117E305FA5B37E3DEE0F4 /* StatBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B62950ED3B295FD7BFD165 /* StatBadge.swift */; };
+		274E4215D9EDE5F0DAFDD600 /* ShareCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72BB8FD8C8800D8289C6E09B /* ShareCardView.swift */; };
 		722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */; };
 		83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6536C0571E3D58450DECC837 /* GameContainerView.swift */; };
 		89B61228B4E653AA90467704 /* PRNG.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0703F9981111218E6869673 /* PRNG.swift */; };
@@ -68,6 +69,7 @@
 		8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexClient.swift; sourceTree = "<group>"; };
 		8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		90B62950ED3B295FD7BFD165 /* StatBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatBadge.swift; sourceTree = "<group>"; };
+		72BB8FD8C8800D8289C6E09B /* ShareCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6071829304050 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293040 /* FloppyDuck.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FloppyDuck.entitlements; sourceTree = "<group>"; };
@@ -167,6 +169,7 @@
 			children = (
 				C6DC340C3366ABF3170CC53A /* ModeCard.swift */,
 				90B62950ED3B295FD7BFD165 /* StatBadge.swift */,
+				72BB8FD8C8800D8289C6E09B /* ShareCardView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -356,6 +359,7 @@
 				CAFA74F0B0D4535CFB00FF8C /* TextureFactory.swift in Sources */,
 				0444CC7A13280555C3BAD04C /* ModeCard.swift in Sources */,
 				721117E305FA5B37E3DEE0F4 /* StatBadge.swift in Sources */,
+				274E4215D9EDE5F0DAFDD600 /* ShareCardView.swift in Sources */,
 				83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */,
 				DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */,
 				C10000000000000000000004 /* AuthOnboardingView.swift in Sources */,
