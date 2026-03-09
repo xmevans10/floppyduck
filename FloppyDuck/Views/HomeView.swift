@@ -3,9 +3,8 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var manager: GameManager
     @EnvironmentObject var auth: AuthManager
-    @ObservedObject var skinManager = SkinManager.shared
-    @State private var duckBob: Bool = false
     @State private var titlePulse: Bool = false
+    @State private var titleFlashOffset: CGFloat = -180
 
     private let icons = PixelIconFactory.shared
 
@@ -33,23 +32,20 @@ struct HomeView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    Spacer().frame(height: 40)
-
-                    // Mascot duck ABOVE title
-                    mascotSection
+                    Spacer().frame(height: 54)
 
                     // Title
                     titleSection
-                        .padding(.top, 4)
+                        .padding(.top, 2)
 
                     // Bread counter
                     breadCounter
-                        .padding(.top, 12)
+                        .padding(.top, 16)
 
                     accountBadge
-                        .padding(.top, 8)
+                        .padding(.top, 10)
 
-                    Spacer().frame(height: 20)
+                    Spacer().frame(height: 22)
 
                     // Play button (expandable)
                     playSection
@@ -66,47 +62,54 @@ struct HomeView: View {
             }
         }
         .navigationBarHidden(true)
-    }
-
-    // MARK: - Mascot Duck (ABOVE title)
-
-    private var mascotSection: some View {
-        Image(uiImage: TextureFactory.shared.skinDuckUIImage(
-            skin: skinManager.selectedSkin, pixelScale: 7.0
-        ))
-            .interpolation(.none)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 112, height: 112)
-            .offset(y: duckBob ? -6 : 6)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    duckBob = true
-                }
-            }
+        .onAppear {
+            SoundManager.shared.startMenuMusic()
+        }
+        .onDisappear {
+            SoundManager.shared.stopMenuMusic()
+        }
     }
 
     // MARK: - Title
 
     private var titleSection: some View {
-        VStack(spacing: 2) {
-            Text("FLOPPY")
-                .font(.custom(GK.pixelFontName, size: 28))
-                .foregroundColor(.white)
-                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
-                .scaleEffect(titlePulse ? 1.02 : 1.0)
-
-            Text("DUCK")
-                .font(.custom(GK.pixelFontName, size: 28))
-                .foregroundColor(GK.Colors.scoreYellow)
-                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
-                .scaleEffect(titlePulse ? 1.02 : 1.0)
+        VStack(spacing: 4) {
+            titleLine("FLOPPY", color: .white, size: 30)
+            titleLine("DUCK", color: GK.Colors.scoreYellow, size: 30)
         }
+        .overlay {
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.clear, Color.white.opacity(0.55), Color.clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 86, height: 74)
+                .rotationEffect(.degrees(14))
+                .offset(x: titleFlashOffset)
+                .blendMode(.screen)
+                .allowsHitTesting(false)
+        }
+        .clipped()
         .onAppear {
             withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
                 titlePulse = true
             }
+            withAnimation(.linear(duration: 1.65).repeatForever(autoreverses: false)) {
+                titleFlashOffset = 180
+            }
         }
+    }
+
+    private func titleLine(_ text: String, color: Color, size: CGFloat) -> some View {
+        Text(text)
+            .font(.custom(GK.pixelFontName, size: size))
+            .foregroundColor(color)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: 4)
+            .shadow(color: Color.black.opacity(0.35), radius: 0, x: 0, y: 2)
+            .scaleEffect(titlePulse ? 1.04 : 0.98)
     }
 
     // MARK: - Bread Counter
@@ -180,7 +183,7 @@ struct HomeView: View {
 
             // Head to Head
             subModeButton(
-                icon: .headToHead,
+                icon: .trophy,
                 title: "HEAD TO HEAD",
                 subtitle: "Quick / Ranked / Room",
                 color: GK.Colors.buttonOrange

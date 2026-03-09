@@ -214,6 +214,15 @@ final class GameManager: ObservableObject {
         saveStats()
     }
 
+    @discardableResult
+    func spendBread(_ amount: Int) -> Bool {
+        guard amount > 0 else { return true }
+        guard stats.bread >= amount else { return false }
+        stats.bread -= amount
+        saveStats()
+        return true
+    }
+
     private func saveStats() {
         if let data = try? JSONEncoder().encode(stats) {
             UserDefaults.standard.set(data, forKey: "playerStats")

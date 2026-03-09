@@ -22,6 +22,7 @@ final class SoundManager {
 
     private var players: [GameSound: AVAudioPlayer] = [:]
     private var soundData: [GameSound: Data] = [:]
+    private var bgmPlayer: AVAudioPlayer?
 
     /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
     private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
@@ -42,6 +43,7 @@ final class SoundManager {
         // Pre-warm all players on the audio queue so first play has zero latency.
         audioQueue.async { [weak self] in
             self?.players.values.forEach { $0.prepareToPlay() }
+            self?.bgmPlayer?.prepareToPlay()
         }
     }
 
@@ -52,6 +54,37 @@ final class SoundManager {
             player.stop()
             player.currentTime = 0
             player.play()
+        }
+    }
+
+    func startMenuMusic() {
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.isEnabled else { return }
+            guard let bgmPlayer else { return }
+            bgmPlayer.numberOfLoops = -1
+            bgmPlayer.volume = 0.12
+            if !bgmPlayer.isPlaying {
+                bgmPlayer.currentTime = 0
+                bgmPlayer.play()
+            }
+        }
+    }
+
+    func stopMenuMusic() {
+        audioQueue.async { [weak self] in
+            self?.bgmPlayer?.stop()
+        }
+    }
+
+    func refreshAudioPreference() {
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            if self.isEnabled {
+                return
+            }
+            self.players.values.forEach { $0.stop() }
+            self.bgmPlayer?.stop()
         }
     }
 
@@ -82,6 +115,14 @@ final class SoundManager {
                 p.prepareToPlay()
                 players[sound] = p
             }
+        }
+
+        let bgmData = menuBgmWav()
+        if let player = try? AVAudioPlayer(data: bgmData) {
+            player.volume = 0.12
+            player.numberOfLoops = -1
+            player.prepareToPlay()
+            bgmPlayer = player
         }
     }
 
@@ -221,5 +262,18 @@ final class SoundManager {
     private func milestoneWav() -> Data {
         wav(sine(freq: 660, dur: 0.05, decay: 0.06) +
             sine(freq: 990, dur: 0.08, decay: 0.10))
+    }
+
+    private func menuBgmWav() -> Data {
+        let melody: [Float] = [392, 440, 523.25, 440, 349.23, 392, 440, 523.25]
+        var s: [Float] = []
+        for note in melody {
+            s += square(freq: note, dur: 0.10, decay: 0.12).map { $0 * 0.32 }
+            s += silence(0.03)
+            s += sine(freq: note / 2, dur: 0.13, decay: 0.20).map { $0 * 0.22 }
+            s += silence(0.02)
+        }
+        s += silence(0.08)
+        return wav(s)
     }
 }

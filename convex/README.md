@@ -33,4 +33,5 @@ This directory contains the Floppy Duck backend contracts used by the iOS client
 
 - Ranked access is restricted to Apple-linked users.
 - ELO updates use K=32.
-- Apple token verification validates token shape and claims. Add cryptographic signature verification before production launch.
+- Apple token verification includes signature validation (Apple JWKS), issuer/audience checks, expiry checks, and nonce hash validation.
+- Configure `APPLE_EXPECTED_AUDIENCES` in Convex deployment env (comma-separated supported).

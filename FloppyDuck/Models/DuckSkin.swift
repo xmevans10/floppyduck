@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum SkinPurchaseKind: String, Codable, Hashable {
+    case free
+    case normal
+    case premium
+}
+
 /// All available duck skins. Each skin keeps the base 16-wide mallard body shape
 /// and adds pixel-art accessories (hat, horns, spikes, etc.).
 enum DuckSkin: String, CaseIterable, Identifiable, Codable {
@@ -34,11 +40,47 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var isFree: Bool { self == .classic }
+    var purchaseKind: SkinPurchaseKind {
+        switch self {
+        case .classic:
+            return .free
+        case .cowboy, .dinosaur:
+            return .normal
+        case .alien, .wizard, .devil:
+            return .premium
+        }
+    }
 
-    var productID: String { "com.floppyduck.skin.\(rawValue)" }
+    var isFree: Bool { purchaseKind == .free }
+    var isPremium: Bool { purchaseKind == .premium }
+    var isNormal: Bool { purchaseKind == .normal }
 
-    var priceDisplay: String { isFree ? "FREE" : "$0.49" }
+    var premiumProductID: String? {
+        guard isPremium else { return nil }
+        return "com.floppyduck.skin.\(rawValue)"
+    }
+
+    var breadPrice: Int? {
+        switch self {
+        case .cowboy:
+            return 120
+        case .dinosaur:
+            return 180
+        default:
+            return nil
+        }
+    }
+
+    var priceDisplay: String {
+        switch purchaseKind {
+        case .free:
+            return "FREE"
+        case .normal:
+            return "\(breadPrice ?? 0) BREAD"
+        case .premium:
+            return "$0.49"
+        }
+    }
 
     /// Pixel canvas: width × height. Body is always 16 wide; height varies with accessories.
     var canvasSize: (w: Int, h: Int) {

@@ -30,7 +30,7 @@ struct MultiplayerModesView: View {
                 .padding(.horizontal, 16)
 
                 VStack(spacing: 12) {
-                    modeButton(icon: .headToHead,
+                    modeButton(icon: .play,
                                title: "QUICK PLAY",
                                subtitle: "Fast matchmaking") {
                         manager.startMatchmaking(mode: .quickPlay)
@@ -56,7 +56,7 @@ struct MultiplayerModesView: View {
                         }
                     }
 
-                    modeButton(icon: .shop,
+                    modeButton(icon: .lock,
                                title: "PRIVATE ROOM",
                                subtitle: "Create or join by code") {
                         manager.startMatchmaking(mode: .privateRoom)
@@ -178,7 +178,7 @@ struct MatchmakingView: View {
             VStack(spacing: 20) {
                 Spacer()
 
-                pixelIcon(mode == .ranked ? .trophy : .headToHead, size: 44)
+                pixelIcon(headerIcon, size: 44)
 
                 Text(modeTitle)
                     .font(.custom(GK.pixelFontName, size: 18))
@@ -300,6 +300,7 @@ struct MatchmakingView: View {
             }
 
             statusText
+            retryButton
         }
     }
 
@@ -373,6 +374,7 @@ struct MatchmakingView: View {
             }
 
             statusText
+            retryButton
         }
     }
 
@@ -398,7 +400,7 @@ struct MatchmakingView: View {
         case .waitingRoom(let code):
             return "Share code \(code). Waiting for opponent\(dots)"
         case .timedOut:
-            return "Timed out. Retry or cancel."
+            return "Matchmaking timed out. Retry to keep searching."
         case .failed(let msg):
             return msg
         case .matched:
@@ -414,6 +416,40 @@ struct MatchmakingView: View {
             return GK.Colors.buttonOrange
         default:
             return GK.Colors.panelBorder.opacity(0.5)
+        }
+    }
+
+    private var shouldShowRetry: Bool {
+        switch state {
+        case .failed, .timedOut:
+            return true
+        default:
+            return false
+        }
+    }
+
+    @ViewBuilder
+    private var retryButton: some View {
+        if shouldShowRetry {
+            Button {
+                retryCurrentFlow()
+            } label: {
+                HStack(spacing: 6) {
+                    pixelIcon(.retry, size: 13)
+                    Text("RETRY")
+                        .font(.custom(GK.pixelFontName, size: 8))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(GK.Colors.buttonBlue)
+                        .shadow(color: GK.Colors.buttonBlue.opacity(0.45), radius: 0, x: 0, y: 2)
+                )
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
     }
 
@@ -529,11 +565,46 @@ struct MatchmakingView: View {
             return .timedOut
         }
 
-        let msg = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-        if msg.isEmpty {
-            return .failed("Matchmaking failed. Please retry.")
+        let raw = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if raw.isEmpty {
+            return .failed("Could not connect to matchmaking. Check connection and retry.")
         }
-        return .failed(msg)
+        let lowered = raw.lowercased()
+
+        if lowered.contains("network") || lowered.contains("offline") ||
+            lowered.contains("timed out") || lowered.contains("request failed") {
+            return .failed("Connection issue. Check internet and tap retry.")
+        }
+
+        if lowered.contains("sign in") {
+            return .failed("Sign in with Apple is required for ranked matchmaking.")
+        }
+
+        return .failed("Matchmaking failed. Tap retry.")
+    }
+
+    private var headerIcon: PixelIcon {
+        switch mode {
+        case .quickPlay:
+            return .play
+        case .ranked:
+            return .trophy
+        case .privateRoom:
+            return .lock
+        }
+    }
+
+    private func retryCurrentFlow() {
+        switch mode {
+        case .quickPlay, .ranked:
+            startQueueSearch()
+        case .privateRoom:
+            if roomAction == .create {
+                createRoomAndWait()
+            } else {
+                joinRoomAndWait()
+            }
+        }
     }
 
     // MARK: - Components

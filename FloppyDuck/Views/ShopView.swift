@@ -4,6 +4,9 @@ struct ShopView: View {
     @EnvironmentObject var manager: GameManager
     @ObservedObject var skinManager = SkinManager.shared
 
+    @State private var selectedSection: ShopSection = .normal
+    @State private var localErrorMessage: String?
+
     private let icons = PixelIconFactory.shared
     private let columns = [
         GridItem(.flexible(), spacing: 14),
@@ -53,30 +56,81 @@ struct ShopView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
 
-                // Skin grid
+                sectionPicker
+                    .padding(.horizontal, 20)
+                    .padding(.top, 14)
+
+                if let message = activeErrorMessage {
+                    Text(message)
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(GK.Colors.buttonRed)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                        .multilineTextAlignment(.center)
+                }
+
                 ScrollView(showsIndicators: false) {
                     LazyVGrid(columns: columns, spacing: 14) {
-                        ForEach(DuckSkin.allCases) { skin in
+                        ForEach(filteredSkins) { skin in
                             skinCard(skin)
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.top, 14)
                     .padding(.bottom, 30)
 
-                    // Restore purchases
-                    Button {
-                        Task { await skinManager.restorePurchases() }
-                    } label: {
-                        Text("RESTORE PURCHASES")
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(.white.opacity(0.6))
+                    if selectedSection == .premium {
+                        Button {
+                            Task { await skinManager.restorePurchases() }
+                        } label: {
+                            Text("RESTORE PREMIUM PURCHASES")
+                                .font(.custom(GK.pixelFontName, size: 7))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        .padding(.bottom, 40)
+                    } else {
+                        Spacer().frame(height: 24)
                     }
-                    .padding(.bottom, 40)
                 }
             }
         }
         .navigationBarHidden(true)
+    }
+
+    // MARK: - Section Picker
+
+    private var sectionPicker: some View {
+        HStack(spacing: 8) {
+            sectionButton(.normal)
+            sectionButton(.premium)
+        }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(GK.Colors.panelCream)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
+                )
+        )
+    }
+
+    private func sectionButton(_ section: ShopSection) -> some View {
+        Button {
+            selectedSection = section
+            localErrorMessage = nil
+        } label: {
+            Text(section.rawValue)
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(selectedSection == section ? .white : GK.Colors.panelBorder)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(selectedSection == section ? section.accent : Color.white)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Skin Card
@@ -85,12 +139,29 @@ struct ShopView: View {
         let owned = skinManager.ownedSkins.contains(skin)
         let selected = skinManager.selectedSkin == skin
         let purchasing = skinManager.purchasing == skin
+        let canAffordNormal = (skin.breadPrice ?? 0) <= manager.stats.bread
 
         return Button {
+            localErrorMessage = nil
+
             if owned {
                 skinManager.select(skin)
-            } else {
-                Task { await skinManager.purchase(skin) }
+                return
+            }
+
+            switch skin.purchaseKind {
+            case .free:
+                skinManager.select(.classic)
+            case .normal:
+                let cost = skin.breadPrice ?? 0
+                guard manager.spendBread(cost) else {
+                    localErrorMessage = "Not enough bread. Play games to earn more."
+                    return
+                }
+                skinManager.unlockNormal(skin)
+                skinManager.select(skin)
+            case .premium:
+                Task { await skinManager.purchasePremium(skin) }
             }
         } label: {
             VStack(spacing: 8) {
@@ -101,17 +172,14 @@ struct ShopView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 80, height: 80)
 
-                // Name
                 Text(skin.displayName)
                     .font(.custom(GK.pixelFontName, size: 10))
                     .foregroundColor(GK.Colors.panelBorder)
 
-                // Subtitle
                 Text(skin.subtitle)
                     .font(.custom(GK.pixelFontName, size: 6))
                     .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
 
-                // Status badge
                 if selected {
                     Text("EQUIPPED")
                         .font(.custom(GK.pixelFontName, size: 7))
@@ -131,12 +199,8 @@ struct ShopView: View {
                     ProgressView()
                         .frame(height: 22)
                 } else {
-                    Text(skin.priceDisplay)
-                        .font(.custom(GK.pixelFontName, size: 8))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(GK.Colors.buttonOrange))
+                    priceBadge(for: skin)
+                        .opacity(skin.isNormal && !canAffordNormal ? 0.5 : 1)
                 }
             }
             .padding(.vertical, 14)
@@ -154,5 +218,61 @@ struct ShopView: View {
             )
         }
         .buttonStyle(.plain)
+        .disabled(skin.isPremium && skinManager.purchasing != nil)
+    }
+
+    private func priceBadge(for skin: DuckSkin) -> some View {
+        Group {
+            if skin.isNormal {
+                HStack(spacing: 4) {
+                    Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 2.0))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 14, height: 11)
+                    Text("\(skin.breadPrice ?? 0)")
+                }
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(GK.Colors.buttonGreen))
+            } else {
+                Text(skin.priceDisplay)
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(GK.Colors.buttonOrange))
+            }
+        }
+    }
+
+    private var filteredSkins: [DuckSkin] {
+        DuckSkin.allCases.filter { skin in
+            switch selectedSection {
+            case .normal:
+                return skin.isNormal || skin.isFree
+            case .premium:
+                return skin.isPremium
+            }
+        }
+    }
+
+    private var activeErrorMessage: String? {
+        localErrorMessage ?? skinManager.errorMessage
+    }
+}
+
+private enum ShopSection: String, CaseIterable {
+    case normal = "NORMAL"
+    case premium = "PREMIUM"
+
+    var accent: Color {
+        switch self {
+        case .normal:
+            return GK.Colors.buttonGreen
+        case .premium:
+            return GK.Colors.buttonOrange
+        }
     }
 }

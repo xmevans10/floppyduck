@@ -137,7 +137,7 @@ export const finishMatch = mutation({
   },
 });
 
-async function resolveMatchAndRatings(ctx: any, match: Doc<"matches">) {
+async function resolveMatchAndRatings(ctx: any, match: Doc<"matches">): Promise<Doc<"matches">> {
   const now = Date.now();
 
   const p1 = await ctx.db.get(match.p1UserId);

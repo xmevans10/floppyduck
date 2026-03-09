@@ -9,6 +9,8 @@ final class AuthManager: ObservableObject {
     @Published var statusMessage: String?
     @Published var showRankedSignInPrompt: Bool = false
     @Published private(set) var isBusy: Bool = false
+    @Published private(set) var lastCloudSyncAt: Date?
+    @Published private(set) var needsCloudRestore: Bool = false
 
     private let gameManager: GameManager
     private let identityStore: IdentityStore
@@ -33,6 +35,19 @@ final class AuthManager: ObservableObject {
 
     var accountBadgeText: String {
         isAppleLinked ? "APPLE LINKED" : "GUEST"
+    }
+
+    var syncStatusText: String {
+        if isAppleLinked {
+            if let lastCloudSyncAt {
+                return "Using cloud profile • Synced \(Self.syncFormatter.string(from: lastCloudSyncAt))"
+            }
+            return "Using cloud profile"
+        }
+        if needsCloudRestore {
+            return "Cloud profile available. Sign in with Apple to restore."
+        }
+        return "Using guest profile"
     }
 
     var shouldShowOnboarding: Bool {
@@ -75,13 +90,17 @@ final class AuthManager: ObservableObject {
                 )
                 authState = .authenticated(.apple)
                 statusMessage = nil
+                needsCloudRestore = false
             } catch {
                 identityStore.sessionToken = nil
                 identityStore.appleUserId = nil
                 await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+                needsCloudRestore = true
+                statusMessage = "Session expired. Sign in with Apple to restore cloud profile."
             }
         } else {
             await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+            needsCloudRestore = false
         }
     }
 
@@ -129,6 +148,7 @@ final class AuthManager: ObservableObject {
             authState = .authenticated(.apple)
             statusMessage = nil
             showRankedSignInPrompt = false
+            needsCloudRestore = false
         } catch {
             if let authError = error as? AuthError,
                case .canceled = authError {
@@ -140,6 +160,7 @@ final class AuthManager: ObservableObject {
                 authState = .onboardingRequired
             }
             statusMessage = "Sign in failed. Please retry."
+            needsCloudRestore = true
         }
     }
 
@@ -157,6 +178,7 @@ final class AuthManager: ObservableObject {
 
         await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
         statusMessage = "Signed out."
+        needsCloudRestore = false
     }
 
     func ensureRankedAccess() -> Bool {
@@ -206,6 +228,9 @@ final class AuthManager: ObservableObject {
             if !silentFailure {
                 statusMessage = nil
             }
+            if identityStore.sessionToken == nil {
+                needsCloudRestore = false
+            }
         } catch {
             let fallbackProfile = RemotePlayerProfile(
                 userId: "local-\(deviceId)",
@@ -248,6 +273,10 @@ final class AuthManager: ObservableObject {
             sessionExpiresAt: sessionExpiresAt
         )
 
+        if provider == .apple {
+            lastCloudSyncAt = Date()
+        }
+
         gameManager.applyRemoteProfile(profile)
     }
 
@@ -257,4 +286,11 @@ final class AuthManager: ObservableObject {
         }
         return true
     }
+
+    private static let syncFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter
+    }()
 }

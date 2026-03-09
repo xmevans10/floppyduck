@@ -2,11 +2,11 @@
 
 A retro iOS flappy-style game built with SpriteKit + SwiftUI.
 
-## Current Status (March 6, 2026)
+## Current Status (March 9, 2026)
 
 - `Shipped`: Classic solo mode, VS Bot ladder, shop, stats, settings, haptics/audio polish.
-- `In Progress`: Head-to-head multiplayer flow (queue/room UI + Convex client/session integration).
-- `Not Yet Complete`: App icon finalization, custom launch screen, App Store submission assets.
+- `Implemented`: Head-to-head multiplayer contracts (queue/room/matches/ratings) and guest + Apple identity flows.
+- `Not Yet Complete`: Production smoke validation, App Store assets, and metadata finalization.
 
 ## Requirements
 
@@ -27,15 +27,15 @@ A retro iOS flappy-style game built with SpriteKit + SwiftUI.
 | `Game Engine` | SpriteKit | Physics, rendering, collisions |
 | `UI` | SwiftUI | Menus, overlays, navigation |
 | `Graphics` | Core Graphics | Programmatic pixel-art textures |
-| `Backend` | Convex (REST) | Multiplayer client scaffold; live integration in progress |
+| `Backend` | Convex (REST) | Live auth + multiplayer contracts deployed |
 | `Haptics` | UIKit | Tactile feedback on flap/score/death |
 
 ## Game Modes
 
 - `Shipped` `Classic` - Solo endless run.
 - `Shipped` `VS Bot` - Bot ladder progression.
-- `Scaffolded` `Head to Head` - Quick Play / Ranked / Private Room UI + session wiring.
-- `Planned` `Fully live realtime multiplayer` - Backend endpoint hardening + production smoke validation.
+- `Implemented` `Head to Head` - Quick Play / Ranked / Private Room UI + Convex contract wiring.
+- `In Validation` `Launch hardening` - Production smoke validation and release checklist completion.
 
 ## Project Structure
 
@@ -65,9 +65,9 @@ FloppyDuck/
 
 ### What remains to ship
 
-- Final backend endpoint contract validation in live environment.
-- End-to-end smoke tests for queue pairing, private-room pairing, and ranked result consistency.
-- Production error handling tuning based on real backend behavior.
+- End-to-end release smoke tests (auth + multiplayer) across two real devices.
+- App Store asset completion (icon/launch/screenshot matrix).
+- Metadata and compliance completion for TestFlight/App Store submission.
 
 ## Roadmap
 

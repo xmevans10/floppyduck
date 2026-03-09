@@ -14,10 +14,12 @@
 2. `npm install`
 3. `npx convex dev`
 4. `npx convex deploy`
+5. Configure `APPLE_EXPECTED_AUDIENCES` in Convex env (example: `com.xmevans10.FloppyDuck`)
 
 ## Runtime Config
 
-- Set `CONVEX_BASE_URL` in `FloppyDuck/Info.plist`.
+- Set `CONVEX_BASE_URL` in `FloppyDuck/Info.plist` to the intended environment.
+- Use production URL for release builds: `https://first-setter-743.convex.cloud`.
 - Keep `AUTH_V1_ENABLED` as `true` for identity/auth rollout.
 
 ## Security Notes

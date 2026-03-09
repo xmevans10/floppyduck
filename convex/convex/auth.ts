@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { findUserByAppleId, findUserByDeviceId, parseAppleClaims, resolveUser } from "./lib/identity";
+import { findUserByAppleId, findUserByDeviceId, resolveUser, verifyAppleIdentityToken } from "./lib/identity";
 import {
   buildUserFromSnapshot,
   defaultUserStats,
@@ -12,6 +12,10 @@ import {
 
 const identityArgs = {
   deviceId: v.optional(v.string()),
+  sessionToken: v.optional(v.string()),
+};
+
+const sessionTokenArg = {
   sessionToken: v.optional(v.string()),
 };
 
@@ -97,16 +101,11 @@ export const linkApple = mutation({
     nonce: v.string(),
     deviceId: v.string(),
     displayName: v.optional(v.string()),
-    ...identityArgs,
+    ...sessionTokenArg,
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const claims = parseAppleClaims(args.identityToken);
-
-    // This validates token shape + claim basics. Add signature verification for production hardening.
-    if (!claims.sub) {
-      throw new Error("Invalid Apple identity token.");
-    }
+    const claims = await verifyAppleIdentityToken(args.identityToken, args.nonce);
 
     let appleUser = await findUserByAppleId(ctx, claims.sub);
     const guestUser = await findUserByDeviceId(ctx, args.deviceId);
@@ -117,7 +116,16 @@ export const linkApple = mutation({
     if (appleUser) {
       userId = appleUser._id;
 
-      if (guestUser && guestUser._id !== appleUser._id && shouldMergeLocalStats(appleUser)) {
+      // Apple profile is source of truth. Only merge guest progress into Apple profile
+      // when Apple profile is effectively fresh and guest actually has progress.
+      const canMergeGuestIntoApple = Boolean(
+        guestUser &&
+          guestUser._id !== appleUser._id &&
+          shouldMergeLocalStats(appleUser) &&
+          !shouldMergeLocalStats(guestUser),
+      );
+
+      if (canMergeGuestIntoApple && guestUser) {
         await ctx.db.patch(appleUser._id, {
           username: args.displayName ?? appleUser.username,
           rating: guestUser.rating,

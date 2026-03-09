@@ -63,8 +63,7 @@ final class SkinManager: ObservableObject {
 
     func fetchProducts() async {
         let ids = DuckSkin.allCases
-            .filter { !$0.isFree }
-            .map { $0.productID }
+            .compactMap { $0.premiumProductID }
 
         do {
             products = try await Product.products(for: ids)
@@ -74,13 +73,14 @@ final class SkinManager: ObservableObject {
         }
     }
 
-    func purchase(_ skin: DuckSkin) async {
-        guard !skin.isFree else { return }
+    func purchasePremium(_ skin: DuckSkin) async {
+        guard skin.isPremium else { return }
 
         purchasing = skin
         errorMessage = nil
 
-        guard let product = products.first(where: { $0.id == skin.productID }) else {
+        guard let productID = skin.premiumProductID,
+              let product = products.first(where: { $0.id == productID }) else {
             // Fallback for testing without StoreKit config — grant immediately
             #if DEBUG
             grantSkin(skin)
@@ -117,7 +117,7 @@ final class SkinManager: ObservableObject {
     func restorePurchases() async {
         for await result in Transaction.currentEntitlements {
             if let transaction = try? checkVerified(result) {
-                if let skin = DuckSkin.allCases.first(where: { $0.productID == transaction.productID }) {
+                if let skin = DuckSkin.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantSkin(skin)
                 }
             }
@@ -129,6 +129,11 @@ final class SkinManager: ObservableObject {
     private func grantSkin(_ skin: DuckSkin) {
         ownedSkins.insert(skin)
         saveState()
+    }
+
+    func unlockNormal(_ skin: DuckSkin) {
+        guard skin.isNormal else { return }
+        grantSkin(skin)
     }
 
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
@@ -143,7 +148,7 @@ final class SkinManager: ObservableObject {
     private func listenForTransactions() async {
         for await result in Transaction.updates {
             if let transaction = try? checkVerified(result) {
-                if let skin = DuckSkin.allCases.first(where: { $0.productID == transaction.productID }) {
+                if let skin = DuckSkin.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantSkin(skin)
                 }
                 await transaction.finish()
@@ -152,7 +157,8 @@ final class SkinManager: ObservableObject {
     }
 
     func product(for skin: DuckSkin) -> Product? {
-        products.first { $0.id == skin.productID }
+        guard let productID = skin.premiumProductID else { return nil }
+        return products.first { $0.id == productID }
     }
 }
 

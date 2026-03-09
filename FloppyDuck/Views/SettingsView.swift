@@ -75,6 +75,10 @@ struct SettingsView: View {
                                         .foregroundColor(GK.Colors.panelBorder.opacity(0.75))
                                 }
 
+                                Text(auth.syncStatusText)
+                                    .font(.custom(GK.pixelFontName, size: 7))
+                                    .foregroundColor(GK.Colors.panelBorder.opacity(0.65))
+
                                 if auth.isAppleLinked {
                                     Button {
                                         Task { await auth.signOut() }
@@ -101,6 +105,22 @@ struct SettingsView: View {
                                     .buttonStyle(.plain)
                                     .disabled(auth.isBusy)
                                     .opacity(auth.isBusy ? 0.6 : 1)
+
+                                    if auth.needsCloudRestore {
+                                        Button {
+                                            Task { await auth.signInWithApple() }
+                                        } label: {
+                                            Text("RESTORE CLOUD PROFILE")
+                                                .font(.custom(GK.pixelFontName, size: 8))
+                                                .foregroundColor(.white)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 10)
+                                                .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonGreen))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(auth.isBusy)
+                                        .opacity(auth.isBusy ? 0.6 : 1)
+                                    }
                                 }
                             }
                         }
@@ -181,6 +201,9 @@ struct SettingsView: View {
             }
         } message: {
             Text("This will erase all your scores, bread, and ELO. This cannot be undone.")
+        }
+        .onChange(of: manager.soundEnabled) { _, _ in
+            SoundManager.shared.refreshAudioPreference()
         }
     }
 

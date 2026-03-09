@@ -38,7 +38,7 @@ final class MultiplayerSessionTests: XCTestCase {
         let session = MultiplayerSession(client: client)
 
         do {
-            try await session.joinPrivateRoom(code: "AB", rating: 1200)
+            try await session.joinPrivateRoom(code: "AB")
             XCTFail("Expected invalidRoomCode error")
         } catch {
             guard case MultiplayerSessionError.invalidRoomCode = error else {
