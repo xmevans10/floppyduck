@@ -10,5 +10,7 @@
 	<array>
 		<string>PressStart2P-Regular.ttf</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
