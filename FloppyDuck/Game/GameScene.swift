@@ -882,15 +882,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
 
         // Item 6: Red vignette overlay that fades
-        let vignette = SKSpriteNode(color: UIColor(red: 0.8, green: 0.0, blue: 0.0, alpha: 0.25), size: self.size)
+        // Delay start until white flash recedes so the red tint is actually visible
+        let vignette = SKSpriteNode(color: UIColor(red: 0.8, green: 0.0, blue: 0.0, alpha: 0.45), size: self.size)
         vignette.position = CGPoint(x: size.width / 2, y: size.height / 2)
         vignette.zPosition = 499
         vignette.alpha = 0
         addChild(vignette)
         deathVignette = vignette
         vignette.run(SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.3, duration: 0.1),
-            SKAction.fadeOut(withDuration: 0.8),
+            SKAction.wait(forDuration: 0.2),          // wait for flash to fade
+            SKAction.fadeAlpha(to: 0.5, duration: 0.12),
+            SKAction.fadeOut(withDuration: 0.9),
             SKAction.removeFromParent()
         ]))
 
@@ -1126,12 +1128,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func setupForegroundBushes() {
         for i in 0..<2 {
             let bushNode = SKSpriteNode(color: .clear,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 40))
+                                         size: CGSize(width: GK.worldWidth * 2, height: 50))
             bushNode.anchorPoint = CGPoint(x: 0, y: 0)
-            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 2)
+            // Overlap significantly with ground so bushes look rooted, not floating
+            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 20)
             bushNode.zPosition = 45  // Between ground (50) and pipes (20), in front of duck (40)
 
-            // Draw pixel bushes/flowers
             let tex = renderBushTexture()
             bushNode.texture = tex
             foregroundLayer.addChild(bushNode)
@@ -1142,38 +1144,54 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     /// Renders a pixel-art bush/flower strip texture.
     private func renderBushTexture() -> SKTexture {
         let w = Int(GK.worldWidth * 2)
-        let h = 40
+        let h = 50
         let size = CGSize(width: w, height: h)
         let renderer = UIGraphicsImageRenderer(size: size)
         let image = renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Draw small pixel bushes at random intervals
+            // Draw pixel bushes at random intervals (grow upward from ground)
             var x = 0
             while x < w {
-                let bushW = Int.random(in: 16...28)
-                let bushH = Int.random(in: 12...22)
-                let gap = Int.random(in: 30...60)
+                let bushW = Int.random(in: 20...36)
+                let bushH = Int.random(in: 20...32)
+                let gap = Int.random(in: 24...48)
 
-                // Bush body (dark green)
-                c.setFillColor(UIColor(red: 0.22, green: 0.50, blue: 0.15, alpha: 0.7).cgColor)
-                c.fill(CGRect(x: x, y: 4, width: bushW, height: bushH))
+                let ps = 4  // pixel size for blocky look
 
-                // Bush highlight
-                c.setFillColor(UIColor(red: 0.35, green: 0.65, blue: 0.20, alpha: 0.5).cgColor)
-                c.fill(CGRect(x: x + 2, y: bushH - 2, width: bushW - 4, height: 4))
+                // Bush body — main rounded shape
+                let bodyColor = UIColor(red: 0.18, green: 0.44, blue: 0.12, alpha: 0.85)
+                c.setFillColor(bodyColor.cgColor)
+                // Narrower base, wider middle, narrower top — pixel bush silhouette
+                let baseInset = ps * 2
+                c.fill(CGRect(x: x + baseInset, y: 0, width: bushW - baseInset * 2, height: ps))
+                c.fill(CGRect(x: x + ps, y: ps, width: bushW - ps * 2, height: bushH - ps * 3))
+                c.fill(CGRect(x: x, y: ps * 2, width: bushW, height: bushH - ps * 4))
+                // Rounded top
+                c.fill(CGRect(x: x + ps, y: bushH - ps * 2, width: bushW - ps * 2, height: ps))
+                c.fill(CGRect(x: x + ps * 2, y: bushH - ps, width: bushW - ps * 4, height: ps))
 
-                // Occasional flower
+                // Highlight (lighter green on upper portion)
+                let hlColor = UIColor(red: 0.30, green: 0.58, blue: 0.18, alpha: 0.6)
+                c.setFillColor(hlColor.cgColor)
+                c.fill(CGRect(x: x + ps * 2, y: bushH - ps * 3, width: bushW - ps * 4, height: ps))
+                c.fill(CGRect(x: x + ps, y: bushH - ps * 4, width: ps * 2, height: ps))
+
+                // Occasional flower on top of bush
                 if Int.random(in: 0...2) == 0 {
                     let flowerColors: [UIColor] = [
-                        UIColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.9),
-                        UIColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.9),
-                        UIColor(red: 0.7, green: 0.4, blue: 0.9, alpha: 0.9),
+                        UIColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 1.0),
+                        UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1.0),
+                        UIColor(red: 0.85, green: 0.45, blue: 0.85, alpha: 1.0),
+                        UIColor(red: 1.0, green: 0.60, blue: 0.2, alpha: 1.0),
                     ]
                     let fc = flowerColors.randomElement()!
                     c.setFillColor(fc.cgColor)
-                    let fx = x + Int.random(in: 2...(bushW - 4))
-                    c.fill(CGRect(x: fx, y: bushH + 2, width: 4, height: 4))
+                    let fx = x + Int.random(in: ps...(bushW - ps * 2))
+                    c.fill(CGRect(x: fx, y: bushH, width: ps + 2, height: ps + 2))
+                    // Stem pixel
+                    c.setFillColor(UIColor(red: 0.20, green: 0.40, blue: 0.10, alpha: 0.8).cgColor)
+                    c.fill(CGRect(x: fx + 1, y: bushH - ps, width: 2, height: ps))
                 }
 
                 x += bushW + gap

@@ -48,8 +48,10 @@ struct SkinClosetView: View {
                     // Only classic owned — show encouraging message
                     Spacer()
                     VStack(spacing: 16) {
-                        Text("🦆")
-                            .font(.system(size: 48))
+                        Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 5.0))
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 80, height: 60)
                         Text("YOUR CLOSET IS EMPTY!")
                             .font(.custom(GK.pixelFontName, size: 12))
                             .foregroundColor(.white)

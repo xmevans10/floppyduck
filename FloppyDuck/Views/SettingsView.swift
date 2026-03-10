@@ -39,10 +39,9 @@ struct SettingsView: View {
                                     .font(.custom(GK.pixelFontName, size: 8))
                                     .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
 
-                                TextField("", text: $manager.playerName)
-                                    .font(.custom(GK.pixelFontName, size: 14))
-                                    .foregroundColor(GK.Colors.panelBorder)
-                                    .padding(10)
+                                PixelTextField(text: $manager.playerName, pixelFontName: GK.pixelFontName, fontSize: 14)
+                                    .frame(height: 44)
+                                    .padding(.horizontal, 10)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
                                             .fill(Color.white)

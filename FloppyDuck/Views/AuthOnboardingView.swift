@@ -4,7 +4,14 @@ struct AuthOnboardingView: View {
     @EnvironmentObject var manager: GameManager
     @EnvironmentObject var auth: AuthManager
 
+    /// Tracks which auth button is actively loading (fix: dual-spinner bug)
+    @State private var busyAction: AuthAction?
+
     private let icons = PixelIconFactory.shared
+
+    private enum AuthAction {
+        case guest, apple
+    }
 
     var body: some View {
         ZStack {
@@ -36,20 +43,26 @@ struct AuthOnboardingView: View {
                     authButton(
                         icon: .classic,
                         title: "CONTINUE AS GUEST",
-                        subtitle: "Quick setup, local + device identity"
+                        subtitle: "Quick setup, local + device identity",
+                        action: .guest
                     ) {
+                        busyAction = .guest
                         Task {
                             await auth.continueAsGuest()
+                            busyAction = nil
                         }
                     }
 
                     authButton(
                         icon: .trophy,
                         title: "SIGN IN WITH APPLE",
-                        subtitle: "Required for ranked multiplayer"
+                        subtitle: "Required for ranked multiplayer",
+                        action: .apple
                     ) {
+                        busyAction = .apple
                         Task {
                             await auth.signInWithApple()
+                            busyAction = nil
                         }
                     }
                 }
@@ -77,8 +90,12 @@ struct AuthOnboardingView: View {
     private func authButton(icon: PixelIcon,
                             title: String,
                             subtitle: String,
-                            action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+                            action: AuthAction,
+                            onTap: @escaping () -> Void) -> some View {
+        let isThisBusy = busyAction == action
+        let anyBusy = busyAction != nil
+
+        return Button(action: onTap) {
             HStack(spacing: 12) {
                 Image(uiImage: icons.image(for: icon))
                     .interpolation(.none)
@@ -97,7 +114,7 @@ struct AuthOnboardingView: View {
 
                 Spacer()
 
-                if auth.isBusy {
+                if isThisBusy {
                     ProgressView()
                         .tint(.white)
                 } else {
@@ -120,7 +137,8 @@ struct AuthOnboardingView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(auth.isBusy)
-        .opacity(auth.isBusy ? 0.8 : 1)
+        .disabled(anyBusy)
+        .opacity(anyBusy && !isThisBusy ? 0.5 : (anyBusy ? 0.8 : 1))
+        .accessibilityLabel(title)
     }
 }
