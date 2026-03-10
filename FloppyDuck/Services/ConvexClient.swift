@@ -133,17 +133,27 @@ actor ConvexClient: MultiplayerBackendClient {
             throw ConvexError.authFailed(http.statusCode)
         }
 
-        guard http.statusCode == 200 else {
-            throw ConvexError.requestFailed
-        }
-
-        let object = try JSONSerialization.jsonObject(with: data, options: [])
-        guard let root = object as? [String: Any] else {
+        // Try to parse body even for non-200 — Convex may include error details.
+        guard let object = try? JSONSerialization.jsonObject(with: data, options: []),
+              let root = object as? [String: Any] else {
+            // Couldn't parse body — only then fall back to generic error.
+            if http.statusCode != 200 {
+                throw ConvexError.requestFailed
+            }
             throw ConvexError.invalidResponse
         }
 
-        if let error = string(in: root, keys: ["error", "message"]) {
-            throw ConvexError.server(error)
+        // Convex REST API returns errors as HTTP 200 with:
+        //   { "status": "error", "errorMessage": "...", "errorData": "..." }
+        // `errorData` carries the clean ConvexError message; `errorMessage`
+        // contains the full stack trace.  Also handle legacy / edge formats.
+        let isError = string(from: root["status"])?.lowercased() == "error"
+        if isError || http.statusCode != 200 {
+            // Prefer clean errorData, then errorMessage, then legacy keys
+            let msg = string(in: root, keys: ["errorData", "errorMessage", "error", "message"])
+                ?? "Server error (\(functionName))"
+            print("[ConvexClient] \(functionName) error: \(msg)")
+            throw ConvexError.server(msg)
         }
 
         return root["value"]

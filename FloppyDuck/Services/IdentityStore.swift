@@ -60,11 +60,25 @@ final class IdentityStore {
                 kSecValueData as String: data,
             ]
 
-            let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-            if status == errSecItemNotFound {
+            let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+            if updateStatus == errSecItemNotFound {
                 var create = query
                 create[kSecValueData as String] = data
-                SecItemAdd(create as CFDictionary, nil)
+                let addStatus = SecItemAdd(create as CFDictionary, nil)
+                if addStatus != errSecSuccess {
+                    print("[IdentityStore] Keychain write failed for \(account): \(addStatus)")
+                }
+            } else if updateStatus != errSecSuccess {
+                print("[IdentityStore] Keychain update failed for \(account): \(updateStatus)")
+
+                // If update fails for an unexpected reason, delete & re-add as fallback.
+                SecItemDelete(query as CFDictionary)
+                var create = query
+                create[kSecValueData as String] = data
+                let retryStatus = SecItemAdd(create as CFDictionary, nil)
+                if retryStatus != errSecSuccess {
+                    print("[IdentityStore] Keychain retry write failed for \(account): \(retryStatus)")
+                }
             }
         } else {
             let query: [String: Any] = [
