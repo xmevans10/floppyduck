@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floppy Duck — Support</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sky-top: #66c0f2;
+            --sky-bottom: #a0d995;
+            --text: #2a3a14;
+            --gold: #f5d600;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+            min-height: 100vh;
+            color: var(--text);
+            padding: 24px;
+        }
+        .card {
+            max-width: 640px;
+            margin: 40px auto;
+            background: #fffbe6;
+            border-radius: 16px;
+            border: 3px solid #3a5a18;
+            padding: 32px;
+            box-shadow: 0 6px 0 #3a5a18;
+        }
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 18px;
+            color: var(--gold);
+            text-shadow: 2px 2px 0 #3a5a18;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 24px;
+        }
+        h2 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            color: #3a5a18;
+        }
+        p, li { font-size: 14px; line-height: 1.7; margin-bottom: 8px; }
+        ul { padding-left: 20px; }
+        .faq { margin-top: 12px; }
+        .faq dt { font-weight: bold; margin-top: 12px; }
+        .faq dd { margin-left: 0; margin-bottom: 8px; }
+        .contact-btn {
+            display: block;
+            text-align: center;
+            background: #3a5a18;
+            color: #fffbe6;
+            padding: 14px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            margin: 24px auto 0;
+            max-width: 300px;
+            transition: transform 0.1s;
+        }
+        .contact-btn:hover { transform: scale(1.03); }
+        .footer { text-align: center; font-size: 12px; color: #888; margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🦆 FLOPPY DUCK</h1>
+        <p class="subtitle">Help & Support</p>
+
+        <h2>FAQ</h2>
+        <dl class="faq">
+            <dt>How do I change my duck skin?</dt>
+            <dd>Go to the <strong>Closet</strong> from the home screen. Tap any owned skin to equip it. New skins can be purchased in the Shop or unlocked by beating bots on the ladder.</dd>
+
+            <dt>I bought a skin but it's not showing up!</dt>
+            <dd>Go to the Shop and tap <strong>Restore Purchases</strong> at the bottom. This will re-sync your purchases with Apple. If the issue persists, contact us below.</dd>
+
+            <dt>How does multiplayer work?</dt>
+            <dd>Tap <strong>Head to Head</strong> from the main menu. You can either match with a random player (Quick Play / Ranked) or create a private room and share the code with a friend.</dd>
+
+            <dt>What is bread?</dt>
+            <dd>Bread 🍞 is the free in-game currency. You earn it by playing games and maintaining daily streaks. Use it to buy normal-tier skins in the Shop.</dd>
+
+            <dt>How do I beat a bot?</dt>
+            <dd>In VS Bot mode, each bot has a target score. Reach that score in a single run to defeat the bot and unlock the next one. Beating a bot also unlocks their unique skin!</dd>
+
+            <dt>Can I delete my account?</dt>
+            <dd>Yes. Email us and we'll delete all your data within 30 days.</dd>
+        </dl>
+
+        <h2>STILL STUCK?</h2>
+        <p>We're happy to help! Reach out and we'll get back to you as soon as possible.</p>
+
+        <a class="contact-btn" href="mailto:floppyduck.support@gmail.com">
+            EMAIL SUPPORT
+        </a>
+
+        <p class="footer">© 2026 Floppy Duck. Quack responsibly.</p>
+    </div>
+</body>
+</html>

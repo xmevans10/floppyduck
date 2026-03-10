@@ -1,0 +1,83 @@
+# Floppy Duck — App Store Metadata
+
+## App Name
+Floppy Duck
+
+## Subtitle (30 chars max)
+Pixel Flap. Retro Quack.
+
+## Category
+Primary: Games → Casual
+Secondary: Games → Action
+
+## Description (4000 chars max)
+
+🦆 FLAP YOUR WAY TO GLORY!
+
+Floppy Duck is a pixel-art flappy game with personality. Simple to learn, impossible to master — just tap to flap and dodge the pipes. But don't let the retro looks fool you: under the hood is a deep game with multiplayer, an 8-bot gauntlet, collectible skins, and a fiercely competitive leaderboard.
+
+🎮 GAME MODES
+
+• CLASSIC — Pure survival. How far can you fly? Pipes get faster, gaps get tighter. Every point counts.
+
+• VS BOT LADDER — Take on 8 unique bot opponents, each with their own personality, skin, and trash talk. Beat QUACKERS the Newbie, survive GOOSE the Menace, and try to topple THE DUCK — the final boss. Win to unlock their exclusive skins!
+
+• HEAD TO HEAD — Challenge friends in private rooms or match with random players in Quick Play and Ranked. Real-time multiplayer, same pipes, same seed. May the best duck win.
+
+🦆 COLLECT & CUSTOMIZE
+
+9 pixel-art duck skins, each with unique accessories hand-crafted in code. Cowboys, wizards, pirates, aliens, and more. Buy skins with bread (earned by playing) or unlock the rarest ones by conquering the bot ladder.
+
+Your CLOSET keeps all your skins organized. Equip your favorite before each flight.
+
+📊 STATS & LEADERBOARD
+
+Track your best score, average, win rate, ELO rating, and more. Compare your skills against players worldwide on the global leaderboard. Daily streaks earn bonus bread — keep your streak alive!
+
+🎵 PURE RETRO
+
+Every pixel, every sound, every animation is generated from code. No stock assets. No borrowed sprites. The entire visual and audio experience is programmatically crafted — from 8-bit synthesized quacks to hand-drawn pixel ducks.
+
+Built with SpriteKit, SwiftUI, and love.
+
+Download now. It's free. 🍞
+
+## Keywords (100 chars max)
+flappy,duck,pixel,retro,8-bit,multiplayer,casual,arcade,skins,bird,game,quack,bot,ladder,pvp
+
+## Promotional Text (170 chars, can be updated without review)
+New update: 8 bots with unique personalities & skins! Beat them to unlock exclusive pixel-art ducks. Plus: skin closet, leaderboard, daily streaks & more. 🦆
+
+## Support URL
+https://xmevans10.github.io/floppyduck/support.html
+
+## Privacy Policy URL
+https://xmevans10.github.io/floppyduck/privacy.html
+
+## Marketing URL (optional)
+https://xmevans10.github.io/floppyduck/
+
+## Age Rating
+4+ (No objectionable content)
+
+## Price
+Free (with in-app purchases)
+
+## In-App Purchases
+| Product ID | Type | Price | Name |
+|---|---|---|---|
+| com.floppyduck.skin.alien | Non-Consumable | $0.49 | Alien Skin |
+| com.floppyduck.skin.wizard | Non-Consumable | $0.49 | Wizard Skin |
+| com.floppyduck.skin.devil | Non-Consumable | $0.49 | Devil Skin |
+
+## Copyright
+© 2026 Floppy Duck
+
+## What's New in This Version
+Welcome to Floppy Duck! 🦆
+• 3 game modes: Classic, VS Bot, and Head to Head multiplayer
+• 8 bot opponents with unique personalities and skins
+• 9 collectible duck skins
+• Global leaderboard
+• Daily streaks and bread rewards
+• Pure pixel-art retro experience — every asset made from code
