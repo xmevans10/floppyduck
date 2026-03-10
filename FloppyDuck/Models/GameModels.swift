@@ -9,6 +9,8 @@ enum AppRoute: Hashable {
     case settings
     case shop
     case botLadder
+    case closet
+    case leaderboard
 }
 
 struct GameModeConfig: Identifiable, Hashable {

@@ -12,6 +12,10 @@ final class GameManager: ObservableObject {
     @AppStorage("soundEnabled") var soundEnabled: Bool = true
     @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
 
+    // Daily streak
+    @AppStorage("lastPlayDate") private var lastPlayDateString: String = ""
+    @AppStorage("currentStreak") var currentStreak: Int = 0
+
     weak var authManager: AuthManager?
 
     private let multiplayerSession = MultiplayerSession(client: ConvexClient.shared)
@@ -174,6 +178,35 @@ final class GameManager: ObservableObject {
 
     func recordGame(score: Int, won: Bool? = nil) {
         stats.recordGame(score: score, won: won)
+        checkDailyStreak()
+        saveStats()
+    }
+
+    func checkDailyStreak() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+
+        let todayStr = formatter.string(from: today)
+
+        if lastPlayDateString == todayStr { return } // Already counted today
+
+        if let lastDate = formatter.date(from: lastPlayDateString) {
+            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+            if Calendar.current.isDate(lastDate, inSameDayAs: yesterday) {
+                currentStreak += 1
+            } else {
+                currentStreak = 1
+            }
+        } else {
+            currentStreak = 1
+        }
+
+        lastPlayDateString = todayStr
+
+        // Bonus bread for streaks
+        let bonus = min(currentStreak * 5, 50) // 5, 10, 15... up to 50
+        stats.bread += bonus
         saveStats()
     }
 

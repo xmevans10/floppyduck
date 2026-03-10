@@ -4,6 +4,7 @@ enum SkinPurchaseKind: String, Codable, Hashable {
     case free
     case normal
     case premium
+    case botReward
 }
 
 /// All available duck skins. Each skin keeps the base 16-wide mallard body shape
@@ -15,6 +16,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
     case dinosaur
     case wizard
     case devil
+    case sailor
+    case pirate
+    case golden
 
     var id: String { rawValue }
 
@@ -26,6 +30,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .dinosaur:  return "DINO"
         case .wizard:    return "WIZARD"
         case .devil:     return "DEVIL"
+        case .sailor:    return "SAILOR"
+        case .pirate:    return "PIRATE"
+        case .golden:    return "GOLDEN"
         }
     }
 
@@ -37,6 +44,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .dinosaur:  return "Rawr XD"
         case .wizard:    return "Yer a Duck"
         case .devil:     return "Wicked Quack"
+        case .sailor:    return "Ahoy!"
+        case .pirate:    return "Yarr!"
+        case .golden:    return "Legendary"
         }
     }
 
@@ -48,12 +58,15 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
             return .normal
         case .alien, .wizard, .devil:
             return .premium
+        case .sailor, .pirate, .golden:
+            return .botReward
         }
     }
 
     var isFree: Bool { purchaseKind == .free }
     var isPremium: Bool { purchaseKind == .premium }
     var isNormal: Bool { purchaseKind == .normal }
+    var isBotReward: Bool { purchaseKind == .botReward }
 
     var premiumProductID: String? {
         guard isPremium else { return nil }
@@ -79,6 +92,8 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
             return "\(breadPrice ?? 0) BREAD"
         case .premium:
             return "$0.49"
+        case .botReward:
+            return "BOT REWARD"
         }
     }
 
@@ -91,6 +106,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .dinosaur:  return (16, 14)
         case .wizard:    return (16, 17)
         case .devil:     return (16, 14)
+        case .sailor:    return (16, 14)
+        case .pirate:    return (16, 15)
+        case .golden:    return (16, 14)
         }
     }
 
@@ -103,6 +121,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .dinosaur:  return 3
         case .wizard:    return 6
         case .devil:     return 3
+        case .sailor:    return 3
+        case .pirate:    return 4
+        case .golden:    return 3
         }
     }
 
@@ -121,6 +142,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .dinosaur:  return Color(red: 0.55, green: 0.68, blue: 0.22)
         case .wizard:    return Color(red: 0.55, green: 0.30, blue: 0.80)
         case .devil:     return Color(red: 0.85, green: 0.25, blue: 0.25)
+        case .sailor:    return Color(red: 0.20, green: 0.35, blue: 0.70)
+        case .pirate:    return Color(red: 0.45, green: 0.30, blue: 0.15)
+        case .golden:    return Color(red: 0.90, green: 0.75, blue: 0.20)
         }
     }
 }

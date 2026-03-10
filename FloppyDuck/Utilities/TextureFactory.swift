@@ -619,13 +619,29 @@ final class TextureFactory {
         }
         let p: DuckPalette
         switch skin {
-        case .classic, .cowboy:
+        case .classic, .cowboy, .sailor:
             p = DuckPalette(
                 head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
                 breast: c(0.55, 0.22, 0.10),
                 body: c(0.58, 0.58, 0.58), bodyHi: c(0.72, 0.72, 0.72),
                 spec: c(0.15, 0.30, 0.70), specHi: c(0.25, 0.45, 0.85),
                 bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: .white)
+        case .pirate:
+            p = DuckPalette(
+                head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
+                breast: c(0.42, 0.16, 0.08),
+                body: c(0.58, 0.58, 0.58), bodyHi: c(0.72, 0.72, 0.72),
+                spec: c(0.15, 0.30, 0.70), specHi: c(0.25, 0.45, 0.85),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: .white)
+        case .golden:
+            p = DuckPalette(
+                head: c(0.95, 0.80, 0.20), headHi: c(1.00, 0.90, 0.35),
+                breast: c(0.85, 0.68, 0.15),
+                body: c(0.88, 0.72, 0.18), bodyHi: c(0.95, 0.82, 0.30),
+                spec: c(0.92, 0.92, 0.88), specHi: c(1.00, 1.00, 0.95),
+                bill: c(0.75, 0.55, 0.10), billTip: c(0.60, 0.42, 0.08),
                 collar: .white)
         case .alien:
             // Silver/metallic body with lime-green head — distinct from classic
@@ -802,6 +818,32 @@ final class TextureFactory {
                 grid[off + 10][1] = B
                 grid[off + 10][2] = tl
             }
+
+        case .sailor:
+            // White sailor cap — 3 rows above body
+            let W = UIColor.white
+            let N = UIColor(red: 0.10, green: 0.15, blue: 0.45, alpha: 1) // navy blue
+            grid[0] = [C, C, C, C, C, B, B, B, B, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, W, W, W, W, B, C, C, C, C, C, C]
+            grid[2] = [C, C, C, B, B, W, N, W, W, B, B, C, C, C, C, C]
+
+        case .pirate:
+            // Pirate tricorn hat — 4 rows above body + eye patch
+            let D = UIColor(red: 0.40, green: 0.22, blue: 0.10, alpha: 1) // dark leather brown
+            grid[0] = [C, C, C, C, C, C, B, B, C, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, B, D, D, B, B, C, C, C, C, C, C]
+            grid[2] = [C, C, C, B, D, D, D, D, D, D, B, C, C, C, C, C]
+            grid[3] = [C, B, B, D, D, D, D, D, D, D, D, B, B, C, C, C]
+            // Eye patch on body rows 3-4
+            grid[off + 3][6] = B; grid[off + 3][7] = B
+            grid[off + 4][6] = B
+
+        case .golden:
+            // Small crown — 3 rows above body
+            let G = UIColor(red: 0.95, green: 0.80, blue: 0.20, alpha: 1) // bright gold
+            grid[0] = [C, C, C, C, G, C, G, C, G, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, G, G, G, B, C, C, C, C, C, C, C]
+            grid[2] = [C, C, C, C, B, G, G, G, B, C, C, C, C, C, C, C]
         }
 
         let alpha: CGFloat = ghost ? 0.65 : 1.0

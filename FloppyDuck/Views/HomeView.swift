@@ -324,19 +324,23 @@ struct HomeView: View {
     private var bottomButtons: some View {
         HStack(spacing: 10) {
             bottomButton(icon: .shop, label: "SHOP") {
+                SoundManager.shared.play(.button)
                 manager.navigate(to: .shop)
             }
 
+            bottomButton(icon: .classic, label: "CLOSET") {
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .closet)
+            }
+
             bottomButton(icon: .stats, label: "STATS") {
+                SoundManager.shared.play(.button)
                 manager.navigate(to: .stats)
             }
 
             bottomButton(icon: .settings, label: "SETTINGS") {
+                SoundManager.shared.play(.button)
                 manager.navigate(to: .settings)
-            }
-
-            bottomButton(icon: .share, label: "SHARE") {
-                shareApp()
             }
         }
     }
@@ -378,7 +382,8 @@ struct HomeView: View {
 
     private func shareApp() {
         let text = "Check out Floppy Duck! 🦆 Can you beat my high score of \(manager.stats.bestScore)?"
-        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        let url = URL(string: "https://apps.apple.com/app/floppy-duck/id000000000")!
+        let vc = UIActivityViewController(activityItems: [text, url], applicationActivities: nil)
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {
             root.present(vc, animated: true)
