@@ -51,7 +51,7 @@ actor ConvexClient: MultiplayerBackendClient {
     // MARK: - Configuration
 
     private static let baseURLInfoKey = "CONVEX_BASE_URL"
-    private static let fallbackBaseURL = "https://zany-ram-588.convex.cloud"
+    private static let fallbackBaseURL = "https://first-setter-743.convex.cloud"
 
     private let baseURL: String
     private let session: URLSession
