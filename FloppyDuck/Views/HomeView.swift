@@ -108,6 +108,8 @@ struct HomeView: View {
             }
         }
         .onAppear {
+            // Item 4: Respect reduce motion accessibility setting
+            guard !UIAccessibility.isReduceMotionEnabled else { return }
             withAnimation(.linear(duration: 1.65).repeatForever(autoreverses: false)) {
                 titleFlashOffset = 180
             }
@@ -155,6 +157,7 @@ struct HomeView: View {
                 }
                 .offset(x: cloudOffset)
                 .onAppear {
+                    guard !UIAccessibility.isReduceMotionEnabled else { return }
                     withAnimation(.linear(duration: 30).repeatForever(autoreverses: false)) {
                         cloudOffset = -300
                     }
@@ -224,6 +227,7 @@ struct HomeView: View {
                         .stroke(GK.Colors.breadGold.opacity(0.3), lineWidth: 2)
                 )
         )
+        .accessibilityLabel("Bread: \(manager.stats.bread)")
     }
 
     private var accountBadge: some View {
@@ -317,6 +321,7 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(subtitle)")
     }
 
     // MARK: - Bottom Buttons (4 buttons)
@@ -368,6 +373,7 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     // MARK: - Helpers

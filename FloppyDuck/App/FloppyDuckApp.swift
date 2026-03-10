@@ -4,6 +4,7 @@ import SwiftUI
 struct FloppyDuckApp: App {
     @StateObject private var gameManager: GameManager
     @StateObject private var authManager: AuthManager
+    @State private var splashFinished = false
 
     init() {
         let manager = GameManager()
@@ -16,10 +17,19 @@ struct FloppyDuckApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(gameManager)
-                .environmentObject(authManager)
-                .preferredColorScheme(.light)
+            ZStack {
+                ContentView()
+                    .environmentObject(gameManager)
+                    .environmentObject(authManager)
+                    .preferredColorScheme(.light)
+                    .opacity(splashFinished ? 1 : 0)
+
+                if !splashFinished {
+                    SplashView(isFinished: $splashFinished)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: splashFinished)
         }
     }
 }

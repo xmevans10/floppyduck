@@ -12,7 +12,10 @@ enum GameSound: String {
     case countTick
     case newBest
     case milestone
+    case quack
 }
+
+import Foundation
 
 /// Generates and plays retro 8-bit style game sounds programmatically.
 /// All audio is synthesized from sine/square waveforms — zero bundled assets.
@@ -24,6 +27,12 @@ final class SoundManager {
     private var soundData: [GameSound: Data] = [:]
     private var bgmPlayer: AVAudioPlayer?
     private var playBgmPlayer: AVAudioPlayer?
+
+    /// Per-skin sound variant players (keyed by "\(skin.rawValue)_\(sound.rawValue)")
+    private var skinPlayers: [String: AVAudioPlayer] = [:]
+
+    /// Currently active skin for sound variants
+    private var activeSkin: DuckSkin = .classic
 
     /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
     private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
@@ -48,10 +57,31 @@ final class SoundManager {
         }
     }
 
+    /// Set active skin for per-skin sound variants (flap + death).
+    func setActiveSkin(_ skin: DuckSkin) {
+        audioQueue.async { [weak self] in
+            self?.activeSkin = skin
+        }
+        buildSkinVariants(for: skin)
+    }
+
     func play(_ sound: GameSound) {
         guard isEnabled else { return }
         audioQueue.async { [weak self] in
-            guard let player = self?.players[sound] else { return }
+            guard let self else { return }
+
+            // Per-skin variant for flap and death
+            if (sound == .flap || sound == .death) && self.activeSkin != .classic {
+                let key = "\(self.activeSkin.rawValue)_\(sound.rawValue)"
+                if let skinPlayer = self.skinPlayers[key] {
+                    skinPlayer.stop()
+                    skinPlayer.currentTime = 0
+                    skinPlayer.play()
+                    return
+                }
+            }
+
+            guard let player = self.players[sound] else { return }
             player.stop()
             player.currentTime = 0
             player.play()
@@ -82,6 +112,8 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             guard self.isEnabled else { return }
+            // Fix: Stop menu BGM before starting gameplay BGM to prevent overlap
+            self.bgmPlayer?.stop()
             guard let playBgmPlayer else { return }
             playBgmPlayer.numberOfLoops = -1
             playBgmPlayer.volume = 0.10
@@ -129,6 +161,7 @@ final class SoundManager {
             (.countTick, countTickWav(), 0.15),
             (.newBest,   newBestWav(),   0.50),
             (.milestone, milestoneWav(), 0.30),
+            (.quack,     quackWav(),     0.45),
         ]
         for (sound, data, vol) in defs {
             soundData[sound] = data
@@ -292,6 +325,107 @@ final class SoundManager {
     private func milestoneWav() -> Data {
         wav(sine(freq: 660, dur: 0.05, decay: 0.06) +
             sine(freq: 990, dur: 0.08, decay: 0.10))
+    }
+
+    /// Splash-screen quack — short, comedic duck quack
+    private func quackWav() -> Data {
+        wav(chirp(f0: 600, f1: 280, dur: 0.08) +
+            silence(0.02) +
+            chirp(f0: 550, f1: 250, dur: 0.12))
+    }
+
+    // MARK: - Per-Skin Sound Variants (Item 11)
+
+    /// Build per-skin flap and death sounds. Non-classic skins get pitch-shifted/modified waveforms.
+    private func buildSkinVariants(for skin: DuckSkin) {
+        guard skin != .classic else { return }
+        let key_flap = "\(skin.rawValue)_flap"
+        let key_death = "\(skin.rawValue)_death"
+
+        // Skip if already built
+        if skinPlayers[key_flap] != nil { return }
+
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+
+            let (flapData, flapVol) = self.skinFlapWav(skin: skin)
+            let (deathData, deathVol) = self.skinDeathWav(skin: skin)
+
+            if let p = try? AVAudioPlayer(data: flapData) {
+                p.volume = flapVol
+                p.prepareToPlay()
+                self.skinPlayers[key_flap] = p
+            }
+            if let p = try? AVAudioPlayer(data: deathData) {
+                p.volume = deathVol
+                p.prepareToPlay()
+                self.skinPlayers[key_death] = p
+            }
+        }
+    }
+
+    /// Per-skin flap sound: pitch-shifted or different waveform.
+    private func skinFlapWav(skin: DuckSkin) -> (Data, Float) {
+        switch skin {
+        case .cowboy:
+            // Lower honk
+            return (wav(chirp(f0: 220, f1: 500, dur: 0.07)), 0.28)
+        case .alien:
+            // High-pitched zap
+            return (wav(sine(freq: 1800, dur: 0.04, decay: 0.04) + sine(freq: 2400, dur: 0.03, decay: 0.03)), 0.22)
+        case .wizard:
+            // Shimmer / sparkle
+            return (wav(sine(freq: 1200, dur: 0.03, decay: 0.04) + sine(freq: 1600, dur: 0.03, decay: 0.04) + sine(freq: 2000, dur: 0.02, decay: 0.03)), 0.20)
+        case .devil:
+            // Low growl chirp
+            return (wav(chirp(f0: 180, f1: 400, dur: 0.08)), 0.30)
+        case .pirate:
+            // Rough square wave flap
+            return (wav(square(freq: 300, dur: 0.05, decay: 0.06)), 0.25)
+        case .dinosaur:
+            // Deep thud chirp
+            return (wav(chirp(f0: 150, f1: 350, dur: 0.07)), 0.28)
+        case .sailor:
+            // Whistle-like
+            return (wav(sine(freq: 900, dur: 0.04, decay: 0.05) + sine(freq: 1100, dur: 0.03, decay: 0.04)), 0.22)
+        case .golden:
+            // Bright bell
+            return (wav(sine(freq: 1400, dur: 0.04, decay: 0.05) + sine(freq: 1800, dur: 0.04, decay: 0.05)), 0.25)
+        case .classic:
+            return (flapWav(), 0.25)
+        }
+    }
+
+    /// Per-skin death sound: pitch-shifted or different waveform.
+    private func skinDeathWav(skin: DuckSkin) -> (Data, Float) {
+        switch skin {
+        case .cowboy:
+            // Lower longer honk descend
+            return (wav(chirp(f0: 280, f1: 60, dur: 0.30)), 0.42)
+        case .alien:
+            // High zap descend
+            return (wav(chirp(f0: 1200, f1: 200, dur: 0.25)), 0.38)
+        case .wizard:
+            // Descending shimmer
+            return (wav(sine(freq: 800, dur: 0.08, decay: 0.10) + sine(freq: 500, dur: 0.08, decay: 0.10) + sine(freq: 300, dur: 0.12, decay: 0.14)), 0.38)
+        case .devil:
+            // Deep growl
+            return (wav(chirp(f0: 300, f1: 50, dur: 0.35)), 0.45)
+        case .pirate:
+            // Square wave crash
+            return (wav(square(freq: 350, dur: 0.10, decay: 0.12) + square(freq: 200, dur: 0.15, decay: 0.18)), 0.40)
+        case .dinosaur:
+            // Deep rumble
+            return (wav(chirp(f0: 250, f1: 40, dur: 0.30)), 0.42)
+        case .sailor:
+            // Descending whistle
+            return (wav(chirp(f0: 800, f1: 150, dur: 0.28)), 0.38)
+        case .golden:
+            // Bright crash descend
+            return (wav(chirp(f0: 1000, f1: 120, dur: 0.28)), 0.42)
+        case .classic:
+            return (deathWav(), 0.40)
+        }
     }
 
     /// Triangle wave — softer chiptune timbre for bass/background parts.

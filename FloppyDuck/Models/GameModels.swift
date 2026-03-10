@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Navigation
 
@@ -64,6 +65,14 @@ enum GameMode: String, Hashable {
     case classic
     case headToHead
     case vsBot
+
+    var shareDisplayName: String {
+        switch self {
+        case .classic:    return "Classic"
+        case .headToHead: return "Head to Head"
+        case .vsBot:      return "VS Bot"
+        }
+    }
 }
 
 enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
@@ -268,6 +277,16 @@ enum Medal: String {
         case .silver:   return "🥈"
         case .gold:     return "🥇"
         case .platinum: return "💎"
+        }
+    }
+
+    var themeColor: Color {
+        switch self {
+        case .none:     return .white
+        case .bronze:   return Color(red: 0.80, green: 0.50, blue: 0.20)
+        case .silver:   return Color(red: 0.75, green: 0.75, blue: 0.80)
+        case .gold:     return Color(red: 1.0, green: 0.84, blue: 0.0)
+        case .platinum: return Color(red: 0.55, green: 0.80, blue: 1.0)
         }
     }
 }

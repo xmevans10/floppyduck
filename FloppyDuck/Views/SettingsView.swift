@@ -132,9 +132,10 @@ struct SettingsView: View {
                                     .font(.custom(GK.pixelFontName, size: 10))
                                     .foregroundColor(GK.Colors.panelBorder)
                                 Spacer()
-                                Toggle("", isOn: $manager.soundEnabled)
+                                Toggle("Sound", isOn: $manager.soundEnabled)
                                     .tint(GK.Colors.buttonGreen)
                                     .labelsHidden()
+                                    .accessibilityLabel("Sound toggle")
                             }
                         }
 
@@ -145,9 +146,10 @@ struct SettingsView: View {
                                     .font(.custom(GK.pixelFontName, size: 10))
                                     .foregroundColor(GK.Colors.panelBorder)
                                 Spacer()
-                                Toggle("", isOn: $manager.hapticsEnabled)
+                                Toggle("Haptics", isOn: $manager.hapticsEnabled)
                                     .tint(GK.Colors.buttonGreen)
                                     .labelsHidden()
+                                    .accessibilityLabel("Haptics toggle")
                             }
                         }
 
@@ -243,5 +245,6 @@ struct SettingsView: View {
                 .background(Circle().fill(Color.white.opacity(0.2)))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Back")
     }
 }

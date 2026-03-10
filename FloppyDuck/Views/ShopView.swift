@@ -134,6 +134,7 @@ struct ShopView: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(section.rawValue) section")
     }
 
     // MARK: - Skin Card
