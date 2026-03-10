@@ -166,7 +166,15 @@ final class AuthManager: ObservableObject {
             if shouldShowOnboarding {
                 authState = .onboardingRequired
             }
-            statusMessage = "Sign in failed. Please retry."
+            // Include underlying error type so backend issues are diagnosable
+            let detail: String
+            if let convexErr = error as? ConvexError {
+                detail = "Sign in failed: \(convexErr.localizedDescription)"
+            } else {
+                detail = "Sign in failed. Please retry."
+            }
+            statusMessage = detail
+            print("[AuthManager] signInWithApple error: \(error)")
             needsCloudRestore = true
         }
     }

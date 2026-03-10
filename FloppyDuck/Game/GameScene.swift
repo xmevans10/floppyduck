@@ -851,8 +851,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         guard let duck else { return }
 
-        // Bump duck above ground layer so it doesn't clip behind ground tiles
-        duck.zPosition = 55
+        // Bump duck above ground + bush layers so it doesn't clip behind them
+        duck.zPosition = 60
 
         // Freeze all scrolling layers — parallax stops immediately on death
         pipeLayer.isPaused = true
@@ -911,7 +911,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.removeAction(forKey: "wings")
         duck.texture = duckTextures[0]
         duck.physicsBody?.collisionBitMask = GK.groundCategory
-        duck.physicsBody?.velocity = CGVector(dx: 0, dy: 200)
+        // Fall straight down from current position — no lateral drift, no upward bounce
+        duck.physicsBody?.velocity = .zero
 
         duck.run(SKAction.sequence([
             SKAction.wait(forDuration: 0.8),
@@ -1128,11 +1129,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func setupForegroundBushes() {
         for i in 0..<2 {
             let bushNode = SKSpriteNode(color: .clear,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 50))
+                                         size: CGSize(width: GK.worldWidth * 2, height: 36))
             bushNode.anchorPoint = CGPoint(x: 0, y: 0)
-            // Overlap significantly with ground so bushes look rooted, not floating
-            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 20)
-            bushNode.zPosition = 45  // Between ground (50) and pipes (20), in front of duck (40)
+            // Position base at ground top so bushes grow UP from grass. z=55 = above ground (50).
+            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 6)
+            bushNode.zPosition = 55
 
             let tex = renderBushTexture()
             bushNode.texture = tex
@@ -1142,56 +1143,57 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     /// Renders a pixel-art bush/flower strip texture.
+    /// Texture origin (0,0) is top-left in UIKit → maps to TOP of sprite in SpriteKit.
+    /// We draw upward (bushes at top of texture → top of sprite → visually above ground).
     private func renderBushTexture() -> SKTexture {
         let w = Int(GK.worldWidth * 2)
-        let h = 50
+        let h = 36
         let size = CGSize(width: w, height: h)
         let renderer = UIGraphicsImageRenderer(size: size)
         let image = renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Draw pixel bushes at random intervals (grow upward from ground)
+            // Draw pixel bushes at random intervals — bottom of texture = base (grass level)
             var x = 0
             while x < w {
-                let bushW = Int.random(in: 20...36)
-                let bushH = Int.random(in: 20...32)
-                let gap = Int.random(in: 24...48)
+                let bushW = Int.random(in: 18...32)
+                let bushH = Int.random(in: 14...24)
+                let gap = Int.random(in: 20...40)
 
                 let ps = 4  // pixel size for blocky look
+                // y=0 is top of texture; bushes grow DOWN from top of texture
+                // (since texture top = sprite top = farthest from ground)
+                // So we draw from bottom: y = h - bushH to y = h
+                let baseY = h - ps  // very bottom row
 
-                // Bush body — main rounded shape
-                let bodyColor = UIColor(red: 0.18, green: 0.44, blue: 0.12, alpha: 0.85)
+                // Bush body — slightly transparent so duck peeks through near ground
+                let bodyColor = UIColor(red: 0.20, green: 0.48, blue: 0.14, alpha: 0.8)
                 c.setFillColor(bodyColor.cgColor)
-                // Narrower base, wider middle, narrower top — pixel bush silhouette
-                let baseInset = ps * 2
-                c.fill(CGRect(x: x + baseInset, y: 0, width: bushW - baseInset * 2, height: ps))
-                c.fill(CGRect(x: x + ps, y: ps, width: bushW - ps * 2, height: bushH - ps * 3))
-                c.fill(CGRect(x: x, y: ps * 2, width: bushW, height: bushH - ps * 4))
-                // Rounded top
-                c.fill(CGRect(x: x + ps, y: bushH - ps * 2, width: bushW - ps * 2, height: ps))
-                c.fill(CGRect(x: x + ps * 2, y: bushH - ps, width: bushW - ps * 4, height: ps))
 
-                // Highlight (lighter green on upper portion)
-                let hlColor = UIColor(red: 0.30, green: 0.58, blue: 0.18, alpha: 0.6)
+                // Rounded top → wide middle → narrowing base
+                let topY = h - bushH
+                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
+                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
+                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
+                // Slight base narrowing
+                c.fill(CGRect(x: x + ps, y: baseY, width: bushW - ps * 2, height: ps))
+
+                // Highlight on top of bush (lighter green)
+                let hlColor = UIColor(red: 0.32, green: 0.62, blue: 0.20, alpha: 0.6)
                 c.setFillColor(hlColor.cgColor)
-                c.fill(CGRect(x: x + ps * 2, y: bushH - ps * 3, width: bushW - ps * 4, height: ps))
-                c.fill(CGRect(x: x + ps, y: bushH - ps * 4, width: ps * 2, height: ps))
+                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
 
-                // Occasional flower on top of bush
+                // Occasional flower on top
                 if Int.random(in: 0...2) == 0 {
                     let flowerColors: [UIColor] = [
                         UIColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 1.0),
                         UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1.0),
-                        UIColor(red: 0.85, green: 0.45, blue: 0.85, alpha: 1.0),
-                        UIColor(red: 1.0, green: 0.60, blue: 0.2, alpha: 1.0),
+                        UIColor(red: 0.80, green: 0.40, blue: 0.85, alpha: 1.0),
                     ]
                     let fc = flowerColors.randomElement()!
                     c.setFillColor(fc.cgColor)
-                    let fx = x + Int.random(in: ps...(bushW - ps * 2))
-                    c.fill(CGRect(x: fx, y: bushH, width: ps + 2, height: ps + 2))
-                    // Stem pixel
-                    c.setFillColor(UIColor(red: 0.20, green: 0.40, blue: 0.10, alpha: 0.8).cgColor)
-                    c.fill(CGRect(x: fx + 1, y: bushH - ps, width: 2, height: ps))
+                    let fx = x + Int.random(in: ps...(max(ps + 1, bushW - ps * 2)))
+                    c.fill(CGRect(x: fx, y: topY - ps, width: ps + 2, height: ps + 2))
                 }
 
                 x += bushW + gap

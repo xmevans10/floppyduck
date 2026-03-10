@@ -25,10 +25,18 @@ struct ContentView: View {
             HomeView()
                 .navigationDestination(for: AppRoute.self) { route in
                     destinationView(for: route)
-                        // Solid fallback behind gradient prevents previous-view bleed on push/pop
-                        .background(Color(red: 0.35, green: 0.65, blue: 0.90))
+                        // Solid opaque background covers previous-view bleed during push/pop
+                        .background(
+                            Color(red: 0.35, green: 0.65, blue: 0.90)
+                                .ignoresSafeArea()
+                        )
                 }
         }
+        // Overall stack background so nothing peeks through during any transition
+        .background(
+            Color(red: 0.35, green: 0.65, blue: 0.90)
+                .ignoresSafeArea()
+        )
         .fullScreenCover(item: $manager.activeGameConfig) { config in
             GameContainerView(config: config)
                 .environmentObject(manager)
