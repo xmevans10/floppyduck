@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 
 @MainActor
@@ -94,12 +95,21 @@ final class AuthManager: ObservableObject {
                 authState = .authenticated(.apple)
                 statusMessage = nil
                 needsCloudRestore = false
-            } catch {
+            } catch let error as ConvexError where error.isAuthError {
+                // 401/403 → session is definitively invalid; clear it.
+                print("[AuthManager] Session auth error: \(error). Clearing session.")
                 identityStore.sessionToken = nil
                 identityStore.appleUserId = nil
                 await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
                 needsCloudRestore = true
                 statusMessage = "Session expired. Sign in with Apple to restore cloud profile."
+            } catch {
+                // Network / transient error — keep session for next attempt.
+                // Fall back to guest for this launch but don't destroy the token.
+                print("[AuthManager] Bootstrap profile fetch failed (non-auth): \(error)")
+                await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+                needsCloudRestore = true
+                statusMessage = "Could not reach server. Sign in with Apple to reconnect."
             }
         } else {
             await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
@@ -115,11 +125,26 @@ final class AuthManager: ObservableObject {
         isBusy = true
         defer { isBusy = false }
 
+        // Pre-flight: if we have a previous Apple User ID, check if the
+        // credential is still valid (user may have revoked in Settings).
+        if let previousAppleId = identityStore.appleUserId {
+            let state = await Self.appleCredentialState(for: previousAppleId)
+            print("[AuthManager] Apple credential state for \(previousAppleId.prefix(8))…: \(state)")
+            if state == .revoked {
+                identityStore.sessionToken = nil
+                identityStore.appleUserId = nil
+                print("[AuthManager] Apple credential revoked — cleared stored identity.")
+            }
+        }
+
         do {
             let coordinator = AppleSignInCoordinator()
             activeCoordinator = coordinator  // retain until complete
             let applePayload = try await coordinator.signIn()
             activeCoordinator = nil
+
+            print("[AuthManager] Apple sign-in payload received. appleUserId=\(applePayload.appleUserId.prefix(8))… tokenLength=\(applePayload.identityToken.count)")
+
             let deviceId = identityStore.getOrCreateDeviceId()
 
             await client.setAuthContext(deviceId: deviceId, sessionToken: nil)
@@ -132,11 +157,19 @@ final class AuthManager: ObservableObject {
                 displayName: displayName
             )
 
+            print("[AuthManager] linkApple succeeded. sessionToken length=\(linkResponse.sessionToken.count)")
+
             identityStore.sessionToken = linkResponse.sessionToken
             identityStore.appleUserId = linkResponse.appleUserId ?? applePayload.appleUserId
             identityStore.didCompleteAuthOnboarding = true
             if !identityStore.didMergeLocalStats || linkResponse.didMergeStats {
                 identityStore.didMergeLocalStats = true
+            }
+
+            // Verify the session token was actually persisted to Keychain.
+            let readBack = identityStore.sessionToken
+            if readBack == nil || readBack != linkResponse.sessionToken {
+                print("[AuthManager] ⚠️ Keychain write verification FAILED — token not persisted!")
             }
 
             await client.setAuthContext(deviceId: deviceId, sessionToken: linkResponse.sessionToken)
@@ -170,12 +203,23 @@ final class AuthManager: ObservableObject {
             let detail: String
             if let convexErr = error as? ConvexError {
                 detail = "Sign in failed: \(convexErr.localizedDescription)"
+            } else if let authErr = error as? AuthError {
+                detail = "Sign in failed: \(authErr.localizedDescription)"
             } else {
-                detail = "Sign in failed. Please retry."
+                detail = "Sign in failed: \(error.localizedDescription)"
             }
             statusMessage = detail
             print("[AuthManager] signInWithApple error: \(error)")
             needsCloudRestore = true
+        }
+    }
+
+    /// Checks the Apple ID credential state for a given user ID.
+    private static func appleCredentialState(for appleUserId: String) async -> ASAuthorizationAppleIDProvider.CredentialState {
+        await withCheckedContinuation { continuation in
+            ASAuthorizationAppleIDProvider().getCredentialState(forUserID: appleUserId) { state, _ in
+                continuation.resume(returning: state)
+            }
         }
     }
 
