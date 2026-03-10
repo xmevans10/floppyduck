@@ -94,6 +94,16 @@ actor ConvexClient: MultiplayerBackendClient {
     private func requestRaw(endpoint: String,
                             functionName: String,
                             args: [String: Any]) async throws -> Any? {
+        // Item 3: Retry with exponential backoff (1s→2s→4s), skip retries for 401/403
+        return try await withRetry(maxAttempts: 3) {
+            try await self.performRequest(endpoint: endpoint, functionName: functionName, args: args)
+        }
+    }
+
+    /// Performs a single network request (extracted for retry wrapper).
+    private func performRequest(endpoint: String,
+                                functionName: String,
+                                args: [String: Any]) async throws -> Any? {
         guard let url = URL(string: "\(baseURL)/api/\(endpoint)") else {
             throw ConvexError.invalidResponse
         }
@@ -114,7 +124,16 @@ actor ConvexClient: MultiplayerBackendClient {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+        guard let http = response as? HTTPURLResponse else {
+            throw ConvexError.requestFailed
+        }
+
+        // Don't retry auth errors (401/403)
+        if http.statusCode == 401 || http.statusCode == 403 {
+            throw ConvexError.authFailed(http.statusCode)
+        }
+
+        guard http.statusCode == 200 else {
             throw ConvexError.requestFailed
         }
 
@@ -128,6 +147,29 @@ actor ConvexClient: MultiplayerBackendClient {
         }
 
         return root["value"]
+    }
+
+    /// Retries an async throwing closure with exponential backoff.
+    /// Delays: 1s after first failure, 2s after second, 4s after third…
+    /// Does NOT retry ConvexError.authFailed (401/403).
+    private func withRetry<T>(maxAttempts: Int,
+                              _ operation: () async throws -> T) async throws -> T {
+        var lastError: Error?
+        for attempt in 1...maxAttempts {
+            do {
+                return try await operation()
+            } catch let error as ConvexError where error.isAuthError {
+                // Never retry auth errors
+                throw error
+            } catch {
+                lastError = error
+                if attempt < maxAttempts {
+                    let delay = UInt64(pow(2.0, Double(attempt - 1))) * 1_000_000_000 // 1s, 2s, 4s…
+                    try? await Task.sleep(nanoseconds: delay)
+                }
+            }
+        }
+        throw lastError ?? ConvexError.requestFailed
     }
 
     private func mergedArgsWithIdentity(_ args: [String: Any]) -> [String: Any] {
@@ -673,6 +715,7 @@ enum ConvexError: Error, LocalizedError {
     case requestFailed
     case invalidResponse
     case server(String)
+    case authFailed(Int)  // 401 or 403 — never retry these
 
     var errorDescription: String? {
         switch self {
@@ -682,6 +725,13 @@ enum ConvexError: Error, LocalizedError {
             return "Invalid response format"
         case .server(let message):
             return message
+        case .authFailed(let code):
+            return "Authentication failed (\(code))"
         }
+    }
+
+    var isAuthError: Bool {
+        if case .authFailed = self { return true }
+        return false
     }
 }

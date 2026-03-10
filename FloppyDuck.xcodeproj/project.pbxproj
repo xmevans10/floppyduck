@@ -40,6 +40,8 @@
 		E4862C9430504EFD8842A776 /* GameConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F70986D2FC6C1758722D0D5 /* GameConstants.swift */; };
 		EB39ADF36C8B378B568E6FFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
+		D30000000000000000000001 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000001 /* SplashView.swift */; };
+		D30000000000000000000002 /* ShareCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* ShareCardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +93,8 @@
 		F0703F9981111218E6869673 /* PRNG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRNG.swift; sourceTree = "<group>"; };
 		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
+		D10000000000000000000001 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		D10000000000000000000002 /* ShareCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +125,7 @@
 				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
 				A47652A08D5F52D04D2A070A /* StatsView.swift */,
 				CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */,
+				D10000000000000000000001 /* SplashView.swift */,
 				FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */,
 				DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */,
 			);
@@ -167,6 +172,7 @@
 			children = (
 				C6DC340C3366ABF3170CC53A /* ModeCard.swift */,
 				90B62950ED3B295FD7BFD165 /* StatBadge.swift */,
+				D10000000000000000000002 /* ShareCardView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -364,6 +370,8 @@
 				B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */,
 				D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */,
 				9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */,
+				D30000000000000000000001 /* SplashView.swift in Sources */,
+				D30000000000000000000002 /* ShareCardView.swift in Sources */,
 				A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */,
 				BE83180DB6EA0770D2D8235C /* DuckSkin.swift in Sources */,
 				CE0FE362AF86AF0634F66E10 /* SkinManager.swift in Sources */,

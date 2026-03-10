@@ -80,4 +80,23 @@ enum Haptic {
         guard isEnabled else { return }
         notification.notificationOccurred(.warning)
     }
+
+    /// Splash screen landing impact
+    static func splash() {
+        guard isEnabled else { return }
+        impactMedium.impactOccurred()
+        impactMedium.prepare()
+    }
+
+    /// Enhanced death impact — stronger/longer shake feeling
+    static func enhancedDeath() {
+        guard isEnabled else { return }
+        impactHeavy.impactOccurred(intensity: 1.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            notification.notificationOccurred(.error)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            impactMedium.impactOccurred()
+        }
+    }
 }

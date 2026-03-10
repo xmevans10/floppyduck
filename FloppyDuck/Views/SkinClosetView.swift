@@ -100,6 +100,7 @@ struct SkinClosetView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Go to shop for more skins")
                 .padding(.bottom, 20)
             }
         }

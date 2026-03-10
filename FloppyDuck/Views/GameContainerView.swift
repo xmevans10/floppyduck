@@ -523,6 +523,7 @@ struct GameContainerView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Share score")
                 .transition(.opacity)
             }
         }
@@ -725,6 +726,7 @@ struct GameContainerView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
@@ -736,10 +738,23 @@ struct GameContainerView: View {
     }
 
     private func shareScore() {
+        // Item 7: Generate pixel-art share card image
+        let shareCard = ShareCardView(
+            score: score,
+            medal: medal,
+            bestScore: manager.stats.bestScore,
+            mode: config.mode
+        )
+        let cardImage = shareCard.renderToImage()
+
+        // Item 14: App Store link placeholder
+        let appStoreURL = URL(string: "https://apps.apple.com/app/floppy-duck/id000000000")!
+
         let medalText = medal != .none ? " \(medal.emoji) \(medal.displayName) medal!" : ""
         let modeText = isHeadToHead ? " in Head to Head" : ""
         let text = "I scored \(score)\(modeText) in Floppy Duck!\(medalText) 🦆 Can you beat that?"
-        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+
+        let vc = UIActivityViewController(activityItems: [cardImage, text, appStoreURL], applicationActivities: nil)
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {
             root.present(vc, animated: true)
