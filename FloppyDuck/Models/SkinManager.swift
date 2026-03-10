@@ -136,6 +136,10 @@ final class SkinManager: ObservableObject {
         grantSkin(skin)
     }
 
+    func unlockBotReward(_ skin: DuckSkin) {
+        grantSkin(skin)
+    }
+
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified:

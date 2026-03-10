@@ -1,5 +1,6 @@
 import SwiftUI
 import SpriteKit
+import StoreKit
 
 struct GameContainerView: View {
     let config: GameModeConfig
@@ -155,8 +156,10 @@ struct GameContainerView: View {
 
         manager.recordGame(score: finalScore, won: true)
 
-        if let botId = config.botCharacterId {
+        if let botId = config.botCharacterId,
+           let bot = BotCharacter.find(botId) {
             manager.beatBot(botId)
+            SkinManager.shared.unlockBotReward(bot.skin)
         }
 
         SoundManager.shared.play(.win)
@@ -199,6 +202,18 @@ struct GameContainerView: View {
            let botId = config.botCharacterId,
            score >= (config.targetScore ?? 0) {
             manager.beatBot(botId)
+            if let bot = BotCharacter.find(botId) {
+                SkinManager.shared.unlockBotReward(bot.skin)
+            }
+        }
+
+        // Prompt for review after 5th or 25th game
+        if manager.stats.gamesPlayed == 5 || manager.stats.gamesPlayed == 25 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    SKStoreReviewController.requestReview(in: scene)
+                }
+            }
         }
 
         if let won {
@@ -631,7 +646,7 @@ struct GameContainerView: View {
                         .foregroundColor(GK.Colors.scoreYellow)
                     Text("NEW BEST!")
                         .font(.custom(GK.pixelFontName, size: 12))
-                        .foregroundColor(GK.Colors.scoreYellow)
+                        .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
                     Text("★")
                         .font(.custom(GK.pixelFontName, size: 10))
                         .foregroundColor(GK.Colors.scoreYellow)
@@ -642,6 +657,10 @@ struct GameContainerView: View {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.15))
                 )
+                .shadow(color: Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.5), radius: 8, x: 0, y: 0)
+                .scaleEffect(celebrationPulse ? 1.05 : 0.95)
+                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: celebrationPulse)
+                .onAppear { celebrationPulse = true }
                 .transition(.scale.combined(with: .opacity))
             }
 

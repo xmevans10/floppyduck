@@ -37,6 +37,10 @@ struct ContentView: View {
                         ShopView()
                     case .botLadder:
                         BotLadderView()
+                    case .closet:
+                        SkinClosetView()
+                    case .leaderboard:
+                        LeaderboardView()
                     }
                 }
         }

@@ -25,7 +25,10 @@ struct ShopView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Button { manager.goHome() } label: {
+                    Button {
+                        SoundManager.shared.play(.button)
+                        manager.goHome()
+                    } label: {
                         Image(uiImage: icons.image(for: .back, pixelScale: 3.0))
                             .interpolation(.none)
                             .resizable()
@@ -249,6 +252,8 @@ struct ShopView: View {
 
     private var filteredSkins: [DuckSkin] {
         DuckSkin.allCases.filter { skin in
+            // Bot reward skins are not shown in shop
+            if skin.isBotReward { return false }
             switch selectedSection {
             case .normal:
                 return skin.isNormal || skin.isFree

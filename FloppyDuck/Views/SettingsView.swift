@@ -232,6 +232,7 @@ struct SettingsView: View {
 
     private var backButton: some View {
         Button {
+            SoundManager.shared.play(.button)
             manager.goHome()
         } label: {
             Image(uiImage: icons.image(for: .back))

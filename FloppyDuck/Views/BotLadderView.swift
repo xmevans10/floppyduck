@@ -41,7 +41,10 @@ struct BotLadderView: View {
 
     private var header: some View {
         HStack {
-            Button { manager.goHome() } label: {
+            Button {
+                SoundManager.shared.play(.button)
+                manager.goHome()
+            } label: {
                 Image(uiImage: icons.image(for: .back, pixelScale: 3.0))
                     .interpolation(.none)
                     .resizable()
@@ -96,6 +99,7 @@ struct BotLadderView: View {
     private func botNode(bot: BotCharacter, index: Int, beaten: Bool, isNext: Bool, locked: Bool) -> some View {
         Button {
             if !locked {
+                SoundManager.shared.play(.button)
                 manager.startBotLadderMatch(bot)
             }
         } label: {
@@ -151,6 +155,15 @@ struct BotLadderView: View {
                                 .font(.custom(GK.pixelFontName, size: 6))
                                 .foregroundColor(.white.opacity(0.5))
                         }
+                    }
+
+                    if isNext {
+                        Text("\"\(bot.taunt)\"")
+                            .font(.custom(GK.pixelFontName, size: 5))
+                            .italic()
+                            .foregroundColor(.white.opacity(0.6))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 

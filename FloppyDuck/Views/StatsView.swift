@@ -74,6 +74,40 @@ struct StatsView: View {
                             recentScoresChart
                         }
 
+                        // Leaderboard button
+                        Button {
+                            SoundManager.shared.play(.button)
+                            manager.navigate(to: .leaderboard)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(uiImage: icons.image(for: .trophy))
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 22, height: 22)
+                                Text("LEADERBOARD")
+                                    .font(.custom(GK.pixelFontName, size: 10))
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(uiImage: icons.image(for: .play, pixelScale: 2.0))
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .frame(width: 14, height: 14)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(GK.Colors.buttonBlue)
+                                    .shadow(color: GK.Colors.buttonBlue.opacity(0.5), radius: 0, x: 0, y: 3)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
+                            )
+                        }
+                        .buttonStyle(.plain)
+
                         // Average score
                         HStack {
                             Text("AVG SCORE")
@@ -168,6 +202,7 @@ struct StatsView: View {
 
     private var backButton: some View {
         Button {
+            SoundManager.shared.play(.button)
             manager.goHome()
         } label: {
             Image(uiImage: icons.image(for: .back))
