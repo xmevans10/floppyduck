@@ -166,6 +166,8 @@ struct ShopView: View {
                 skinManager.select(skin)
             case .premium:
                 Task { await skinManager.purchasePremium(skin) }
+            case .botReward:
+                localErrorMessage = "Win against this bot to unlock their skin!"
             }
         } label: {
             VStack(spacing: 8) {
