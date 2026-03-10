@@ -44,6 +44,7 @@
 		D30000000000000000000002 /* ShareCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* ShareCardView.swift */; };
 		D30000000000000000000003 /* SkinClosetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000003 /* SkinClosetView.swift */; };
 		D30000000000000000000004 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* LeaderboardView.swift */; };
+		D30000000000000000000005 /* PixelTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000005 /* PixelTextField.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +100,7 @@
 		D10000000000000000000002 /* ShareCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardView.swift; sourceTree = "<group>"; };
 		D10000000000000000000003 /* SkinClosetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinClosetView.swift; sourceTree = "<group>"; };
 		D10000000000000000000004 /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
+		D10000000000000000000005 /* PixelTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelTextField.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +136,7 @@
 				DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */,
 				D10000000000000000000003 /* SkinClosetView.swift */,
 				D10000000000000000000004 /* LeaderboardView.swift */,
+				D10000000000000000000005 /* PixelTextField.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -385,6 +388,7 @@
 				BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */,
 				D30000000000000000000003 /* SkinClosetView.swift in Sources */,
 				D30000000000000000000004 /* LeaderboardView.swift in Sources */,
+				D30000000000000000000005 /* PixelTextField.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -24,29 +24,36 @@ struct ContentView: View {
         NavigationStack(path: $manager.path) {
             HomeView()
                 .navigationDestination(for: AppRoute.self) { route in
-                    switch route {
-                    case .multiplayerModes:
-                        MultiplayerModesView()
-                    case .matchmaking(let mode):
-                        MatchmakingView(mode: mode)
-                    case .stats:
-                        StatsView()
-                    case .settings:
-                        SettingsView()
-                    case .shop:
-                        ShopView()
-                    case .botLadder:
-                        BotLadderView()
-                    case .closet:
-                        SkinClosetView()
-                    case .leaderboard:
-                        LeaderboardView()
-                    }
+                    destinationView(for: route)
+                        // Solid fallback behind gradient prevents previous-view bleed on push/pop
+                        .background(Color(red: 0.35, green: 0.65, blue: 0.90))
                 }
         }
         .fullScreenCover(item: $manager.activeGameConfig) { config in
             GameContainerView(config: config)
                 .environmentObject(manager)
+        }
+    }
+
+    @ViewBuilder
+    private func destinationView(for route: AppRoute) -> some View {
+        switch route {
+        case .multiplayerModes:
+            MultiplayerModesView()
+        case .matchmaking(let mode):
+            MatchmakingView(mode: mode)
+        case .stats:
+            StatsView()
+        case .settings:
+            SettingsView()
+        case .shop:
+            ShopView()
+        case .botLadder:
+            BotLadderView()
+        case .closet:
+            SkinClosetView()
+        case .leaderboard:
+            LeaderboardView()
         }
     }
 

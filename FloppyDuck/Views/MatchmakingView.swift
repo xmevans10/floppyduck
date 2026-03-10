@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MultiplayerModesView: View {
     @EnvironmentObject var manager: GameManager
@@ -158,6 +159,7 @@ struct MatchmakingView: View {
     @State private var dots = ""
     @State private var roomCode = ""
     @State private var createdRoomCode: String?
+    @State private var copiedCode: Bool = false
     @State private var state: MatchmakingState = .idle
     @State private var roomAction: PrivateRoomAction = .create
     @State private var isWorking: Bool = false
@@ -323,9 +325,26 @@ struct MatchmakingView: View {
                         .font(.custom(GK.pixelFontName, size: 9))
                         .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
 
-                    Text(createdRoomCode ?? "-----")
-                        .font(.custom(GK.pixelFontName, size: 20))
-                        .foregroundColor(GK.Colors.panelBorder)
+                    Button {
+                        if let code = createdRoomCode {
+                            UIPasteboard.general.string = code
+                            SoundManager.shared.play(.button)
+                            copiedCode = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                copiedCode = false
+                            }
+                        }
+                    } label: {
+                        VStack(spacing: 4) {
+                            Text(createdRoomCode ?? "-----")
+                                .font(.custom(GK.pixelFontName, size: 20))
+                                .foregroundColor(GK.Colors.panelBorder)
+                            if createdRoomCode != nil {
+                                Text(copiedCode ? "COPIED!" : "TAP TO COPY")
+                                    .font(.custom(GK.pixelFontName, size: 6))
+                                    .foregroundColor(copiedCode ? GK.Colors.buttonGreen : GK.Colors.panelBorder.opacity(0.4))
+                            }
+                        }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
@@ -333,9 +352,13 @@ struct MatchmakingView: View {
                                 .fill(Color.white)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 2)
+                                        .stroke(createdRoomCode != nil ? GK.Colors.panelBorder.opacity(0.5) : GK.Colors.panelBorder.opacity(0.3), lineWidth: 2)
                                 )
                         )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(createdRoomCode == nil)
+                    .accessibilityLabel(createdRoomCode != nil ? "Room code \(createdRoomCode!). Tap to copy" : "Room code pending")
 
                     actionButton(title: createdRoomCode == nil ? "CREATE ROOM" : "RETRY") {
                         createRoomAndWait()

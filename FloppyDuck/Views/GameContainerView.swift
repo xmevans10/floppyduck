@@ -696,7 +696,7 @@ struct GameContainerView: View {
     private var medalBadge: some View {
         let m = medal
         return Text(m.emoji)
-            .font(.system(size: 18))
+            .font(.system(size: 28))
             .padding(.trailing, 4)
     }
 
