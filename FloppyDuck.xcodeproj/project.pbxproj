@@ -13,6 +13,7 @@
 		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };
 		A10000000000000000000001 /* MultiplayerSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* MultiplayerSessionTests.swift */; };
 		A10000000000000000000002 /* PlayerStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* PlayerStatsTests.swift */; };
+		A10000000000000000000099 /* MultiplayerFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000099 /* MultiplayerFlowTests.swift */; };
 		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
 		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
 		721117E305FA5B37E3DEE0F4 /* StatBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B62950ED3B295FD7BFD165 /* StatBadge.swift */; };
@@ -79,6 +80,7 @@
 		A20000000000000000000001 /* FloppyDuckTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000000000000000000002 /* MultiplayerSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerSessionTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* PlayerStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStatsTests.swift; sourceTree = "<group>"; };
+		A20000000000000000000099 /* MultiplayerFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerFlowTests.swift; sourceTree = "<group>"; };
 		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
 		C20000000000000000000001 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
@@ -221,6 +223,7 @@
 			children = (
 				A20000000000000000000002 /* MultiplayerSessionTests.swift */,
 				A20000000000000000000003 /* PlayerStatsTests.swift */,
+				A20000000000000000000099 /* MultiplayerFlowTests.swift */,
 			);
 			path = FloppyDuckTests;
 			sourceTree = "<group>";
@@ -349,6 +352,7 @@
 			files = (
 				A10000000000000000000001 /* MultiplayerSessionTests.swift in Sources */,
 				A10000000000000000000002 /* PlayerStatsTests.swift in Sources */,
+				A10000000000000000000099 /* MultiplayerFlowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
