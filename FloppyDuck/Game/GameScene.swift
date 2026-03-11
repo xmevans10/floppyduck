@@ -926,13 +926,19 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.removeAction(forKey: "wings")
         duck.texture = duckTextures[0]
 
-        // Fix: Disable physics and use a scripted fall to prevent duck clipping through pipes.
-        // Previously removed pipeCategory from collisionBitMask, which let the duck
-        // ghost through pipes during the death fall.
+        // Disable physics — scripted fall only, no collision-based movement.
         duck.physicsBody?.velocity = .zero
         duck.physicsBody?.isDynamic = false
 
-        // Animate straight-down fall to ground level
+        // Reparent duck from worldNode → scene root so screen shake / zoom
+        // on worldNode doesn't move the duck sideways during the death fall.
+        let worldPos = duck.convert(.zero, to: self)
+        duck.removeFromParent()
+        duck.position = worldPos
+        duck.zPosition = 500  // above everything including flash/vignette
+        addChild(duck)
+
+        // Straight-down fall to ground level
         let groundY = GK.groundHeight + (duck.size.height / 2)
         let fallDistance = max(duck.position.y - groundY, 0)
         let fallDuration = max(0.25, min(Double(fallDistance / 500), 0.65))
@@ -1068,6 +1074,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Item 2: Safe optional chaining for duck
         guard let duck else { return }
+
+        // Reparent duck back into worldNode if it was moved to scene root during death
+        if duck.parent === self {
+            duck.removeFromParent()
+            worldNode.addChild(duck)
+        }
+
         duck.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         duck.zRotation = 0
         duck.alpha = 1.0
@@ -1076,6 +1089,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.physicsBody?.velocity = .zero
         duck.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
         worldNode.setScale(1.0)  // Reset zoom from death effect
+        worldNode.position = .zero  // Reset shake offset
 
         let float = SKAction.sequence([
             SKAction.moveBy(x: 0, y: 10, duration: 0.5),
