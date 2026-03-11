@@ -90,7 +90,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var bushes: [SKSpriteNode] = []     // Item 10: foreground parallax
 
     // Sky theme (Item 9)
-    private let skyTheme: SkyTheme
+    private let backgroundTheme: BackgroundTheme
     private var starNodes: [SKShapeNode] = []
 
     // Tutorial (Item 8)
@@ -114,8 +114,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         self.botDiff = botDifficulty
         self.opponentName = opponentName
         self.targetScore = targetScore
-        // Item 9: Random sky theme per game
-        self.skyTheme = SkyTheme.allCases.randomElement() ?? .day
+        // Use player's selected background theme (purchased in shop)
+        self.backgroundTheme = ThemeManager.shared.selectedTheme
         super.init(size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         self.scaleMode = .aspectFill
         self.gapPositions = prng.generateGapPositions()
@@ -128,8 +128,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Scene Setup
 
     override func didMove(to view: SKView) {
-        // Item 9: Apply sky theme color
-        let bgColor = skyTheme.backgroundColor
+        // Apply selected background theme color
+        let bgColor = backgroundTheme.backgroundColor
         backgroundColor = bgColor
         physicsWorld.gravity = CGVector(dx: 0, dy: GK.gravity / 60)
         physicsWorld.contactDelegate = self
@@ -156,8 +156,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupDuck()
         setupHUD()
 
-        if skyTheme == .night {
-            setupStars()   // Item 9
+        if backgroundTheme.showStars {
+            setupStars()
         }
 
         if mode == .vsBot {
@@ -180,20 +180,19 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Background
 
     private func setupBackground() {
-        // Item 9: Use theme-aware sky gradient
+        // Background gradient from selected theme
         let skyNode = SKSpriteNode(color: .clear,
                                     size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         skyNode.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight / 2)
         skyNode.zPosition = -100
 
-        // Create gradient effect using the sky theme colors
-        let gradientTex = createSkyGradientTexture(theme: skyTheme)
+        let gradientTex = createSkyGradientTexture(theme: backgroundTheme)
         skyNode.texture = gradientTex
         backgroundLayer.addChild(skyNode)
     }
 
-    /// Renders a vertical gradient texture for the sky theme.
-    private func createSkyGradientTexture(theme: SkyTheme) -> SKTexture {
+    /// Renders a vertical gradient texture for the background theme.
+    private func createSkyGradientTexture(theme: BackgroundTheme) -> SKTexture {
         let size = CGSize(width: 1, height: Int(GK.worldHeight))
         let renderer = UIGraphicsImageRenderer(size: size)
         let image = renderer.image { ctx in
@@ -214,6 +213,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func setupClouds() {
         let cloudTex = factory.cloudTexture()
+        let tint = backgroundTheme.cloudTint
         for _ in 0..<5 {
             let scale = CGFloat.random(in: 0.6...1.2)
             let cloud = SKSpriteNode(texture: cloudTex,
@@ -222,6 +222,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 x: CGFloat.random(in: 0...GK.worldWidth),
                 y: CGFloat.random(in: (GK.worldHeight * 0.55)...(GK.worldHeight - 40))
             )
+            // Tint clouds to match background theme
+            cloud.color = tint
+            cloud.colorBlendFactor = 0.6
             cloud.alpha = CGFloat.random(in: 0.5...0.8)
             cloud.zPosition = -90
             backgroundLayer.addChild(cloud)
