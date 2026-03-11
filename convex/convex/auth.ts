@@ -1,4 +1,5 @@
-import { mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { findUserByAppleId, findUserByDeviceId, resolveUser, verifyAppleIdentityToken } from "./lib/identity";
@@ -95,7 +96,18 @@ export const bootstrapGuest = mutation({
   },
 });
 
-export const linkApple = mutation({
+// ─────────────────────────────────────────────────────────────────────────────
+// Apple Sign-In
+//
+// `linkApple` is an ACTION (not a mutation) because Apple JWT verification
+// requires fetching Apple's public JWKS from https://appleid.apple.com/auth/keys.
+// Convex mutations run as database transactions and cannot call `fetch()`.
+//
+// Flow: action verifies the Apple identity token → calls internal mutation
+// to perform database writes (upsert user, create session).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const linkApple = action({
   args: {
     identityToken: v.string(),
     nonce: v.string(),
@@ -104,10 +116,34 @@ export const linkApple = mutation({
     ...sessionTokenArg,
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
+    // Step 1: Verify the Apple identity token (requires fetch for JWKS).
     const claims = await verifyAppleIdentityToken(args.identityToken, args.nonce);
 
-    let appleUser = await findUserByAppleId(ctx, claims.sub);
+    // Step 2: Delegate all database work to an internal mutation.
+    return await ctx.runMutation(internal.auth.linkAppleWrite, {
+      appleUserId: claims.sub,
+      email: claims.email,
+      deviceId: args.deviceId,
+      displayName: args.displayName,
+    });
+  },
+});
+
+/**
+ * Internal mutation — performs the database writes for Apple Sign-In.
+ * Only callable from other Convex functions (not directly from clients).
+ */
+export const linkAppleWrite = internalMutation({
+  args: {
+    appleUserId: v.string(),
+    email: v.optional(v.string()),
+    deviceId: v.string(),
+    displayName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    let appleUser = await findUserByAppleId(ctx, args.appleUserId);
     const guestUser = await findUserByDeviceId(ctx, args.deviceId);
 
     let userId: Id<"users">;
@@ -145,7 +181,7 @@ export const linkApple = mutation({
         await ctx.db.patch(appleUser._id, {
           username: args.displayName ?? appleUser.username,
           provider: "apple",
-          appleUserId: claims.sub,
+          appleUserId: args.appleUserId,
           deviceId: args.deviceId,
           updatedAt: now,
         });
@@ -155,7 +191,7 @@ export const linkApple = mutation({
       await ctx.db.patch(userId, {
         username: args.displayName ?? guestUser.username,
         provider: "apple",
-        appleUserId: claims.sub,
+        appleUserId: args.appleUserId,
         deviceId: args.deviceId,
         updatedAt: now,
       });
@@ -164,7 +200,7 @@ export const linkApple = mutation({
       const defaults = defaultUserStats();
       userId = await ctx.db.insert("users", {
         deviceId: args.deviceId,
-        appleUserId: claims.sub,
+        appleUserId: args.appleUserId,
         username: args.displayName ?? "Player",
         provider: "apple",
         ...defaults,
@@ -195,7 +231,7 @@ export const linkApple = mutation({
       profile: toPublicProfile(user),
       sessionToken,
       sessionExpiresAt: Math.floor(sessionExpiresAt / 1000),
-      appleUserId: claims.sub,
+      appleUserId: args.appleUserId,
       didMergeStats,
     };
   },
