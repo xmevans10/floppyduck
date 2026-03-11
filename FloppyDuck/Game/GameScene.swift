@@ -932,7 +932,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Reparent duck from worldNode → scene root so screen shake / zoom
         // on worldNode doesn't move the duck sideways during the death fall.
-        let worldPos = duck.convert(.zero, to: self)
+        let worldPos = duck.convert(CGPoint.zero, to: self)
         duck.removeFromParent()
         duck.position = worldPos
         duck.zPosition = 500  // above everything including flash/vignette
