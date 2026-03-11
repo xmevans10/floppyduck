@@ -622,9 +622,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     override func update(_ currentTime: TimeInterval) {
         // Item 2: Safe optional access for duck
-        if phase == .dead, let duck, let vy = duck.physicsBody?.velocity.dy {
-            let target = max(vy / 400, -CGFloat.pi / 2)
-            duck.zRotation += (target - duck.zRotation) * 0.15
+        if phase == .dead, let duck {
+            // Smooth nose-down rotation during scripted death fall
+            let target: CGFloat = -.pi / 2
+            duck.zRotation += (target - duck.zRotation) * 0.08
         }
 
         guard phase == .playing else {
@@ -910,9 +911,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         duck.removeAction(forKey: "wings")
         duck.texture = duckTextures[0]
-        duck.physicsBody?.collisionBitMask = GK.groundCategory
-        // Fall straight down from current position — no lateral drift, no upward bounce
+
+        // Fix: Disable physics and use a scripted fall to prevent duck clipping through pipes.
+        // Previously removed pipeCategory from collisionBitMask, which let the duck
+        // ghost through pipes during the death fall.
         duck.physicsBody?.velocity = .zero
+        duck.physicsBody?.isDynamic = false
+
+        // Animate straight-down fall to ground level
+        let groundY = GK.groundHeight + (duck.size.height / 2)
+        let fallDistance = max(duck.position.y - groundY, 0)
+        let fallDuration = max(0.25, min(Double(fallDistance / 500), 0.65))
+        let fallAction = SKAction.moveTo(y: groundY, duration: fallDuration)
+        fallAction.timingMode = .easeIn
+        duck.run(fallAction, withKey: "deathFall")
 
         duck.run(SKAction.sequence([
             SKAction.wait(forDuration: 0.8),
