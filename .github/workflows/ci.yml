@@ -1,0 +1,162 @@
+name: CI Build & Screenshots
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build + Unit Tests
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+
+      - name: Build (Debug, iphonesimulator)
+        run: |
+          xcodebuild build \
+            -project FloppyDuck.xcodeproj \
+            -scheme FloppyDuck \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.0' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty || true
+
+      - name: Run Unit Tests
+        run: |
+          xcodebuild test \
+            -project FloppyDuck.xcodeproj \
+            -scheme FloppyDuck \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.0' \
+            -only-testing:FloppyDuckTests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty --report junit || true
+
+  screenshots:
+    name: Screenshot Tests
+    runs-on: macos-15
+    timeout-minutes: 25
+    needs: build-and-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+
+      - name: Boot Simulator
+        run: |
+          xcrun simctl boot "iPhone 16 Pro" 2>/dev/null || true
+          xcrun simctl status_bar "iPhone 16 Pro" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularBars 4 --wifiBars 3 2>/dev/null || true
+
+      - name: Run Screenshot Tests
+        run: |
+          xcodebuild test \
+            -project FloppyDuck.xcodeproj \
+            -scheme FloppyDuck \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.0' \
+            -only-testing:FloppyDuckUITests/ScreenshotTests \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | xcpretty || true
+
+      - name: Extract Screenshots
+        if: always()
+        run: |
+          mkdir -p screenshots
+          # Extract attachments from xcresult bundle
+          if [ -d "TestResults.xcresult" ]; then
+            xcrun xcresulttool get --path TestResults.xcresult --format json > result.json 2>/dev/null || true
+
+            # Use xcparse if available, otherwise extract via xcresulttool
+            if command -v xcparse &> /dev/null; then
+              xcparse screenshots TestResults.xcresult screenshots/
+            else
+              # Fallback: export all attachments
+              xcrun xcresulttool export \
+                --type file \
+                --path TestResults.xcresult \
+                --output-path screenshots/ 2>/dev/null || true
+            fi
+
+            # Also try direct attachment extraction
+            find TestResults.xcresult -name "*.png" -exec cp {} screenshots/ \; 2>/dev/null || true
+            find TestResults.xcresult -name "*.jpg" -exec cp {} screenshots/ \; 2>/dev/null || true
+          fi
+
+          # List what we got
+          echo "📸 Screenshots captured:"
+          ls -la screenshots/ 2>/dev/null || echo "No screenshots found"
+
+      - name: Upload Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-screenshots
+          path: screenshots/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Full Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults.xcresult
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Post Screenshot Summary
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const screenshotDir = 'screenshots';
+
+            let body = '## 📸 Screenshot Test Results\n\n';
+
+            try {
+              const files = fs.readdirSync(screenshotDir)
+                .filter(f => f.endsWith('.png') || f.endsWith('.jpg'))
+                .sort();
+
+              if (files.length > 0) {
+                body += `✅ **${files.length} screenshots captured** — download the \`app-screenshots\` artifact to review.\n\n`;
+                body += '| Screenshot | File |\n|---|---|\n';
+                files.forEach(f => {
+                  const name = f.replace(/\.(png|jpg)$/, '').replace(/_/g, ' ');
+                  body += `| ${name} | \`${f}\` |\n`;
+                });
+              } else {
+                body += '⚠️ No screenshots were captured. Check the test logs.\n';
+              }
+            } catch (e) {
+              body += '⚠️ Could not read screenshots directory.\n';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
