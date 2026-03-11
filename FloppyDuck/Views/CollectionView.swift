@@ -1,11 +1,11 @@
 import SwiftUI
 
-struct SkinClosetView: View {
+struct CollectionView: View {
     @EnvironmentObject var manager: GameManager
     @ObservedObject var skinManager = SkinManager.shared
     @ObservedObject var themeManager = ThemeManager.shared
 
-    @State private var selectedTab: ClosetTab = .skins
+    @State private var selectedTab: CollectionTab = .skins
 
     private let icons = PixelIconFactory.shared
     private let columns = [
@@ -37,7 +37,7 @@ struct SkinClosetView: View {
                             .background(Circle().fill(Color.black.opacity(0.15)))
                     }
                     Spacer()
-                    Text("CLOSET")
+                    Text("COLLECTION")
                         .font(.custom(GK.pixelFontName, size: 22))
                         .foregroundColor(.white)
                         .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
@@ -48,7 +48,7 @@ struct SkinClosetView: View {
                 .padding(.top, 12)
 
                 // Tab picker: SKINS | BACKGROUNDS
-                closetTabPicker
+                collectionTabPicker
                     .padding(.horizontal, 20)
                     .padding(.top, 14)
 
@@ -96,10 +96,10 @@ struct SkinClosetView: View {
 
     // MARK: - Tab Picker
 
-    private var closetTabPicker: some View {
+    private var collectionTabPicker: some View {
         HStack(spacing: 8) {
-            closetTabButton(.skins)
-            closetTabButton(.backgrounds)
+            collectionTabButton(.skins)
+            collectionTabButton(.backgrounds)
         }
         .padding(6)
         .background(
@@ -108,7 +108,7 @@ struct SkinClosetView: View {
         )
     }
 
-    private func closetTabButton(_ tab: ClosetTab) -> some View {
+    private func collectionTabButton(_ tab: CollectionTab) -> some View {
         Button {
             selectedTab = tab
         } label: {
@@ -155,7 +155,7 @@ struct SkinClosetView: View {
             ScrollView(showsIndicators: false) {
                 LazyVGrid(columns: columns, spacing: 14) {
                     ForEach(ownedSkins) { skin in
-                        skinCard(skin)
+                        skinCollectionCard(skin)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -188,7 +188,7 @@ struct SkinClosetView: View {
             ScrollView(showsIndicators: false) {
                 LazyVGrid(columns: columns, spacing: 14) {
                     ForEach(ownedBGs) { theme in
-                        themeClosetCard(theme)
+                        themeCollectionCard(theme)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -206,7 +206,7 @@ struct SkinClosetView: View {
 
     // MARK: - Skin Card
 
-    private func skinCard(_ skin: DuckSkin) -> some View {
+    private func skinCollectionCard(_ skin: DuckSkin) -> some View {
         let selected = skinManager.selectedSkin == skin
 
         return Button {
@@ -269,9 +269,9 @@ struct SkinClosetView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Theme Closet Card
+    // MARK: - Theme Collection Card
 
-    private func themeClosetCard(_ theme: BackgroundTheme) -> some View {
+    private func themeCollectionCard(_ theme: BackgroundTheme) -> some View {
         let selected = themeManager.selectedTheme == theme
 
         return Button {
@@ -363,7 +363,7 @@ struct SkinClosetView: View {
 
 // MARK: - Tab Enum
 
-private enum ClosetTab: String {
+private enum CollectionTab: String {
     case skins = "SKINS"
     case backgrounds = "BACKGROUNDS"
 

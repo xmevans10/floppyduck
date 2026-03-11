@@ -58,8 +58,8 @@ struct ContentView: View {
             ShopView()
         case .botLadder:
             BotLadderView()
-        case .closet:
-            SkinClosetView()
+        case .collection:
+            CollectionView()
         case .leaderboard:
             LeaderboardView()
         }

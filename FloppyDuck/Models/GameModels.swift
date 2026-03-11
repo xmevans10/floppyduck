@@ -10,7 +10,7 @@ enum AppRoute: Hashable {
     case settings
     case shop
     case botLadder
-    case closet
+    case collection
     case leaderboard
 }
 
