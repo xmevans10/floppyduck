@@ -81,11 +81,30 @@ enum Haptic {
         notification.notificationOccurred(.warning)
     }
 
-    /// Splash screen landing impact
-    static func splash() {
+    /// Splash screen — heavy pop when duck appears
+    static func splashImpact() {
         guard isEnabled else { return }
-        impactMedium.impactOccurred()
+        impactHeavy.impactOccurred(intensity: 1.0)
+        impactHeavy.prepare()
+    }
+
+    /// Splash screen — medium punch when title pops in
+    static func splashTitlePop() {
+        guard isEnabled else { return }
+        impactMedium.impactOccurred(intensity: 0.8)
         impactMedium.prepare()
+    }
+
+    /// Splash screen — light tap on shimmer sweep
+    static func splashShimmer() {
+        guard isEnabled else { return }
+        impactLight.impactOccurred(intensity: 0.5)
+        impactLight.prepare()
+    }
+
+    /// Legacy alias for backward compat
+    static func splash() {
+        splashImpact()
     }
 
     /// Enhanced death impact — stronger/longer shake feeling
