@@ -1,0 +1,26 @@
+name: Deploy Convex
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'convex/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: convex
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: convex/package-lock.json
+      - run: npm ci
+      - run: npx convex deploy
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
