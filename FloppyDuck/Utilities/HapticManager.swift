@@ -88,6 +88,13 @@ enum Haptic {
         impactHeavy.prepare()
     }
 
+    /// Splash screen — satisfying coin-collect thud at mid-spin
+    static func splashCoin() {
+        guard isEnabled else { return }
+        impactMedium.impactOccurred(intensity: 0.9)
+        impactMedium.prepare()
+    }
+
     /// Splash screen — medium punch when title pops in
     static func splashTitlePop() {
         guard isEnabled else { return }
