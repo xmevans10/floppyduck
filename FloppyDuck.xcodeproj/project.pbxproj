@@ -31,6 +31,8 @@
 		A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D35655334C23B66037D828D /* GameModels.swift */; };
 		B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304050 /* SoundManager.swift */; };
 		BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */; };
+		802DB17F036507568468C6F4 /* BackgroundTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */; };
+		186FEA6281971BA1A9DA11E7 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AF25026FF4DAD8B84CD3AF5 /* ThemeManager.swift */; };
 		BE83180DB6EA0770D2D8235C /* DuckSkin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */; };
 		B2F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */; };
 		CAFA74F0B0D4535CFB00FF8C /* TextureFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6223E9869786181FDBDB97 /* TextureFactory.swift */; };
@@ -66,6 +68,8 @@
 		451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloppyDuckApp.swift; sourceTree = "<group>"; };
 		45E49708FF03202FD286092D /* FloppyDuck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FloppyDuck.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E04DFC7B500170F528318BC /* SkinManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinManager.swift; sourceTree = "<group>"; };
+		7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTheme.swift; sourceTree = "<group>"; };
+		5AF25026FF4DAD8B84CD3AF5 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuckSkin.swift; sourceTree = "<group>"; };
 		6536C0571E3D58450DECC837 /* GameContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameContainerView.swift; sourceTree = "<group>"; };
 		6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchmakingView.swift; sourceTree = "<group>"; };
@@ -257,6 +261,8 @@
 				709E16E4587997D58A88C22F /* BotCharacter.swift */,
 				521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */,
 				4E04DFC7B500170F528318BC /* SkinManager.swift */,
+				7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */,
+				5AF25026FF4DAD8B84CD3AF5 /* ThemeManager.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -388,6 +394,8 @@
 				A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */,
 				BE83180DB6EA0770D2D8235C /* DuckSkin.swift in Sources */,
 				CE0FE362AF86AF0634F66E10 /* SkinManager.swift in Sources */,
+				802DB17F036507568468C6F4 /* BackgroundTheme.swift in Sources */,
+				186FEA6281971BA1A9DA11E7 /* ThemeManager.swift in Sources */,
 				722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */,
 				BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */,
 				D30000000000000000000003 /* SkinClosetView.swift in Sources */,
