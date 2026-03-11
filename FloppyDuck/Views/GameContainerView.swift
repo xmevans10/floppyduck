@@ -135,6 +135,18 @@ struct GameContainerView: View {
             },
             onBotLadderWin: { finalScore in
                 handleBotLadderWin(finalScore: finalScore, scene: newScene)
+            },
+            onQuickRetry: { finalScore in
+                // Record the game silently — no overlay, no animation.
+                // The scene already called resetGame() so we just need to
+                // book-keep stats and reset container state.
+                manager.recordGame(score: finalScore, won: nil)
+                resetGameOverState()
+                score = 0
+                botFinalScore = 0
+                withAnimation(.easeOut(duration: 0.15)) {
+                    phase = .ready
+                }
             }
         )
 
@@ -770,17 +782,20 @@ private final class GameSceneBridge: GameSceneDelegate {
     let onEnd: (Int) -> Void
     let onBotScore: (Int) -> Void
     let onBotLadderWin: (Int) -> Void
+    let onQuickRetry: (Int) -> Void
 
     init(onStart: @escaping () -> Void,
          onScore: @escaping (Int) -> Void,
          onEnd: @escaping (Int) -> Void,
          onBotScore: @escaping (Int) -> Void = { _ in },
-         onBotLadderWin: @escaping (Int) -> Void = { _ in }) {
+         onBotLadderWin: @escaping (Int) -> Void = { _ in },
+         onQuickRetry: @escaping (Int) -> Void = { _ in }) {
         self.onStart = onStart
         self.onScore = onScore
         self.onEnd = onEnd
         self.onBotScore = onBotScore
         self.onBotLadderWin = onBotLadderWin
+        self.onQuickRetry = onQuickRetry
     }
 
     func gameDidStart() { onStart() }
@@ -788,4 +803,5 @@ private final class GameSceneBridge: GameSceneDelegate {
     func gameDidEnd(score: Int) { onEnd(score) }
     func botDidScore(_ botScore: Int) { onBotScore(botScore) }
     func gameDidWinBotLadder(score: Int) { onBotLadderWin(score) }
+    func gameDidQuickRetry(score: Int) { onQuickRetry(score) }
 }

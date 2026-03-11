@@ -19,6 +19,7 @@ protocol GameSceneDelegate: AnyObject {
     func gameDidEnd(score: Int)
     func botDidScore(_ botScore: Int)
     func gameDidWinBotLadder(score: Int)
+    func gameDidQuickRetry(score: Int)
 }
 
 // MARK: - GameScene
@@ -581,6 +582,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             flap()
         case .playing:
             flap()
+        case .dead:
+            // Quick retry — tap during death animation to skip game-over and restart instantly.
+            // Disabled for head-to-head (match finalization required).
+            guard mode != .headToHead else { break }
+            self.removeAllActions()
+            duck?.removeAllActions()
+            deathVignette?.removeFromParent()
+            deathVignette = nil
+            gameDelegate?.gameDidQuickRetry(score: score)
+            resetGame()
         default:
             break
         }
