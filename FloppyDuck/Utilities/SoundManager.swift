@@ -13,6 +13,7 @@ enum GameSound: String {
     case newBest
     case milestone
     case quack
+    case coin
 }
 
 import Foundation
@@ -162,6 +163,7 @@ final class SoundManager {
             (.newBest,   newBestWav(),   0.50),
             (.milestone, milestoneWav(), 0.30),
             (.quack,     quackWav(),     0.45),
+            (.coin,      coinWav(),      0.40),
         ]
         for (sound, data, vol) in defs {
             soundData[sound] = data
@@ -332,6 +334,13 @@ final class SoundManager {
         wav(chirp(f0: 600, f1: 280, dur: 0.08) +
             silence(0.02) +
             chirp(f0: 550, f1: 250, dur: 0.12))
+    }
+
+    /// Classic retro coin-collect sound — two quick ascending sine tones (B5 → E6).
+    /// Think Mario coin: bright, satisfying, short.
+    private func coinWav() -> Data {
+        wav(sine(freq: 988, dur: 0.05, decay: 0.06) +
+            sine(freq: 1319, dur: 0.12, decay: 0.15))
     }
 
     // MARK: - Per-Skin Sound Variants (Item 11)
