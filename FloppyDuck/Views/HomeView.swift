@@ -303,7 +303,7 @@ struct HomeView: View {
 
             // Head to Head
             subModeButton(
-                icon: .trophy,
+                icon: .headToHead,
                 title: "HEAD TO HEAD",
                 subtitle: "Quick / Ranked / Room",
                 color: GK.Colors.buttonOrange
@@ -360,9 +360,9 @@ struct HomeView: View {
                 manager.navigate(to: .shop)
             }
 
-            bottomButton(icon: .classic, label: "CLOSET") {
+            bottomButton(icon: .collection, label: "COLLECTION") {
                 SoundManager.shared.play(.button)
-                manager.navigate(to: .closet)
+                manager.navigate(to: .collection)
             }
 
             bottomButton(icon: .stats, label: "STATS") {

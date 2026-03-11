@@ -29,6 +29,11 @@ This directory contains the Floppy Duck backend contracts used by the iOS client
 - `matches:finishMatch`
 - `ratings:leaderboard`
 
+## Deployment
+
+Backend auto-deploys via GitHub Actions when any file under `convex/` changes on `main`.
+Requires `CONVEX_DEPLOY_KEY` secret in the repo settings (get it via `npx convex deploy --get-deploy-key`).
+
 ## Notes
 
 - Ranked access is restricted to Apple-linked users.

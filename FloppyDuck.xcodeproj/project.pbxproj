@@ -45,7 +45,7 @@
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 		D30000000000000000000001 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000001 /* SplashView.swift */; };
 		D30000000000000000000002 /* ShareCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* ShareCardView.swift */; };
-		D30000000000000000000003 /* SkinClosetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000003 /* SkinClosetView.swift */; };
+		D30000000000000000000003 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000003 /* CollectionView.swift */; };
 		D30000000000000000000004 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* LeaderboardView.swift */; };
 		D30000000000000000000005 /* PixelTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000005 /* PixelTextField.swift */; };
 		E10000000000000000000001 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001 /* ScreenshotTests.swift */; };
@@ -112,7 +112,7 @@
 		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
 		D10000000000000000000001 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		D10000000000000000000002 /* ShareCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardView.swift; sourceTree = "<group>"; };
-		D10000000000000000000003 /* SkinClosetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinClosetView.swift; sourceTree = "<group>"; };
+		D10000000000000000000003 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
 		D10000000000000000000004 /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
 		D10000000000000000000005 /* PixelTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelTextField.swift; sourceTree = "<group>"; };
 		E20000000000000000000001 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
@@ -157,7 +157,7 @@
 				D10000000000000000000001 /* SplashView.swift */,
 				FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */,
 				DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */,
-				D10000000000000000000003 /* SkinClosetView.swift */,
+				D10000000000000000000003 /* CollectionView.swift */,
 				D10000000000000000000004 /* LeaderboardView.swift */,
 				D10000000000000000000005 /* PixelTextField.swift */,
 			);
@@ -451,7 +451,7 @@
 				186FEA6281971BA1A9DA11E7 /* ThemeManager.swift in Sources */,
 				722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */,
 				BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */,
-				D30000000000000000000003 /* SkinClosetView.swift in Sources */,
+				D30000000000000000000003 /* CollectionView.swift in Sources */,
 				D30000000000000000000004 /* LeaderboardView.swift in Sources */,
 				D30000000000000000000005 /* PixelTextField.swift in Sources */,
 			);

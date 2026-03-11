@@ -1,42 +1,40 @@
 import SwiftUI
 
-/// Splash: black screen → duck pops up with overshoot → fast coin-flip spin →
-/// coin sound → "FLOPPY DUCK" title pops in → hold → fade out → proceed.
+/// Splash: black screen → "FLOPPY DUCK" title coin-flips in with coin sound →
+/// hold → fade out → proceed.  Title-only, no duck sprite.
 struct SplashView: View {
     @Binding var isFinished: Bool
 
     // MARK: - Animation State
 
-    @State private var duckScale: CGFloat = 0
+    // Title text
+    @State private var titleScale: CGFloat = 0
+    @State private var titleOpacity: Double = 0
     @State private var coinAngle: Double = 0
-    @State private var duckOpacity: Double = 1
     @State private var hasCoinSounded = false
 
-    // Title text
-    @State private var titleOpacity: Double = 0
-    @State private var titleScale: CGFloat = 0.7
+    // Subtitle
+    @State private var subtitleOpacity: Double = 0
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                // Duck sprite — coin-flip spin via Y-axis 3D rotation
-                Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 8.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 120, height: 90)
-                    .scaleEffect(duckScale)
-                    .rotation3DEffect(.degrees(coinAngle), axis: (0, 1, 0))
-                    .opacity(duckOpacity)
-
-                // Title pops in after the spin
+            VStack(spacing: 16) {
+                // Title text — coin-flip spin via Y-axis 3D rotation
                 Text("FLOPPY DUCK")
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .font(.custom(GK.pixelFontName, size: 32))
                     .foregroundColor(.yellow)
-                    .opacity(titleOpacity)
+                    .shadow(color: .orange, radius: 0, x: 2, y: 2)
                     .scaleEffect(titleScale)
+                    .rotation3DEffect(.degrees(coinAngle), axis: (0, 1, 0))
+                    .opacity(titleOpacity)
+
+                // Subtle tagline
+                Text("TAP TO FLAP")
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(.white.opacity(0.6))
+                    .opacity(subtitleOpacity)
             }
         }
         .onAppear { runSequence() }
@@ -54,50 +52,56 @@ struct SplashView: View {
         .accessibilityAction(named: "Skip") { finish() }
     }
 
-    // MARK: - Animation Sequence (~3.5s total)
+    // MARK: - Animation Sequence (~4.5s total)
 
     private func runSequence() {
-        // Phase 1: Duck pops in with exaggerated spring overshoot (0 → ~0.4s)
-        // Lower damping = bigger bounce; target 1.15 overshoots past final size
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.45, blendDuration: 0)) {
-            duckScale = 1.15
+        // Phase 1: Title pops in with big spring overshoot (0 → ~0.5s)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.5, blendDuration: 0)) {
+            titleScale = 1.15
+            titleOpacity = 1
         }
 
-        // Phase 1b: Settle scale back to 1.0 (0.35s → 0.55s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        // Phase 1b: Settle scale back to 1.0 (0.4s → 0.6s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             withAnimation(.easeOut(duration: 0.2)) {
-                duckScale = 1.0
+                titleScale = 1.0
             }
         }
 
-        // Phase 2: Fast coin-flip spin (0.55s → 0.9s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            withAnimation(.easeInOut(duration: 0.35)) {
+        // Phase 2: Coin-flip spin (0.7s → 1.2s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            withAnimation(.easeInOut(duration: 0.5)) {
                 coinAngle = 360
             }
         }
 
-        // Phase 3: Title pops in with spring (1.1s → ~1.5s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0)) {
-                titleOpacity = 1
-                titleScale = 1.0
+        // Phase 3: Second spin for extra flair (1.4s → 1.8s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            hasCoinSounded = false  // Reset for second coin sound
+            withAnimation(.easeInOut(duration: 0.4)) {
+                coinAngle = 720
             }
-            Haptic.splashTitlePop()
         }
 
-        // Phase 4: Hold visible — let it breathe (1.5s → 2.8s)
+        // Phase 4: Subtitle fades in (2.0s → 2.3s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            withAnimation(.easeIn(duration: 0.3)) {
+                subtitleOpacity = 1
+            }
+        }
 
-        // Phase 5: Fade out everything (2.8s → 3.2s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+        // Phase 5: Hold visible — let it breathe (2.3s → 3.8s)
+
+        // Phase 6: Fade out everything (3.8s → 4.2s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.8) {
             withAnimation(.easeOut(duration: 0.4)) {
-                duckOpacity = 0
                 titleOpacity = 0
+                subtitleOpacity = 0
             }
         }
 
-        // Phase 6: Transition to game (~3.5s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+        // Phase 7: Transition to game (~4.5s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
             finish()
         }
     }

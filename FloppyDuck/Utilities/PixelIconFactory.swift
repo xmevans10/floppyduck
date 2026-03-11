@@ -19,6 +19,7 @@ enum PixelIcon: String, CaseIterable {
     case back          // left chevron
     case shop          // shopping bag
     case lock          // padlock
+    case collection    // 2×2 grid (for collection/inventory screen)
 }
 
 final class PixelIconFactory {
@@ -65,6 +66,7 @@ final class PixelIconFactory {
         case .back:       grid = backGrid()
         case .shop:       grid = shopGrid()
         case .lock:       grid = lockGrid()
+        case .collection: grid = collectionGrid()
         }
 
         let gridH = grid.count
@@ -328,6 +330,22 @@ final class PixelIconFactory {
             [C,C,C,C,B,W,B,C,C,C],
             [C,C,C,C,C,B,C,C,C,C],
             [C,C,C,C,C,C,C,C,C,C],
+            [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func collectionGrid() -> [[UIColor]] {
+        // 2×2 grid — represents a collection of items
+        return [
+            [C,B,B,B,B,C,B,B,B,B],
+            [C,B,Y,Y,B,C,B,G,G,B],
+            [C,B,Y,Y,B,C,B,G,G,B],
+            [C,B,B,B,B,C,B,B,B,B],
+            [C,C,C,C,C,C,C,C,C,C],
+            [C,B,B,B,B,C,B,B,B,B],
+            [C,B,O,O,B,C,B,W,W,B],
+            [C,B,O,O,B,C,B,W,W,B],
+            [C,B,B,B,B,C,B,B,B,B],
             [C,C,C,C,C,C,C,C,C,C],
         ]
     }
