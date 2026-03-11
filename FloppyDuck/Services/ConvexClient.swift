@@ -91,6 +91,10 @@ actor ConvexClient: MultiplayerBackendClient {
         try await requestRaw(endpoint: "mutation", functionName: functionName, args: args)
     }
 
+    private func actionRaw(_ functionName: String, args: [String: Any] = [:]) async throws -> Any? {
+        try await requestRaw(endpoint: "action", functionName: functionName, args: args)
+    }
+
     private func requestRaw(endpoint: String,
                             functionName: String,
                             args: [String: Any]) async throws -> Any? {
@@ -235,7 +239,9 @@ actor ConvexClient: MultiplayerBackendClient {
             args["displayName"] = displayName
         }
 
-        let value = try await mutationRaw("auth:linkApple", args: args)
+        // linkApple is a Convex action (not mutation) because Apple JWT verification
+        // requires fetching Apple's JWKS via HTTP — only available in actions.
+        let value = try await actionRaw("auth:linkApple", args: args)
         guard let payload = dictionary(from: value) else {
             throw ConvexError.invalidResponse
         }
