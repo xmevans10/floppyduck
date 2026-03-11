@@ -317,7 +317,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // Item 2: Safe optional chaining
     private func startWingAnimation() {
-        let wingAction = SKAction.animate(with: duckTextures, timePerFrame: 0.12)
+        let wingAction = SKAction.animate(with: duckTextures, timePerFrame: 0.10)
         duck?.run(SKAction.repeatForever(wingAction), withKey: "wings")
     }
 
@@ -331,7 +331,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         bot.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         bot.zPosition = 35
 
-        let wingAction = SKAction.animate(with: botTextures, timePerFrame: 0.12)
+        let wingAction = SKAction.animate(with: botTextures, timePerFrame: 0.10)
         bot.run(SKAction.repeatForever(wingAction), withKey: "botWings")
 
         let float = SKAction.sequence([
@@ -610,9 +610,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.removeAction(forKey: "wings")
         let flutter = SKAction.sequence([
             SKAction.setTexture(duckTextures[2]),
-            SKAction.wait(forDuration: 0.06),
+            SKAction.wait(forDuration: 0.05),
             SKAction.setTexture(duckTextures[0]),
-            SKAction.wait(forDuration: 0.06),
+            SKAction.wait(forDuration: 0.05),
             SKAction.setTexture(duckTextures[1]),
         ])
         duck.run(SKAction.sequence([flutter, SKAction.run { [weak self] in
@@ -702,7 +702,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let target = vy > 0
                 ? min(vy / GK.flapImpulse * 0.4, 0.4)
                 : max(vy / 400, -CGFloat.pi / 2)
-            duck.zRotation += (target - duck.zRotation) * 0.15
+            duck.zRotation += (target - duck.zRotation) * 0.10
         }
 
         if mode == .vsBot {
@@ -793,7 +793,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let target = botVelocity > 0
             ? min(botVelocity / GK.flapImpulse * 0.4, 0.4)
             : max(botVelocity / 400, -CGFloat.pi / 2)
-        bot.zRotation += (target - bot.zRotation) * 0.15
+        bot.zRotation += (target - bot.zRotation) * 0.10
     }
 
     private func botDied() {

@@ -25,7 +25,7 @@ enum GK {
 
     // MARK: - Speed Ramp (progressive difficulty)
     static let pipeSpeedMax:      CGFloat = 195     // cap speed
-    static let speedRampPerPipe:  CGFloat = 1.5     // +1.5 pts/s per pipe scored → 195 at pipe 30
+    static let speedRampPerPipe:  CGFloat = 1.2     // +1.2 pts/s per pipe scored — gentler early ramp
 
     // MARK: - Medal Thresholds
     static let medalBronze:   Int = 5
