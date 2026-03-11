@@ -126,6 +126,39 @@ final class TextureFactory {
         return renderPixelHills()
     }
 
+    // MARK: - Themed Parallax Textures
+
+    /// Theme-aware hills texture. Free themes reuse the classic park hills
+    /// with palette shifts; paid themes get unique silhouettes.
+    func themedHillsTexture(theme: BackgroundTheme) -> SKTexture {
+        let key = "hills_\(theme.rawValue)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderThemedHills(theme: theme))
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
+    /// Theme-aware trees / midground texture.
+    func themedTreesTexture(theme: BackgroundTheme) -> SKTexture {
+        let key = "trees_\(theme.rawValue)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderThemedTrees(theme: theme))
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
+    /// Theme-aware foreground bush / element strip.
+    func themedBushTexture(theme: BackgroundTheme) -> SKTexture {
+        let key = "bushes_\(theme.rawValue)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderThemedBushes(theme: theme))
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
     // MARK: - Skinned Duck API
 
     /// Duck texture for any skin (SpriteKit).
@@ -975,6 +1008,1426 @@ final class TextureFactory {
                 // Legs
                 c.fill(CGRect(x: bx, y: by + ps, width: ps, height: ps * 2))
                 c.fill(CGRect(x: bx + 5 * ps, y: by + ps, width: ps, height: ps * 2))
+            }
+        }
+    }
+
+    // MARK: - Themed Hills Rendering
+
+    private func renderThemedHills(theme: BackgroundTheme) -> UIImage {
+        switch theme {
+        case .day:                          return renderPixelHills()
+        case .sunset:                       return renderSunsetHills()
+        case .night:                        return renderNightHills()
+        case .neonCity:                     return renderCitySkylineHills(neon: true)
+        case .pixelTokyo:                   return renderCitySkylineHills(neon: false)
+        case .underwater:                   return renderCoralReefHills()
+        case .volcano:                      return renderVolcanoHills()
+        case .arctic:                       return renderArcticHills()
+        case .space:                        return renderSpaceTerrainHills()
+        }
+    }
+
+    // MARK: Sunset Hills — warm amber recolor of classic hills
+
+    private func renderSunsetHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        var heightMap = [Int](repeating: 1, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8, 14, 10), (gridW / 4, 18, 14), (gridW * 3 / 8, 10, 7),
+            (gridW / 2, 16, 12), (gridW * 5 / 8, 12, 9), (gridW * 3 / 4, 17, 13),
+            (gridW * 7 / 8, 13, 8),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let hillBase  = UIColor(red: 0.55, green: 0.35, blue: 0.18, alpha: 0.55)
+        let hillMid   = UIColor(red: 0.65, green: 0.42, blue: 0.20, alpha: 0.50)
+        let hillTop   = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 0.60)
+        let hillLight = UIColor(red: 0.80, green: 0.55, blue: 0.25, alpha: 0.40)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let hillH = heightMap[x]
+                for y in 0..<hillH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(hillH))
+                    let color: UIColor
+                    if y == hillH - 1 { color = hillTop }
+                    else if y == hillH - 2 && hillH > 3 { color = hillLight }
+                    else if ratio > 0.6 { color = hillMid }
+                    else { color = hillBase }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Night Hills — dark blue silhouettes
+
+    private func renderNightHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        var heightMap = [Int](repeating: 1, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8, 14, 10), (gridW / 4, 18, 14), (gridW * 3 / 8, 10, 7),
+            (gridW / 2, 16, 12), (gridW * 5 / 8, 12, 9), (gridW * 3 / 4, 17, 13),
+            (gridW * 7 / 8, 13, 8),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let hillBase  = UIColor(red: 0.08, green: 0.10, blue: 0.22, alpha: 0.65)
+        let hillMid   = UIColor(red: 0.10, green: 0.14, blue: 0.28, alpha: 0.60)
+        let hillTop   = UIColor(red: 0.06, green: 0.08, blue: 0.18, alpha: 0.70)
+        let hillLight = UIColor(red: 0.14, green: 0.18, blue: 0.35, alpha: 0.45)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let hillH = heightMap[x]
+                for y in 0..<hillH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(hillH))
+                    let color: UIColor
+                    if y == hillH - 1 { color = hillTop }
+                    else if y == hillH - 2 && hillH > 3 { color = hillLight }
+                    else if ratio > 0.6 { color = hillMid }
+                    else { color = hillBase }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: City Skyline Hills — neonCity & pixelTokyo
+
+    private func renderCitySkylineHills(neon: Bool) -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+        let gridH = Int(h / ps)
+
+        // Building palette
+        let wallDark  = neon ? UIColor(red: 0.12, green: 0.06, blue: 0.22, alpha: 0.85)
+                             : UIColor(red: 0.15, green: 0.10, blue: 0.25, alpha: 0.85)
+        let wallMid   = neon ? UIColor(red: 0.18, green: 0.08, blue: 0.30, alpha: 0.80)
+                             : UIColor(red: 0.20, green: 0.12, blue: 0.32, alpha: 0.80)
+        let wallLight = neon ? UIColor(red: 0.25, green: 0.12, blue: 0.40, alpha: 0.75)
+                             : UIColor(red: 0.28, green: 0.15, blue: 0.38, alpha: 0.75)
+        let roofColor = neon ? UIColor(red: 0.10, green: 0.04, blue: 0.18, alpha: 0.90)
+                             : UIColor(red: 0.12, green: 0.06, blue: 0.20, alpha: 0.90)
+
+        // Window glow colors
+        let windowYellow = UIColor(red: 1.0, green: 0.90, blue: 0.40, alpha: 0.9)
+        let windowCyan   = UIColor(red: 0.30, green: 0.90, blue: 1.0, alpha: 0.85)
+        let windowPink   = UIColor(red: 1.0, green: 0.35, blue: 0.70, alpha: 0.85)
+        let windowOff    = UIColor(red: 0.08, green: 0.05, blue: 0.15, alpha: 0.7)
+        let windowColors = [windowYellow, windowCyan, windowPink, windowOff, windowOff]
+
+        // Deterministic building specs: (xPixel, widthPixels, heightPixels)
+        let buildings: [(x: Int, w: Int, h: Int)] = [
+            (2, 8, 18), (12, 6, 12), (20, 10, 22), (32, 5, 9),
+            (39, 9, 16), (50, 7, 20), (59, 11, 25), (72, 6, 11),
+            (80, 8, 17), (90, 10, 23), (102, 5, 8), (109, 9, 19),
+            (120, 7, 14), (129, 11, 26), (142, 6, 10), (150, 8, 21),
+            (160, 10, 15), (172, 7, 24), (181, 9, 13), (192, 6, 18),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            for bld in buildings {
+                let bx = bld.x
+                let bw = bld.w
+                let bh = min(bld.h, gridH)
+
+                // Building body
+                for row in 0..<bh {
+                    let yPos = h - CGFloat(row + 1) * ps
+                    let color: UIColor
+                    if row == bh - 1 { color = roofColor }
+                    else if row > bh * 2 / 3 { color = wallLight }
+                    else if row > bh / 3 { color = wallMid }
+                    else { color = wallDark }
+                    c.setFillColor(color.cgColor)
+                    for col in bx..<(bx + bw) {
+                        guard col < gridW else { break }
+                        c.fill(CGRect(x: CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+
+                // Windows — 2px wide, every other row starting from row 2
+                for row in stride(from: 2, to: bh - 2, by: 3) {
+                    for col in stride(from: bx + 1, to: bx + bw - 1, by: 3) {
+                        guard col < gridW else { break }
+                        let yPos = h - CGFloat(row + 1) * ps
+                        let wc = windowColors[(row * 7 + col * 3) % windowColors.count]
+                        c.setFillColor(wc.cgColor)
+                        c.fill(CGRect(x: CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                        if col + 1 < gridW && col + 1 < bx + bw - 1 {
+                            c.fill(CGRect(x: CGFloat(col + 1) * ps, y: yPos, width: ps, height: ps))
+                        }
+                    }
+                }
+
+                // Antenna on tall buildings
+                if bh > 18 {
+                    let antX = bx + bw / 2
+                    guard antX < gridW else { continue }
+                    let antColor = neon ? UIColor(red: 1.0, green: 0.20, blue: 0.40, alpha: 0.9)
+                                        : UIColor(red: 1.0, green: 0.30, blue: 0.30, alpha: 0.9)
+                    c.setFillColor(roofColor.cgColor)
+                    for i in 1...3 {
+                        let yPos = h - CGFloat(bh + i) * ps
+                        c.fill(CGRect(x: CGFloat(antX) * ps, y: yPos, width: ps, height: ps))
+                    }
+                    // Blinking light at tip
+                    c.setFillColor(antColor.cgColor)
+                    c.fill(CGRect(x: CGFloat(antX) * ps, y: h - CGFloat(bh + 4) * ps, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Coral Reef Hills — underwater
+
+    private func renderCoralReefHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Coral reef uses overlapping rounded bumps like hills but with vibrant ocean colors
+        var heightMap = [Int](repeating: 0, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 10, 8, 8), (gridW / 5, 12, 14), (gridW * 3 / 10, 6, 6),
+            (gridW * 2 / 5, 14, 16), (gridW / 2, 7, 5), (gridW * 3 / 5, 10, 12),
+            (gridW * 7 / 10, 15, 18), (gridW * 4 / 5, 8, 10), (gridW * 9 / 10, 11, 13),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        // Coral palette — each "bump" gets a color from this cycle
+        let coralPalette: [(base: UIColor, mid: UIColor, top: UIColor)] = [
+            (UIColor(red: 0.85, green: 0.30, blue: 0.40, alpha: 0.65),
+             UIColor(red: 0.95, green: 0.45, blue: 0.50, alpha: 0.60),
+             UIColor(red: 0.75, green: 0.22, blue: 0.32, alpha: 0.70)),
+            (UIColor(red: 0.90, green: 0.60, blue: 0.20, alpha: 0.60),
+             UIColor(red: 1.0, green: 0.75, blue: 0.35, alpha: 0.55),
+             UIColor(red: 0.80, green: 0.50, blue: 0.15, alpha: 0.65)),
+            (UIColor(red: 0.55, green: 0.25, blue: 0.70, alpha: 0.60),
+             UIColor(red: 0.70, green: 0.40, blue: 0.85, alpha: 0.55),
+             UIColor(red: 0.45, green: 0.18, blue: 0.58, alpha: 0.65)),
+            (UIColor(red: 0.20, green: 0.65, blue: 0.55, alpha: 0.60),
+             UIColor(red: 0.30, green: 0.78, blue: 0.65, alpha: 0.55),
+             UIColor(red: 0.15, green: 0.52, blue: 0.45, alpha: 0.65)),
+        ]
+
+        // Map each x to its dominant bump for coloring
+        var bumpOwner = [Int](repeating: 0, count: gridW)
+        for (bi, bump) in bumps.enumerated() {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                let bh = Int(CGFloat(bump.peak) * (1.0 - nd * nd))
+                if bh >= heightMap[x] { bumpOwner[x] = bi % coralPalette.count }
+            }
+        }
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let coralH = heightMap[x]
+                guard coralH > 0 else { continue }
+                let pal = coralPalette[bumpOwner[x]]
+                for y in 0..<coralH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(coralH))
+                    let color: UIColor
+                    if y == coralH - 1 { color = pal.top }
+                    else if ratio > 0.5 { color = pal.mid }
+                    else { color = pal.base }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Scattered small coral nubs on top
+            let nubColor = UIColor(red: 1.0, green: 0.50, blue: 0.60, alpha: 0.50)
+            c.setFillColor(nubColor.cgColor)
+            for x in stride(from: 5, to: gridW - 3, by: 9) {
+                let ch = heightMap[x]
+                if ch > 3 {
+                    let yPos = h - CGFloat(ch + 1) * ps
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Volcano Hills — jagged rocky mountains with lava glow
+
+    private func renderVolcanoHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Jagged peaks — sharper bumps with smaller radii
+        var heightMap = [Int](repeating: 0, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 10, 6, 12), (gridW / 5, 10, 20), (gridW * 3 / 10, 4, 8),
+            (gridW * 2 / 5, 8, 18), (gridW / 2, 5, 10), (gridW * 3 / 5, 12, 24),
+            (gridW * 7 / 10, 6, 14), (gridW * 4 / 5, 9, 22), (gridW * 9 / 10, 7, 16),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                // Steeper falloff for jagged look
+                let bh = Int(CGFloat(bump.peak) * max(0, 1.0 - nd * nd * nd))
+                heightMap[x] = max(heightMap[x], bh)
+            }
+        }
+
+        let rockBase = UIColor(red: 0.25, green: 0.15, blue: 0.10, alpha: 0.75)
+        let rockMid  = UIColor(red: 0.35, green: 0.22, blue: 0.15, alpha: 0.70)
+        let rockTop  = UIColor(red: 0.20, green: 0.12, blue: 0.08, alpha: 0.80)
+        let lavaGlow = UIColor(red: 1.0, green: 0.45, blue: 0.10, alpha: 0.60)
+        let lavaHot  = UIColor(red: 1.0, green: 0.70, blue: 0.20, alpha: 0.50)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mtnH = heightMap[x]
+                guard mtnH > 0 else { continue }
+                for y in 0..<mtnH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
+                    let color: UIColor
+                    if y <= 1 { color = lavaGlow }          // lava glow at base
+                    else if y == 2 && mtnH > 5 { color = lavaHot }
+                    else if y == mtnH - 1 { color = rockTop }
+                    else if ratio > 0.5 { color = rockMid }
+                    else { color = rockBase }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Arctic Hills — snow-capped mountain peaks
+
+    private func renderArcticHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        var heightMap = [Int](repeating: 1, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8, 16, 12), (gridW / 4, 20, 18), (gridW * 3 / 8, 10, 8),
+            (gridW / 2, 18, 16), (gridW * 5 / 8, 14, 11), (gridW * 3 / 4, 22, 20),
+            (gridW * 7 / 8, 12, 10),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let rockBase = UIColor(red: 0.45, green: 0.52, blue: 0.62, alpha: 0.55)
+        let rockMid  = UIColor(red: 0.55, green: 0.62, blue: 0.72, alpha: 0.50)
+        let snowTop  = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.70)
+        let snowMid  = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.60)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mtnH = heightMap[x]
+                for y in 0..<mtnH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
+                    let color: UIColor
+                    // Top 35% is snow, rest is blue-gray rock
+                    if ratio > 0.75 { color = snowTop }
+                    else if ratio > 0.65 { color = snowMid }
+                    else if ratio > 0.35 { color = rockMid }
+                    else { color = rockBase }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Space Terrain Hills — distant cratered planet surface
+
+    private func renderSpaceTerrainHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Lumpy alien terrain
+        var heightMap = [Int](repeating: 2, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8, 12, 8), (gridW / 4, 16, 11), (gridW * 3 / 8, 8, 5),
+            (gridW / 2, 14, 10), (gridW * 3 / 5, 18, 14), (gridW * 3 / 4, 10, 7),
+            (gridW * 9 / 10, 14, 9),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let surfBase = UIColor(red: 0.15, green: 0.10, blue: 0.25, alpha: 0.65)
+        let surfMid  = UIColor(red: 0.22, green: 0.15, blue: 0.35, alpha: 0.60)
+        let surfTop  = UIColor(red: 0.12, green: 0.08, blue: 0.20, alpha: 0.70)
+
+        // Crater positions (column index, radius in grid cells)
+        let craters: [(cx: Int, r: Int)] = [
+            (gridW / 6, 5), (gridW * 2 / 5, 3), (gridW * 2 / 3, 6), (gridW * 5 / 6, 4),
+        ]
+        var craterMap = [Bool](repeating: false, count: gridW)
+        for crater in craters {
+            for x in max(0, crater.cx - crater.r)..<min(gridW, crater.cx + crater.r) {
+                craterMap[x] = true
+                // Dip the heightmap for crater interior
+                let dist = abs(x - crater.cx)
+                if dist < crater.r {
+                    let dip = Int(CGFloat(crater.r - dist) * 0.6)
+                    heightMap[x] = max(2, heightMap[x] - dip)
+                }
+            }
+        }
+        let craterRim = UIColor(red: 0.28, green: 0.20, blue: 0.42, alpha: 0.55)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mtnH = heightMap[x]
+                for y in 0..<mtnH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
+                    var color: UIColor
+                    if y == mtnH - 1 { color = surfTop }
+                    else if ratio > 0.5 { color = surfMid }
+                    else { color = surfBase }
+                    // Tint crater rims
+                    if craterMap[x] && y == mtnH - 1 { color = craterRim }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: - Themed Trees (Midground) Rendering
+
+    private func renderThemedTrees(theme: BackgroundTheme) -> UIImage {
+        switch theme {
+        case .day:                          return renderPixelTrees()
+        case .sunset:                       return renderSunsetTrees()
+        case .night:                        return renderNightTrees()
+        case .neonCity:                     return renderNeonCityMidground()
+        case .pixelTokyo:                   return renderTokyoMidground()
+        case .underwater:                   return renderKelpForest()
+        case .volcano:                      return renderCharredTrees()
+        case .arctic:                       return renderSnowyPines()
+        case .space:                        return renderSpaceStructures()
+        }
+    }
+
+    // MARK: Sunset Trees — warm amber park trees
+
+    private func renderSunsetTrees() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+
+        let tG = UIColor(red: 0.50, green: 0.35, blue: 0.15, alpha: 0.70)
+        let tg = UIColor(red: 0.62, green: 0.45, blue: 0.20, alpha: 0.65)
+        let tD = UIColor(red: 0.42, green: 0.28, blue: 0.12, alpha: 0.75)
+        let tT = UIColor(red: 0.35, green: 0.22, blue: 0.10, alpha: 0.70)
+        let tB = UIColor(red: 0.48, green: 0.32, blue: 0.14, alpha: 0.60)
+        let C  = UIColor.clear
+
+        let roundTree: [[UIColor]] = [
+            [C,C,C,tD,tD,tD,C,C,C],
+            [C,C,tD,tG,tG,tG,tD,C,C],
+            [C,tD,tG,tG,tg,tG,tG,tD,C],
+            [tD,tG,tG,tg,tg,tG,tG,tG,tD],
+            [tD,tG,tg,tG,tG,tG,tG,tG,tD],
+            [tD,tG,tG,tG,tG,tG,tG,tG,tD],
+            [C,tD,tG,tG,tG,tG,tG,tD,C],
+            [C,C,tD,tD,tG,tD,tD,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+        ]
+        let bush: [[UIColor]] = [
+            [C,C,tB,tB,tB,C,C],
+            [C,tB,tB,tg,tB,tB,C],
+            [tB,tB,tg,tB,tB,tB,tB],
+            [C,tB,tB,tB,tB,tB,C],
+        ]
+
+        return renderTreesFromTemplates(width: w, height: h, ps: ps,
+                                         roundTree: roundTree, pineTree: roundTree,
+                                         bush: bush, showBenches: true,
+                                         benchColor: UIColor(red: 0.35, green: 0.22, blue: 0.10, alpha: 0.45))
+    }
+
+    // MARK: Night Trees — dark silhouettes
+
+    private func renderNightTrees() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+
+        let tG = UIColor(red: 0.06, green: 0.10, blue: 0.18, alpha: 0.80)
+        let tg = UIColor(red: 0.10, green: 0.14, blue: 0.24, alpha: 0.75)
+        let tD = UIColor(red: 0.04, green: 0.06, blue: 0.12, alpha: 0.85)
+        let tT = UIColor(red: 0.08, green: 0.08, blue: 0.14, alpha: 0.75)
+        let tB = UIColor(red: 0.06, green: 0.08, blue: 0.15, alpha: 0.75)
+        let C  = UIColor.clear
+
+        let roundTree: [[UIColor]] = [
+            [C,C,C,tD,tD,tD,C,C,C],
+            [C,C,tD,tG,tG,tG,tD,C,C],
+            [C,tD,tG,tG,tg,tG,tG,tD,C],
+            [tD,tG,tG,tg,tg,tG,tG,tG,tD],
+            [tD,tG,tg,tG,tG,tG,tG,tG,tD],
+            [tD,tG,tG,tG,tG,tG,tG,tG,tD],
+            [C,tD,tG,tG,tG,tG,tG,tD,C],
+            [C,C,tD,tD,tG,tD,tD,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+            [C,C,C,C,tT,C,C,C,C],
+        ]
+        let bush: [[UIColor]] = [
+            [C,C,tB,tB,tB,C,C],
+            [C,tB,tB,tg,tB,tB,C],
+            [tB,tB,tg,tB,tB,tB,tB],
+            [C,tB,tB,tB,tB,tB,C],
+        ]
+
+        return renderTreesFromTemplates(width: w, height: h, ps: ps,
+                                         roundTree: roundTree, pineTree: roundTree,
+                                         bush: bush, showBenches: true,
+                                         benchColor: UIColor(red: 0.06, green: 0.06, blue: 0.12, alpha: 0.55))
+    }
+
+    // MARK: Neon City Midground — shorter buildings, neon signs
+
+    private func renderNeonCityMidground() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Foreground buildings — shorter, more varied, with neon accents
+        let wallDark  = UIColor(red: 0.10, green: 0.05, blue: 0.20, alpha: 0.75)
+        let wallMid   = UIColor(red: 0.15, green: 0.08, blue: 0.28, alpha: 0.70)
+        let roofColor = UIColor(red: 0.08, green: 0.04, blue: 0.16, alpha: 0.80)
+
+        let neonPink  = UIColor(red: 1.0, green: 0.20, blue: 0.55, alpha: 0.90)
+        let neonCyan  = UIColor(red: 0.20, green: 0.90, blue: 1.0, alpha: 0.85)
+        let neonPurple = UIColor(red: 0.75, green: 0.30, blue: 1.0, alpha: 0.85)
+
+        let windowYellow = UIColor(red: 1.0, green: 0.90, blue: 0.40, alpha: 0.80)
+        let windowOff    = UIColor(red: 0.06, green: 0.04, blue: 0.12, alpha: 0.65)
+
+        // Buildings: (xPixel, widthPixels, heightPixels)
+        let buildings: [(x: Int, w: Int, h: Int)] = [
+            (1, 10, 12), (13, 7, 8), (22, 12, 16), (36, 6, 10), (44, 9, 14),
+            (55, 8, 9), (65, 11, 18), (78, 6, 7), (86, 10, 13), (98, 8, 11),
+            (108, 12, 20), (122, 7, 8), (131, 9, 15), (142, 10, 12), (154, 8, 17),
+            (164, 6, 9), (172, 11, 14), (185, 7, 10), (194, 9, 16),
+        ]
+
+        let neonSigns: [(x: Int, y: Int, w: Int, color: UIColor)] = [
+            (16, 10, 5, neonPink), (46, 16, 4, neonCyan), (70, 20, 6, neonPurple),
+            (102, 14, 5, neonPink), (135, 18, 4, neonCyan), (170, 16, 5, neonPurple),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            for bld in buildings {
+                let bx = bld.x
+                let bw = bld.w
+                let bh = bld.h
+
+                for row in 0..<bh {
+                    let yPos = h - CGFloat(row + 1) * ps
+                    let color = row == bh - 1 ? roofColor : (row > bh / 2 ? wallMid : wallDark)
+                    c.setFillColor(color.cgColor)
+                    for col in bx..<(bx + bw) {
+                        guard col < gridW else { break }
+                        c.fill(CGRect(x: CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+
+                // Windows
+                for row in stride(from: 1, to: bh - 1, by: 2) {
+                    for col in stride(from: bx + 1, to: bx + bw - 1, by: 2) {
+                        guard col < gridW else { break }
+                        let yPos = h - CGFloat(row + 1) * ps
+                        let wc = (row + col) % 3 == 0 ? windowYellow : windowOff
+                        c.setFillColor(wc.cgColor)
+                        c.fill(CGRect(x: CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Neon signs — horizontal bars of color
+            for sign in neonSigns {
+                c.setFillColor(sign.color.cgColor)
+                for col in sign.x..<(sign.x + sign.w) {
+                    guard col < gridW else { break }
+                    let yPos = h - CGFloat(sign.y + 1) * ps
+                    c.fill(CGRect(x: CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                    // Glow pixel below
+                    c.setFillColor(sign.color.withAlphaComponent(0.35).cgColor)
+                    c.fill(CGRect(x: CGFloat(col) * ps, y: yPos + ps, width: ps, height: ps))
+                    c.setFillColor(sign.color.cgColor)
+                }
+            }
+        }
+    }
+
+    // MARK: Tokyo Midground — detailed buildings with Japanese elements
+
+    private func renderTokyoMidground() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        let wallDark   = UIColor(red: 0.14, green: 0.08, blue: 0.28, alpha: 0.75)
+        let wallMid    = UIColor(red: 0.20, green: 0.12, blue: 0.35, alpha: 0.70)
+        let roofColor  = UIColor(red: 0.10, green: 0.05, blue: 0.22, alpha: 0.80)
+
+        let neonPink   = UIColor(red: 1.0, green: 0.30, blue: 0.50, alpha: 0.85)
+        let neonBlue   = UIColor(red: 0.30, green: 0.70, blue: 1.0, alpha: 0.80)
+        let windowWarm = UIColor(red: 1.0, green: 0.85, blue: 0.50, alpha: 0.75)
+        let windowOff  = UIColor(red: 0.08, green: 0.05, blue: 0.18, alpha: 0.65)
+
+        // Tokyo buildings — mix of sizes
+        let buildings: [(x: Int, w: Int, h: Int)] = [
+            (1, 12, 15), (15, 8, 10), (25, 14, 22), (41, 6, 8), (49, 10, 18),
+            (61, 7, 12), (70, 13, 26), (85, 8, 9), (95, 11, 20), (108, 6, 11),
+            (116, 14, 24), (132, 7, 10), (141, 10, 16), (153, 9, 14), (164, 12, 28),
+            (178, 7, 8), (187, 10, 19),
+        ]
+
+        // Signage positions: some vertical, some horizontal
+        let hSigns: [(x: Int, y: Int, w: Int, color: UIColor)] = [
+            (28, 14, 8, neonPink), (52, 20, 5, neonBlue),
+            (99, 22, 6, neonPink), (145, 18, 5, neonBlue),
+            (168, 24, 7, neonPink),
+        ]
+        let vSigns: [(x: Int, yStart: Int, h: Int, color: UIColor)] = [
+            (3, 8, 5, neonBlue), (73, 12, 8, neonPink),
+            (119, 10, 6, neonBlue), (190, 8, 5, neonPink),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            for bld in buildings {
+                let bx = bld.x
+                let bw = bld.w
+                let bh = bld.h
+
+                for row in 0..<bh {
+                    let yPos = h - CGFloat(row + 1) * ps
+                    let color = row == bh - 1 ? roofColor : (row > bh / 2 ? wallMid : wallDark)
+                    c.setFillColor(color.cgColor)
+                    for col in bx..<(bx + bw) {
+                        guard col < gridW else { break }
+                        c.fill(CGRect(x: CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+
+                // Windows — grid pattern
+                for row in stride(from: 1, to: bh - 1, by: 2) {
+                    for col in stride(from: bx + 1, to: bx + bw - 1, by: 2) {
+                        guard col < gridW else { break }
+                        let yPos = h - CGFloat(row + 1) * ps
+                        let wc = (row * 5 + col * 3) % 4 == 0 ? windowOff : windowWarm
+                        c.setFillColor(wc.cgColor)
+                        c.fill(CGRect(x: CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+
+                // Rooftop detail — small antenna or A/C unit on tall buildings
+                if bh > 16 && bx + bw / 2 < gridW {
+                    c.setFillColor(roofColor.cgColor)
+                    let ax = bx + bw / 2
+                    c.fill(CGRect(x: CGFloat(ax) * ps, y: h - CGFloat(bh + 1) * ps, width: ps, height: ps))
+                    c.fill(CGRect(x: CGFloat(ax) * ps, y: h - CGFloat(bh + 2) * ps, width: ps, height: ps))
+                }
+            }
+
+            // Horizontal neon signs
+            for sign in hSigns {
+                c.setFillColor(sign.color.cgColor)
+                for col in sign.x..<(sign.x + sign.w) {
+                    guard col < gridW else { break }
+                    c.fill(CGRect(x: CGFloat(col) * ps, y: h - CGFloat(sign.y + 1) * ps, width: ps, height: ps))
+                }
+                // Glow row below
+                c.setFillColor(sign.color.withAlphaComponent(0.30).cgColor)
+                for col in sign.x..<(sign.x + sign.w) {
+                    guard col < gridW else { break }
+                    c.fill(CGRect(x: CGFloat(col) * ps, y: h - CGFloat(sign.y) * ps, width: ps, height: ps))
+                }
+            }
+            // Vertical neon signs
+            for sign in vSigns {
+                guard sign.x < gridW else { continue }
+                for row in sign.yStart..<(sign.yStart + sign.h) {
+                    c.setFillColor(sign.color.cgColor)
+                    c.fill(CGRect(x: CGFloat(sign.x) * ps, y: h - CGFloat(row + 1) * ps, width: ps, height: ps))
+                    // Glow pixel beside
+                    if sign.x + 1 < gridW {
+                        c.setFillColor(sign.color.withAlphaComponent(0.25).cgColor)
+                        c.fill(CGRect(x: CGFloat(sign.x + 1) * ps, y: h - CGFloat(row + 1) * ps, width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Kelp Forest — underwater trees
+
+    private func renderKelpForest() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C  = UIColor.clear
+
+        let kD = UIColor(red: 0.10, green: 0.42, blue: 0.25, alpha: 0.70)
+        let kL = UIColor(red: 0.18, green: 0.58, blue: 0.35, alpha: 0.65)
+        let kT = UIColor(red: 0.15, green: 0.50, blue: 0.30, alpha: 0.55)
+
+        // Tall kelp strand (3 wide × 16 tall, swaying)
+        let kelpA: [[UIColor]] = [
+            [C,kT,C], [C,kL,C], [kL,kD,C], [C,kD,C],
+            [C,kD,kL], [C,kL,C], [kL,kD,C], [C,kD,C],
+            [C,kD,kL], [C,kL,C], [kL,kD,C], [C,kD,C],
+            [C,kL,C], [C,kD,C], [C,kD,C], [C,kD,C],
+        ]
+        // Short kelp strand (3 wide × 10 tall)
+        let kelpB: [[UIColor]] = [
+            [C,kT,C], [kL,kD,C], [C,kD,C], [C,kD,kL],
+            [C,kL,C], [kL,kD,C], [C,kD,C], [C,kD,C],
+            [C,kD,C], [C,kD,C],
+        ]
+
+        // Small coral cluster (5 wide × 4 tall)
+        let coralR = UIColor(red: 0.85, green: 0.30, blue: 0.35, alpha: 0.60)
+        let coralO = UIColor(red: 0.90, green: 0.55, blue: 0.20, alpha: 0.55)
+        let coral: [[UIColor]] = [
+            [C,coralR,C,coralO,C],
+            [coralR,coralR,coralO,coralO,C],
+            [coralR,coralR,coralO,coralO,coralR],
+            [C,coralR,coralO,coralR,C],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (20, 0), (80, 1), (130, 2), (180, 0), (240, 1), (300, 0),
+            (360, 2), (420, 0), (470, 1), (530, 0), (580, 2), (640, 0),
+            (700, 1), (750, 0),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = kelpA
+                case 1: template = kelpB
+                default: template = coral
+                }
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != UIColor.clear else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Charred Trees — volcano midground
+
+    private func renderCharredTrees() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let tD = UIColor(red: 0.12, green: 0.08, blue: 0.06, alpha: 0.80)
+        let tM = UIColor(red: 0.18, green: 0.12, blue: 0.08, alpha: 0.75)
+        let tT = UIColor(red: 0.15, green: 0.10, blue: 0.07, alpha: 0.75)
+        let eG = UIColor(red: 0.95, green: 0.40, blue: 0.10, alpha: 0.45) // ember glow
+
+        // Dead tree silhouette (7 wide × 14 tall)
+        let deadTree: [[UIColor]] = [
+            [C,C,C,tD,C,C,C],
+            [C,tD,C,tD,C,tD,C],
+            [tD,tD,C,tD,C,tD,tD],
+            [C,tM,tD,tD,tD,tM,C],
+            [C,C,tD,tD,tD,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+            [C,C,C,tD,C,C,C],
+        ]
+
+        // Small charred stump (5 wide × 5 tall)
+        let stump: [[UIColor]] = [
+            [C,tD,tD,tD,C],
+            [C,tM,tD,tM,C],
+            [C,C,tD,C,C],
+            [C,C,tD,C,C],
+            [C,C,tD,C,C],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (40, 0), (120, 1), (190, 0), (260, 1), (330, 0),
+            (400, 1), (470, 0), (540, 1), (620, 0), (700, 1), (760, 0),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template = pos.type == 0 ? deadTree : stump
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != UIColor.clear else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+                // Ember glow at base of full trees
+                if pos.type == 0 {
+                    c.setFillColor(eG.cgColor)
+                    c.fill(CGRect(x: pos.x + 2 * ps, y: h - ps, width: ps * 3, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Snowy Pines — arctic trees
+
+    private func renderSnowyPines() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let tG = UIColor(red: 0.15, green: 0.35, blue: 0.20, alpha: 0.70)
+        let tD = UIColor(red: 0.10, green: 0.28, blue: 0.15, alpha: 0.75)
+        let sW = UIColor(red: 0.92, green: 0.95, blue: 1.0, alpha: 0.80) // snow white
+        let sL = UIColor(red: 0.80, green: 0.88, blue: 0.95, alpha: 0.65) // snow shadow
+        let tT = UIColor(red: 0.35, green: 0.25, blue: 0.15, alpha: 0.70)
+
+        // Snowy pine (7 wide × 14 tall — snow-tipped)
+        let snowPine: [[UIColor]] = [
+            [C,C,C,sW,C,C,C],
+            [C,C,sW,sW,sW,C,C],
+            [C,C,tD,tG,tD,C,C],
+            [C,sW,tG,tG,tG,sW,C],
+            [C,sL,tG,tG,tG,sL,C],
+            [sW,tG,tG,tG,tG,tG,sW],
+            [sL,tG,tG,tG,tG,tG,sL],
+            [C,C,sW,tG,sW,C,C],
+            [C,sW,tG,tG,tG,sW,C],
+            [sW,tG,tG,tG,tG,tG,sW],
+            [sL,tG,tG,tG,tG,tG,sL],
+            [C,C,C,tT,C,C,C],
+            [C,C,C,tT,C,C,C],
+            [C,C,C,tT,C,C,C],
+        ]
+
+        // Snow drift (7 wide × 3 tall)
+        let drift: [[UIColor]] = [
+            [C,C,sW,sW,sW,C,C],
+            [C,sW,sW,sW,sW,sW,C],
+            [sL,sW,sW,sW,sW,sW,sL],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (30, 0), (100, 1), (160, 0), (220, 1), (290, 0), (350, 1),
+            (420, 0), (480, 1), (540, 0), (610, 1), (680, 0), (740, 1), (790, 0),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template = pos.type == 0 ? snowPine : drift
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != UIColor.clear else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Space Structures — space station silhouettes, satellite dishes
+
+    private func renderSpaceStructures() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let sM = UIColor(red: 0.30, green: 0.32, blue: 0.38, alpha: 0.65) // metal gray
+        let sD = UIColor(red: 0.18, green: 0.20, blue: 0.25, alpha: 0.70) // dark frame
+        let sL = UIColor(red: 0.45, green: 0.48, blue: 0.55, alpha: 0.55) // light panel
+        let gR = UIColor(red: 0.20, green: 0.80, blue: 0.30, alpha: 0.70) // green status light
+        let rL = UIColor(red: 1.0, green: 0.25, blue: 0.25, alpha: 0.70)  // red light
+
+        // Satellite dish (9 wide × 10 tall)
+        let dish: [[UIColor]] = [
+            [C,C,C,C,sD,C,C,C,C],
+            [C,C,C,sD,sM,sD,C,C,C],
+            [C,C,sD,sM,sL,sM,sD,C,C],
+            [C,sD,sM,sL,sL,sL,sM,sD,C],
+            [sD,sM,sL,sL,sL,sL,sM,sD,C],
+            [C,C,C,C,sD,C,C,C,C],
+            [C,C,C,C,sD,C,C,C,C],
+            [C,C,C,sD,sM,sD,C,C,C],
+            [C,C,sD,C,sD,C,sD,C,C],
+            [C,sD,C,C,sD,C,C,sD,C],
+        ]
+
+        // Small space module (7 wide × 8 tall)
+        let module: [[UIColor]] = [
+            [C,C,sD,sD,sD,C,C],
+            [C,sD,sM,sM,sM,sD,C],
+            [sD,sM,sL,gR,sL,sM,sD],
+            [sD,sM,sM,sM,sM,sM,sD],
+            [sD,sM,sL,sL,sL,sM,sD],
+            [C,sD,sM,sM,sM,sD,C],
+            [C,C,sD,sD,sD,C,C],
+            [C,C,C,sD,C,C,C],
+        ]
+
+        // Floating asteroid (5 wide × 4 tall)
+        let aD = UIColor(red: 0.28, green: 0.25, blue: 0.22, alpha: 0.60)
+        let aL = UIColor(red: 0.40, green: 0.36, blue: 0.32, alpha: 0.50)
+        let asteroid: [[UIColor]] = [
+            [C,aD,aD,aD,C],
+            [aD,aD,aL,aD,aD],
+            [aD,aL,aD,aD,aD],
+            [C,aD,aD,aD,C],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (30, 0), (110, 2), (180, 1), (260, 2), (340, 0), (420, 2),
+            (500, 1), (580, 2), (650, 0), (720, 2), (780, 1),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = dish
+                case 1: template = module
+                default: template = asteroid
+                }
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != UIColor.clear else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Shared helper to render sunset/night tree variants from palette-shifted templates.
+    private func renderTreesFromTemplates(
+        width: CGFloat, height: CGFloat, ps: CGFloat,
+        roundTree: [[UIColor]], pineTree: [[UIColor]], bush: [[UIColor]],
+        showBenches: Bool, benchColor: UIColor
+    ) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: height))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let positions: [(x: CGFloat, type: Int)] = [
+                (30, 0), (110, 1), (170, 2), (230, 0), (290, 1),
+                (360, 0), (430, 2), (480, 0), (540, 1), (610, 0),
+                (670, 2), (720, 0), (780, 1),
+            ]
+            for pos in positions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = roundTree
+                case 1: template = pineTree
+                default: template = bush
+                }
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = height - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != UIColor.clear else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+
+            if showBenches {
+                let benchPositions: [CGFloat] = [150, 450, 700]
+                for bx in benchPositions {
+                    let by = height - 3 * ps
+                    c.setFillColor(benchColor.cgColor)
+                    for i in 0..<6 { c.fill(CGRect(x: bx + CGFloat(i) * ps, y: by, width: ps, height: ps)) }
+                    for i in 0..<6 { c.fill(CGRect(x: bx + CGFloat(i) * ps, y: by - ps, width: ps, height: ps)) }
+                    c.fill(CGRect(x: bx, y: by + ps, width: ps, height: ps * 2))
+                    c.fill(CGRect(x: bx + 5 * ps, y: by + ps, width: ps, height: ps * 2))
+                }
+            }
+        }
+    }
+
+    // MARK: - Themed Bush / Foreground Rendering
+
+    private func renderThemedBushes(theme: BackgroundTheme) -> UIImage {
+        switch theme {
+        case .day:                          return renderDayBushStrip()
+        case .sunset:                       return renderSunsetBushStrip()
+        case .night:                        return renderNightBushStrip()
+        case .neonCity, .pixelTokyo:        return renderUrbanForegroundStrip(tokyo: theme == .pixelTokyo)
+        case .underwater:                   return renderBubbleFishStrip()
+        case .volcano:                      return renderLavaPoolStrip()
+        case .arctic:                       return renderIceCrystalStrip()
+        case .space:                        return renderSpaceDebrisStrip()
+        }
+    }
+
+    // MARK: Day Bushes — same as the original GameScene renderBushTexture
+
+    private func renderDayBushStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let size = CGSize(width: w, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            var x = 0
+            while x < w {
+                let bushW = Int.random(in: 18...32)
+                let bushH = Int.random(in: 14...24)
+                let gap = Int.random(in: 20...40)
+                let ps = 4
+                let bodyColor = UIColor(red: 0.20, green: 0.48, blue: 0.14, alpha: 0.8)
+                c.setFillColor(bodyColor.cgColor)
+                let topY = h - bushH
+                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
+                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
+                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
+                c.fill(CGRect(x: x + ps, y: h - ps, width: bushW - ps * 2, height: ps))
+                let hlColor = UIColor(red: 0.32, green: 0.62, blue: 0.20, alpha: 0.6)
+                c.setFillColor(hlColor.cgColor)
+                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
+                if Int.random(in: 0...2) == 0 {
+                    let flowerColors: [UIColor] = [
+                        UIColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 1.0),
+                        UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1.0),
+                        UIColor(red: 0.80, green: 0.40, blue: 0.85, alpha: 1.0),
+                    ]
+                    c.setFillColor(flowerColors.randomElement()!.cgColor)
+                    let fx = x + Int.random(in: ps...(max(ps + 1, bushW - ps * 2)))
+                    c.fill(CGRect(x: fx, y: topY - ps, width: ps + 2, height: ps + 2))
+                }
+                x += bushW + gap
+            }
+        }
+    }
+
+    // MARK: Sunset Bushes
+
+    private func renderSunsetBushStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            var x = 0
+            while x < w {
+                let bushW = Int.random(in: 18...32)
+                let bushH = Int.random(in: 14...24)
+                let gap = Int.random(in: 20...40)
+                let ps = 4
+                let bodyColor = UIColor(red: 0.40, green: 0.28, blue: 0.12, alpha: 0.75)
+                c.setFillColor(bodyColor.cgColor)
+                let topY = h - bushH
+                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
+                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
+                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
+                c.fill(CGRect(x: x + ps, y: h - ps, width: bushW - ps * 2, height: ps))
+                let hlColor = UIColor(red: 0.55, green: 0.38, blue: 0.18, alpha: 0.55)
+                c.setFillColor(hlColor.cgColor)
+                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
+                x += bushW + gap
+            }
+        }
+    }
+
+    // MARK: Night Bushes
+
+    private func renderNightBushStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            var x = 0
+            while x < w {
+                let bushW = Int.random(in: 18...32)
+                let bushH = Int.random(in: 14...24)
+                let gap = Int.random(in: 20...40)
+                let ps = 4
+                let bodyColor = UIColor(red: 0.05, green: 0.07, blue: 0.14, alpha: 0.80)
+                c.setFillColor(bodyColor.cgColor)
+                let topY = h - bushH
+                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
+                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
+                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
+                c.fill(CGRect(x: x + ps, y: h - ps, width: bushW - ps * 2, height: ps))
+                let hlColor = UIColor(red: 0.08, green: 0.12, blue: 0.22, alpha: 0.60)
+                c.setFillColor(hlColor.cgColor)
+                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
+                x += bushW + gap
+            }
+        }
+    }
+
+    // MARK: Urban Foreground — neonCity / pixelTokyo
+
+    private func renderUrbanForegroundStrip(tokyo: Bool) -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            let signBase = tokyo ? UIColor(red: 0.18, green: 0.10, blue: 0.30, alpha: 0.80)
+                                 : UIColor(red: 0.12, green: 0.06, blue: 0.22, alpha: 0.80)
+            let neonA = tokyo ? UIColor(red: 1.0, green: 0.35, blue: 0.55, alpha: 0.85)
+                              : UIColor(red: 0.25, green: 0.85, blue: 1.0, alpha: 0.80)
+            let neonB = tokyo ? UIColor(red: 0.40, green: 0.75, blue: 1.0, alpha: 0.80)
+                              : UIColor(red: 1.0, green: 0.20, blue: 0.60, alpha: 0.80)
+
+            var x = 0
+            var toggle = false
+            while x < w {
+                let elW = Int.random(in: 12...28)
+                let elH = Int.random(in: 10...20)
+                let gap = Int.random(in: 14...30)
+
+                let topY = h - elH
+                // Small sign / barrier block
+                c.setFillColor(signBase.cgColor)
+                c.fill(CGRect(x: x, y: topY, width: elW, height: elH))
+
+                // Neon accent stripe on top
+                let nc = toggle ? neonA : neonB
+                c.setFillColor(nc.cgColor)
+                c.fill(CGRect(x: x + ps, y: topY, width: elW - ps * 2, height: ps))
+                // Glow below stripe
+                c.setFillColor(nc.withAlphaComponent(0.30).cgColor)
+                c.fill(CGRect(x: x + ps, y: topY + ps, width: elW - ps * 2, height: ps))
+
+                x += elW + gap
+                toggle.toggle()
+            }
+        }
+    }
+
+    // MARK: Bubble + Fish Strip — underwater foreground
+
+    private func renderBubbleFishStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            let bubble = UIColor(red: 0.60, green: 0.85, blue: 1.0, alpha: 0.40)
+            let bubbleH = UIColor(red: 0.80, green: 0.95, blue: 1.0, alpha: 0.55)
+            let fishBody = UIColor(red: 1.0, green: 0.55, blue: 0.25, alpha: 0.65)
+            let fishTail = UIColor(red: 1.0, green: 0.40, blue: 0.20, alpha: 0.60)
+
+            // Scatter bubbles
+            var x = 4
+            while x < w {
+                let size = Int.random(in: 1...3)
+                let y = Int.random(in: 4...(h - size * ps - 4))
+                c.setFillColor(bubble.cgColor)
+                for row in 0..<size {
+                    for col in 0..<size {
+                        c.fill(CGRect(x: x + col * ps, y: y + row * ps, width: ps, height: ps))
+                    }
+                }
+                // Highlight pixel
+                c.setFillColor(bubbleH.cgColor)
+                c.fill(CGRect(x: x, y: y, width: ps, height: ps))
+
+                // Every 3rd element is a small fish instead
+                if x % (ps * 18) < ps * 3 {
+                    let fy = Int.random(in: 8...(h - 12))
+                    c.setFillColor(fishBody.cgColor)
+                    c.fill(CGRect(x: x, y: fy, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: fy, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: fy - ps, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: fy + ps, width: ps, height: ps))
+                    c.setFillColor(fishTail.cgColor)
+                    c.fill(CGRect(x: x + ps * 2, y: fy - ps, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps * 2, y: fy + ps, width: ps, height: ps))
+                }
+
+                x += Int.random(in: 20...40)
+            }
+        }
+    }
+
+    // MARK: Lava Pool Strip — volcano foreground
+
+    private func renderLavaPoolStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            let lavaOuter = UIColor(red: 0.80, green: 0.25, blue: 0.05, alpha: 0.70)
+            let lavaInner = UIColor(red: 1.0, green: 0.65, blue: 0.15, alpha: 0.65)
+            let lavaHot   = UIColor(red: 1.0, green: 0.90, blue: 0.40, alpha: 0.55)
+            let ember      = UIColor(red: 1.0, green: 0.50, blue: 0.10, alpha: 0.50)
+            let rock       = UIColor(red: 0.22, green: 0.14, blue: 0.10, alpha: 0.75)
+
+            var x = 0
+            while x < w {
+                let poolW = Int.random(in: 16...28)
+                let poolH = Int.random(in: 6...12)
+                let gap = Int.random(in: 20...35)
+                let topY = h - poolH
+
+                // Rock border
+                c.setFillColor(rock.cgColor)
+                c.fill(CGRect(x: x, y: topY, width: poolW, height: ps))
+                c.fill(CGRect(x: x, y: h - ps, width: poolW, height: ps))
+
+                // Lava fill
+                c.setFillColor(lavaOuter.cgColor)
+                c.fill(CGRect(x: x + ps, y: topY + ps, width: poolW - ps * 2, height: poolH - ps * 2))
+                // Hot center
+                c.setFillColor(lavaInner.cgColor)
+                c.fill(CGRect(x: x + ps * 2, y: topY + ps * 2, width: max(ps, poolW - ps * 4), height: max(ps, poolH - ps * 4)))
+                // Bright pixel
+                if poolW > 16 {
+                    c.setFillColor(lavaHot.cgColor)
+                    c.fill(CGRect(x: x + poolW / 2, y: topY + poolH / 2, width: ps, height: ps))
+                }
+
+                // Floating ember above
+                if Int.random(in: 0...2) == 0 {
+                    c.setFillColor(ember.cgColor)
+                    c.fill(CGRect(x: x + Int.random(in: 2...max(3, poolW - 4)),
+                                  y: topY - Int.random(in: ps...(ps * 3)),
+                                  width: ps - 1, height: ps - 1))
+                }
+
+                x += poolW + gap
+            }
+        }
+    }
+
+    // MARK: Ice Crystal Strip — arctic foreground
+
+    private func renderIceCrystalStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            let iceLight = UIColor(red: 0.80, green: 0.92, blue: 1.0, alpha: 0.65)
+            let iceMid   = UIColor(red: 0.60, green: 0.78, blue: 0.92, alpha: 0.55)
+            let iceShine = UIColor(red: 0.95, green: 0.98, blue: 1.0, alpha: 0.80)
+
+            var x = 0
+            while x < w {
+                let crystalH = Int.random(in: 10...22)
+                let gap = Int.random(in: 18...36)
+                let topY = h - crystalH
+
+                // Diamond / crystal shape — narrow at top, wider middle, narrow base
+                let midRow = crystalH / 2
+                for row in 0..<crystalH {
+                    let dist = abs(row - midRow)
+                    let halfW = max(1, midRow - dist + 1)
+                    let cx = x + ps   // center offset
+                    for col in -halfW..<halfW {
+                        let color = col == 0 && row < midRow ? iceShine
+                                  : row < midRow ? iceLight : iceMid
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: cx + col * ps, y: topY + row * ps, width: ps, height: ps))
+                    }
+                }
+
+                x += ps * 4 + gap
+            }
+        }
+    }
+
+    // MARK: Space Debris Strip — space foreground
+
+    private func renderSpaceDebrisStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            let rockD = UIColor(red: 0.25, green: 0.22, blue: 0.20, alpha: 0.60)
+            let rockL = UIColor(red: 0.38, green: 0.35, blue: 0.30, alpha: 0.50)
+            let metalA = UIColor(red: 0.40, green: 0.42, blue: 0.48, alpha: 0.55)
+            let metalB = UIColor(red: 0.55, green: 0.58, blue: 0.62, alpha: 0.45)
+
+            var x = 0
+            while x < w {
+                let gap = Int.random(in: 24...44)
+                let y = Int.random(in: 4...(h - 16))
+
+                // Alternate small asteroids and debris
+                if x % (ps * 14) < ps * 5 {
+                    // Small asteroid (3×2 px)
+                    c.setFillColor(rockD.cgColor)
+                    c.fill(CGRect(x: x, y: y, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: y, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps * 2, y: y, width: ps, height: ps))
+                    c.fill(CGRect(x: x, y: y + ps, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: y + ps, width: ps, height: ps))
+                    c.setFillColor(rockL.cgColor)
+                    c.fill(CGRect(x: x + ps * 2, y: y + ps, width: ps, height: ps))
+                } else {
+                    // Metal debris panel (2×3 px)
+                    c.setFillColor(metalA.cgColor)
+                    c.fill(CGRect(x: x, y: y, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: y, width: ps, height: ps))
+                    c.setFillColor(metalB.cgColor)
+                    c.fill(CGRect(x: x, y: y + ps, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: y + ps, width: ps, height: ps))
+                    c.setFillColor(metalA.cgColor)
+                    c.fill(CGRect(x: x, y: y + ps * 2, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: y + ps * 2, width: ps, height: ps))
+                }
+
+                x += gap
             }
         }
     }

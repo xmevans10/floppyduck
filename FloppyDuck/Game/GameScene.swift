@@ -233,7 +233,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func setupHills() {
-        let hillTex = factory.hillsTexture()
+        let hillTex = factory.themedHillsTexture(theme: backgroundTheme)
         for i in 0..<2 {
             let hillNode = SKSpriteNode(texture: hillTex,
                                          size: CGSize(width: GK.worldWidth * 2, height: 120))
@@ -247,7 +247,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func setupTrees() {
-        let treeTex = factory.treesTexture()
+        let treeTex = factory.themedTreesTexture(theme: backgroundTheme)
         for i in 0..<2 {
             let treeNode = SKSpriteNode(texture: treeTex,
                                          size: CGSize(width: GK.worldWidth * 2, height: 160))
@@ -1167,81 +1167,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Foreground Parallax Bushes (Item 10)
 
     private func setupForegroundBushes() {
+        let tex = factory.themedBushTexture(theme: backgroundTheme)
         for i in 0..<2 {
-            let bushNode = SKSpriteNode(color: .clear,
+            let bushNode = SKSpriteNode(texture: tex,
                                          size: CGSize(width: GK.worldWidth * 2, height: 36))
             bushNode.anchorPoint = CGPoint(x: 0, y: 0)
             // Position base at ground top so bushes grow UP from grass. z=55 = above ground (50).
             bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 6)
             bushNode.zPosition = 55
-
-            let tex = renderBushTexture()
-            bushNode.texture = tex
             foregroundLayer.addChild(bushNode)
             bushes.append(bushNode)
         }
-    }
-
-    /// Renders a pixel-art bush/flower strip texture.
-    /// Texture origin (0,0) is top-left in UIKit → maps to TOP of sprite in SpriteKit.
-    /// We draw upward (bushes at top of texture → top of sprite → visually above ground).
-    private func renderBushTexture() -> SKTexture {
-        let w = Int(GK.worldWidth * 2)
-        let h = 36
-        let size = CGSize(width: w, height: h)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let image = renderer.image { ctx in
-            let c = ctx.cgContext
-
-            // Draw pixel bushes at random intervals — bottom of texture = base (grass level)
-            var x = 0
-            while x < w {
-                let bushW = Int.random(in: 18...32)
-                let bushH = Int.random(in: 14...24)
-                let gap = Int.random(in: 20...40)
-
-                let ps = 4  // pixel size for blocky look
-                // y=0 is top of texture; bushes grow DOWN from top of texture
-                // (since texture top = sprite top = farthest from ground)
-                // So we draw from bottom: y = h - bushH to y = h
-                let baseY = h - ps  // very bottom row
-
-                // Bush body — slightly transparent so duck peeks through near ground
-                let bodyColor = UIColor(red: 0.20, green: 0.48, blue: 0.14, alpha: 0.8)
-                c.setFillColor(bodyColor.cgColor)
-
-                // Rounded top → wide middle → narrowing base
-                let topY = h - bushH
-                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
-                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
-                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
-                // Slight base narrowing
-                c.fill(CGRect(x: x + ps, y: baseY, width: bushW - ps * 2, height: ps))
-
-                // Highlight on top of bush (lighter green)
-                let hlColor = UIColor(red: 0.32, green: 0.62, blue: 0.20, alpha: 0.6)
-                c.setFillColor(hlColor.cgColor)
-                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
-
-                // Occasional flower on top
-                if Int.random(in: 0...2) == 0 {
-                    let flowerColors: [UIColor] = [
-                        UIColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 1.0),
-                        UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1.0),
-                        UIColor(red: 0.80, green: 0.40, blue: 0.85, alpha: 1.0),
-                    ]
-                    let fc = flowerColors.randomElement()!
-                    c.setFillColor(fc.cgColor)
-                    let fx = x + Int.random(in: ps...(max(ps + 1, bushW - ps * 2)))
-                    c.fill(CGRect(x: fx, y: topY - ps, width: ps + 2, height: ps + 2))
-                }
-
-                x += bushW + gap
-            }
-        }
-        let tex = SKTexture(image: image)
-        tex.filteringMode = .nearest
-        return tex
     }
 
     // MARK: - First-Launch Tutorial (Item 8)
