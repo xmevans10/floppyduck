@@ -48,10 +48,18 @@
 		D30000000000000000000003 /* SkinClosetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000003 /* SkinClosetView.swift */; };
 		D30000000000000000000004 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* LeaderboardView.swift */; };
 		D30000000000000000000005 /* PixelTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000005 /* PixelTextField.swift */; };
+		E10000000000000000000001 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001 /* ScreenshotTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		A50000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E74DADFE3AC5262D28E19680 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC26CC21560A6F6D89098BBE;
+			remoteInfo = FloppyDuck;
+		};
+		E50000000000000000000001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = E74DADFE3AC5262D28E19680 /* Project object */;
 			proxyType = 1;
@@ -107,10 +115,19 @@
 		D10000000000000000000003 /* SkinClosetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinClosetView.swift; sourceTree = "<group>"; };
 		D10000000000000000000004 /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
 		D10000000000000000000005 /* PixelTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelTextField.swift; sourceTree = "<group>"; };
+		E20000000000000000000001 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+		E20000000000000000000002 /* FloppyDuckUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E30000000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -152,6 +169,7 @@
 			children = (
 				40E7256AF7638B5B6B81606E /* FloppyDuck */,
 				A40000000000000000000001 /* FloppyDuckTests */,
+				E40000000000000000000001 /* FloppyDuckUITests */,
 				869F6DB7D2C008CCC31F4B39 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -218,6 +236,7 @@
 			children = (
 				45E49708FF03202FD286092D /* FloppyDuck.app */,
 				A20000000000000000000001 /* FloppyDuckTests.xctest */,
+				E20000000000000000000002 /* FloppyDuckUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -230,6 +249,14 @@
 				A20000000000000000000099 /* MultiplayerFlowTests.swift */,
 			);
 			path = FloppyDuckTests;
+			sourceTree = "<group>";
+		};
+		E40000000000000000000001 /* FloppyDuckUITests */ = {
+			isa = PBXGroup;
+			children = (
+				E20000000000000000000001 /* ScreenshotTests.swift */,
+			);
+			path = FloppyDuckUITests;
 			sourceTree = "<group>";
 		};
 		944325C55C15EC0ED9EDE74D /* App */ = {
@@ -305,6 +332,24 @@
 			productReference = 45E49708FF03202FD286092D /* FloppyDuck.app */;
 			productType = "com.apple.product-type.application";
 		};
+		E60000000000000000000001 /* FloppyDuckUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EB0000000000000000000001 /* Build configuration list for PBXNativeTarget "FloppyDuckUITests" */;
+			buildPhases = (
+				E80000000000000000000001 /* Sources */,
+				E30000000000000000000001 /* Frameworks */,
+				E70000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E90000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = FloppyDuckUITests;
+			productName = FloppyDuckUITests;
+			productReference = E20000000000000000000002 /* FloppyDuckUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -327,12 +372,20 @@
 			targets = (
 				CC26CC21560A6F6D89098BBE /* FloppyDuck */,
 				A60000000000000000000001 /* FloppyDuckTests */,
+				E60000000000000000000001 /* FloppyDuckUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A70000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E70000000000000000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -404,6 +457,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E80000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E10000000000000000000001 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -411,6 +472,11 @@
 			isa = PBXTargetDependency;
 			target = CC26CC21560A6F6D89098BBE /* FloppyDuck */;
 			targetProxy = A50000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		E90000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC26CC21560A6F6D89098BBE /* FloppyDuck */;
+			targetProxy = E50000000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -616,6 +682,43 @@
 			};
 			name = Release;
 		};
+		EA0000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xmevans10.FloppyDuckUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = FloppyDuck;
+			};
+			name = Debug;
+		};
+		EA0000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xmevans10.FloppyDuckUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = FloppyDuck;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -642,6 +745,15 @@
 			buildConfigurations = (
 				AA0000000000000000000001 /* Debug */,
 				AA0000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		EB0000000000000000000001 /* Build configuration list for PBXNativeTarget "FloppyDuckUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EA0000000000000000000001 /* Debug */,
+				EA0000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -53,6 +53,16 @@
                ReferencedContainer = "container:FloppyDuck.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "E60000000000000000000001"
+               BuildableName = "FloppyDuckUITests.xctest"
+               BlueprintName = "FloppyDuckUITests"
+               ReferencedContainer = "container:FloppyDuck.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

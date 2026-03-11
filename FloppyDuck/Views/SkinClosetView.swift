@@ -3,6 +3,9 @@ import SwiftUI
 struct SkinClosetView: View {
     @EnvironmentObject var manager: GameManager
     @ObservedObject var skinManager = SkinManager.shared
+    @ObservedObject var themeManager = ThemeManager.shared
+
+    @State private var selectedTab: ClosetTab = .skins
 
     private let icons = PixelIconFactory.shared
     private let columns = [
@@ -44,35 +47,15 @@ struct SkinClosetView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
 
-                if ownedSkins.count <= 1 {
-                    // Only classic owned — show encouraging message
-                    Spacer()
-                    VStack(spacing: 16) {
-                        Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 5.0))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 80, height: 60)
-                        Text("YOUR CLOSET IS EMPTY!")
-                            .font(.custom(GK.pixelFontName, size: 12))
-                            .foregroundColor(.white)
-                        Text("Beat bots or visit the shop\nto unlock new skins.")
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(30)
-                    Spacer()
+                // Tab picker: SKINS | BACKGROUNDS
+                closetTabPicker
+                    .padding(.horizontal, 20)
+                    .padding(.top, 14)
+
+                if selectedTab == .skins {
+                    skinsContent
                 } else {
-                    ScrollView(showsIndicators: false) {
-                        LazyVGrid(columns: columns, spacing: 14) {
-                            ForEach(ownedSkins) { skin in
-                                skinCard(skin)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 14)
-                        .padding(.bottom, 16)
-                    }
+                    backgroundsContent
                 }
 
                 // Bottom shop link
@@ -84,7 +67,9 @@ struct SkinClosetView: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Text("Get more skins in the Shop")
+                        Text(selectedTab == .skins
+                             ? "Get more skins in the Shop"
+                             : "Get more backgrounds in the Shop")
                             .font(.custom(GK.pixelFontName, size: 7))
                             .foregroundColor(.white.opacity(0.8))
                         Text("→")
@@ -102,11 +87,115 @@ struct SkinClosetView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Go to shop for more skins")
+                .accessibilityLabel("Go to shop")
                 .padding(.bottom, 20)
             }
         }
         .navigationBarHidden(true)
+    }
+
+    // MARK: - Tab Picker
+
+    private var closetTabPicker: some View {
+        HStack(spacing: 8) {
+            closetTabButton(.skins)
+            closetTabButton(.backgrounds)
+        }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.2))
+        )
+    }
+
+    private func closetTabButton(_ tab: ClosetTab) -> some View {
+        Button {
+            selectedTab = tab
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 10, weight: .bold))
+                Text(tab.rawValue)
+                    .font(.custom(GK.pixelFontName, size: 8))
+            }
+            .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.5))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(selectedTab == tab ? tab.accent : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Skins Content
+
+    @ViewBuilder
+    private var skinsContent: some View {
+        if ownedSkins.count <= 1 {
+            // Only classic owned — show encouraging message
+            Spacer()
+            VStack(spacing: 16) {
+                Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 5.0))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 80, height: 60)
+                Text("YOUR CLOSET IS EMPTY!")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(.white)
+                Text("Beat bots or visit the shop\nto unlock new skins.")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(30)
+            Spacer()
+        } else {
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 14) {
+                    ForEach(ownedSkins) { skin in
+                        skinCard(skin)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+                .padding(.bottom, 16)
+            }
+        }
+    }
+
+    // MARK: - Backgrounds Content
+
+    @ViewBuilder
+    private var backgroundsContent: some View {
+        let ownedBGs = BackgroundTheme.allCases.filter { themeManager.ownedThemes.contains($0) }
+
+        if ownedBGs.isEmpty {
+            Spacer()
+            VStack(spacing: 16) {
+                Text("NO BACKGROUNDS YET!")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(.white)
+                Text("Visit the shop to unlock\nnew background themes.")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(30)
+            Spacer()
+        } else {
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 14) {
+                    ForEach(ownedBGs) { theme in
+                        themeClosetCard(theme)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+                .padding(.bottom, 16)
+            }
+        }
     }
 
     // MARK: - Data
@@ -178,5 +267,117 @@ struct SkinClosetView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Theme Closet Card
+
+    private func themeClosetCard(_ theme: BackgroundTheme) -> some View {
+        let selected = themeManager.selectedTheme == theme
+
+        return Button {
+            SoundManager.shared.play(.button)
+            themeManager.select(theme)
+        } label: {
+            VStack(spacing: 8) {
+                // Gradient preview swatch
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(
+                        LinearGradient(
+                            colors: theme.gradientColors,
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: 70)
+                    .overlay(
+                        Group {
+                            if theme.showStars {
+                                ZStack {
+                                    ForEach(0..<8, id: \.self) { i in
+                                        Circle()
+                                            .fill(.white.opacity(Double.random(in: 0.4...0.9)))
+                                            .frame(width: CGFloat.random(in: 1.5...3),
+                                                   height: CGFloat.random(in: 1.5...3))
+                                            .offset(
+                                                x: CGFloat.random(in: -35...35),
+                                                y: CGFloat.random(in: -25...25)
+                                            )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(selected ? theme.accentColor : Color.clear, lineWidth: 2)
+                    )
+
+                Text(theme.displayName)
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(GK.Colors.panelBorder)
+
+                Text(theme.subtitle)
+                    .font(.custom(GK.pixelFontName, size: 6))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+
+                if selected {
+                    Text("EQUIPPED")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(theme.accentColor))
+                } else {
+                    Text("TAP TO EQUIP")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(GK.Colors.panelCream)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                }
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GK.Colors.panelCream)
+                    .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? theme.accentColor : GK.Colors.panelBorder,
+                            lineWidth: selected ? 3 : 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Tab Enum
+
+private enum ClosetTab: String {
+    case skins = "SKINS"
+    case backgrounds = "BACKGROUNDS"
+
+    var icon: String {
+        switch self {
+        case .skins:       return "bird"
+        case .backgrounds: return "paintpalette"
+        }
+    }
+
+    var accent: Color {
+        switch self {
+        case .skins:       return GK.Colors.buttonGreen
+        case .backgrounds: return GK.Colors.buttonBlue
+        }
     }
 }
