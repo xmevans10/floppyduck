@@ -100,6 +100,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Death effects (Item 6)
     private var deathVignette: SKSpriteNode?
 
+    // Floating score popup pool (pre-allocated to avoid per-point allocations)
+    private var scorePopupPool: [SKLabelNode] = []
+    private var scorePopupPoolIndex: Int = 0
+
     // MARK: - Init
 
     init(seed: Int = Int.random(in: 1...999999),
@@ -350,11 +354,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - HUD
 
     private func setupHUD() {
-        // Item 1: scoreBacking circle removed — score already has outline + shadow for legibility
-
-        // 4 cardinal outlines (N/S/E/W) + 4 diagonal — 8 total
+        // 4 diagonal outlines only (down from 8 cardinal+diagonal) — visually identical at game scale,
+        // half the SKLabelNode mutations per score point.
         let outlineOffsets: [(CGFloat, CGFloat)] = [
-            (0, -3), (0, 3), (-3, 0), (3, 0),
             (-2, -2), (-2, 2), (2, -2), (2, 2)
         ]
         scoreOutlines.removeAll()
@@ -371,16 +373,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             scoreOutlines.append(outline)
         }
 
-        let shadow = SKLabelNode(fontNamed: GK.pixelFontName)
-        shadow.fontSize = 36
-        shadow.fontColor = UIColor(red: 0.15, green: 0.25, blue: 0.08, alpha: 0.8)
-        shadow.position = CGPoint(x: GK.worldWidth / 2 + 3, y: GK.worldHeight - 79)
-        shadow.zPosition = 200
-        shadow.text = "0"
-        shadow.verticalAlignmentMode = .center
-        shadow.horizontalAlignmentMode = .center
-        hudLayer.addChild(shadow)
-        scoreShadow = shadow
+        // Shadow node removed — diagonal outlines give sufficient legibility,
+        // eliminating one more text mutation per point.
 
         let label = SKLabelNode(fontNamed: GK.pixelFontName)
         label.fontSize = 36
@@ -396,6 +390,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if mode == .vsBot || mode == .headToHead {
             setupBotScoreHUD()
         }
+
+        // Pre-allocate floating score popup pool (avoids addChild/removeFromParent per point)
+        scorePopupPool = (0..<3).map { _ in
+            let node = SKLabelNode(fontNamed: GK.pixelFontName)
+            node.fontSize = 14
+            node.fontColor = .white
+            node.zPosition = 300
+            node.isHidden = true
+            worldNode.addChild(node)
+            return node
+        }
+        scorePopupPoolIndex = 0
     }
 
     // Item 2: Force unwrap safety — all bot score HUD uses safe optional chaining
@@ -433,13 +439,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func updateScore() {
         let text = "\(score)"
         scoreLabel?.text = text
-        scoreShadow?.text = text
         for outline in scoreOutlines {
             outline.text = text
         }
 
-        // Item 4: Accessibility — announce score changes
-        UIAccessibility.post(notification: .announcement, argument: "Score: \(score)")
+        // Only post VoiceOver announcement when VoiceOver is actually running —
+        // UIAccessibility.post() stalls the main thread even when VO is disabled.
+        if UIAccessibility.isVoiceOverRunning {
+            UIAccessibility.post(notification: .announcement, argument: "Score: \(score)")
+        }
     }
 
     private func updateBotScoreHUD() {
@@ -1116,25 +1124,49 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func spawnFloatingScorePopup(isMilestone: Bool) {
         guard let duck else { return }
-        let popup = SKLabelNode(fontNamed: GK.pixelFontName)
-        popup.text = isMilestone ? "+5★" : "+1"
-        popup.fontSize = isMilestone ? 18 : 14
-        popup.fontColor = isMilestone
-            ? UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)
-            : UIColor.white
-        popup.position = CGPoint(x: duck.position.x + 20, y: duck.position.y + 15)
-        popup.zPosition = 300
 
-        worldNode.addChild(popup)
+        // Milestones get a fresh node (rare, so allocation is acceptable).
+        // Regular +1 points reuse the pre-allocated pool to avoid per-frame addChild/removeFromParent.
+        let popup: SKLabelNode
+        if isMilestone {
+            let fresh = SKLabelNode(fontNamed: GK.pixelFontName)
+            fresh.text = "+5★"
+            fresh.fontSize = 18
+            fresh.fontColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)
+            fresh.zPosition = 300
+            fresh.position = CGPoint(x: duck.position.x + 20, y: duck.position.y + 15)
+            worldNode.addChild(fresh)
+            let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
+            let fadeOut = SKAction.fadeOut(withDuration: 0.6)
+            let scaleUp = SKAction.scale(to: 1.3, duration: 0.2)
+            let scaleBack = SKAction.scale(to: 1.0, duration: 0.4)
+            fresh.run(SKAction.sequence([
+                SKAction.group([floatUp, fadeOut, SKAction.sequence([scaleUp, scaleBack])]),
+                SKAction.removeFromParent()
+            ]))
+            return
+        }
+
+        guard !scorePopupPool.isEmpty else { return }
+        popup = scorePopupPool[scorePopupPoolIndex % scorePopupPool.count]
+        scorePopupPoolIndex += 1
+
+        popup.removeAllActions()
+        popup.text = "+1"
+        popup.fontSize = 14
+        popup.fontColor = .white
+        popup.alpha = 1.0
+        popup.setScale(1.0)
+        popup.isHidden = false
+        popup.position = CGPoint(x: duck.position.x + 20, y: duck.position.y + 15)
 
         let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
         let fadeOut = SKAction.fadeOut(withDuration: 0.6)
-        let scaleUp = SKAction.scale(to: isMilestone ? 1.3 : 1.1, duration: 0.2)
+        let scaleUp = SKAction.scale(to: 1.1, duration: 0.2)
         let scaleBack = SKAction.scale(to: 1.0, duration: 0.4)
-
         popup.run(SKAction.sequence([
             SKAction.group([floatUp, fadeOut, SKAction.sequence([scaleUp, scaleBack])]),
-            SKAction.removeFromParent()
+            SKAction.run { popup.isHidden = true }
         ]))
     }
 

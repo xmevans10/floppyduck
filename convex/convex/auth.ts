@@ -115,7 +115,7 @@ export const linkApple = action({
     displayName: v.optional(v.string()),
     ...sessionTokenArg,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     // Step 1: Verify the Apple identity token (requires fetch for JWKS).
     const claims = await verifyAppleIdentityToken(args.identityToken, args.nonce);
 

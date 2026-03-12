@@ -19,6 +19,8 @@ struct GameContainerView: View {
     @State private var matchResult: MultiplayerMatchResult?
     @State private var finishingMatch: Bool = false
     @State private var opponentPollTask: Task<Void, Never>?
+    @State private var lastReportedScore: Int = -1
+    @State private var lastReportTime: Date = .distantPast
 
     // Game-over animation states
     @State private var displayedScore: Int = 0
@@ -72,7 +74,7 @@ struct GameContainerView: View {
     var body: some View {
         ZStack {
             if let scene {
-                SpriteView(scene: scene, preferredFramesPerSecond: 60)
+                SpriteView(scene: scene, preferredFramesPerSecond: 60, options: [.ignoresSiblingOrder])
                     .ignoresSafeArea()
             }
 
@@ -122,8 +124,15 @@ struct GameContainerView: View {
                 score = newScore
 
                 if isHeadToHead, let matchId = config.matchId {
-                    Task {
-                        await manager.reportHeadToHeadScore(matchId: matchId, score: newScore)
+                    // Debounce: only report if score changed AND at least 0.5s since last report.
+                    // Avoids spawning a Convex Task on every single pipe scored.
+                    let now = Date()
+                    if newScore != lastReportedScore && now.timeIntervalSince(lastReportTime) >= 0.5 {
+                        lastReportedScore = newScore
+                        lastReportTime = now
+                        Task {
+                            await manager.reportHeadToHeadScore(matchId: matchId, score: newScore)
+                        }
                     }
                 }
             },

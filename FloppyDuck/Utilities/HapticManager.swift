@@ -25,38 +25,32 @@ enum Haptic {
     static func flap() {
         guard isEnabled else { return }
         impactLight.impactOccurred()
-        impactLight.prepare()  // re-warm for next use
     }
 
     static func score() {
         guard isEnabled else { return }
         impactMedium.impactOccurred()
-        impactMedium.prepare()
     }
 
     static func death() {
         guard isEnabled else { return }
         notification.notificationOccurred(.error)
-        notification.prepare()
     }
 
     static func buttonTap() {
         guard isEnabled else { return }
         impactLight.impactOccurred()
-        impactLight.prepare()
     }
 
     static func matchFound() {
         guard isEnabled else { return }
         notification.notificationOccurred(.success)
-        notification.prepare()
     }
 
     /// Every 5 pipes scored — satisfying mid-game beat
     static func milestone() {
         guard isEnabled else { return }
         impactHeavy.impactOccurred()
-        impactHeavy.prepare()
     }
 
     /// New personal best
@@ -85,28 +79,24 @@ enum Haptic {
     static func splashImpact() {
         guard isEnabled else { return }
         impactHeavy.impactOccurred(intensity: 1.0)
-        impactHeavy.prepare()
     }
 
     /// Splash screen — satisfying coin-collect thud at mid-spin
     static func splashCoin() {
         guard isEnabled else { return }
         impactMedium.impactOccurred(intensity: 0.9)
-        impactMedium.prepare()
     }
 
     /// Splash screen — medium punch when title pops in
     static func splashTitlePop() {
         guard isEnabled else { return }
         impactMedium.impactOccurred(intensity: 0.8)
-        impactMedium.prepare()
     }
 
     /// Splash screen — light tap on shimmer sweep
     static func splashShimmer() {
         guard isEnabled else { return }
         impactLight.impactOccurred(intensity: 0.5)
-        impactLight.prepare()
     }
 
     /// Legacy alias for backward compat
