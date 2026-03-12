@@ -18,8 +18,9 @@ enum GameSound: String {
 
 import Foundation
 
-/// Generates and plays retro 8-bit style game sounds programmatically.
-/// All audio is synthesized from sine/square waveforms — zero bundled assets.
+/// Manages all game audio — synthesized 8-bit SFX plus bundled chiptune music.
+/// SFX are generated from sine/square waveforms at runtime.
+/// Music uses Juhani Junkala's CC0 chiptune packs (Action for gameplay, Adventure for menus).
 /// Audio playback is dispatched to a dedicated serial queue to avoid blocking the render thread.
 final class SoundManager {
     static let shared = SoundManager()
@@ -28,6 +29,11 @@ final class SoundManager {
     private var soundData: [GameSound: Data] = [:]
     private var bgmPlayer: AVAudioPlayer?
     private var playBgmPlayer: AVAudioPlayer?
+
+    /// Loaded menu music tracks (Junkala Adventure pack — CC0)
+    private var menuTracks: [AVAudioPlayer] = []
+    /// Loaded gameplay music tracks (Junkala Action pack — CC0)
+    private var playTracks: [AVAudioPlayer] = []
 
     /// Per-skin sound variant players (keyed by "\(skin.rawValue)_\(sound.rawValue)")
     private var skinPlayers: [String: AVAudioPlayer] = [:]
@@ -53,8 +59,10 @@ final class SoundManager {
         // Calling this from AppDelegate ensures sounds are ready before first play.
         // Pre-warm all players on the audio queue so first play has zero latency.
         audioQueue.async { [weak self] in
-            self?.players.values.forEach { $0.prepareToPlay() }
-            self?.bgmPlayer?.prepareToPlay()
+            guard let self else { return }
+            self.players.values.forEach { $0.prepareToPlay() }
+            self.menuTracks.forEach { $0.prepareToPlay() }
+            self.playTracks.forEach { $0.prepareToPlay() }
         }
     }
 
@@ -93,13 +101,16 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             guard self.isEnabled else { return }
-            guard let bgmPlayer else { return }
-            bgmPlayer.numberOfLoops = -1
-            bgmPlayer.volume = 0.12
-            if !bgmPlayer.isPlaying {
-                bgmPlayer.currentTime = 0
-                bgmPlayer.play()
-            }
+            guard !self.menuTracks.isEmpty else { return }
+            // Stop any currently playing menu music
+            self.bgmPlayer?.stop()
+            // Pick a random track from the Adventure pack
+            let track = self.menuTracks.randomElement()!
+            track.numberOfLoops = -1
+            track.volume = 0.18
+            track.currentTime = 0
+            track.play()
+            self.bgmPlayer = track
         }
     }
 
@@ -113,15 +124,18 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             guard self.isEnabled else { return }
-            // Fix: Stop menu BGM before starting gameplay BGM to prevent overlap
+            // Stop menu BGM before starting gameplay BGM to prevent overlap
             self.bgmPlayer?.stop()
-            guard let playBgmPlayer else { return }
-            playBgmPlayer.numberOfLoops = -1
-            playBgmPlayer.volume = 0.10
-            if !playBgmPlayer.isPlaying {
-                playBgmPlayer.currentTime = 0
-                playBgmPlayer.play()
-            }
+            guard !self.playTracks.isEmpty else { return }
+            // Stop any currently playing gameplay music
+            self.playBgmPlayer?.stop()
+            // Pick a random track from the Action pack
+            let track = self.playTracks.randomElement()!
+            track.numberOfLoops = -1
+            track.volume = 0.15
+            track.currentTime = 0
+            track.play()
+            self.playBgmPlayer = track
         }
     }
 
@@ -140,6 +154,8 @@ final class SoundManager {
             self.players.values.forEach { $0.stop() }
             self.bgmPlayer?.stop()
             self.playBgmPlayer?.stop()
+            self.menuTracks.forEach { $0.stop() }
+            self.playTracks.forEach { $0.stop() }
         }
     }
 
@@ -174,21 +190,60 @@ final class SoundManager {
             }
         }
 
-        let bgmData = menuBgmWav()
-        if let player = try? AVAudioPlayer(data: bgmData) {
-            player.volume = 0.12
-            player.numberOfLoops = -1
-            player.prepareToPlay()
-            bgmPlayer = player
+        // Load menu music — Juhani Junkala "Chiptune Adventures" (CC0)
+        let menuFiles = [
+            "adventure_stage_select",
+            "adventure_stage_1",
+            "adventure_stage_2",
+            "adventure_boss_fight",
+        ]
+        for name in menuFiles {
+            if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
+               let player = try? AVAudioPlayer(contentsOf: url) {
+                player.volume = 0.18
+                player.numberOfLoops = -1
+                player.prepareToPlay()
+                menuTracks.append(player)
+            }
         }
+        // Fallback: synthesized menu BGM if no files found
+        if menuTracks.isEmpty {
+            let bgmData = menuBgmWav()
+            if let player = try? AVAudioPlayer(data: bgmData) {
+                player.volume = 0.12
+                player.numberOfLoops = -1
+                player.prepareToPlay()
+                menuTracks.append(player)
+            }
+        }
+        bgmPlayer = menuTracks.first
 
-        let playData = playBgmWav()
-        if let player = try? AVAudioPlayer(data: playData) {
-            player.volume = 0.10
-            player.numberOfLoops = -1
-            player.prepareToPlay()
-            playBgmPlayer = player
+        // Load gameplay music — Juhani Junkala "Retro Game Music Pack" (CC0)
+        let playFiles = [
+            "action_level_1",
+            "action_level_2",
+            "action_level_3",
+        ]
+        for name in playFiles {
+            if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
+               let player = try? AVAudioPlayer(contentsOf: url) {
+                player.volume = 0.15
+                player.numberOfLoops = -1
+                player.prepareToPlay()
+                playTracks.append(player)
+            }
         }
+        // Fallback: synthesized gameplay BGM if no files found
+        if playTracks.isEmpty {
+            let playData = playBgmWav()
+            if let player = try? AVAudioPlayer(data: playData) {
+                player.volume = 0.10
+                player.numberOfLoops = -1
+                player.prepareToPlay()
+                playTracks.append(player)
+            }
+        }
+        playBgmPlayer = playTracks.first
     }
 
     // MARK: - WAV Builder

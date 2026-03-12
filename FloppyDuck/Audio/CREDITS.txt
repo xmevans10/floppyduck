@@ -1,0 +1,12 @@
+Music Credits
+=============
+
+All music tracks are licensed under CC0 (Public Domain).
+
+"5 Chiptunes (Action)" — Juhani Junkala
+  Source: https://opengameart.org/content/5-chiptunes-action
+  Tracks: action_level_1, action_level_2, action_level_3, action_title_screen, action_ending
+
+"4 Chiptunes (Adventure)" — Juhani Junkala
+  Source: https://opengameart.org/content/4-chiptunes-adventure
+  Tracks: adventure_stage_1, adventure_stage_2, adventure_boss_fight, adventure_stage_select
