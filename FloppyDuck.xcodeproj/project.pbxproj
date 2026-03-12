@@ -49,6 +49,16 @@
 		D30000000000000000000004 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* LeaderboardView.swift */; };
 		D30000000000000000000005 /* PixelTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000005 /* PixelTextField.swift */; };
 		E10000000000000000000001 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001 /* ScreenshotTests.swift */; };
+		F20000000000000000000001 /* action_ending.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* action_ending.m4a */; };
+		F20000000000000000000002 /* action_level_1.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* action_level_1.m4a */; };
+		F20000000000000000000003 /* action_level_2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* action_level_2.m4a */; };
+		F20000000000000000000004 /* action_level_3.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000004 /* action_level_3.m4a */; };
+		F20000000000000000000005 /* action_title_screen.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000005 /* action_title_screen.m4a */; };
+		F20000000000000000000006 /* adventure_boss_fight.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* adventure_boss_fight.m4a */; };
+		F20000000000000000000007 /* adventure_stage_1.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* adventure_stage_1.m4a */; };
+		F20000000000000000000008 /* adventure_stage_2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* adventure_stage_2.m4a */; };
+		F20000000000000000000009 /* adventure_stage_select.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* adventure_stage_select.m4a */; };
+		F2000000000000000000000A /* CREDITS.txt in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* CREDITS.txt */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -117,6 +127,16 @@
 		D10000000000000000000005 /* PixelTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelTextField.swift; sourceTree = "<group>"; };
 		E20000000000000000000001 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		E20000000000000000000002 /* FloppyDuckUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F10000000000000000000001 /* action_ending.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = action_ending.m4a; sourceTree = "<group>"; };
+		F10000000000000000000002 /* action_level_1.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = action_level_1.m4a; sourceTree = "<group>"; };
+		F10000000000000000000003 /* action_level_2.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = action_level_2.m4a; sourceTree = "<group>"; };
+		F10000000000000000000004 /* action_level_3.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = action_level_3.m4a; sourceTree = "<group>"; };
+		F10000000000000000000005 /* action_title_screen.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = action_title_screen.m4a; sourceTree = "<group>"; };
+		F10000000000000000000006 /* adventure_boss_fight.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = adventure_boss_fight.m4a; sourceTree = "<group>"; };
+		F10000000000000000000007 /* adventure_stage_1.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = adventure_stage_1.m4a; sourceTree = "<group>"; };
+		F10000000000000000000008 /* adventure_stage_2.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = adventure_stage_2.m4a; sourceTree = "<group>"; };
+		F10000000000000000000009 /* adventure_stage_select.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = adventure_stage_select.m4a; sourceTree = "<group>"; };
+		F1000000000000000000000A /* CREDITS.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CREDITS.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -178,6 +198,7 @@
 			isa = PBXGroup;
 			children = (
 				944325C55C15EC0ED9EDE74D /* App */,
+				F30000000000000000000001 /* Audio */,
 				5FD76A785CF6BDA704AB73E3 /* Game */,
 				E0FB3BE563848C0B81616C98 /* Models */,
 				AF2453D02A02A2B841B715F4 /* Services */,
@@ -294,6 +315,31 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		F30000000000000000000001 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				F30000000000000000000002 /* Music */,
+				F1000000000000000000000A /* CREDITS.txt */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		F30000000000000000000002 /* Music */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000001 /* action_ending.m4a */,
+				F10000000000000000000002 /* action_level_1.m4a */,
+				F10000000000000000000003 /* action_level_2.m4a */,
+				F10000000000000000000004 /* action_level_3.m4a */,
+				F10000000000000000000005 /* action_title_screen.m4a */,
+				F10000000000000000000006 /* adventure_boss_fight.m4a */,
+				F10000000000000000000007 /* adventure_stage_1.m4a */,
+				F10000000000000000000008 /* adventure_stage_2.m4a */,
+				F10000000000000000000009 /* adventure_stage_select.m4a */,
+			);
+			path = Music;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -399,6 +445,16 @@
 				04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */,
 				F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */,
 				B2F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard in Resources */,
+				F20000000000000000000001 /* action_ending.m4a in Resources */,
+				F20000000000000000000002 /* action_level_1.m4a in Resources */,
+				F20000000000000000000003 /* action_level_2.m4a in Resources */,
+				F20000000000000000000004 /* action_level_3.m4a in Resources */,
+				F20000000000000000000005 /* action_title_screen.m4a in Resources */,
+				F20000000000000000000006 /* adventure_boss_fight.m4a in Resources */,
+				F20000000000000000000007 /* adventure_stage_1.m4a in Resources */,
+				F20000000000000000000008 /* adventure_stage_2.m4a in Resources */,
+				F20000000000000000000009 /* adventure_stage_select.m4a in Resources */,
+				F2000000000000000000000A /* CREDITS.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
