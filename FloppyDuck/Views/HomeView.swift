@@ -415,7 +415,7 @@ struct HomeView: View {
 
     private func shareApp() {
         let text = "Check out Floppy Duck! 🦆 Can you beat my high score of \(manager.stats.bestScore)?"
-        let url = URL(string: "https://apps.apple.com/app/floppy-duck/id000000000")!
+        let url = URL(string: GK.appStoreURL)!
         let vc = UIActivityViewController(activityItems: [text, url], applicationActivities: nil)
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {

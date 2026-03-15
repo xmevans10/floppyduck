@@ -149,6 +149,17 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             if self.isEnabled {
+                // Sound was just re-enabled — restart whichever BGM track
+                // is contextually appropriate. The caller's screen will also
+                // trigger startMenuMusic/startPlayMusic on next transition,
+                // but restarting here gives immediate feedback on toggle.
+                if self.bgmPlayer != nil {
+                    self.bgmPlayer?.currentTime = 0
+                    self.bgmPlayer?.play()
+                } else if self.playBgmPlayer != nil {
+                    self.playBgmPlayer?.currentTime = 0
+                    self.playBgmPlayer?.play()
+                }
                 return
             }
             self.players.values.forEach { $0.stop() }
