@@ -11,8 +11,10 @@ struct ContentView: View {
                 bootstrappingView
             case .onboardingRequired:
                 AuthOnboardingView()
-            case .authenticated, .failed:
+            case .authenticated:
                 appNavigation
+            case .failed(let message):
+                authFailedView(message: message)
             }
         }
         .task {
@@ -62,6 +64,62 @@ struct ContentView: View {
             CollectionView()
         case .leaderboard:
             LeaderboardView()
+        }
+    }
+
+    private func authFailedView(message: String) -> some View {
+        ZStack {
+            LinearGradient(
+                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Text("⚠️")
+                    .font(.system(size: 48))
+
+                Text("OOPS!")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+
+                Text(message)
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+
+                Button {
+                    Task { await auth.bootstrapIdentityIfNeeded() }
+                } label: {
+                    Text("RETRY")
+                        .font(.custom(GK.pixelFontName, size: 12))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(GK.Colors.buttonGreen)
+                                .shadow(color: GK.Colors.buttonGreen.opacity(0.5), radius: 0, x: 0, y: 3)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.black.opacity(0.3), lineWidth: 2)
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    manager.continueAsGuest()
+                } label: {
+                    Text("CONTINUE AS GUEST")
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 

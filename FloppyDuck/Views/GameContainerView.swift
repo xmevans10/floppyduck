@@ -769,7 +769,7 @@ struct GameContainerView: View {
         let cardImage = shareCard.renderToImage()
 
         // Item 14: App Store link placeholder
-        let appStoreURL = URL(string: "https://apps.apple.com/app/floppy-duck/id000000000")!
+        let appStoreURL = URL(string: GK.appStoreURL)!
 
         let medalText = medal != .none ? " \(medal.emoji) \(medal.displayName) medal!" : ""
         let modeText = isHeadToHead ? " in Head to Head" : ""

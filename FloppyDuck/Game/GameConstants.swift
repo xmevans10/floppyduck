@@ -54,6 +54,10 @@ enum GK {
     // MARK: - Multiplayer
     static let roomCodeLength = 5
 
+    // MARK: - App Store
+    /// Update this once the real App Store ID is assigned.
+    static let appStoreURL = "https://apps.apple.com/app/floppy-duck/id000000000"
+
     // MARK: - Collision Bitmasks
     static let duckCategory:   UInt32 = 0x1 << 0
     static let pipeCategory:   UInt32 = 0x1 << 1
