@@ -59,10 +59,11 @@ enum GK {
     static let appStoreURL = "https://apps.apple.com/app/floppy-duck/id000000000"
 
     // MARK: - Collision Bitmasks
-    static let duckCategory:   UInt32 = 0x1 << 0
-    static let pipeCategory:   UInt32 = 0x1 << 1
-    static let groundCategory: UInt32 = 0x1 << 2
-    static let scoreCategory:  UInt32 = 0x1 << 3
+    static let duckCategory:    UInt32 = 0x1 << 0
+    static let pipeCategory:    UInt32 = 0x1 << 1
+    static let groundCategory:  UInt32 = 0x1 << 2
+    static let scoreCategory:   UInt32 = 0x1 << 3
+    static let powerUpCategory: UInt32 = 0x1 << 4
 
     // MARK: - Park Color Palette
 

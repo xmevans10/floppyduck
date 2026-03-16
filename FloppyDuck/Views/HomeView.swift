@@ -50,12 +50,6 @@ struct HomeView: View {
             }
         }
         .navigationBarHidden(true)
-        .onAppear {
-            SoundManager.shared.startMenuMusic()
-        }
-        .onDisappear {
-            SoundManager.shared.stopMenuMusic()
-        }
     }
 
     // MARK: - Title

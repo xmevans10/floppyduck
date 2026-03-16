@@ -2,6 +2,20 @@ import SwiftUI
 import SpriteKit
 import StoreKit
 
+// MARK: - Extended Delegate Methods
+
+extension GameSceneDelegate {
+    func gameDidChangeDifficulty(_ tier: String) {}
+    func gameDidCollectPowerUp(_ name: String, isPositive: Bool) {}
+}
+
+// MARK: - Power-Up HUD Model
+
+private struct PowerUpHUD: Equatable {
+    let name: String
+    let isPositive: Bool
+}
+
 struct GameContainerView: View {
     let config: GameModeConfig
     @EnvironmentObject var manager: GameManager
@@ -30,6 +44,10 @@ struct GameContainerView: View {
     @State private var showNewBest: Bool = false
     @State private var showBread: Bool = false
     @State private var countUpTimer: Timer?
+
+    // In-game HUD states
+    @State private var difficultyToast: String? = nil
+    @State private var powerUpIndicator: PowerUpHUD? = nil
 
     private let icons = PixelIconFactory.shared
 
@@ -92,6 +110,57 @@ struct GameContainerView: View {
                     .transition(.scale.combined(with: .opacity))
             default:
                 EmptyView()
+            }
+
+            // Difficulty change toast
+            if let toast = difficultyToast {
+                VStack {
+                    Text(toast)
+                        .font(.custom(GK.pixelFontName, size: 9))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.6))
+                                .overlay(
+                                    Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    Spacer()
+                }
+                .padding(.top, 60)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .allowsHitTesting(false)
+            }
+
+            // Power-up / debuff HUD indicator
+            if let powerUp = powerUpIndicator {
+                VStack {
+                    Spacer()
+                    HStack(spacing: 6) {
+                        Text(powerUp.isPositive ? "⚡" : "💀")
+                            .font(.system(size: 16))
+                        Text(powerUp.name.uppercased())
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(powerUp.isPositive ? GK.Colors.scoreYellow : Color(red: 1.0, green: 0.35, blue: 0.35))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color.black.opacity(0.7))
+                            .overlay(
+                                Capsule().stroke(
+                                    (powerUp.isPositive ? GK.Colors.scoreYellow : Color(red: 1.0, green: 0.35, blue: 0.35)).opacity(0.4),
+                                    lineWidth: 1
+                                )
+                            )
+                    )
+                    Spacer().frame(height: 120)
+                }
+                .transition(.scale.combined(with: .opacity))
+                .allowsHitTesting(false)
             }
         }
         .onAppear { setupScene() }
@@ -156,6 +225,31 @@ struct GameContainerView: View {
                 withAnimation(.easeOut(duration: 0.15)) {
                     phase = .ready
                 }
+            },
+            onDifficultyChange: { tier in
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    difficultyToast = "DIFFICULTY: \(tier.uppercased())"
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        difficultyToast = nil
+                    }
+                }
+            },
+            onPowerUpCollect: { name, isPositive in
+                if isPositive {
+                    SoundManager.shared.play(.powerUp)
+                } else {
+                    SoundManager.shared.play(.debuff)
+                }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    powerUpIndicator = PowerUpHUD(name: name, isPositive: isPositive)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        powerUpIndicator = nil
+                    }
+                }
             }
         )
 
@@ -175,13 +269,15 @@ struct GameContainerView: View {
         previousBest = manager.stats.bestScore
         botFinalScore = scene.botScore
 
-        manager.recordGame(score: finalScore, won: true)
-
+        // Mark bot as beaten IMMEDIATELY — before recording or animation
         if let botId = config.botCharacterId,
            let bot = BotCharacter.find(botId) {
+            print("[BotLadder] Beat bot: \(botId)")
             manager.beatBot(botId)
             SkinManager.shared.unlockBotReward(bot.skin)
         }
+
+        manager.recordGame(score: finalScore, won: true)
 
         SoundManager.shared.play(.win)
         Haptic.win()
@@ -206,6 +302,17 @@ struct GameContainerView: View {
             return
         }
 
+        // Mark bot as beaten immediately if applicable (before recording)
+        if isBotLadder,
+           let botId = config.botCharacterId,
+           score >= (config.targetScore ?? 0) {
+            print("[BotLadder] Beat bot: \(botId)")
+            manager.beatBot(botId)
+            if let bot = BotCharacter.find(botId) {
+                SkinManager.shared.unlockBotReward(bot.skin)
+            }
+        }
+
         let won: Bool?
         if config.mode == .vsBot {
             if isBotLadder {
@@ -218,15 +325,6 @@ struct GameContainerView: View {
         }
 
         manager.recordGame(score: finalScore, won: won)
-
-        if isBotLadder,
-           let botId = config.botCharacterId,
-           score >= (config.targetScore ?? 0) {
-            manager.beatBot(botId)
-            if let bot = BotCharacter.find(botId) {
-                SkinManager.shared.unlockBotReward(bot.skin)
-            }
-        }
 
         // Prompt for review after 5th or 25th game
         if manager.stats.gamesPlayed == 5 || manager.stats.gamesPlayed == 25 {
@@ -792,19 +890,25 @@ private final class GameSceneBridge: GameSceneDelegate {
     let onBotScore: (Int) -> Void
     let onBotLadderWin: (Int) -> Void
     let onQuickRetry: (Int) -> Void
+    let onDifficultyChange: (String) -> Void
+    let onPowerUpCollect: (String, Bool) -> Void
 
     init(onStart: @escaping () -> Void,
          onScore: @escaping (Int) -> Void,
          onEnd: @escaping (Int) -> Void,
          onBotScore: @escaping (Int) -> Void = { _ in },
          onBotLadderWin: @escaping (Int) -> Void = { _ in },
-         onQuickRetry: @escaping (Int) -> Void = { _ in }) {
+         onQuickRetry: @escaping (Int) -> Void = { _ in },
+         onDifficultyChange: @escaping (String) -> Void = { _ in },
+         onPowerUpCollect: @escaping (String, Bool) -> Void = { _, _ in }) {
         self.onStart = onStart
         self.onScore = onScore
         self.onEnd = onEnd
         self.onBotScore = onBotScore
         self.onBotLadderWin = onBotLadderWin
         self.onQuickRetry = onQuickRetry
+        self.onDifficultyChange = onDifficultyChange
+        self.onPowerUpCollect = onPowerUpCollect
     }
 
     func gameDidStart() { onStart() }
@@ -813,4 +917,6 @@ private final class GameSceneBridge: GameSceneDelegate {
     func botDidScore(_ botScore: Int) { onBotScore(botScore) }
     func gameDidWinBotLadder(score: Int) { onBotLadderWin(score) }
     func gameDidQuickRetry(score: Int) { onQuickRetry(score) }
+    func gameDidChangeDifficulty(_ tier: String) { onDifficultyChange(tier) }
+    func gameDidCollectPowerUp(_ name: String, isPositive: Bool) { onPowerUpCollect(name, isPositive) }
 }

@@ -39,6 +39,18 @@ struct ContentView: View {
             Color(red: 0.35, green: 0.65, blue: 0.90)
                 .ignoresSafeArea()
         )
+        .onAppear {
+            SoundManager.shared.startMenuMusic()
+        }
+        .onChange(of: manager.activeGameConfig) { oldValue, newValue in
+            if newValue != nil {
+                // Game started — stop menu music (gameplay music starts via bridge onStart)
+                SoundManager.shared.stopMenuMusic()
+            } else if oldValue != nil {
+                // Game ended — resume menu music
+                SoundManager.shared.startMenuMusic()
+            }
+        }
         .fullScreenCover(item: $manager.activeGameConfig) { config in
             GameContainerView(config: config)
                 .environmentObject(manager)

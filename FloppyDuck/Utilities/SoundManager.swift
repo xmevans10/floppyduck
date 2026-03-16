@@ -14,6 +14,8 @@ enum GameSound: String {
     case milestone
     case quack
     case coin
+    case powerUp
+    case debuff
 }
 
 import Foundation
@@ -191,6 +193,8 @@ final class SoundManager {
             (.milestone, milestoneWav(), 0.30),
             (.quack,     quackWav(),     0.45),
             (.coin,      coinWav(),      0.40),
+            (.powerUp,   powerUpWav(),   0.35),
+            (.debuff,    debuffWav(),    0.35),
         ]
         for (sound, data, vol) in defs {
             soundData[sound] = data
@@ -407,6 +411,32 @@ final class SoundManager {
     private func coinWav() -> Data {
         wav(sine(freq: 988, dur: 0.05, decay: 0.06) +
             sine(freq: 1319, dur: 0.12, decay: 0.15))
+    }
+
+    /// Ascending cheerful chime — positive power-up collect.
+    /// Four quick rising sine tones (E5 → A5 → D6 → F6) with a sustained final note.
+    private func powerUpWav() -> Data {
+        let notes: [Float] = [659.25, 880.00, 1174.66, 1396.91]
+        var s: [Float] = []
+        for n in notes {
+            s += sine(freq: n, dur: 0.06, decay: 0.08)
+            s += silence(0.01)
+        }
+        s += sine(freq: 1396.91, dur: 0.12, decay: 0.18)
+        return wav(s)
+    }
+
+    /// Descending warning tone — negative debuff collect.
+    /// Four quick falling square-wave tones (A5 → E5 → B4 → G4) with a sustained low end.
+    private func debuffWav() -> Data {
+        let notes: [Float] = [880.00, 659.25, 493.88, 392.00]
+        var s: [Float] = []
+        for n in notes {
+            s += square(freq: n, dur: 0.06, decay: 0.08)
+            s += silence(0.01)
+        }
+        s += square(freq: 392.00, dur: 0.10, decay: 0.14)
+        return wav(s)
     }
 
     // MARK: - Per-Skin Sound Variants (Item 11)
