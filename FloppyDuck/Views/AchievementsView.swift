@@ -157,9 +157,12 @@ struct AchievementsView: View {
         let isHidden = achievement.isSecret && !isUnlocked
 
         return VStack(spacing: 6) {
-            // Emoji / Lock
-            Text(isHidden ? "❓" : achievement.emoji)
-                .font(.system(size: 28))
+            // Pixel icon / Lock
+            Image(uiImage: PixelIconFactory.shared.image(for: isHidden ? .questionMark : achievement.pixelIcon))
+                .interpolation(.none)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 28, height: 28)
                 .frame(height: 36)
 
             // Title
@@ -183,8 +186,11 @@ struct AchievementsView: View {
             // Status badge
             if isUnlocked {
                 HStack(spacing: 3) {
-                    Text("✅")
-                        .font(.system(size: 8))
+                    Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
+                        .interpolation(.none)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 10, height: 10)
                     Text("UNLOCKED")
                         .font(.custom(GK.pixelFontName, size: 5))
                         .foregroundColor(.white)
@@ -197,8 +203,11 @@ struct AchievementsView: View {
                 )
             } else {
                 HStack(spacing: 3) {
-                    Text("🔒")
-                        .font(.system(size: 8))
+                    Image(uiImage: PixelIconFactory.shared.image(for: .lock))
+                        .interpolation(.none)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 10, height: 10)
                     Text("LOCKED")
                         .font(.custom(GK.pixelFontName, size: 5))
                         .foregroundColor(GK.Colors.panelBorder.opacity(0.4))

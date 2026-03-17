@@ -69,6 +69,11 @@
 		F20000000000000000000009 /* adventure_stage_select.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* adventure_stage_select.m4a */; };
 		F2000000000000000000000A /* CREDITS.txt in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* CREDITS.txt */; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
+		FF1E7DCB9494C2D8DE5E22BC /* ParallaxManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */; };
+		74C7BB1EBED11D4C50F70D9C /* BotController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01256F5F2501C40E0B8C7A2F /* BotController.swift */; };
+		7F9B6B1E213D138387FC9463 /* PowerUpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BFA94D06C0765AAE762441 /* PowerUpController.swift */; };
+		B969DAB9E6DC9A79C136A8C8 /* PRNGTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD2C1BDCCA32915B5A685C9 /* PRNGTests.swift */; };
+		FCCA07FDAEF906BBB17CBEE9 /* GameConstantsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40134E6E8ECF09DA7553CE8B /* GameConstantsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -157,6 +162,11 @@
 		F1000000000000000000000A /* CREDITS.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CREDITS.txt; sourceTree = "<group>"; };
 		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
+		ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallaxManager.swift; sourceTree = "<group>"; };
+		01256F5F2501C40E0B8C7A2F /* BotController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotController.swift; sourceTree = "<group>"; };
+		81BFA94D06C0765AAE762441 /* PowerUpController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerUpController.swift; sourceTree = "<group>"; };
+		3CD2C1BDCCA32915B5A685C9 /* PRNGTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRNGTests.swift; sourceTree = "<group>"; };
+		40134E6E8ECF09DA7553CE8B /* GameConstantsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConstantsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -262,9 +272,20 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
+		C9E5E22D4C941EB9381FDEED /* Controllers */ = {
+			isa = PBXGroup;
+			children = (
+				ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */,
+				01256F5F2501C40E0B8C7A2F /* BotController.swift */,
+				81BFA94D06C0765AAE762441 /* PowerUpController.swift */,
+			);
+			path = Controllers;
+			sourceTree = "<group>";
+		};
 		5FD76A785CF6BDA704AB73E3 /* Game */ = {
 			isa = PBXGroup;
 			children = (
+				C9E5E22D4C941EB9381FDEED /* Controllers */,
 				6F57D6444D8C2281BB9B5DEA /* GameScene.swift */,
 				20080901053DC37D1D533489 /* DifficultyManager.swift */,
 				CC374B1DDA9D1BFA85E85220 /* PowerUp.swift */,
@@ -499,6 +520,9 @@
 				108CA6DF21DC6F0EDE421CE6 /* FloppyDuckApp.swift in Sources */,
 				E4862C9430504EFD8842A776 /* GameConstants.swift in Sources */,
 				1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */,
+				FF1E7DCB9494C2D8DE5E22BC /* ParallaxManager.swift in Sources */,
+				74C7BB1EBED11D4C50F70D9C /* BotController.swift in Sources */,
+				7F9B6B1E213D138387FC9463 /* PowerUpController.swift in Sources */,
 				0FD673CC8B4188A4D5B14A68 /* DifficultyManager.swift in Sources */,
 				BCA7AC277DEBF717137BC891 /* PowerUp.swift in Sources */,
 				915FA225B9808E616EE0A791 /* GameManager.swift in Sources */,

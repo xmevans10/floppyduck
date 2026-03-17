@@ -12,10 +12,10 @@ final class PowerUpTests: XCTestCase {
         }
     }
 
-    func testAllPowerUpKindsHaveEmoji() {
+    func testAllPowerUpKindsHavePixelIcon() {
         for kind in PowerUpKind.allCases {
-            XCTAssertFalse(kind.emoji.isEmpty,
-                "\(kind.rawValue) should have a non-empty emoji")
+            // Verify pixelIcon is accessible (would crash if missing)
+            _ = kind.pixelIcon
         }
     }
 

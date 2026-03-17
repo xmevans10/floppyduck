@@ -5,9 +5,41 @@ import UIKit
 /// Park theme with round mallard duck matching Flappy Bird proportions.
 final class TextureFactory {
     static let shared = TextureFactory()
-    private init() {}
+
+    /// Maximum textures to keep in cache before triggering eviction.
+    /// At ~2KB average per pixel-art texture, 200 entries ≈ 400KB — well within budget.
+    private static let maxCacheSize = 200
+
+    private init() {
+        // Clear cache on memory warning (iOS background pressure)
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.clearCache()
+        }
+    }
 
     private var cache: [String: SKTexture] = [:]
+    private var cacheOrder: [String] = []   // LRU eviction order
+
+    /// Removes all cached textures. Called automatically on memory warning.
+    func clearCache() {
+        cache.removeAll()
+        cacheOrder.removeAll()
+    }
+
+    /// Store a texture in cache with LRU eviction when over capacity.
+    private func cacheStore(_ key: String, _ tex: SKTexture) {
+        cacheStore(key, tex)
+        cacheOrder.append(key)
+        // Evict oldest entries when over capacity
+        while cache.count > Self.maxCacheSize, let oldest = cacheOrder.first {
+            cacheOrder.removeFirst()
+            cache.removeValue(forKey: oldest)
+        }
+    }
 
     // MARK: - Public API
 
@@ -17,7 +49,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderMallardDuck(wingPhase: wingPhase))
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -27,7 +59,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderMallardDuck(wingPhase: wingPhase, ghost: true))
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -41,7 +73,7 @@ final class TextureFactory {
         } else {
             let tex = SKTexture(image: renderPipe(width: GK.pipeWidth, height: GK.worldHeight))
             tex.filteringMode = .nearest
-            cache[masterKey] = tex
+            cacheStore(masterKey, tex)
             masterTex = tex
         }
         // Crop from bottom of master texture (unit coords, origin bottom-left)
@@ -57,7 +89,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderPipeCap())
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -67,7 +99,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderGround())
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -77,7 +109,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderSky())
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -87,7 +119,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderPixelCloud())
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -97,7 +129,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderPixelTrees())
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -107,7 +139,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderPixelHills())
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -135,7 +167,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderThemedHills(theme: theme))
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -145,7 +177,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderThemedTrees(theme: theme))
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -155,7 +187,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderThemedBushes(theme: theme))
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -167,7 +199,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase))
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -177,7 +209,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true))
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 
@@ -207,7 +239,7 @@ final class TextureFactory {
         if let cached = cache[key] { return cached }
         let tex = SKTexture(image: renderBread())
         tex.filteringMode = .nearest
-        cache[key] = tex
+        cacheStore(key, tex)
         return tex
     }
 

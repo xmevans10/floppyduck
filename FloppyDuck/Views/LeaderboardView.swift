@@ -56,8 +56,11 @@ struct LeaderboardView: View {
                 } else if let error = errorMessage {
                     Spacer()
                     VStack(spacing: 12) {
-                        Text("⚠️")
-                            .font(.system(size: 36))
+                        Image(uiImage: PixelIconFactory.shared.image(for: .warning, pixelScale: 4.0))
+                            .interpolation(.none)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 36, height: 36)
                         Text("COULD NOT LOAD LEADERBOARD")
                             .font(.custom(GK.pixelFontName, size: 9))
                             .foregroundColor(.white)

@@ -40,16 +40,16 @@ enum PowerUpKind: String, CaseIterable {
         }
     }
 
-    var emoji: String {
+    var pixelIcon: PixelIcon {
         switch self {
-        case .shield:       return "🛡️"
-        case .pipeExpander: return "↔️"
-        case .breadMagnet:  return "🧲"
-        case .slowMotion:   return "⏳"
-        case .ghostDuck:    return "👻"
-        case .pipeSqueeze:  return "🗜️"
-        case .speedBurst:   return "⚡"
-        case .dizzyDuck:    return "😵"
+        case .shield:       return .shield
+        case .pipeExpander: return .pipeExpander
+        case .breadMagnet:  return .breadMagnet
+        case .slowMotion:   return .slowMotion
+        case .ghostDuck:    return .ghost
+        case .pipeSqueeze:  return .pipeSqueeze
+        case .speedBurst:   return .speedBurst
+        case .dizzyDuck:    return .dizzyDuck
         }
     }
 

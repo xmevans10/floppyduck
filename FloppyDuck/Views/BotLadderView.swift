@@ -176,9 +176,11 @@ struct BotLadderView: View {
                         .resizable()
                         .frame(width: 20, height: 20)
                 } else if beaten {
-                    Text("✓")
-                        .font(.custom(GK.pixelFontName, size: 12))
-                        .foregroundColor(GK.Colors.buttonGreen)
+                    Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
+                        .interpolation(.none)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 14, height: 14)
                 }
             }
             .padding(.horizontal, 16)

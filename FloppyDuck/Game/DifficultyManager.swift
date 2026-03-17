@@ -91,26 +91,6 @@ enum DifficultyTier: Int, CaseIterable, Comparable {
         }
     }
 
-    /// Max vertical speed cap multiplier.
-    var maxUpSpeedMultiplier: CGFloat {
-        switch self {
-        case .easy:   return 1.0
-        case .medium: return 1.05
-        case .hard:   return 1.10
-        case .expert: return 1.14
-        }
-    }
-
-    /// Max gap-center delta between consecutive pipes — tighter at higher tiers
-    /// to create more challenging pipe sequences.
-    var maxPipeDeltaMultiplier: CGFloat {
-        switch self {
-        case .easy:   return 1.0
-        case .medium: return 1.10
-        case .hard:   return 1.20
-        case .expert: return 1.25
-        }
-    }
 }
 
 // MARK: - DifficultyManager
@@ -143,16 +123,6 @@ final class DifficultyManager {
     /// Returns the effective gravity for the current tier.
     var effectiveGravity: CGFloat {
         GK.gravity * currentTier.gravityMultiplier
-    }
-
-    /// Returns the effective max upward speed for the current tier.
-    var effectiveMaxUpSpeed: CGFloat {
-        GK.maxUpSpeed * currentTier.maxUpSpeedMultiplier
-    }
-
-    /// Returns the effective max pipe delta for the current tier.
-    var effectiveMaxPipeDelta: CGFloat {
-        GK.maxPipeDelta * currentTier.maxPipeDeltaMultiplier
     }
 
     /// Update difficulty based on new score. Returns true if tier changed.

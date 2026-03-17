@@ -53,6 +53,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let foregroundLayer = SKNode()   // Enhanced ground decorations (grass blades, pebbles)
     private let hudLayer = SKNode()
 
+    // Parallax controller (manages sky, clouds, hills, trees, ground tiles, details, stars)
+    private var parallax: ParallaxManager!
+
     // Duck (Item 2: optional safety)
     private var duck: SKSpriteNode?
     private var duckTextures: [SKTexture] = []
@@ -72,12 +75,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var scoreShadow: SKLabelNode?
     private var scoreOutlines: [SKLabelNode] = []
 
-    // Ground scrolling
-    private var groundTiles: [SKSpriteNode] = []
+    // Ground tile width (used by ground physics only; visual tiles owned by ParallaxManager)
     private let groundTileWidth: CGFloat = GK.worldWidth * 2
-
-    // Ground detail decoration (grass blades, pebbles)
-    private var groundDetailTiles: [SKNode] = []
 
     // Pipe spawning
     private var pipeTimer: TimeInterval = 0
@@ -103,14 +102,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     /// Public accessor for views to display bread count.
     var totalBreadCollected: Int { breadCollected }
 
-    // Parallax layers
-    private var clouds: [SKSpriteNode] = []
-    private var hills: [SKSpriteNode] = []
-    private var trees: [SKSpriteNode] = []
-
     // Sky theme (Item 9)
     private let backgroundTheme: BackgroundTheme
-    private var starNodes: [SKShapeNode] = []
 
     // Tutorial (Item 8)
     private var tutorialOverlay: SKNode?
@@ -173,18 +166,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         worldNode.addChild(foregroundLayer)
         addChild(hudLayer)
 
-        setupBackground()
-        setupClouds()
-        setupHills()
-        setupTrees()
-        setupGround()
-        setupGroundDetails()
+        // Parallax: sky gradient, clouds, hills, trees, ground tiles, details, stars
+        parallax = ParallaxManager(
+            backgroundLayer: backgroundLayer,
+            groundLayer: groundLayer,
+            foregroundLayer: foregroundLayer,
+            theme: backgroundTheme
+        )
+        parallax.setup()
+
+        setupGroundPhysics()
         setupDuck()
         setupHUD()
-
-        if backgroundTheme.showStars {
-            setupStars()
-        }
 
         if mode == .vsBot {
             setupBotDuck()
@@ -203,105 +196,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         showTutorialIfNeeded()
     }
 
-    // MARK: - Background
+    // MARK: - Ground Physics (visual ground tiles owned by ParallaxManager)
 
-    private func setupBackground() {
-        // Background gradient from selected theme
-        let skyNode = SKSpriteNode(color: .clear,
-                                    size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
-        skyNode.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight / 2)
-        skyNode.zPosition = -100
-
-        let gradientTex = createSkyGradientTexture(theme: backgroundTheme)
-        skyNode.texture = gradientTex
-        backgroundLayer.addChild(skyNode)
-    }
-
-    /// Renders a vertical gradient texture for the background theme.
-    private func createSkyGradientTexture(theme: BackgroundTheme) -> SKTexture {
-        let size = CGSize(width: 1, height: Int(GK.worldHeight))
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let image = renderer.image { ctx in
-            let colors = theme.gradientColors.map { UIColor($0).cgColor } as CFArray
-            let space = CGColorSpaceCreateDeviceRGB()
-            guard let gradient = CGGradient(colorsSpace: space, colors: colors, locations: nil) else { return }
-            ctx.cgContext.drawLinearGradient(
-                gradient,
-                start: CGPoint(x: 0, y: size.height),  // top
-                end: CGPoint(x: 0, y: 0),                // bottom
-                options: []
-            )
-        }
-        let tex = SKTexture(image: image)
-        tex.filteringMode = .linear
-        return tex
-    }
-
-    private func setupClouds() {
-        let cloudTex = factory.cloudTexture()
-        let tint = backgroundTheme.cloudTint
-        for _ in 0..<5 {
-            let scale = CGFloat.random(in: 0.6...1.2)
-            let cloud = SKSpriteNode(texture: cloudTex,
-                                      size: CGSize(width: 80 * scale, height: 35 * scale))
-            cloud.position = CGPoint(
-                x: CGFloat.random(in: 0...GK.worldWidth),
-                y: CGFloat.random(in: (GK.worldHeight * 0.55)...(GK.worldHeight - 40))
-            )
-            // Tint clouds to match background theme
-            cloud.color = tint
-            cloud.colorBlendFactor = 0.6
-            cloud.alpha = CGFloat.random(in: 0.5...0.8)
-            cloud.zPosition = -90
-            backgroundLayer.addChild(cloud)
-            clouds.append(cloud)
-        }
-    }
-
-    private func setupHills() {
-        let hillTex = factory.themedHillsTexture(theme: backgroundTheme)
-        for i in 0..<2 {
-            let hillNode = SKSpriteNode(texture: hillTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 120))
-            hillNode.anchorPoint = CGPoint(x: 0, y: 0)
-            hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight + 10)
-            hillNode.zPosition = -60
-            hillNode.alpha = 0.8
-            backgroundLayer.addChild(hillNode)
-            hills.append(hillNode)
-        }
-    }
-
-    private func setupTrees() {
-        let treeTex = factory.themedTreesTexture(theme: backgroundTheme)
-        for i in 0..<2 {
-            let treeNode = SKSpriteNode(texture: treeTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 160))
-            treeNode.anchorPoint = CGPoint(x: 0, y: 0)
-            treeNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 5)
-            treeNode.zPosition = -50
-            treeNode.alpha = 0.7
-            backgroundLayer.addChild(treeNode)
-            trees.append(treeNode)
-        }
-    }
-
-    // MARK: - Ground
-
-    private func setupGround() {
-        let groundTex = factory.groundTexture()
-        let tilesNeeded = 3
-        for i in 0..<tilesNeeded {
-            let tile = SKSpriteNode(texture: groundTex,
-                                     size: CGSize(width: groundTileWidth, height: GK.groundHeight))
-            tile.anchorPoint = CGPoint(x: 0, y: 0)
-            tile.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
-            tile.zPosition = 50
-            groundLayer.addChild(tile)
-            groundTiles.append(tile)
-        }
-
-        // Ground physics
+    private func setupGroundPhysics() {
         let groundBody = SKNode()
         groundBody.position = CGPoint(x: GK.worldWidth / 2, y: GK.groundHeight)
         groundBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.worldWidth * 2, height: 2))
@@ -316,66 +213,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ceiling.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.worldWidth * 2, height: 2))
         ceiling.physicsBody?.isDynamic = false
         worldNode.addChild(ceiling)
-    }
-
-    // MARK: - Ground Details (grass blades & pebbles)
-
-    private func setupGroundDetails() {
-        for i in 0..<3 {
-            let tile = SKNode()
-            tile.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
-            tile.zPosition = 55
-
-            // Small animated grass blades
-            for _ in 0..<14 {
-                let x = CGFloat.random(in: 0..<groundTileWidth)
-                let height = CGFloat.random(in: 6...14)
-                let halfW: CGFloat = 1.5
-
-                let path = CGMutablePath()
-                path.move(to: CGPoint(x: -halfW, y: 0))
-                path.addLine(to: CGPoint(x: 0, y: height))
-                path.addLine(to: CGPoint(x: halfW, y: 0))
-                path.closeSubpath()
-
-                let blade = SKShapeNode(path: path)
-                blade.fillColor = UIColor(
-                    red: CGFloat.random(in: 0.25...0.45),
-                    green: CGFloat.random(in: 0.55...0.75),
-                    blue: CGFloat.random(in: 0.10...0.22),
-                    alpha: 1
-                )
-                blade.strokeColor = .clear
-                blade.position = CGPoint(x: x, y: GK.groundHeight)
-
-                // Gentle sway animation
-                let swayAngle = CGFloat.random(in: 0.05...0.12)
-                let swayDur = Double.random(in: 0.7...1.3)
-                let sway = SKAction.sequence([
-                    SKAction.rotate(byAngle: swayAngle, duration: swayDur),
-                    SKAction.rotate(byAngle: -swayAngle * 2, duration: swayDur * 2),
-                    SKAction.rotate(byAngle: swayAngle, duration: swayDur),
-                ])
-                blade.run(SKAction.repeatForever(sway))
-
-                tile.addChild(blade)
-            }
-
-            // Pebble sprites
-            for _ in 0..<8 {
-                let x = CGFloat.random(in: 0..<groundTileWidth)
-                let radius = CGFloat.random(in: 1.5...3.5)
-                let pebble = SKShapeNode(circleOfRadius: radius)
-                let gray = CGFloat.random(in: 0.45...0.65)
-                pebble.fillColor = UIColor(red: gray, green: gray - 0.05, blue: gray - 0.10, alpha: 0.8)
-                pebble.strokeColor = .clear
-                pebble.position = CGPoint(x: x, y: GK.groundHeight - 2)
-                tile.addChild(pebble)
-            }
-
-            foregroundLayer.addChild(tile)
-            groundDetailTiles.append(tile)
-        }
     }
 
     // MARK: - Duck (skin-aware, tighter hitbox)
@@ -698,10 +535,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let breadX = afterPipeX + xOffset + CGFloat(i) * 20
             let breadY = CGFloat.random(in: minBreadY...maxBreadY)
 
-            let breadNode = SKLabelNode(text: "🍞")
-            breadNode.fontSize = 16
-            breadNode.verticalAlignmentMode = .center
-            breadNode.horizontalAlignmentMode = .center
+            let breadTexture = PixelIconFactory.shared.skTexture(for: .bread)
+            let breadNode = SKSpriteNode(texture: breadTexture)
+            breadNode.setScale(0.5)
             breadNode.position = CGPoint(x: breadX, y: breadY)
             breadNode.zPosition = 25
             breadNode.name = "bread"
@@ -739,10 +575,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         SoundManager.shared.play(.score)
         Haptic.score()
 
-        // Tiny "+1 🍞" popup
+        // Tiny "+1" bread popup
         guard let duck else { return }
         let popup = SKLabelNode(fontNamed: GK.pixelFontName)
-        popup.text = "+1 🍞"
+        popup.text = "+1"
         popup.fontSize = 10
         popup.fontColor = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1)
         popup.position = CGPoint(x: duck.position.x + 15, y: duck.position.y + 20)
@@ -909,44 +745,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             spawnPipe()
         }
 
-        // Scroll ground
-        for tile in groundTiles {
-            tile.position.x -= GK.groundSpeed * CGFloat(dt)
-            if tile.position.x <= -groundTileWidth {
-                tile.position.x += groundTileWidth * CGFloat(groundTiles.count)
-            }
-        }
-
-        // Scroll ground details (grass blades, pebbles)
-        for tile in groundDetailTiles {
-            tile.position.x -= GK.groundSpeed * CGFloat(dt)
-            if tile.position.x <= -groundTileWidth {
-                tile.position.x += groundTileWidth * CGFloat(groundDetailTiles.count)
-            }
-        }
-
-        // Parallax clouds
-        for cloud in clouds {
-            cloud.position.x -= GK.cloudSpeed * CGFloat(dt)
-            if cloud.position.x < -80 {
-                cloud.position.x = GK.worldWidth + 80
-                cloud.position.y = CGFloat.random(in: (GK.worldHeight * 0.55)...(GK.worldHeight - 40))
-            }
-        }
-
-        for hill in hills {
-            hill.position.x -= GK.hillSpeed * CGFloat(dt)
-            if hill.position.x < -(GK.worldWidth * 2) {
-                hill.position.x += GK.worldWidth * 4
-            }
-        }
-
-        for tree in trees {
-            tree.position.x -= GK.treeSpeed * CGFloat(dt)
-            if tree.position.x < -(GK.worldWidth * 2) {
-                tree.position.x += GK.worldWidth * 4
-            }
-        }
+        // Parallax scrolling (ground tiles, details, clouds, hills, trees)
+        parallax.update(dt: dt)
 
         // Item 2: Duck rotation with safe optional
         if let duck, let vy = duck.physicsBody?.velocity.dy {
@@ -992,7 +792,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         var targetGapY: CGFloat = GK.duckStartY
         var nearestDist: CGFloat = CGFloat.greatestFiniteMagnitude
 
-        let effectiveBotGap = difficulty.effectivePipeGap
+        // Bot uses the same effective gap as actual pipes (including power-up modifiers)
+        var effectiveBotGap = difficulty.effectivePipeGap
+        if activePowerUps.contains(where: { $0.kind == .pipeExpander && ($0.remainingPipes ?? 0) > 0 }) {
+            effectiveBotGap *= 1.3
+        }
+        if activePowerUps.contains(where: { $0.kind == .pipeSqueeze && ($0.remainingPipes ?? 0) > 0 }) {
+            effectiveBotGap *= 0.8
+        }
 
         for child in pipeLayer.children {
             let pipeX = child.position.x
@@ -1179,15 +986,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         backgroundLayer.isPaused = true
         foregroundLayer.isPaused = true
 
-        // Item 6: Brief slowmo pause (freeze scene for 0.08s)
+        // Item 6: Brief slowmo pause (freeze scene for death impact)
         self.isPaused = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + GK.Animation.deathFreezeDuration) { [weak self] in
             self?.isPaused = false
         }
 
-        // Item 6: Camera zoom-in (1.03x)
-        let zoomIn = SKAction.scale(to: 1.03, duration: 0.15)
-        let zoomOut = SKAction.scale(to: 1.0, duration: 0.4)
+        // Item 6: Camera zoom-in
+        let zoomIn = SKAction.scale(to: GK.Animation.zoomInScale, duration: GK.Animation.zoomInDuration)
+        let zoomOut = SKAction.scale(to: 1.0, duration: GK.Animation.zoomOutDuration)
         worldNode.run(SKAction.sequence([zoomIn, zoomOut]))
 
         let flash = SKSpriteNode(color: .white, size: self.size)
@@ -1245,7 +1052,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Straight-down fall to ground level
         let groundY = GK.groundHeight + (duck.size.height / 2)
         let fallDistance = max(duck.position.y - groundY, 0)
-        let fallDuration = max(0.25, min(Double(fallDistance / 500), 0.65))
+        let fallDuration = max(GK.Animation.deathFallMinDuration,
+                               min(Double(fallDistance / GK.Animation.deathFallSpeed),
+                                   GK.Animation.deathFallMaxDuration))
         let fallAction = SKAction.moveTo(y: groundY, duration: fallDuration)
         fallAction.timingMode = .easeIn
         duck.run(fallAction, withKey: "deathFall")
@@ -1497,12 +1306,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         collectible.position = CGPoint(x: 0, y: gapY)
         collectible.zPosition = 30
 
-        // Emoji visual
-        let emoji = SKLabelNode(text: kind.emoji)
-        emoji.fontSize = PowerUpKind.collectibleSize
-        emoji.verticalAlignmentMode = .center
-        emoji.horizontalAlignmentMode = .center
-        collectible.addChild(emoji)
+        // Pixel icon visual
+        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon)
+        let iconSprite = SKSpriteNode(texture: iconTexture)
+        iconSprite.setScale(0.8)
+        collectible.addChild(iconSprite)
 
         // Glow ring
         let glow = SKShapeNode(circleOfRadius: PowerUpKind.collectibleSize * 0.7)
@@ -1552,11 +1360,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     /// Activates a power-up effect.
     private func activatePowerUp(kind: PowerUpKind) {
-        let pipeCountKinds: Set<PowerUpKind> = [.breadMagnet, .pipeExpander, .pipeSqueeze]
         let powerUp = ActivePowerUp(
             kind: kind,
             startTime: lastUpdate,
-            remainingPipes: pipeCountKinds.contains(kind) ? 5 : nil
+            remainingPipes: kind.initialPipeCount
         )
         activePowerUps.append(powerUp)
 
@@ -1721,11 +1528,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         container.position = CGPoint(x: duck.position.x, y: duck.position.y + 30)
         container.zPosition = 300
 
-        let emoji = SKLabelNode(text: kind.emoji)
-        emoji.fontSize = 28
-        emoji.verticalAlignmentMode = .center
-        emoji.position = CGPoint(x: 0, y: 12)
-        container.addChild(emoji)
+        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon, pixelScale: 4.0)
+        let iconSprite = SKSpriteNode(texture: iconTexture)
+        iconSprite.position = CGPoint(x: 0, y: 12)
+        container.addChild(iconSprite)
 
         let name = SKLabelNode(fontNamed: GK.pixelFontName)
         name.text = kind.displayName
@@ -1752,12 +1558,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func spawnFloatingScorePopup(isMilestone: Bool) {
         guard let duck else { return }
 
-        // Milestones get a fresh node (rare, so allocation is acceptable).
-        // Regular +1 points reuse the pre-allocated pool to avoid per-frame addChild/removeFromParent.
+        // All popups show "+1" (score increments by 1 per pipe).
+        // Milestones (every 5) get a gold, larger treatment.
+        // Regular points reuse the pre-allocated pool to avoid per-frame allocs.
         let popup: SKLabelNode
         if isMilestone {
             let fresh = SKLabelNode(fontNamed: GK.pixelFontName)
-            fresh.text = "+5★"
+            fresh.text = "+1"
             fresh.fontSize = 18
             fresh.fontColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)
             fresh.zPosition = 300
@@ -1765,8 +1572,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             worldNode.addChild(fresh)
             let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
             let fadeOut = SKAction.fadeOut(withDuration: 0.6)
-            let scaleUp = SKAction.scale(to: 1.3, duration: 0.2)
-            let scaleBack = SKAction.scale(to: 1.0, duration: 0.4)
+            let scaleUp = SKAction.scale(to: 1.4, duration: 0.15)
+            let scaleBack = SKAction.scale(to: 1.0, duration: 0.45)
             fresh.run(SKAction.sequence([
                 SKAction.group([floatUp, fadeOut, SKAction.sequence([scaleUp, scaleBack])]),
                 SKAction.removeFromParent()
@@ -1797,31 +1604,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
     }
 
-    // MARK: - Night Sky Stars (Item 9)
 
-    private func setupStars() {
-        for _ in 0..<40 {
-            let star = SKShapeNode(circleOfRadius: CGFloat.random(in: 1...2.5))
-            star.fillColor = .white
-            star.strokeColor = .clear
-            star.position = CGPoint(
-                x: CGFloat.random(in: 0...GK.worldWidth),
-                y: CGFloat.random(in: (GK.worldHeight * 0.4)...GK.worldHeight)
-            )
-            star.zPosition = -95
-            star.alpha = CGFloat.random(in: 0.3...0.9)
-
-            // Twinkle animation
-            let twinkle = SKAction.sequence([
-                SKAction.fadeAlpha(to: CGFloat.random(in: 0.2...0.5), duration: Double.random(in: 0.8...2.0)),
-                SKAction.fadeAlpha(to: CGFloat.random(in: 0.6...1.0), duration: Double.random(in: 0.8...2.0)),
-            ])
-            star.run(SKAction.repeatForever(twinkle))
-
-            backgroundLayer.addChild(star)
-            starNodes.append(star)
-        }
-    }
 
     // MARK: - First-Launch Tutorial (Item 8)
 
@@ -1840,8 +1623,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         overlay.addChild(backdrop)
 
         // Pixel hand icon (simple tap indicator)
-        let hand = SKLabelNode(text: "👆")
-        hand.fontSize = 48
+        let handTexture = PixelIconFactory.shared.skTexture(for: .tapHand, pixelScale: 5.0)
+        let hand = SKSpriteNode(texture: handTexture)
         hand.position = CGPoint(x: size.width / 2, y: size.height / 2 - 20)
 
         // Animated tapping motion
@@ -1889,42 +1672,4 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 }
 
-// MARK: - Sky Theme (Item 9)
 
-enum SkyTheme: String, CaseIterable {
-    case day
-    case sunset
-    case night
-
-    var backgroundColor: UIColor {
-        switch self {
-        case .day:    return UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1)
-        case .sunset: return UIColor(red: 0.85, green: 0.45, blue: 0.25, alpha: 1)
-        case .night:  return UIColor(red: 0.08, green: 0.10, blue: 0.22, alpha: 1)
-        }
-    }
-
-    var gradientColors: [Color] {
-        switch self {
-        case .day:
-            return [
-                Color(red: 0.22, green: 0.50, blue: 0.85),
-                Color(red: 0.58, green: 0.80, blue: 0.94),
-                Color(red: 0.78, green: 0.92, blue: 0.97),
-            ]
-        case .sunset:
-            return [
-                Color(red: 0.15, green: 0.10, blue: 0.30),
-                Color(red: 0.65, green: 0.25, blue: 0.40),
-                Color(red: 0.95, green: 0.55, blue: 0.20),
-                Color(red: 1.0, green: 0.80, blue: 0.35),
-            ]
-        case .night:
-            return [
-                Color(red: 0.02, green: 0.02, blue: 0.08),
-                Color(red: 0.06, green: 0.08, blue: 0.18),
-                Color(red: 0.12, green: 0.15, blue: 0.30),
-            ]
-        }
-    }
-}

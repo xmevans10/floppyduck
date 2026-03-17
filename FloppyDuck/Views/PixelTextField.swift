@@ -7,6 +7,7 @@ struct PixelTextField: UIViewRepresentable {
     @Binding var text: String
     let pixelFontName: String
     let fontSize: CGFloat
+    var maxLength: Int = 16
 
     /// Resolve the correct UIFont, trying common PostScript name variants.
     private static func resolveFont(name: String, size: CGFloat) -> UIFont {
@@ -53,17 +54,36 @@ struct PixelTextField: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, maxLength: maxLength)
     }
 
     final class Coordinator: NSObject, UITextFieldDelegate {
         @Binding var text: String
-        init(text: Binding<String>) { _text = text }
+        let maxLength: Int
+        init(text: Binding<String>, maxLength: Int) {
+            _text = text
+            self.maxLength = maxLength
+        }
 
         func textFieldDidChangeSelection(_ tf: UITextField) {
             DispatchQueue.main.async {
                 self.text = tf.text ?? ""
             }
+        }
+
+        func textField(_ tf: UITextField, shouldChangeCharactersIn range: NSRange,
+                        replacementString string: String) -> Bool {
+            let current = tf.text ?? ""
+            guard let range = Range(range, in: current) else { return false }
+            let proposed = current.replacingCharacters(in: range, with: string)
+            // Enforce max length
+            if proposed.count > maxLength { return false }
+            // Block control characters (allow letters, numbers, spaces, basic punctuation)
+            let allowed = CharacterSet.alphanumerics
+                .union(.whitespaces)
+                .union(CharacterSet(charactersIn: "-_.'"))
+            if string.unicodeScalars.contains(where: { !allowed.contains($0) }) { return false }
+            return true
         }
 
         func textFieldShouldReturn(_ tf: UITextField) -> Bool {

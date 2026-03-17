@@ -192,7 +192,7 @@ final class GameManager: ObservableObject {
         if lastPlayDateString == todayStr { return } // Already counted today
 
         if let lastDate = formatter.date(from: lastPlayDateString) {
-            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today) ?? today
             if Calendar.current.isDate(lastDate, inSameDayAs: yesterday) {
                 currentStreak += 1
             } else {

@@ -94,30 +94,30 @@ enum AchievementId: String, CaseIterable, Codable {
         }
     }
 
-    var emoji: String {
+    var pixelIcon: PixelIcon {
         switch self {
-        case .firstFlight:    return "🐣"
-        case .gettingStarted: return "🦆"
-        case .pipeHero:       return "🦸"
-        case .skyMaster:      return "🌤️"
-        case .legendary:      return "👑"
-        case .breadWinner:    return "🍞"
-        case .breadBaron:     return "🥖"
-        case .marathon:       return "🏃"
-        case .dedicated:      return "💪"
-        case .veteran:        return "🎖️"
-        case .botSlayer:      return "🤖"
-        case .ladderClimber:  return "🪜"
-        case .topDuck:        return "🏆"
-        case .shieldBreaker:  return "🛡️"
-        case .ghostRider:     return "👻"
-        case .magnetMogul:    return "🧲"
-        case .streakStarter:  return "🔥"
-        case .committed:      return "📅"
-        case .obsessed:       return "😈"
-        case .survivalist:    return "💀"
-        case .collector:      return "🎨"
-        case .fashionista:    return "✨"
+        case .firstFlight:    return .chick
+        case .gettingStarted: return .duck
+        case .pipeHero:       return .star
+        case .skyMaster:      return .crown
+        case .legendary:      return .crown
+        case .breadWinner:    return .bread
+        case .breadBaron:     return .bread
+        case .marathon:       return .ribbon
+        case .dedicated:      return .muscle
+        case .veteran:        return .ribbon
+        case .botSlayer:      return .swords
+        case .ladderClimber:  return .ladder
+        case .topDuck:        return .trophy
+        case .shieldBreaker:  return .shield
+        case .ghostRider:     return .ghost
+        case .magnetMogul:    return .breadMagnet
+        case .streakStarter:  return .flame
+        case .committed:      return .calendar
+        case .obsessed:       return .flame
+        case .survivalist:    return .skull
+        case .collector:      return .palette
+        case .fashionista:    return .palette
         }
     }
 

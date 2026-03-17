@@ -1,0 +1,113 @@
+import XCTest
+@testable import FloppyDuck
+
+final class GameConstantsTests: XCTestCase {
+
+    // MARK: - Physics Sanity Checks
+
+    func testGravityIsNegative() {
+        XCTAssertLessThan(GK.gravity, 0, "Gravity should pull downward (negative)")
+    }
+
+    func testFlapImpulseIsPositive() {
+        XCTAssertGreaterThan(GK.flapImpulse, 0, "Flap impulse should push upward (positive)")
+    }
+
+    func testFlapImpulseOvercomesGravity() {
+        // Duck should gain altitude per flap: impulse must exceed one-frame gravity pull
+        let gravityPerFrame = abs(GK.gravity) / 60.0
+        XCTAssertGreaterThan(GK.flapImpulse, gravityPerFrame,
+            "Flap impulse (\(GK.flapImpulse)) must exceed single-frame gravity (\(gravityPerFrame))")
+    }
+
+    // MARK: - World Geometry
+
+    func testGroundHeightBelowDuckStart() {
+        XCTAssertLessThan(GK.groundHeight, GK.duckStartY,
+            "Duck start Y must be above ground")
+    }
+
+    func testDuckStartWithinWorld() {
+        XCTAssertGreaterThan(GK.duckStartX, 0)
+        XCTAssertLessThan(GK.duckStartX, GK.worldWidth)
+        XCTAssertGreaterThan(GK.duckStartY, GK.groundHeight)
+        XCTAssertLessThan(GK.duckStartY, GK.worldHeight)
+    }
+
+    func testPipeMinMaxValidRange() {
+        XCTAssertLessThan(GK.pipeMinY, GK.pipeMaxY,
+            "Pipe min Y must be less than max Y")
+        XCTAssertGreaterThan(GK.pipeMinY, GK.groundHeight,
+            "Pipe gaps must be above ground")
+        XCTAssertLessThan(GK.pipeMaxY, GK.worldHeight,
+            "Pipe gaps must be below ceiling")
+    }
+
+    func testPipeGapFitsInWorld() {
+        // Gap center at min/max Y must still have room for both pipes
+        let minGapBottom = GK.pipeMinY - GK.pipeGap / 2
+        let maxGapTop = GK.pipeMaxY + GK.pipeGap / 2
+
+        XCTAssertGreaterThanOrEqual(minGapBottom, GK.groundHeight,
+            "Gap at minimum Y must leave room for bottom pipe above ground")
+        XCTAssertLessThanOrEqual(maxGapTop, GK.worldHeight,
+            "Gap at maximum Y must leave room for top pipe below ceiling")
+    }
+
+    // MARK: - Collision Bitmasks
+
+    func testBitmasksCategoriesAreUnique() {
+        let masks: [UInt32] = [
+            GK.duckCategory,
+            GK.pipeCategory,
+            GK.groundCategory,
+            GK.scoreCategory,
+            GK.powerUpCategory,
+            GK.breadCategory,
+        ]
+
+        // Each mask should be a unique power of 2
+        for mask in masks {
+            XCTAssertEqual(mask & (mask - 1), 0,
+                "Bitmask \(mask) should be a power of 2")
+        }
+
+        // No overlaps
+        let combined = masks.reduce(UInt32(0)) { $0 | $1 }
+        var sum = UInt32(0)
+        for mask in masks { sum += mask }
+        XCTAssertEqual(combined, sum,
+            "Bitmask categories should not overlap")
+    }
+
+    // MARK: - Speeds
+
+    func testSpeedHierarchy() {
+        // Ground scrolls fastest (closest), clouds slowest (furthest)
+        XCTAssertGreaterThan(GK.groundSpeed, GK.treeSpeed)
+        XCTAssertGreaterThan(GK.treeSpeed, GK.cloudSpeed)
+        XCTAssertGreaterThan(GK.treeSpeed, GK.hillSpeed)
+    }
+
+    // MARK: - Medal Thresholds
+
+    func testMedalThresholdsAscending() {
+        XCTAssertLessThan(GK.medalBronze, GK.medalSilver)
+        XCTAssertLessThan(GK.medalSilver, GK.medalGold)
+        XCTAssertLessThan(GK.medalGold, GK.medalPlatinum)
+    }
+
+    // MARK: - Animation Constants
+
+    func testAnimationTimingsPositive() {
+        XCTAssertGreaterThan(GK.Animation.deathFreezeDuration, 0)
+        XCTAssertGreaterThan(GK.Animation.deathFallMinDuration, 0)
+        XCTAssertGreaterThan(GK.Animation.deathToGameOverDelay, 0)
+        XCTAssertGreaterThan(GK.Animation.popupDuration, 0)
+    }
+
+    func testDeathFallMinLessThanMax() {
+        XCTAssertLessThan(GK.Animation.deathFallMinDuration,
+                          GK.Animation.deathFallMaxDuration)
+    }
+}

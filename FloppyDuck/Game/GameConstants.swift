@@ -48,6 +48,25 @@ enum GK {
     static let maxPipeDelta: CGFloat = 140   // max vertical jump between consecutive gaps
     static let maxPregenPipes: Int = 200
 
+    // MARK: - Animation Timings (death sequence, popups, etc.)
+    enum Animation {
+        static let deathFreezeDuration:     TimeInterval = 0.08
+        static let deathFlashFadeDuration:  TimeInterval = 0.3
+        static let deathVignetteFadeIn:     TimeInterval = 0.12
+        static let deathVignetteFadeOut:    TimeInterval = 0.9
+        static let deathFallMinDuration:    TimeInterval = 0.25
+        static let deathFallMaxDuration:    TimeInterval = 0.65
+        static let deathFallSpeed:          CGFloat = 500
+        static let deathDuckFadeDuration:   TimeInterval = 0.3
+        static let deathToGameOverDelay:    TimeInterval = 1.2
+        static let zoomInScale:             CGFloat = 1.03
+        static let zoomInDuration:          TimeInterval = 0.15
+        static let zoomOutDuration:         TimeInterval = 0.4
+        static let tierLabelHoldDuration:   TimeInterval = 0.8
+        static let popupFloatHeight:        CGFloat = 50
+        static let popupDuration:           TimeInterval = 0.6
+    }
+
     // MARK: - Font
     static let pixelFontName = "PressStart2P-Regular"
 

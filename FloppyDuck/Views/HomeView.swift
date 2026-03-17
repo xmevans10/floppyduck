@@ -359,7 +359,7 @@ struct HomeView: View {
                 manager.navigate(to: .collection)
             }
 
-            bottomButtonEmoji(emoji: "🏆", label: "ACHIEVE") {
+            bottomButton(icon: .trophy, label: "ACHIEVE") {
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .achievements)
             }
@@ -402,34 +402,6 @@ struct HomeView: View {
         .accessibilityLabel(label)
     }
 
-    private func bottomButtonEmoji(emoji: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 5) {
-                Text(emoji)
-                    .font(.system(size: 20))
-                    .frame(width: 24, height: 24)
-                Text(label)
-                    .font(.custom(GK.pixelFontName, size: 5))
-                    .foregroundColor(GK.Colors.panelBorder)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(GK.Colors.panelCream)
-                    .shadow(color: Color.black.opacity(0.15), radius: 0, x: 0, y: 3)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(GK.Colors.panelBorder, lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-
     // MARK: - Helpers
 
     private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
@@ -441,9 +413,12 @@ struct HomeView: View {
     }
 
     private func shareApp() {
-        let text = "Check out Floppy Duck! 🦆 Can you beat my high score of \(manager.stats.bestScore)?"
-        let url = URL(string: GK.appStoreURL)!
-        let vc = UIActivityViewController(activityItems: [text, url], applicationActivities: nil)
+        let text = "Check out Floppy Duck! Can you beat my high score of \(manager.stats.bestScore)?"
+        var items: [Any] = [text]
+        if let url = URL(string: GK.appStoreURL) {
+            items.append(url)
+        }
+        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {
             root.present(vc, animated: true)

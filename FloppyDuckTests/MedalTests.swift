@@ -38,14 +38,14 @@ final class MedalTests: XCTestCase {
         XCTAssertFalse(Medal.platinum.displayName.isEmpty)
     }
 
-    // MARK: - Emojis
+    // MARK: - Pixel Icons
 
-    func testMedalEmojis() {
-        XCTAssertEqual(Medal.none.emoji, "")
-        XCTAssertEqual(Medal.bronze.emoji, "🥉")
-        XCTAssertEqual(Medal.silver.emoji, "🥈")
-        XCTAssertEqual(Medal.gold.emoji, "🥇")
-        XCTAssertEqual(Medal.platinum.emoji, "💎")
+    func testMedalPixelIcons() {
+        XCTAssertNil(Medal.none.pixelIcon)
+        XCTAssertEqual(Medal.bronze.pixelIcon, .medalBronze)
+        XCTAssertEqual(Medal.silver.pixelIcon, .medalSilver)
+        XCTAssertEqual(Medal.gold.pixelIcon, .medalGold)
+        XCTAssertEqual(Medal.platinum.pixelIcon, .medalPlatinum)
     }
 
     // MARK: - Ordering

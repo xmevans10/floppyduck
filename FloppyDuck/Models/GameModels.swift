@@ -271,13 +271,13 @@ enum Medal: String {
         }
     }
 
-    var emoji: String {
+    var pixelIcon: PixelIcon? {
         switch self {
-        case .none:     return ""
-        case .bronze:   return "🥉"
-        case .silver:   return "🥈"
-        case .gold:     return "🥇"
-        case .platinum: return "💎"
+        case .none:     return nil
+        case .bronze:   return .medalBronze
+        case .silver:   return .medalSilver
+        case .gold:     return .medalGold
+        case .platinum: return .medalPlatinum
         }
     }
 

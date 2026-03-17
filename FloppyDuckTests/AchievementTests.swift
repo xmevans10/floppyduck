@@ -235,8 +235,8 @@ final class AchievementTests: XCTestCase {
                 "\(achievement.rawValue) should have a title")
             XCTAssertFalse(achievement.description.isEmpty,
                 "\(achievement.rawValue) should have a description")
-            XCTAssertFalse(achievement.emoji.isEmpty,
-                "\(achievement.rawValue) should have an emoji")
+            // Verify pixelIcon is accessible (would crash if missing)
+            _ = achievement.pixelIcon
         }
     }
 

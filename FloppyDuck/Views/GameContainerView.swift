@@ -2,20 +2,6 @@ import SwiftUI
 import SpriteKit
 import StoreKit
 
-// MARK: - Extended Delegate Methods
-
-extension GameSceneDelegate {
-    func gameDidChangeDifficulty(_ tier: String) {}
-    func gameDidCollectPowerUp(_ name: String, isPositive: Bool) {}
-}
-
-// MARK: - Power-Up HUD Model
-
-private struct PowerUpHUD: Equatable {
-    let name: String
-    let isPositive: Bool
-}
-
 struct GameContainerView: View {
     let config: GameModeConfig
     @EnvironmentObject var manager: GameManager
@@ -44,10 +30,6 @@ struct GameContainerView: View {
     @State private var showNewBest: Bool = false
     @State private var showBread: Bool = false
     @State private var countUpTimer: Timer?
-
-    // In-game HUD states
-    @State private var difficultyToast: String? = nil
-    @State private var powerUpIndicator: PowerUpHUD? = nil
 
     private let icons = PixelIconFactory.shared
 
@@ -112,56 +94,6 @@ struct GameContainerView: View {
                 EmptyView()
             }
 
-            // Difficulty change toast
-            if let toast = difficultyToast {
-                VStack {
-                    Text(toast)
-                        .font(.custom(GK.pixelFontName, size: 9))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(Color.black.opacity(0.6))
-                                .overlay(
-                                    Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                )
-                        )
-                    Spacer()
-                }
-                .padding(.top, 60)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .allowsHitTesting(false)
-            }
-
-            // Power-up / debuff HUD indicator
-            if let powerUp = powerUpIndicator {
-                VStack {
-                    Spacer()
-                    HStack(spacing: 6) {
-                        Text(powerUp.isPositive ? "⚡" : "💀")
-                            .font(.system(size: 16))
-                        Text(powerUp.name.uppercased())
-                            .font(.custom(GK.pixelFontName, size: 10))
-                            .foregroundColor(powerUp.isPositive ? GK.Colors.scoreYellow : Color(red: 1.0, green: 0.35, blue: 0.35))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(Color.black.opacity(0.7))
-                            .overlay(
-                                Capsule().stroke(
-                                    (powerUp.isPositive ? GK.Colors.scoreYellow : Color(red: 1.0, green: 0.35, blue: 0.35)).opacity(0.4),
-                                    lineWidth: 1
-                                )
-                            )
-                    )
-                    Spacer().frame(height: 120)
-                }
-                .transition(.scale.combined(with: .opacity))
-                .allowsHitTesting(false)
-            }
         }
         .onAppear { setupScene() }
         .onDisappear {
@@ -224,31 +156,6 @@ struct GameContainerView: View {
                 botFinalScore = 0
                 withAnimation(.easeOut(duration: 0.15)) {
                     phase = .ready
-                }
-            },
-            onDifficultyChange: { tier in
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    difficultyToast = "DIFFICULTY: \(tier.uppercased())"
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        difficultyToast = nil
-                    }
-                }
-            },
-            onPowerUpCollect: { name, isPositive in
-                if isPositive {
-                    SoundManager.shared.play(.powerUp)
-                } else {
-                    SoundManager.shared.play(.debuff)
-                }
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    powerUpIndicator = PowerUpHUD(name: name, isPositive: isPositive)
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        powerUpIndicator = nil
-                    }
                 }
             }
         )
@@ -417,6 +324,7 @@ struct GameContainerView: View {
     private func startOpponentPolling(matchId: String, scene: GameScene) {
         opponentPollTask?.cancel()
         opponentPollTask = Task {
+            var consecutiveErrors = 0
             while !Task.isCancelled {
                 do {
                     let state = try await manager.fetchHeadToHeadState(matchId: matchId)
@@ -424,11 +332,18 @@ struct GameContainerView: View {
                         botFinalScore = state.opponentScore
                         scene.setOpponentScore(state.opponentScore)
                     }
+                    consecutiveErrors = 0  // Reset backoff on success
+                } catch is CancellationError {
+                    return
                 } catch {
+                    consecutiveErrors += 1
                     // Polling should be resilient; transient failures are ignored.
                 }
 
-                try? await Task.sleep(nanoseconds: 400_000_000)
+                // Exponential backoff: 400ms → 800ms → 1600ms, capped at 3.2s
+                let baseInterval: UInt64 = 400_000_000
+                let backoffFactor = min(UInt64(1) << min(consecutiveErrors, 3), 8)
+                try? await Task.sleep(nanoseconds: baseInterval * backoffFactor)
             }
         }
     }
@@ -675,9 +590,19 @@ struct GameContainerView: View {
             if playerWon && showBotLadderCelebration {
                 // Celebration title with golden pulse
                 VStack(spacing: 6) {
-                    Text("⭐ YOU WIN! ⭐")
-                        .font(.custom(GK.pixelFontName, size: 24))
-                        .foregroundColor(GK.Colors.scoreYellow)
+                    HStack(spacing: 6) {
+                        Image(uiImage: PixelIconFactory.shared.image(for: .star))
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 20, height: 20)
+                        Text("YOU WIN!")
+                            .font(.custom(GK.pixelFontName, size: 24))
+                            .foregroundColor(GK.Colors.scoreYellow)
+                        Image(uiImage: PixelIconFactory.shared.image(for: .star))
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 20, height: 20)
+                    }
                         .shadow(color: Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.8), radius: 8, x: 0, y: 0)
                         .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
                         .scaleEffect(celebrationPulse ? 1.08 : 0.95)
@@ -698,9 +623,22 @@ struct GameContainerView: View {
             }
 
             if isBotLadder, let target = config.targetScore {
-                Text(playerWon ? "TARGET: \(target) ✓" : "NEED: \(target)")
-                    .font(.custom(GK.pixelFontName, size: 8))
-                    .foregroundColor(playerWon ? GK.Colors.scoreYellow.opacity(0.8) : .white.opacity(0.6))
+                if playerWon {
+                    HStack(spacing: 4) {
+                        Text("TARGET: \(target)")
+                            .font(.custom(GK.pixelFontName, size: 8))
+                            .foregroundColor(GK.Colors.scoreYellow.opacity(0.8))
+                        Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
+                            .interpolation(.none)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 10, height: 10)
+                    }
+                } else {
+                    Text("NEED: \(target)")
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(.white.opacity(0.6))
+                }
             }
         } else {
             Text("GAME OVER")
@@ -761,15 +699,17 @@ struct GameContainerView: View {
 
             if showNewBest {
                 HStack(spacing: 6) {
-                    Text("★")
-                        .font(.custom(GK.pixelFontName, size: 10))
-                        .foregroundColor(GK.Colors.scoreYellow)
+                    Image(uiImage: PixelIconFactory.shared.image(for: .star))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 12, height: 12)
                     Text("NEW BEST!")
                         .font(.custom(GK.pixelFontName, size: 12))
                         .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
-                    Text("★")
-                        .font(.custom(GK.pixelFontName, size: 10))
-                        .foregroundColor(GK.Colors.scoreYellow)
+                    Image(uiImage: PixelIconFactory.shared.image(for: .star))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 12, height: 12)
                 }
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity)
@@ -814,9 +754,16 @@ struct GameContainerView: View {
 
     private var medalBadge: some View {
         let m = medal
-        return Text(m.emoji)
-            .font(.system(size: 28))
-            .padding(.trailing, 4)
+        return Group {
+            if let icon = m.pixelIcon {
+                Image(uiImage: PixelIconFactory.shared.image(for: icon))
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 28, height: 28)
+                    .padding(.trailing, 4)
+            }
+        }
     }
 
     // MARK: - Buttons
@@ -867,13 +814,15 @@ struct GameContainerView: View {
         let cardImage = shareCard.renderToImage()
 
         // Item 14: App Store link placeholder
-        let appStoreURL = URL(string: GK.appStoreURL)!
-
-        let medalText = medal != .none ? " \(medal.emoji) \(medal.displayName) medal!" : ""
+        let medalText = medal != .none ? " \(medal.displayName) medal!" : ""
         let modeText = isHeadToHead ? " in Head to Head" : ""
-        let text = "I scored \(score)\(modeText) in Floppy Duck!\(medalText) 🦆 Can you beat that?"
+        let text = "I scored \(score)\(modeText) in Floppy Duck!\(medalText) Can you beat that?"
 
-        let vc = UIActivityViewController(activityItems: [cardImage, text, appStoreURL], applicationActivities: nil)
+        var items: [Any] = [cardImage, text]
+        if let appStoreURL = URL(string: GK.appStoreURL) {
+            items.append(appStoreURL)
+        }
+        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {
             root.present(vc, animated: true)
@@ -890,25 +839,19 @@ private final class GameSceneBridge: GameSceneDelegate {
     let onBotScore: (Int) -> Void
     let onBotLadderWin: (Int) -> Void
     let onQuickRetry: (Int) -> Void
-    let onDifficultyChange: (String) -> Void
-    let onPowerUpCollect: (String, Bool) -> Void
 
     init(onStart: @escaping () -> Void,
          onScore: @escaping (Int) -> Void,
          onEnd: @escaping (Int) -> Void,
          onBotScore: @escaping (Int) -> Void = { _ in },
          onBotLadderWin: @escaping (Int) -> Void = { _ in },
-         onQuickRetry: @escaping (Int) -> Void = { _ in },
-         onDifficultyChange: @escaping (String) -> Void = { _ in },
-         onPowerUpCollect: @escaping (String, Bool) -> Void = { _, _ in }) {
+         onQuickRetry: @escaping (Int) -> Void = { _ in }) {
         self.onStart = onStart
         self.onScore = onScore
         self.onEnd = onEnd
         self.onBotScore = onBotScore
         self.onBotLadderWin = onBotLadderWin
         self.onQuickRetry = onQuickRetry
-        self.onDifficultyChange = onDifficultyChange
-        self.onPowerUpCollect = onPowerUpCollect
     }
 
     func gameDidStart() { onStart() }
@@ -917,6 +860,4 @@ private final class GameSceneBridge: GameSceneDelegate {
     func botDidScore(_ botScore: Int) { onBotScore(botScore) }
     func gameDidWinBotLadder(score: Int) { onBotLadderWin(score) }
     func gameDidQuickRetry(score: Int) { onQuickRetry(score) }
-    func gameDidChangeDifficulty(_ tier: String) { onDifficultyChange(tier) }
-    func gameDidCollectPowerUp(_ name: String, isPositive: Bool) { onPowerUpCollect(name, isPositive) }
 }

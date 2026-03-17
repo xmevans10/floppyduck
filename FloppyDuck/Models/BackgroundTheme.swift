@@ -223,13 +223,4 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// Map to legacy SkyTheme for backward compat with createSkyGradientTexture.
-    var legacySkyTheme: SkyTheme {
-        switch self {
-        case .day:      return .day
-        case .sunset:   return .sunset
-        case .night:    return .night
-        default:        return .day  // Custom themes generate their own gradient
-        }
-    }
 }

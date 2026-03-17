@@ -49,10 +49,13 @@ struct ShareCardView: View {
                     .shadow(color: Color(red: 0.2, green: 0.33, blue: 0.1, opacity: 0.9), radius: 0, x: 3, y: 3)
 
                 // Medal badge
-                if medal != .none {
+                if medal != .none, let icon = medal.pixelIcon {
                     HStack(spacing: 6) {
-                        Text(medal.emoji)
-                            .font(.system(size: 16))
+                        Image(uiImage: PixelIconFactory.shared.image(for: icon))
+                            .interpolation(.none)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 16, height: 16)
                         Text(medal.displayName.uppercased())
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(medal.themeColor)
@@ -87,7 +90,7 @@ struct ShareCardView: View {
                 .padding(.top, 4)
 
                 // CTA
-                Text("CAN YOU BEAT THIS? 🦆")
+                Text("CAN YOU BEAT THIS?")
                     .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(.white.opacity(0.6))
             }

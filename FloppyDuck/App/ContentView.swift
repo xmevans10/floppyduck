@@ -91,8 +91,11 @@ struct ContentView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 20) {
-                Text("⚠️")
-                    .font(.system(size: 48))
+                Image(uiImage: PixelIconFactory.shared.image(for: .warning, pixelScale: 5.0))
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48, height: 48)
 
                 Text("OOPS!")
                     .font(.custom(GK.pixelFontName, size: 22))
