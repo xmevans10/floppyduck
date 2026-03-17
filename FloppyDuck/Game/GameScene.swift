@@ -107,6 +107,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var clouds: [SKSpriteNode] = []
     private var hills: [SKSpriteNode] = []
     private var trees: [SKSpriteNode] = []
+    private var bushes: [SKSpriteNode] = []
 
     // Sky theme (Item 9)
     private let backgroundTheme: BackgroundTheme
@@ -177,6 +178,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupClouds()
         setupHills()
         setupTrees()
+        setupBushes()
         setupGround()
         setupGroundDetails()
         setupDuck()
@@ -262,11 +264,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let hillTex = factory.themedHillsTexture(theme: backgroundTheme)
         for i in 0..<2 {
             let hillNode = SKSpriteNode(texture: hillTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 120))
+                                         size: CGSize(width: GK.worldWidth * 2, height: 140))
             hillNode.anchorPoint = CGPoint(x: 0, y: 0)
-            hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight + 10)
+            hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight + 5)
             hillNode.zPosition = -60
-            hillNode.alpha = 0.8
+            hillNode.alpha = 0.65  // Reduced for atmospheric depth — hills feel more distant
             backgroundLayer.addChild(hillNode)
             hills.append(hillNode)
         }
@@ -283,6 +285,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             treeNode.alpha = 0.7
             backgroundLayer.addChild(treeNode)
             trees.append(treeNode)
+        }
+    }
+
+    private func setupBushes() {
+        let bushTex = factory.themedBushTexture(theme: backgroundTheme)
+        for i in 0..<2 {
+            let bushNode = SKSpriteNode(texture: bushTex,
+                                         size: CGSize(width: GK.worldWidth * 2, height: 36))
+            bushNode.anchorPoint = CGPoint(x: 0, y: 0)
+            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight)
+            bushNode.zPosition = -40   // In front of trees (-50) but behind ground (50)
+            bushNode.alpha = 0.85
+            backgroundLayer.addChild(bushNode)
+            bushes.append(bushNode)
         }
     }
 
@@ -945,6 +961,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             tree.position.x -= GK.treeSpeed * CGFloat(dt)
             if tree.position.x < -(GK.worldWidth * 2) {
                 tree.position.x += GK.worldWidth * 4
+            }
+        }
+
+        for bush in bushes {
+            bush.position.x -= GK.bushSpeed * CGFloat(dt)
+            if bush.position.x < -(GK.worldWidth * 2) {
+                bush.position.x += GK.worldWidth * 4
             }
         }
 

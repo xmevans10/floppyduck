@@ -562,74 +562,112 @@ final class TextureFactory {
 
     private func renderPixelHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
-        let ps: CGFloat = 4  // pixel size
+        let h: CGFloat = 140          // taller canvas for more dramatic peaks
+        let ps: CGFloat = 4           // pixel size
 
         let gridW = Int(w / ps)
-        let gridH = Int(h / ps)
 
-        // Generate stepped hill silhouette using overlapping bumps
-        var heightMap = [Int](repeating: 1, count: gridW)
-
-        // Deterministic hill bumps (seeded so they look good)
-        let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8,     14, 10),
-            (gridW / 4,     18, 14),
-            (gridW * 3 / 8, 10, 7),
-            (gridW / 2,     16, 12),
-            (gridW * 5 / 8, 12, 9),
-            (gridW * 3 / 4, 17, 13),
-            (gridW * 7 / 8, 13, 8),
+        // --- Back hills (distant, muted) ---
+        var backHeight = [Int](repeating: 1, count: gridW)
+        let backBumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 10,     20, 18),
+            (gridW * 3 / 10, 22, 20),
+            (gridW / 2,      18, 16),
+            (gridW * 7 / 10, 24, 22),
+            (gridW * 9 / 10, 16, 14),
         ]
-
-        for bump in bumps {
+        for bump in backBumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
                 let dist = abs(x - bump.center)
                 let nd = CGFloat(dist) / CGFloat(bump.radius)
-                let bh = Int(CGFloat(bump.peak) * (1.0 - nd * nd))
-                heightMap[x] = max(heightMap[x], bh)
+                backHeight[x] = max(backHeight[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
             }
         }
 
-        let hillBase  = UIColor(red: 0.45, green: 0.68, blue: 0.38, alpha: 0.50)
-        let hillMid   = UIColor(red: 0.52, green: 0.74, blue: 0.42, alpha: 0.45)
-        let hillTop   = UIColor(red: 0.38, green: 0.58, blue: 0.32, alpha: 0.55)  // darker top edge
-        let hillLight = UIColor(red: 0.58, green: 0.80, blue: 0.50, alpha: 0.35)  // highlight
+        // --- Front hills (closer, vivid) ---
+        var frontHeight = [Int](repeating: 1, count: gridW)
+        let frontBumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8,       14, 11),
+            (gridW / 4,       16, 14),
+            (gridW * 3 / 8,   10, 8),
+            (gridW / 2 + 5,   18, 15),
+            (gridW * 5 / 8,   12, 10),
+            (gridW * 3 / 4,   15, 13),
+            (gridW * 7 / 8,   13, 9),
+        ]
+        for bump in frontBumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                frontHeight[x] = max(frontHeight[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        // Palette — back layer muted, front layer vivid
+        let backBase  = UIColor(red: 0.35, green: 0.55, blue: 0.30, alpha: 0.35)
+        let backMid   = UIColor(red: 0.40, green: 0.60, blue: 0.34, alpha: 0.30)
+        let backTop   = UIColor(red: 0.30, green: 0.48, blue: 0.26, alpha: 0.40)
+        let frontBase = UIColor(red: 0.45, green: 0.68, blue: 0.38, alpha: 0.55)
+        let frontMid  = UIColor(red: 0.52, green: 0.74, blue: 0.42, alpha: 0.50)
+        let frontTop  = UIColor(red: 0.38, green: 0.58, blue: 0.32, alpha: 0.60)
+        let frontHL   = UIColor(red: 0.58, green: 0.80, blue: 0.50, alpha: 0.40)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Draw back hills first (behind)
             for x in 0..<gridW {
-                let hillH = heightMap[x]
-                for y in 0..<hillH {
+                let bh = backHeight[x]
+                for y in 0..<bh {
                     let yPos = h - CGFloat(y + 1) * ps
-                    // Gradient within hill: top edge dark, middle light, base medium
-                    let ratio = CGFloat(y) / max(1, CGFloat(hillH))
-                    let color: UIColor
-                    if y == hillH - 1 {
-                        color = hillTop
-                    } else if y == hillH - 2 && hillH > 3 {
-                        color = hillLight
-                    } else if ratio > 0.6 {
-                        color = hillMid
-                    } else {
-                        color = hillBase
-                    }
+                    let ratio = CGFloat(y) / max(1, CGFloat(bh))
+                    let color = y == bh - 1 ? backTop : ratio > 0.5 ? backMid : backBase
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Scatter pixel bushes/details on hill tops
-            let bushColor = UIColor(red: 0.35, green: 0.55, blue: 0.28, alpha: 0.50)
-            c.setFillColor(bushColor.cgColor)
-            for x in stride(from: 3, to: gridW - 3, by: 7) {
-                let hillH = heightMap[x]
-                if hillH > 4 {
-                    let yPos = h - CGFloat(hillH + 1) * ps
+            // Draw front hills on top
+            for x in 0..<gridW {
+                let fh = frontHeight[x]
+                for y in 0..<fh {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(fh))
+                    let color: UIColor
+                    if y == fh - 1 { color = frontTop }
+                    else if y == fh - 2 && fh > 4 { color = frontHL }
+                    else if ratio > 0.6 { color = frontMid }
+                    else { color = frontBase }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Scatter pixel detail on front hill peaks — tiny bushes + flowers
+            let bushColor = UIColor(red: 0.35, green: 0.55, blue: 0.28, alpha: 0.55)
+            let flowerColors: [UIColor] = [
+                UIColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 0.90),
+                UIColor(red: 1.0, green: 0.85, blue: 0.20, alpha: 0.90),
+                UIColor(red: 0.80, green: 0.40, blue: 0.85, alpha: 0.85),
+                UIColor(red: 0.95, green: 0.60, blue: 0.80, alpha: 0.85),
+            ]
+            var flowerSeed = 42
+            for x in stride(from: 3, to: gridW - 3, by: 5) {
+                let fh = frontHeight[x]
+                if fh > 5 {
+                    // Small bush on peak
+                    let yPos = h - CGFloat(fh + 1) * ps
+                    c.setFillColor(bushColor.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps * 2, height: ps))
                     c.fill(CGRect(x: CGFloat(x - 1) * ps, y: yPos + ps, width: ps, height: ps))
                     c.fill(CGRect(x: CGFloat(x + 2) * ps, y: yPos + ps, width: ps, height: ps))
+                    // Occasional flower dot
+                    flowerSeed = (flowerSeed &* 1103515245 &+ 12345) & 0x7FFFFFFF
+                    if flowerSeed % 3 == 0 {
+                        c.setFillColor(flowerColors[flowerSeed % flowerColors.count].cgColor)
+                        c.fill(CGRect(x: CGFloat(x + 1) * ps, y: yPos - ps, width: ps, height: ps))
+                    }
                 }
             }
         }
@@ -1032,7 +1070,7 @@ final class TextureFactory {
 
     private func renderSunsetHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 140
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
@@ -1079,7 +1117,7 @@ final class TextureFactory {
 
     private func renderNightHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 140
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
@@ -1126,7 +1164,7 @@ final class TextureFactory {
 
     private func renderCitySkylineHills(neon: Bool) -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 140
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
         let gridH = Int(h / ps)
@@ -1218,7 +1256,7 @@ final class TextureFactory {
 
     private func renderCoralReefHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 140
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
@@ -1300,7 +1338,7 @@ final class TextureFactory {
 
     private func renderVolcanoHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 140
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
@@ -1353,7 +1391,7 @@ final class TextureFactory {
 
     private func renderArcticHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 140
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
@@ -1401,7 +1439,7 @@ final class TextureFactory {
 
     private func renderSpaceTerrainHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 140
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 

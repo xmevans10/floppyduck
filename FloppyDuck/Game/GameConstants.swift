@@ -38,6 +38,7 @@ enum GK {
     static let cloudSpeed:    CGFloat = 20
     static let hillSpeed:     CGFloat = 15
     static let treeSpeed:     CGFloat = 40
+    static let bushSpeed:     CGFloat = 65   // Foreground bushes — fastest parallax layer
 
     // MARK: - Duck positioning
     static let duckStartY:  CGFloat = 400
