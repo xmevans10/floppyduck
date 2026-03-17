@@ -164,6 +164,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         worldNode.addChild(pipeLayer)
         worldNode.addChild(groundLayer)
         worldNode.addChild(foregroundLayer)
+        hudLayer.zPosition = 1000   // Ensure HUD always renders above worldNode (pipes, duck, etc.)
         addChild(hudLayer)
 
         // Parallax: sky gradient, clouds, hills, trees, ground tiles, details, stars
@@ -227,7 +228,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
         sprite.physicsBody?.categoryBitMask = GK.duckCategory
         sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
-        sprite.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
+        // Only collide with ground — pipe contacts trigger game over via didBegin(_:)
+        // but must NOT physically push the duck (causes progressive leftward drift).
+        sprite.physicsBody?.collisionBitMask = GK.groundCategory
         sprite.physicsBody?.allowsRotation = false
         sprite.physicsBody?.restitution = 0
         sprite.physicsBody?.linearDamping = 0
@@ -748,13 +751,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Parallax scrolling (ground tiles, details, clouds, hills, trees)
         parallax.update(dt: dt)
 
-        // Item 2: Duck rotation with safe optional
+        // Item 2: Duck rotation with safe optional + horizontal position clamp
         if let duck, let vy = duck.physicsBody?.velocity.dy {
             let flapRef = difficulty.effectiveFlapImpulse
             let target = vy > 0
                 ? min(vy / flapRef * 0.4, 0.4)
                 : max(vy / 400, -CGFloat.pi / 2)
             duck.zRotation += (target - duck.zRotation) * 0.10
+
+            // Pin horizontal position — duck should only move vertically.
+            // Prevents any residual horizontal drift from physics resolution.
+            if duck.position.x != GK.duckStartX {
+                duck.position.x = GK.duckStartX
+                duck.physicsBody?.velocity.dx = 0
+            }
         }
 
         if mode == .vsBot {
@@ -1224,7 +1234,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
         body.categoryBitMask = GK.duckCategory
         body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
-        body.collisionBitMask = GK.groundCategory | GK.pipeCategory
+        body.collisionBitMask = GK.groundCategory   // Ground only — no pipe collision (prevents drift)
         body.allowsRotation = false
         body.restitution = 0
         body.linearDamping = 0
@@ -1506,9 +1516,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Restore full opacity
         duck.alpha = 1.0
 
-        // Re-enable pipe collisions
+        // Re-enable pipe contact detection (game over) — no physics collision (prevents drift)
         duck.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
-        duck.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
+        duck.physicsBody?.collisionBitMask = GK.groundCategory
 
         // Remove glow
         removeGhostGlow()
