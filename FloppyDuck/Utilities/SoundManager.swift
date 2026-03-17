@@ -104,8 +104,9 @@ final class SoundManager {
             guard let self else { return }
             guard self.isEnabled else { return }
             guard !self.menuTracks.isEmpty else { return }
-            // Stop any currently playing menu music
-            self.bgmPlayer?.stop()
+            // Don't restart if menu music is already playing — preserves
+            // continuity when navigating between Home/Shop/Settings/etc.
+            if let current = self.bgmPlayer, current.isPlaying { return }
             // Pick a random track from the Adventure pack
             let track = self.menuTracks.randomElement()!
             track.numberOfLoops = -1

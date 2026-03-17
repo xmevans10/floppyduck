@@ -387,7 +387,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         sprite.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         sprite.zPosition = 40
 
-        sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
+        sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.80)
         sprite.physicsBody?.categoryBitMask = GK.duckCategory
         sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         sprite.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
@@ -795,6 +795,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             // Quick retry — tap during death animation to skip game-over and restart instantly.
             // Disabled for head-to-head (match finalization required).
             guard mode != .headToHead else { break }
+            // Don't allow quick-retry during bot ladder win celebration —
+            // the celebration callback needs to fire to register the win.
+            guard !botLadderWinTriggered else { break }
             self.removeAllActions()
             duck?.removeAllActions()
             deathVignette?.removeFromParent()
@@ -1412,7 +1415,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.setScale(1.0)
 
         // Restore base physics body
-        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
+        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.80)
         body.categoryBitMask = GK.duckCategory
         body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         body.collisionBitMask = GK.groundCategory | GK.pipeCategory
