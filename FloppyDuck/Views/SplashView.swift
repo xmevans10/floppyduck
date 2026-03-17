@@ -41,12 +41,9 @@ struct SplashView: View {
             VStack(spacing: 16) {
                 // Title text — coin-flip spin via Y-axis 3D rotation with shiny metallic mask
                 Text("FLOPPY DUCK")
-                    .font(.custom(GK.pixelFontName, size: 38))
+                    .font(.custom(GK.pixelFontName, size: 34))
                     .foregroundColor(.yellow)
                     .shadow(color: .orange, radius: 0, x: 2, y: 2)
-                    .padding(.horizontal, 24)
-                    .minimumScaleFactor(0.8)
-                    .lineLimit(1)
                     .mask(
                         LinearGradient(
                             stops: clampedShineStops(),

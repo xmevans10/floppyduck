@@ -32,7 +32,7 @@ final class TextureFactory {
 
     /// Store a texture in cache with LRU eviction when over capacity.
     private func cacheStore(_ key: String, _ tex: SKTexture) {
-        cacheStore(key, tex)
+        cache[key] = tex
         cacheOrder.append(key)
         // Evict oldest entries when over capacity
         while cache.count > Self.maxCacheSize, let oldest = cacheOrder.first {
