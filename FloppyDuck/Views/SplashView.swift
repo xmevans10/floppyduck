@@ -19,6 +19,21 @@ struct SplashView: View {
     // Shine effect
     @State private var shineOffset: CGFloat = -1.0
 
+    /// Gradient stop locations must be in ascending order within [0, 1].
+    /// shineOffset starts at −1 and animates to 1.2, so we clamp each stop.
+    private func clampedShineStops() -> [Gradient.Stop] {
+        let lo = max(0, min(1, shineOffset - 0.2))
+        let mid = max(0, min(1, shineOffset))
+        let hi = max(0, min(1, shineOffset + 0.2))
+        return [
+            .init(color: .black, location: 0),
+            .init(color: .black, location: lo),
+            .init(color: .white, location: mid),
+            .init(color: .black, location: hi),
+            .init(color: .black, location: 1)
+        ]
+    }
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -26,18 +41,15 @@ struct SplashView: View {
             VStack(spacing: 16) {
                 // Title text — coin-flip spin via Y-axis 3D rotation with shiny metallic mask
                 Text("FLOPPY DUCK")
-                    .font(.custom(GK.pixelFontName, size: 32))
+                    .font(.custom(GK.pixelFontName, size: 38))
                     .foregroundColor(.yellow)
                     .shadow(color: .orange, radius: 0, x: 2, y: 2)
+                    .padding(.horizontal, 24)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(1)
                     .mask(
                         LinearGradient(
-                            stops: [
-                                .init(color: .black, location: 0),
-                                .init(color: .black, location: shineOffset - 0.2),
-                                .init(color: .white, location: shineOffset),
-                                .init(color: .black, location: shineOffset + 0.2),
-                                .init(color: .black, location: 1)
-                            ],
+                            stops: clampedShineStops(),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
