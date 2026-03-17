@@ -12,6 +12,7 @@ enum AppRoute: Hashable {
     case botLadder
     case collection
     case leaderboard
+    case achievements
 }
 
 struct GameModeConfig: Identifiable, Hashable {

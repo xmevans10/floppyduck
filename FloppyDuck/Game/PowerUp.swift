@@ -4,88 +4,107 @@ import SwiftUI
 // MARK: - Power-Up Types
 
 /// Collectible items that spawn in pipe gaps during gameplay.
-/// Power-ups grant temporary buffs; weaknesses impose temporary debuffs.
+/// Power-ups grant temporary buffs; debuffs impose temporary penalties.
 enum PowerUpKind: String, CaseIterable {
     // Power-ups (positive)
-    case shield      // Absorbs one collision
-    case slowMo      // Reduces pipe speed by 35% for 4 seconds
-    case miniDuck    // Shrinks hitbox by 35% for 5 seconds
-    case breadMagnet // 3× bread multiplier for next 5 pipes
+    case shield        // Absorbs one pipe collision
+    case pipeExpander  // Widens gap for next 3 pipes by 30%
+    case breadMagnet   // Attracts bread collectibles within larger radius for next 5 pipes
+    case slowMotion    // Reduces pipe speed by 35% for 5 seconds
+    case ghostDuck     // Phase through pipes for 3 seconds
 
-    // Weaknesses (negative)
-    case heavyWings  // Gravity +40% for 4 seconds
-    case windGust    // Random horizontal push for 3 seconds
-    case fatDuck     // Hitbox +40% for 4 seconds
+    // Debuffs (negative)
+    case pipeSqueeze   // Narrows gap for next 3 pipes by 20%
+    case speedBurst    // Pipes 40% faster for 5 seconds
+    case dizzyDuck     // Controls invert for 3 seconds
 
     var isPositive: Bool {
         switch self {
-        case .shield, .slowMo, .miniDuck, .breadMagnet:
+        case .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck:
             return true
-        case .heavyWings, .windGust, .fatDuck:
+        case .pipeSqueeze, .speedBurst, .dizzyDuck:
             return false
         }
     }
 
     var displayName: String {
         switch self {
-        case .shield:      return "SHIELD"
-        case .slowMo:      return "SLOW-MO"
-        case .miniDuck:    return "MINI"
-        case .breadMagnet: return "BREAD x3"
-        case .heavyWings:  return "HEAVY"
-        case .windGust:    return "WIND"
-        case .fatDuck:     return "THICC"
+        case .shield:       return "SHIELD"
+        case .pipeExpander: return "EXPAND"
+        case .breadMagnet:  return "MAGNET"
+        case .slowMotion:   return "SLOW-MO"
+        case .ghostDuck:    return "GHOST"
+        case .pipeSqueeze:  return "SQUEEZE"
+        case .speedBurst:   return "SPEED!"
+        case .dizzyDuck:    return "DIZZY"
         }
     }
 
     var emoji: String {
         switch self {
-        case .shield:      return "🛡️"
-        case .slowMo:      return "⏳"
-        case .miniDuck:    return "🔬"
-        case .breadMagnet: return "🍞"
-        case .heavyWings:  return "🪨"
-        case .windGust:    return "💨"
-        case .fatDuck:     return "🎈"
+        case .shield:       return "🛡️"
+        case .pipeExpander: return "↔️"
+        case .breadMagnet:  return "🧲"
+        case .slowMotion:   return "⏳"
+        case .ghostDuck:    return "👻"
+        case .pipeSqueeze:  return "🗜️"
+        case .speedBurst:   return "⚡"
+        case .dizzyDuck:    return "😵"
         }
     }
 
-    /// Duration in seconds (0 = instant/permanent until consumed).
+    /// Duration in seconds (0 = instant/permanent until consumed or pipe-count based).
     var duration: TimeInterval {
         switch self {
-        case .shield:      return 0     // until hit
-        case .slowMo:      return 4.0
-        case .miniDuck:    return 5.0
-        case .breadMagnet: return 0     // next 5 pipes
-        case .heavyWings:  return 4.0
-        case .windGust:    return 3.0
-        case .fatDuck:     return 4.0
+        case .shield:       return 0      // until hit
+        case .pipeExpander: return 0      // next 3 pipes
+        case .breadMagnet:  return 0      // next 5 pipes
+        case .slowMotion:   return 5.0
+        case .ghostDuck:    return 3.0
+        case .pipeSqueeze:  return 0      // next 3 pipes
+        case .speedBurst:   return 5.0
+        case .dizzyDuck:    return 3.0
         }
     }
+
+    /// Initial remaining-pipe count for pipe-count based power-ups, nil otherwise.
+    var initialPipeCount: Int? {
+        switch self {
+        case .pipeExpander: return 3
+        case .breadMagnet:  return 5
+        case .pipeSqueeze:  return 3
+        default:            return nil
+        }
+    }
+
+    /// Whether this power-up expires by pipe count rather than time.
+    var isPipeCountBased: Bool { initialPipeCount != nil }
 
     /// Spawn probability weight (higher = more likely).
     var spawnWeight: Double {
         switch self {
-        case .shield:      return 1.0
-        case .slowMo:      return 1.5
-        case .miniDuck:    return 1.2
-        case .breadMagnet: return 2.0
-        case .heavyWings:  return 1.8
-        case .windGust:    return 1.5
-        case .fatDuck:     return 1.2
+        case .shield:       return 1.0
+        case .pipeExpander: return 1.2
+        case .breadMagnet:  return 2.0
+        case .slowMotion:   return 1.5
+        case .ghostDuck:    return 0.8
+        case .pipeSqueeze:  return 1.5
+        case .speedBurst:   return 1.2
+        case .dizzyDuck:    return 1.0
         }
     }
 
     /// Particle color for the collectible glow.
     var glowColor: UIColor {
         switch self {
-        case .shield:      return UIColor(red: 0.3, green: 0.7, blue: 1.0, alpha: 1)
-        case .slowMo:      return UIColor(red: 0.5, green: 0.9, blue: 0.5, alpha: 1)
-        case .miniDuck:    return UIColor(red: 0.8, green: 0.5, blue: 1.0, alpha: 1)
-        case .breadMagnet: return UIColor(red: 0.85, green: 0.68, blue: 0.3, alpha: 1)
-        case .heavyWings:  return UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)
-        case .windGust:    return UIColor(red: 0.7, green: 0.85, blue: 0.95, alpha: 1)
-        case .fatDuck:     return UIColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1)
+        case .shield:       return UIColor(red: 0.3, green: 0.7, blue: 1.0, alpha: 1)   // blue
+        case .pipeExpander: return UIColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1)   // green
+        case .breadMagnet:  return UIColor(red: 0.85, green: 0.68, blue: 0.3, alpha: 1) // warm gold
+        case .slowMotion:   return UIColor(red: 0.5, green: 0.9, blue: 0.5, alpha: 1)   // light green
+        case .ghostDuck:    return UIColor(red: 0.9, green: 0.9, blue: 0.95, alpha: 1)  // white/silver
+        case .pipeSqueeze:  return UIColor(red: 0.35, green: 0.35, blue: 0.4, alpha: 1) // dark gray
+        case .speedBurst:   return UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1)   // red
+        case .dizzyDuck:    return UIColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1)   // purple
         }
     }
 
@@ -100,9 +119,10 @@ struct ActivePowerUp: Identifiable {
     let id = UUID()
     let kind: PowerUpKind
     let startTime: TimeInterval
-    var remainingPipes: Int?   // for breadMagnet
+    var remainingPipes: Int?   // for pipeExpander, breadMagnet, pipeSqueeze
 
     var isTimeBased: Bool { kind.duration > 0 }
+    var isPipeCountBased: Bool { kind.isPipeCountBased }
 
     func isExpired(currentTime: TimeInterval) -> Bool {
         if let remaining = remainingPipes {
@@ -114,6 +134,9 @@ struct ActivePowerUp: Identifiable {
 
     /// Progress 0→1 for UI display (1 = just started, 0 = about to expire).
     func progress(currentTime: TimeInterval) -> CGFloat {
+        if let remaining = remainingPipes, let initial = kind.initialPipeCount {
+            return CGFloat(remaining) / CGFloat(initial)
+        }
         guard kind.duration > 0 else { return 1.0 }
         let elapsed = currentTime - startTime
         return max(0, 1.0 - CGFloat(elapsed / kind.duration))
@@ -159,8 +182,8 @@ final class PowerUpSpawnManager {
     // MARK: - Weighted Random
 
     private func weightedRandomPowerUp(tier: DifficultyTier) -> PowerUpKind {
-        // At higher tiers, weaknesses become more common
-        let weaknessBoost: Double = {
+        // At higher tiers, debuffs become more common
+        let debuffBoost: Double = {
             switch tier {
             case .easy:   return 0.3
             case .medium: return 0.7
@@ -172,7 +195,7 @@ final class PowerUpSpawnManager {
         var weights: [(PowerUpKind, Double)] = PowerUpKind.allCases.map { kind in
             var w = kind.spawnWeight
             if !kind.isPositive {
-                w *= weaknessBoost
+                w *= debuffBoost
             }
             // Don't spawn the same kind twice in a row
             if kind == lastSpawnedKind {

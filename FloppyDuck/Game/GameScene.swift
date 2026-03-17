@@ -94,6 +94,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var pendingPowerUpKind: PowerUpKind?
     private var shieldCooldown: Bool = false
 
+    // Ghost duck visual
+    private var ghostGlowNode: SKShapeNode?
+
+    // Bread collectibles
+    private var breadCollected: Int = 0
+
+    /// Public accessor for views to display bread count.
+    var totalBreadCollected: Int { breadCollected }
+
     // Parallax layers
     private var clouds: [SKSpriteNode] = []
     private var hills: [SKSpriteNode] = []
@@ -116,11 +125,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Floating score popup pool (pre-allocated to avoid per-point allocations)
     private var scorePopupPool: [SKLabelNode] = []
     private var scorePopupPoolIndex: Int = 0
-
-    /// Bread multiplier for economy layer (3× when BreadMagnet is active).
-    var breadMultiplier: Int {
-        activePowerUps.contains(where: { $0.kind == .breadMagnet && ($0.remainingPipes ?? 0) > 0 }) ? 3 : 1
-    }
 
     // MARK: - Init
 
@@ -385,7 +389,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
         sprite.physicsBody?.categoryBitMask = GK.duckCategory
-        sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory
+        sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         sprite.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
         sprite.physicsBody?.allowsRotation = false
         sprite.physicsBody?.restitution = 0
@@ -555,7 +559,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let currentPipeIndex = pipeIndex
         pipeIndex += 1
 
-        let effectiveGap = difficulty.effectivePipeGap
+        var effectiveGap = difficulty.effectivePipeGap
+
+        // Power-up gap modifiers
+        if activePowerUps.contains(where: { $0.kind == .pipeExpander && ($0.remainingPipes ?? 0) > 0 }) {
+            effectiveGap *= 1.3
+        }
+        if activePowerUps.contains(where: { $0.kind == .pipeSqueeze && ($0.remainingPipes ?? 0) > 0 }) {
+            effectiveGap *= 0.8
+        }
 
         let pipeNode = SKNode()
         pipeNode.position = CGPoint(x: GK.worldWidth + GK.pipeWidth, y: 0)
@@ -665,6 +677,106 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
 
         pipeLayer.addChild(pipeNode)
+
+        // Spawn bread collectibles between pipes (~60% chance)
+        if CGFloat.random(in: 0...1) < 0.6 {
+            spawnBreadGroup(afterPipeX: GK.worldWidth + GK.pipeWidth, gapY: gapY, moveDuration: moveDuration, moveDistance: moveDistance)
+        }
+    }
+
+    // MARK: - Bread Collectibles
+
+    /// Spawns 1–3 bread slices between the current pipe and the next expected pipe position.
+    private func spawnBreadGroup(afterPipeX: CGFloat, gapY: CGFloat, moveDuration: TimeInterval, moveDistance: CGFloat) {
+        let breadCount = Int.random(in: 1...3)
+        let spacing = currentPipeSpeed * CGFloat(GK.pipeSpawnInterval)
+        let minBreadY = GK.groundHeight + 40
+        let maxBreadY = GK.worldHeight * 0.80
+
+        for i in 0..<breadCount {
+            let xOffset = CGFloat.random(in: (spacing * 0.25)...(spacing * 0.75))
+            let breadX = afterPipeX + xOffset + CGFloat(i) * 20
+            let breadY = CGFloat.random(in: minBreadY...maxBreadY)
+
+            let breadNode = SKLabelNode(text: "🍞")
+            breadNode.fontSize = 16
+            breadNode.verticalAlignmentMode = .center
+            breadNode.horizontalAlignmentMode = .center
+            breadNode.position = CGPoint(x: breadX, y: breadY)
+            breadNode.zPosition = 25
+            breadNode.name = "bread"
+
+            // Physics body for collection
+            breadNode.physicsBody = SKPhysicsBody(circleOfRadius: 10)
+            breadNode.physicsBody?.isDynamic = false
+            breadNode.physicsBody?.categoryBitMask = GK.breadCategory
+            breadNode.physicsBody?.contactTestBitMask = GK.duckCategory
+            breadNode.physicsBody?.collisionBitMask = 0
+
+            // Gentle bob animation
+            let bob = SKAction.sequence([
+                SKAction.moveBy(x: 0, y: 5, duration: 0.4),
+                SKAction.moveBy(x: 0, y: -5, duration: 0.4),
+            ])
+            breadNode.run(SKAction.repeatForever(bob))
+
+            // Move left with pipe speed + auto-remove
+            let breadMoveDistance = breadX + GK.pipeWidth
+            let breadMoveDuration = TimeInterval(breadMoveDistance / currentPipeSpeed)
+            breadNode.run(SKAction.sequence([
+                SKAction.moveBy(x: -breadMoveDistance, y: 0, duration: breadMoveDuration),
+                SKAction.removeFromParent()
+            ]))
+
+            pipeLayer.addChild(breadNode)
+        }
+    }
+
+    /// Called when duck contacts a bread node.
+    private func collectBread(node: SKNode) {
+        node.removeFromParent()
+        breadCollected += 1
+        SoundManager.shared.play(.score)
+        Haptic.score()
+
+        // Tiny "+1 🍞" popup
+        guard let duck else { return }
+        let popup = SKLabelNode(fontNamed: GK.pixelFontName)
+        popup.text = "+1 🍞"
+        popup.fontSize = 10
+        popup.fontColor = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1)
+        popup.position = CGPoint(x: duck.position.x + 15, y: duck.position.y + 20)
+        popup.zPosition = 300
+        worldNode.addChild(popup)
+
+        let floatUp = SKAction.moveBy(x: 0, y: 35, duration: 0.5)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+        popup.run(SKAction.sequence([
+            SKAction.group([floatUp, fadeOut]),
+            SKAction.removeFromParent()
+        ]))
+    }
+
+    // MARK: - Bread Magnet Effect
+
+    /// Attracts nearby bread nodes toward the duck each frame when breadMagnet is active.
+    private func applyBreadMagnetEffect() {
+        guard let duck else { return }
+        let magnetRadius: CGFloat = 120
+        let magnetStrength: CGFloat = 3.0
+
+        for child in pipeLayer.children where child.name == "bread" {
+            let breadWorldPos = child.convert(CGPoint.zero, to: worldNode)
+            let dx = duck.position.x - breadWorldPos.x
+            let dy = duck.position.y - breadWorldPos.y
+            let distance = sqrt(dx * dx + dy * dy)
+
+            if distance < magnetRadius && distance > 1 {
+                let factor = magnetStrength * (1.0 - distance / magnetRadius)
+                child.position.x += dx / distance * factor
+                child.position.y += dy / distance * factor
+            }
+        }
     }
 
     // MARK: - Touch / Flap
@@ -697,7 +809,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Item 2: Safe optional chaining for duck
     func flap() {
         guard phase == .playing, let duck else { return }
-        duck.physicsBody?.velocity = CGVector(dx: 0, dy: difficulty.effectiveFlapImpulse)
+
+        // DizzyDuck: invert flap direction (push down instead of up)
+        let impulse: CGFloat
+        if activePowerUps.contains(where: { $0.kind == .dizzyDuck }) {
+            impulse = -difficulty.effectiveFlapImpulse
+        } else {
+            impulse = difficulty.effectiveFlapImpulse
+        }
+
+        duck.physicsBody?.velocity = CGVector(dx: 0, dy: impulse)
         Haptic.flap()
         SoundManager.shared.play(.flap)
 
@@ -747,24 +868,38 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // --- Power-up tick: expire finished effects ---
         tickPowerUps(currentTime: currentTime)
 
-        // --- Difficulty-driven gravity (+ HeavyWings modifier) ---
+        // --- Difficulty-driven gravity ---
         var gravity = difficulty.effectiveGravity
-        if activePowerUps.contains(where: { $0.kind == .heavyWings }) {
-            gravity *= 1.4
+
+        // DizzyDuck: invert gravity direction
+        if activePowerUps.contains(where: { $0.kind == .dizzyDuck }) {
+            gravity = -gravity
         }
+
         physicsWorld.gravity = CGVector(dx: 0, dy: gravity / 60)
 
-        // --- Difficulty-driven pipe speed (+ SlowMo modifier) ---
+        // --- Difficulty-driven pipe speed ---
         var speed = difficulty.effectivePipeSpeed
-        if activePowerUps.contains(where: { $0.kind == .slowMo }) {
+
+        // SlowMotion: reduce pipe speed by 35%
+        if activePowerUps.contains(where: { $0.kind == .slowMotion }) {
             speed *= 0.65
         }
+        // SpeedBurst: increase pipe speed by 40%
+        if activePowerUps.contains(where: { $0.kind == .speedBurst }) {
+            speed *= 1.4
+        }
+
         currentPipeSpeed = speed
 
-        // --- Wind gust: random horizontal push each frame ---
-        if activePowerUps.contains(where: { $0.kind == .windGust }) {
-            let push = CGFloat.random(in: -80...80)
-            duck?.physicsBody?.applyImpulse(CGVector(dx: push * CGFloat(dt), dy: 0))
+        // --- GhostDuck visual: maintain alpha while active ---
+        if activePowerUps.contains(where: { $0.kind == .ghostDuck }) {
+            duck?.alpha = 0.4
+        }
+
+        // --- BreadMagnet: attract nearby bread each frame ---
+        if activePowerUps.contains(where: { $0.kind == .breadMagnet && ($0.remainingPipes ?? 0) > 0 }) {
+            applyBreadMagnetEffect()
         }
 
         // Spawn pipes
@@ -938,6 +1073,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let bodies = [contact.bodyA, contact.bodyB]
         let masks = bodies.map { $0.categoryBitMask }
 
+        // --- Bread collectible contact ---
+        if masks.contains(GK.breadCategory) && masks.contains(GK.duckCategory) {
+            if let breadNode = bodies.first(where: { $0.categoryBitMask == GK.breadCategory })?.node {
+                collectBread(node: breadNode)
+            }
+            return
+        }
+
         // --- Score trigger contact ---
         if masks.contains(GK.scoreCategory) && masks.contains(GK.duckCategory) {
             bodies.first { $0.categoryBitMask == GK.scoreCategory }?.node?.removeFromParent()
@@ -961,9 +1104,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 pendingPowerUpKind = kind
             }
 
-            // --- BreadMagnet pipe tracking ---
+            // --- Pipe-count-based power-up tracking (breadMagnet, pipeExpander, pipeSqueeze) ---
             for i in activePowerUps.indices {
-                if activePowerUps[i].kind == .breadMagnet, activePowerUps[i].remainingPipes != nil {
+                if activePowerUps[i].remainingPipes != nil {
                     activePowerUps[i].remainingPipes! -= 1
                 }
             }
@@ -997,8 +1140,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // --- Pipe / ground collision ---
         if phase == .playing {
-            // Shield absorbs pipe collisions (not ground)
+            // GhostDuck: ignore pipe collisions entirely
             let isPipeHit = masks.contains(GK.pipeCategory)
+            if isPipeHit && activePowerUps.contains(where: { $0.kind == .ghostDuck }) {
+                return
+            }
+
+            // Shield absorbs pipe collisions (not ground)
             if isPipeHit && (hasActiveShield() || shieldCooldown) {
                 if hasActiveShield() {
                     consumeShield()
@@ -1020,6 +1168,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Bump duck above ground layers so it doesn't clip behind them
         duck.zPosition = 60
+
+        // Restore duck alpha in case ghostDuck was active
+        duck.alpha = 1.0
+        removeGhostGlow()
 
         // Freeze all scrolling layers — parallax stops immediately on death
         pipeLayer.isPaused = true
@@ -1233,9 +1385,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Clear power-up state
         activePowerUps.removeAll()
         removeShieldVisual()
+        removeGhostGlow()
         shieldCooldown = false
         pendingPowerUpKind = nil
         powerUpSpawner.reset()
+
+        // Reset bread collectibles
+        breadCollected = 0
 
         // Reset bot ladder win guard
         botLadderWinTriggered = false
@@ -1253,12 +1409,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.zRotation = 0
         duck.alpha = 1.0
         duck.zPosition = 40  // restore original z after death bump
-        duck.setScale(1.0)   // restore scale from MiniDuck / FatDuck power-ups
+        duck.setScale(1.0)
 
-        // Restore base physics body (handles scale-modified body from power-ups)
+        // Restore base physics body
         let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
         body.categoryBitMask = GK.duckCategory
-        body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory
+        body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         body.collisionBitMask = GK.groundCategory | GK.pipeCategory
         body.allowsRotation = false
         body.restitution = 0
@@ -1385,29 +1541,30 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         activatePowerUp(kind: kind)
 
         Haptic.score()
-        SoundManager.shared.play(.powerUp)
+
+        // Play appropriate sound: positive power-ups get .powerUp, negative get .debuff
+        if kind.isPositive {
+            SoundManager.shared.play(.powerUp)
+        } else {
+            SoundManager.shared.play(.debuff)
+        }
     }
 
     /// Activates a power-up effect.
     private func activatePowerUp(kind: PowerUpKind) {
+        let pipeCountKinds: Set<PowerUpKind> = [.breadMagnet, .pipeExpander, .pipeSqueeze]
         let powerUp = ActivePowerUp(
             kind: kind,
             startTime: lastUpdate,
-            remainingPipes: kind == .breadMagnet ? 5 : nil
+            remainingPipes: pipeCountKinds.contains(kind) ? 5 : nil
         )
         activePowerUps.append(powerUp)
 
         switch kind {
         case .shield:
             addShieldVisual()
-        case .miniDuck:
-            // Mutually exclusive with fatDuck
-            activePowerUps.removeAll { $0.kind == .fatDuck }
-            applyDuckScale(0.65)
-        case .fatDuck:
-            // Mutually exclusive with miniDuck
-            activePowerUps.removeAll { $0.kind == .miniDuck }
-            applyDuckScale(1.4)
+        case .ghostDuck:
+            activateGhostDuck()
         default:
             break
         }
@@ -1418,18 +1575,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         switch powerUp.kind {
         case .shield:
             removeShieldVisual()
-        case .miniDuck:
-            if activePowerUps.contains(where: { $0.kind == .fatDuck }) {
-                applyDuckScale(1.4)
-            } else {
-                restoreDuckScale()
-            }
-        case .fatDuck:
-            if activePowerUps.contains(where: { $0.kind == .miniDuck }) {
-                applyDuckScale(0.65)
-            } else {
-                restoreDuckScale()
-            }
+        case .ghostDuck:
+            deactivateGhostDuck()
         default:
             break
         }
@@ -1515,29 +1662,54 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.run(SKAction.repeat(blink, count: 3), withKey: "shieldBlink")
     }
 
-    // MARK: Duck Scale (MiniDuck / FatDuck)
+    // MARK: Ghost Duck Visual
 
-    private func applyDuckScale(_ scale: CGFloat) {
+    private func activateGhostDuck() {
         guard let duck else { return }
-        duck.setScale(scale)
 
-        let radius = GK.duckRadius * 0.68 * scale
-        let oldBody = duck.physicsBody
-        let newBody = SKPhysicsBody(circleOfRadius: radius)
-        newBody.categoryBitMask = GK.duckCategory
-        newBody.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory
-        newBody.collisionBitMask = GK.groundCategory | GK.pipeCategory
-        newBody.allowsRotation = false
-        newBody.restitution = 0
-        newBody.linearDamping = 0
-        newBody.usesPreciseCollisionDetection = true
-        newBody.isDynamic = oldBody?.isDynamic ?? true
-        newBody.velocity = oldBody?.velocity ?? .zero
-        duck.physicsBody = newBody
+        // Semi-transparent duck
+        duck.alpha = 0.4
+
+        // Disable pipe collision while ghost is active
+        duck.physicsBody?.contactTestBitMask = GK.groundCategory | GK.powerUpCategory | GK.breadCategory
+        duck.physicsBody?.collisionBitMask = GK.groundCategory
+
+        // Add subtle white glow behind duck
+        guard ghostGlowNode == nil else { return }
+        let glow = SKShapeNode(circleOfRadius: GK.duckRadius * 1.8)
+        glow.fillColor = UIColor(white: 1.0, alpha: 0.15)
+        glow.strokeColor = UIColor(white: 1.0, alpha: 0.3)
+        glow.lineWidth = 1.5
+        glow.zPosition = -1
+        glow.name = "ghostGlow"
+
+        let pulse = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.08, duration: 0.6),
+            SKAction.fadeAlpha(to: 0.2, duration: 0.6),
+        ])
+        glow.run(SKAction.repeatForever(pulse))
+
+        duck.addChild(glow)
+        ghostGlowNode = glow
     }
 
-    private func restoreDuckScale() {
-        applyDuckScale(1.0)
+    private func deactivateGhostDuck() {
+        guard let duck else { return }
+
+        // Restore full opacity
+        duck.alpha = 1.0
+
+        // Re-enable pipe collisions
+        duck.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
+        duck.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
+
+        // Remove glow
+        removeGhostGlow()
+    }
+
+    private func removeGhostGlow() {
+        ghostGlowNode?.removeFromParent()
+        ghostGlowNode = nil
     }
 
     // MARK: Power-Up Collected Label

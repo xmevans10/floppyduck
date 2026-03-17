@@ -12,9 +12,20 @@ final class PowerUpTests: XCTestCase {
         }
     }
 
+    func testAllPowerUpKindsHaveEmoji() {
+        for kind in PowerUpKind.allCases {
+            XCTAssertFalse(kind.emoji.isEmpty,
+                "\(kind.rawValue) should have a non-empty emoji")
+        }
+    }
+
     func testPositiveNegativeClassification() {
-        let expectedPositive: Set<PowerUpKind> = [.shield, .slowMo, .miniDuck, .breadMagnet]
-        let expectedNegative: Set<PowerUpKind> = [.heavyWings, .windGust, .fatDuck]
+        let expectedPositive: Set<PowerUpKind> = [
+            .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck
+        ]
+        let expectedNegative: Set<PowerUpKind> = [
+            .pipeSqueeze, .speedBurst, .dizzyDuck
+        ]
 
         for kind in PowerUpKind.allCases {
             if expectedPositive.contains(kind) {
@@ -37,20 +48,80 @@ final class PowerUpTests: XCTestCase {
         }
     }
 
+    func testBreadMagnetHasHigherWeight() {
+        let magnetWeight = PowerUpKind.breadMagnet.spawnWeight
+        for kind in PowerUpKind.allCases where kind != .breadMagnet {
+            XCTAssertGreaterThanOrEqual(magnetWeight, kind.spawnWeight,
+                "breadMagnet should have highest or equal spawn weight, but \(kind.rawValue) has \(kind.spawnWeight)")
+        }
+    }
+
+    func testGhostDuckHasLowerWeight() {
+        let ghostWeight = PowerUpKind.ghostDuck.spawnWeight
+        XCTAssertLessThan(ghostWeight, 1.0,
+            "ghostDuck should have a lower spawn weight")
+    }
+
+    // MARK: - Pipe-Count Based Power-Ups
+
+    func testPipeCountBasedKinds() {
+        // pipeExpander, breadMagnet, pipeSqueeze should be pipe-count based
+        XCTAssertTrue(PowerUpKind.pipeExpander.isPipeCountBased)
+        XCTAssertTrue(PowerUpKind.breadMagnet.isPipeCountBased)
+        XCTAssertTrue(PowerUpKind.pipeSqueeze.isPipeCountBased)
+
+        // These should NOT be pipe-count based
+        XCTAssertFalse(PowerUpKind.shield.isPipeCountBased)
+        XCTAssertFalse(PowerUpKind.slowMotion.isPipeCountBased)
+        XCTAssertFalse(PowerUpKind.ghostDuck.isPipeCountBased)
+        XCTAssertFalse(PowerUpKind.speedBurst.isPipeCountBased)
+        XCTAssertFalse(PowerUpKind.dizzyDuck.isPipeCountBased)
+    }
+
+    func testInitialPipeCounts() {
+        XCTAssertEqual(PowerUpKind.pipeExpander.initialPipeCount, 3)
+        XCTAssertEqual(PowerUpKind.breadMagnet.initialPipeCount, 5)
+        XCTAssertEqual(PowerUpKind.pipeSqueeze.initialPipeCount, 3)
+
+        XCTAssertNil(PowerUpKind.shield.initialPipeCount)
+        XCTAssertNil(PowerUpKind.ghostDuck.initialPipeCount)
+    }
+
     // MARK: - ActivePowerUp Expiration
 
-    func testActivePowerUpExpiration() {
-        // slowMo has duration 4.0s
-        let powerUp = ActivePowerUp(kind: .slowMo, startTime: 10.0)
+    func testTimeBasedExpiration() {
+        // slowMotion has duration 5.0s
+        let powerUp = ActivePowerUp(kind: .slowMotion, startTime: 10.0)
 
         XCTAssertFalse(powerUp.isExpired(currentTime: 10.5),
             "Should not be expired 0.5s after start")
-        XCTAssertFalse(powerUp.isExpired(currentTime: 13.9),
-            "Should not be expired at 3.9s (duration is 4.0)")
-        XCTAssertTrue(powerUp.isExpired(currentTime: 14.0),
-            "Should be expired at exactly 4.0s")
+        XCTAssertFalse(powerUp.isExpired(currentTime: 14.9),
+            "Should not be expired at 4.9s (duration is 5.0)")
+        XCTAssertTrue(powerUp.isExpired(currentTime: 15.0),
+            "Should be expired at exactly 5.0s")
         XCTAssertTrue(powerUp.isExpired(currentTime: 20.0),
             "Should be expired well past duration")
+    }
+
+    func testGhostDuckExpiration() {
+        // ghostDuck has duration 3.0s
+        let ghost = ActivePowerUp(kind: .ghostDuck, startTime: 5.0)
+
+        XCTAssertEqual(PowerUpKind.ghostDuck.duration, 3.0)
+        XCTAssertFalse(ghost.isExpired(currentTime: 5.0))
+        XCTAssertFalse(ghost.isExpired(currentTime: 7.9))
+        XCTAssertTrue(ghost.isExpired(currentTime: 8.0),
+            "Ghost duck should expire after 3 seconds")
+    }
+
+    func testDizzyDuckExpiration() {
+        // dizzyDuck has duration 3.0s
+        let dizzy = ActivePowerUp(kind: .dizzyDuck, startTime: 0.0)
+
+        XCTAssertEqual(PowerUpKind.dizzyDuck.duration, 3.0)
+        XCTAssertFalse(dizzy.isExpired(currentTime: 2.5))
+        XCTAssertTrue(dizzy.isExpired(currentTime: 3.0),
+            "Dizzy duck should expire after 3 seconds")
     }
 
     func testShieldNeverExpiresByTime() {
@@ -62,6 +133,27 @@ final class PowerUpTests: XCTestCase {
         XCTAssertFalse(shield.isExpired(currentTime: 100.0))
         XCTAssertFalse(shield.isExpired(currentTime: 99999.0),
             "Shield should never expire by time alone")
+    }
+
+    func testPipeCountBasedExpiry() {
+        // pipeExpander starts with 3 remaining pipes
+        var expander = ActivePowerUp(kind: .pipeExpander, startTime: 0.0, remainingPipes: 3)
+
+        XCTAssertFalse(expander.isExpired(currentTime: 0.0))
+
+        expander.remainingPipes = 1
+        XCTAssertFalse(expander.isExpired(currentTime: 0.0))
+
+        expander.remainingPipes = 0
+        XCTAssertTrue(expander.isExpired(currentTime: 0.0),
+            "Pipe expander should expire when remaining pipes reaches 0")
+
+        // pipeSqueeze also pipe-count based
+        var squeeze = ActivePowerUp(kind: .pipeSqueeze, startTime: 0.0, remainingPipes: 3)
+        XCTAssertFalse(squeeze.isExpired(currentTime: 0.0))
+        squeeze.remainingPipes = 0
+        XCTAssertTrue(squeeze.isExpired(currentTime: 0.0),
+            "Pipe squeeze should expire when remaining pipes reaches 0")
     }
 
     func testBreadMagnetExpiresWhenPipesRunOut() {
@@ -80,21 +172,33 @@ final class PowerUpTests: XCTestCase {
     // MARK: - Progress
 
     func testProgressCalculation() {
-        // slowMo has duration 4.0s
-        let powerUp = ActivePowerUp(kind: .slowMo, startTime: 10.0)
+        // slowMotion has duration 5.0s
+        let powerUp = ActivePowerUp(kind: .slowMotion, startTime: 10.0)
 
         // At start → 1.0
         XCTAssertEqual(powerUp.progress(currentTime: 10.0), 1.0, accuracy: 0.001)
         // Halfway → 0.5
-        XCTAssertEqual(powerUp.progress(currentTime: 12.0), 0.5, accuracy: 0.001)
+        XCTAssertEqual(powerUp.progress(currentTime: 12.5), 0.5, accuracy: 0.001)
         // At end → 0.0
-        XCTAssertEqual(powerUp.progress(currentTime: 14.0), 0.0, accuracy: 0.001)
+        XCTAssertEqual(powerUp.progress(currentTime: 15.0), 0.0, accuracy: 0.001)
         // Past end → clamped to 0.0
         XCTAssertEqual(powerUp.progress(currentTime: 20.0), 0.0, accuracy: 0.001)
 
         // Shield (duration 0) always returns 1.0
         let shield = ActivePowerUp(kind: .shield, startTime: 0.0)
         XCTAssertEqual(shield.progress(currentTime: 100.0), 1.0, accuracy: 0.001)
+    }
+
+    func testPipeCountProgressCalculation() {
+        // pipeExpander: 3 initial pipes
+        let expander = ActivePowerUp(kind: .pipeExpander, startTime: 0.0, remainingPipes: 3)
+        XCTAssertEqual(expander.progress(currentTime: 0.0), 1.0, accuracy: 0.001)
+
+        var mid = ActivePowerUp(kind: .pipeExpander, startTime: 0.0, remainingPipes: 1)
+        XCTAssertEqual(mid.progress(currentTime: 0.0), 1.0 / 3.0, accuracy: 0.001)
+
+        mid.remainingPipes = 0
+        XCTAssertEqual(mid.progress(currentTime: 0.0), 0.0, accuracy: 0.001)
     }
 
     // MARK: - SpawnManager
@@ -162,5 +266,25 @@ final class PowerUpTests: XCTestCase {
 
         XCTAssertTrue(spawnedWithin6,
             "After reset, should spawn within the initial 3–6 pipe window")
+    }
+
+    func testShieldDoesNotSpawnAtEasyTier() {
+        let manager = PowerUpSpawnManager()
+        var shieldSpawned = false
+
+        // Run many iterations at easy tier
+        for run in 0..<50 {
+            manager.reset()
+            for i in 1...20 {
+                if let kind = manager.onPipeScored(currentScore: i, tier: .easy) {
+                    if kind == .shield {
+                        shieldSpawned = true
+                    }
+                }
+            }
+        }
+
+        XCTAssertFalse(shieldSpawned,
+            "Shield should never spawn at easy tier")
     }
 }

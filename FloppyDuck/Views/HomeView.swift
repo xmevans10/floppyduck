@@ -41,7 +41,7 @@ struct HomeView: View {
 
                     Spacer().frame(height: 16)
 
-                    // Bottom row: Shop, Stats, Settings, Share
+                    // Bottom row: Shop, Collection, Achievements, Stats, Settings
                     bottomButtons
                         .padding(.horizontal, 32)
 
@@ -345,10 +345,10 @@ struct HomeView: View {
         .accessibilityLabel("\(title), \(subtitle)")
     }
 
-    // MARK: - Bottom Buttons (4 buttons)
+    // MARK: - Bottom Buttons (5 buttons)
 
     private var bottomButtons: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             bottomButton(icon: .shop, label: "SHOP") {
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .shop)
@@ -357,6 +357,11 @@ struct HomeView: View {
             bottomButton(icon: .collection, label: "COLLECTION") {
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .collection)
+            }
+
+            bottomButtonEmoji(emoji: "🏆", label: "ACHIEVE") {
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .achievements)
             }
 
             bottomButton(icon: .stats, label: "STATS") {
@@ -375,6 +380,34 @@ struct HomeView: View {
         Button(action: action) {
             VStack(spacing: 5) {
                 pixelIcon(icon, size: 24)
+                Text(label)
+                    .font(.custom(GK.pixelFontName, size: 5))
+                    .foregroundColor(GK.Colors.panelBorder)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(GK.Colors.panelCream)
+                    .shadow(color: Color.black.opacity(0.15), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(GK.Colors.panelBorder, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    private func bottomButtonEmoji(emoji: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                Text(emoji)
+                    .font(.system(size: 20))
+                    .frame(width: 24, height: 24)
                 Text(label)
                     .font(.custom(GK.pixelFontName, size: 5))
                     .foregroundColor(GK.Colors.panelBorder)

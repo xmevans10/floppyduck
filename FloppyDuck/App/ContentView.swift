@@ -76,6 +76,8 @@ struct ContentView: View {
             CollectionView()
         case .leaderboard:
             LeaderboardView()
+        case .achievements:
+            AchievementsView()
         }
     }
 

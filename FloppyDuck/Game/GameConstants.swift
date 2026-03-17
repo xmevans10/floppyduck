@@ -64,6 +64,7 @@ enum GK {
     static let groundCategory:  UInt32 = 0x1 << 2
     static let scoreCategory:   UInt32 = 0x1 << 3
     static let powerUpCategory: UInt32 = 0x1 << 4
+    static let breadCategory:   UInt32 = 0x1 << 5
 
     // MARK: - Park Color Palette
 

@@ -36,6 +36,9 @@
 		A10000000000000000000099 /* MultiplayerFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000099 /* MultiplayerFlowTests.swift */; };
 		A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709E16E4587997D58A88C22F /* BotCharacter.swift */; };
 		A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D35655334C23B66037D828D /* GameModels.swift */; };
+		2EEEE91902883C94188AF143 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93CCF6581206AE4460510C5F /* Achievement.swift */; };
+		426F8821C9831D68A5B27147 /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5631A2E41C3ECFE3139D9B36 /* AchievementsView.swift */; };
+		BCA3E3D34D5746AD643876F3 /* AchievementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67C34482BABF41365A82C48 /* AchievementTests.swift */; };
 		B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304050 /* SoundManager.swift */; };
 		B2F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */; };
 		BA0E3CE3C181DBA8B407C25C /* ShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */; };
@@ -93,6 +96,9 @@
 		288CEF83A709F6415BE70A30 /* GameUIPerformanceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameUIPerformanceTests.swift; sourceTree = "<group>"; };
 		2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3D35655334C23B66037D828D /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
+		93CCF6581206AE4460510C5F /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Achievement.swift; sourceTree = "<group>"; };
+		5631A2E41C3ECFE3139D9B36 /* AchievementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementsView.swift; sourceTree = "<group>"; };
+		E67C34482BABF41365A82C48 /* AchievementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementTests.swift; sourceTree = "<group>"; };
 		44A39FF82D49B79DC5EE276C /* GamePerformanceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GamePerformanceTests.swift; sourceTree = "<group>"; };
 		451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloppyDuckApp.swift; sourceTree = "<group>"; };
 		45E49708FF03202FD286092D /* FloppyDuck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FloppyDuck.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -188,6 +194,7 @@
 				5C8EC4C359C9110B0D68C72F /* Components */,
 				C20000000000000000000004 /* AuthOnboardingView.swift */,
 				DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */,
+				5631A2E41C3ECFE3139D9B36 /* AchievementsView.swift */,
 				6536C0571E3D58450DECC837 /* GameContainerView.swift */,
 				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
 				A47652A08D5F52D04D2A070A /* StatsView.swift */,
@@ -297,6 +304,7 @@
 			children = (
 				A20000000000000000000002 /* MultiplayerSessionTests.swift */,
 				A20000000000000000000003 /* PlayerStatsTests.swift */,
+				E67C34482BABF41365A82C48 /* AchievementTests.swift */,
 				AEC0FA57DB4A1F4290C01227 /* DifficultyManagerTests.swift */,
 				E8AC2575D86DB5D5D7AA15BC /* PowerUpTests.swift */,
 				FE0494021C7FBFABF4BD6618 /* MedalTests.swift */,
@@ -323,6 +331,7 @@
 			isa = PBXGroup;
 			children = (
 				3D35655334C23B66037D828D /* GameModels.swift */,
+				93CCF6581206AE4460510C5F /* Achievement.swift */,
 				DF5559B8D2060C87F39CB2A8 /* GameManager.swift */,
 				709E16E4587997D58A88C22F /* BotCharacter.swift */,
 				521CBBCA0DCE6D94AD59AC15 /* DuckSkin.swift */,
@@ -500,6 +509,8 @@
 				BCA7AC277DEBF717137BC891 /* PowerUp.swift in Sources */,
 				915FA225B9808E616EE0A791 /* GameManager.swift in Sources */,
 				A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */,
+				2EEEE91902883C94188AF143 /* Achievement.swift in Sources */,
+				426F8821C9831D68A5B27147 /* AchievementsView.swift in Sources */,
 				C10000000000000000000001 /* AuthManager.swift in Sources */,
 				C10000000000000000000002 /* IdentityStore.swift in Sources */,
 				C10000000000000000000003 /* AppleSignInCoordinator.swift in Sources */,
@@ -538,6 +549,7 @@
 			files = (
 				A10000000000000000000001 /* MultiplayerSessionTests.swift in Sources */,
 				A10000000000000000000002 /* PlayerStatsTests.swift in Sources */,
+				BCA3E3D34D5746AD643876F3 /* AchievementTests.swift in Sources */,
 				DA952EA9A8F9F4B558AE3005 /* DifficultyManagerTests.swift in Sources */,
 				20823673A32711E924366C3E /* PowerUpTests.swift in Sources */,
 				5A036B38A42A68B2A8E40347 /* MedalTests.swift in Sources */,
