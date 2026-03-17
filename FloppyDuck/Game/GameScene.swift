@@ -86,6 +86,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let difficulty = DifficultyManager()
     private var currentPipeSpeed: CGFloat = GK.pipeSpeed
 
+    // Speed power-up grace period: smoothly ramps speed back to 1.0
+    // after slow-mo / speed-burst expires, so the transition isn't jarring.
+    private var speedPowerUpModifier: CGFloat = 1.0
+
     // Power-up system
     private let powerUpSpawner = PowerUpSpawnManager()
     private var activePowerUps: [ActivePowerUp] = []
@@ -515,25 +519,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             addPowerUpCollectible(to: pipeNode, gapY: gapY, kind: kind)
         }
 
-        let moveDistance = GK.worldWidth + GK.pipeWidth * 3
-        let moveDuration = TimeInterval(moveDistance / currentPipeSpeed)
-        pipeNode.run(SKAction.sequence([
-            SKAction.moveBy(x: -moveDistance, y: 0, duration: moveDuration),
-            SKAction.removeFromParent()
-        ]))
-
+        // No SKAction for horizontal movement — update() drives all pipe-layer
+        // nodes at currentPipeSpeed so speed changes apply instantly to all.
         pipeLayer.addChild(pipeNode)
 
         // Spawn bread collectibles between pipes (~60% chance)
         if CGFloat.random(in: 0...1) < 0.6 {
-            spawnBreadGroup(afterPipeX: GK.worldWidth + GK.pipeWidth, gapY: gapY, moveDuration: moveDuration, moveDistance: moveDistance)
+            spawnBreadGroup(afterPipeX: GK.worldWidth + GK.pipeWidth, gapY: gapY)
         }
     }
 
     // MARK: - Bread Collectibles
 
     /// Spawns 1–3 bread slices between the current pipe and the next expected pipe position.
-    private func spawnBreadGroup(afterPipeX: CGFloat, gapY: CGFloat, moveDuration: TimeInterval, moveDistance: CGFloat) {
+    private func spawnBreadGroup(afterPipeX: CGFloat, gapY: CGFloat) {
         let breadCount = Int.random(in: 1...3)
         let spacing = currentPipeSpeed * CGFloat(GK.pipeSpawnInterval)
         let minBreadY = GK.groundHeight + 40
@@ -558,21 +557,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             breadNode.physicsBody?.contactTestBitMask = GK.duckCategory
             breadNode.physicsBody?.collisionBitMask = 0
 
-            // Gentle bob animation
+            // Gentle bob animation (Y-axis only — horizontal movement driven by update())
             let bob = SKAction.sequence([
                 SKAction.moveBy(x: 0, y: 5, duration: 0.4),
                 SKAction.moveBy(x: 0, y: -5, duration: 0.4),
             ])
             breadNode.run(SKAction.repeatForever(bob))
 
-            // Move left with pipe speed + auto-remove
-            let breadMoveDistance = breadX + GK.pipeWidth
-            let breadMoveDuration = TimeInterval(breadMoveDistance / currentPipeSpeed)
-            breadNode.run(SKAction.sequence([
-                SKAction.moveBy(x: -breadMoveDistance, y: 0, duration: breadMoveDuration),
-                SKAction.removeFromParent()
-            ]))
-
+            // Horizontal movement handled by update() loop — no SKAction.moveBy.
             pipeLayer.addChild(breadNode)
         }
     }
@@ -728,19 +720,29 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         physicsWorld.gravity = CGVector(dx: 0, dy: gravity / 60)
 
-        // --- Difficulty-driven pipe speed ---
-        var speed = difficulty.effectivePipeSpeed
+        // --- Difficulty-driven pipe speed + power-up modifier with grace period ---
+        let baseSpeed = difficulty.effectivePipeSpeed
 
-        // SlowMotion: reduce pipe speed by 35%
+        // Determine target speed modifier from active power-ups (multiplicative)
+        var targetModifier: CGFloat = 1.0
         if activePowerUps.contains(where: { $0.kind == .slowMotion }) {
-            speed *= 0.65
+            targetModifier *= 0.65
         }
-        // SpeedBurst: increase pipe speed by 40%
         if activePowerUps.contains(where: { $0.kind == .speedBurst }) {
-            speed *= 1.4
+            targetModifier *= 1.4
         }
 
-        currentPipeSpeed = speed
+        // Smooth lerp: ramp ON quickly (2.0/s), ramp OFF gently (0.25/s grace period).
+        // Going from 0.65→1.0 takes ~1.4s; going from 1.0→0.65 takes ~0.18s.
+        let isRampingOff = targetModifier == 1.0 && speedPowerUpModifier != 1.0
+        let rampRate: CGFloat = isRampingOff ? 0.25 : 2.0
+        if speedPowerUpModifier < targetModifier {
+            speedPowerUpModifier = min(targetModifier, speedPowerUpModifier + rampRate * CGFloat(dt))
+        } else if speedPowerUpModifier > targetModifier {
+            speedPowerUpModifier = max(targetModifier, speedPowerUpModifier - rampRate * CGFloat(dt))
+        }
+
+        currentPipeSpeed = baseSpeed * speedPowerUpModifier
 
         // --- GhostDuck visual: maintain alpha while active ---
         if activePowerUps.contains(where: { $0.kind == .ghostDuck }) {
@@ -757,6 +759,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if pipeTimer >= GK.pipeSpawnInterval {
             pipeTimer -= GK.pipeSpawnInterval
             spawnPipe()
+        }
+
+        // Move all pipe-layer children (pipes + bread) at the current speed.
+        // This replaces per-node SKAction.moveBy so speed changes from difficulty
+        // ramp and power-ups apply instantly to EVERY node on screen.
+        let dx = currentPipeSpeed * CGFloat(dt)
+        for child in pipeLayer.children {
+            child.position.x -= dx
+            if child.position.x < -(GK.pipeWidth * 2) {
+                child.removeFromParent()
+            }
         }
 
         // Parallax scrolling (ground tiles, details, clouds, hills, trees)
@@ -794,7 +807,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         botVelocity += GK.gravity / 60 * CGFloat(dt) * 60
         botY += botVelocity * CGFloat(dt)
 
-        let botR = GK.duckRadius * 0.85
+        // Use full duckRadius (was * 0.85 which let the sprite clip into pipe caps)
+        let botR = GK.duckRadius
 
         // Ground collision
         if botY <= GK.groundHeight + botR {
@@ -838,8 +852,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             if abs(dist) < GK.pipeWidth / 2 + botR * 0.6 {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     let gapY = trigger.position.y
-                    let gapTop = gapY + effectiveBotGap / 2 - 5
-                    let gapBottom = gapY - effectiveBotGap / 2 + 5
+                    // 14pt inset accounts for the pipe cap overhang (was 5pt,
+                    // which left the bot sprite visually clipping into caps)
+                    let gapTop = gapY + effectiveBotGap / 2 - 14
+                    let gapBottom = gapY - effectiveBotGap / 2 + 14
                     if botY + botR > gapTop || botY - botR < gapBottom {
                         botDied()
                         return
@@ -1210,6 +1226,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         score = 0
         botScore = 0
         currentPipeSpeed = GK.pipeSpeed
+        speedPowerUpModifier = 1.0
         botPipesPassed.removeAll()
         phase = .ready
 
