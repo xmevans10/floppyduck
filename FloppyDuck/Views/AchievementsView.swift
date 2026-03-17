@@ -3,7 +3,7 @@ import SwiftUI
 struct AchievementsView: View {
     @EnvironmentObject var manager: GameManager
 
-    @State private var progress: AchievementProgress = AchievementsView.loadProgress()
+    @State private var progress: AchievementProgress = AchievementManager.shared.progress
 
     private let icons = PixelIconFactory.shared
     private let columns = [
@@ -52,19 +52,8 @@ struct AchievementsView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            progress = AchievementsView.loadProgress()
+            progress = AchievementManager.shared.progress
         }
-    }
-
-    // MARK: - Persistence
-
-    static func loadProgress() -> AchievementProgress {
-        guard let data = UserDefaults.standard.data(forKey: "achievementProgress"),
-              let decoded = try? JSONDecoder().decode(AchievementProgress.self, from: data)
-        else {
-            return AchievementProgress()
-        }
-        return decoded
     }
 
     // MARK: - Header

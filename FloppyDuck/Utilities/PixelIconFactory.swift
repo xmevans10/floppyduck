@@ -66,6 +66,21 @@ final class PixelIconFactory {
 
     private var cache: [String: UIImage] = [:]
 
+    /// Pre-renders commonly used icons on a background thread.
+    func preWarm() {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            // Pre-render the most used icons at default scale
+            let criticalIcons: [PixelIcon] = [
+                .play, .headToHead, .bot, .classic, .stats,
+                .settings, .home, .retry, .share, .back,
+                .medalBronze, .medalSilver, .medalGold, .medalPlatinum,
+            ]
+            for icon in criticalIcons {
+                _ = image(for: icon)
+            }
+        }
+    }
+
     /// Get a pixel icon as UIImage
     func image(for icon: PixelIcon, pixelScale: CGFloat = 3.0) -> UIImage {
         let key = "\(icon.rawValue)_\(Int(pixelScale))"

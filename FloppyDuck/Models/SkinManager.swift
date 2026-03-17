@@ -127,8 +127,19 @@ final class SkinManager: ObservableObject {
     // MARK: - Helpers
 
     private func grantSkin(_ skin: DuckSkin) {
-        ownedSkins.insert(skin)
+        let wasNew = ownedSkins.insert(skin).inserted
         saveState()
+
+        // Fire skin achievement event when a new skin is acquired
+        if wasNew {
+            // GameManager may not be available here, so award bread through
+            // AchievementManager directly (it will save progress).
+            AchievementManager.shared.process(
+                event: .skinPurchased(totalOwned: ownedSkins.count),
+                stats: PlayerStats(),  // stats not needed for skin achievements
+                skinsOwned: ownedSkins.count
+            )
+        }
     }
 
     func unlockNormal(_ skin: DuckSkin) {

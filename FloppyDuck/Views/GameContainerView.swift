@@ -150,6 +150,8 @@ struct GameContainerView: View {
                 // Record the game silently — no overlay, no animation.
                 // The scene already called resetGame() so we just need to
                 // book-keep stats and reset container state.
+                let gameBread = newScene.totalBreadCollected
+                manager.stats.addBreadCollected(gameBread)
                 manager.recordGame(score: finalScore, won: nil)
                 resetGameOverState()
                 score = 0
@@ -184,7 +186,14 @@ struct GameContainerView: View {
             SkinManager.shared.unlockBotReward(bot.skin)
         }
 
+        // Record bread collected this game
+        let gameBread = scene.totalBreadCollected
+        manager.stats.addBreadCollected(gameBread)
+
         manager.recordGame(score: finalScore, won: true)
+
+        // Fire achievement events
+        processAchievements(score: finalScore, scene: scene)
 
         SoundManager.shared.play(.win)
         Haptic.win()
@@ -231,7 +240,14 @@ struct GameContainerView: View {
             won = nil
         }
 
+        // Record bread collected this game into lifetime total
+        let gameBread = scene.totalBreadCollected
+        manager.stats.addBreadCollected(gameBread)
+
         manager.recordGame(score: finalScore, won: won)
+
+        // --- Fire achievement events ---
+        processAchievements(score: finalScore, scene: scene)
 
         // Prompt for review after 5th or 25th game
         if manager.stats.gamesPlayed == 5 || manager.stats.gamesPlayed == 25 {
@@ -384,28 +400,31 @@ struct GameContainerView: View {
     private func finishCountUp() {
         countingDone = true
 
-        if medal != .none {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        // Use Task-based delays to ensure withAnimation() fires reliably
+        // inside the SwiftUI run-loop (DispatchQueue.main.asyncAfter can
+        // miss SwiftUI transaction boundaries, causing transitions to
+        // appear without animation — especially the medal badge).
+        Task { @MainActor in
+            if medal != .none {
+                try? await Task.sleep(nanoseconds: 250_000_000)  // 0.25s
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) {
                     showMedal = true
                 }
                 SoundManager.shared.play(.medal)
             }
-        }
 
-        if isNewBest {
-            let delay: Double = medal != .none ? 0.7 : 0.3
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            if isNewBest {
+                let delay: UInt64 = medal != .none ? 450_000_000 : 300_000_000
+                try? await Task.sleep(nanoseconds: delay)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.55)) {
                     showNewBest = true
                 }
                 SoundManager.shared.play(.newBest)
                 Haptic.newBest()
             }
-        }
 
-        let breadDelay: Double = isNewBest ? 1.1 : (medal != .none ? 0.65 : 0.3)
-        DispatchQueue.main.asyncAfter(deadline: .now() + breadDelay) {
+            let breadDelay: UInt64 = isNewBest ? 400_000_000 : (medal != .none ? 350_000_000 : 300_000_000)
+            try? await Task.sleep(nanoseconds: breadDelay)
             withAnimation(.easeOut(duration: 0.3)) {
                 showBread = true
             }
@@ -827,6 +846,44 @@ struct GameContainerView: View {
            let root = scene.windows.first?.rootViewController {
             root.present(vc, animated: true)
         }
+    }
+
+    // MARK: - Achievement Processing
+
+    private func processAchievements(score: Int, scene: GameScene) {
+        let am = AchievementManager.shared
+        let skinsOwned = SkinManager.shared.ownedSkins.count
+
+        // Core game events
+        am.process(event: .gameEnded(score: score), stats: manager.stats, skinsOwned: skinsOwned, manager: manager)
+        am.process(event: .breadCollected(total: manager.stats.totalBreadCollected), stats: manager.stats, skinsOwned: skinsOwned, manager: manager)
+
+        // Bot beaten count
+        if !manager.stats.beatenBots.isEmpty {
+            am.process(event: .botBeaten(totalBeaten: manager.stats.beatenBots.count), stats: manager.stats, skinsOwned: skinsOwned, manager: manager)
+        }
+
+        // Shield usage (per-game)
+        for _ in 0..<scene.shieldsUsed {
+            am.process(event: .shieldUsed, stats: manager.stats, skinsOwned: skinsOwned, manager: manager)
+        }
+
+        // Ghost pipe phasing (per-game)
+        for _ in 0..<scene.ghostPipesPhased {
+            am.process(event: .ghostPipePhased, stats: manager.stats, skinsOwned: skinsOwned, manager: manager)
+        }
+
+        // Magnet bread (per-game total)
+        if scene.magnetBreadCollected > 0 {
+            am.process(event: .magnetBreadCollected(count: scene.magnetBreadCollected), stats: manager.stats, skinsOwned: skinsOwned, manager: manager)
+        }
+
+        // Debuff survival: if player collected a debuff and survived extra points beyond it
+        if let debuffStart = scene.debuffScoreAtStart, score > debuffStart {
+            am.process(event: .debuffSurvivedWithScore(extraPoints: score - debuffStart), stats: manager.stats, skinsOwned: skinsOwned, manager: manager)
+        }
+
+        am.save()
     }
 }
 

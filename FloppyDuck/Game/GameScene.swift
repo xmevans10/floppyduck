@@ -102,6 +102,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     /// Public accessor for views to display bread count.
     var totalBreadCollected: Int { breadCollected }
 
+    // Achievement tracking — per-game power-up stats
+    private(set) var shieldsUsed: Int = 0
+    private(set) var ghostPipesPhased: Int = 0
+    private(set) var magnetBreadCollected: Int = 0
+    private(set) var debuffScoreAtStart: Int? = nil  // score when a debuff activated
+
     // Sky theme (Item 9)
     private let backgroundTheme: BackgroundTheme
 
@@ -540,7 +546,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
             let breadTexture = PixelIconFactory.shared.skTexture(for: .bread)
             let breadNode = SKSpriteNode(texture: breadTexture)
-            breadNode.setScale(0.5)
+            breadNode.setScale(0.8)  // Bug #7 fix: larger bread for visibility
             breadNode.position = CGPoint(x: breadX, y: breadY)
             breadNode.zPosition = 25
             breadNode.name = "bread"
@@ -578,13 +584,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         SoundManager.shared.play(.score)
         Haptic.score()
 
-        // Tiny "+1" bread popup
+        // Track bread collected while magnet is active (for achievement)
+        if activePowerUps.contains(where: { $0.kind == .breadMagnet && ($0.remainingPipes ?? 0) > 0 }) {
+            magnetBreadCollected += 1
+        }
+
+        // "+1" bread popup — offset further from duck so it doesn't overlap
         guard let duck else { return }
         let popup = SKLabelNode(fontNamed: GK.pixelFontName)
         popup.text = "+1"
-        popup.fontSize = 10
+        popup.fontSize = 12
         popup.fontColor = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1)
-        popup.position = CGPoint(x: duck.position.x + 15, y: duck.position.y + 20)
+        popup.position = CGPoint(x: duck.position.x + 28, y: duck.position.y + 28)
         popup.zPosition = 300
         worldNode.addChild(popup)
 
@@ -960,6 +971,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             // GhostDuck: ignore pipe collisions entirely
             let isPipeHit = masks.contains(GK.pipeCategory)
             if isPipeHit && activePowerUps.contains(where: { $0.kind == .ghostDuck }) {
+                ghostPipesPhased += 1
                 return
             }
 
@@ -1078,6 +1090,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.wait(forDuration: 1.2),
             SKAction.run { [weak self] in
                 guard let self else { return }
+                // Hide the SpriteKit HUD so the score doesn't bleed through
+                // the SwiftUI game-over overlay (Bug #10)
+                self.hudLayer.run(SKAction.fadeOut(withDuration: 0.2))
                 self.phase = .gameOver
                 self.gameDelegate?.gameDidEnd(score: self.score)
             }
@@ -1170,6 +1185,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.wait(forDuration: 1.5),
             SKAction.run { [weak self] in
                 guard let self else { return }
+                self.hudLayer.run(SKAction.fadeOut(withDuration: 0.2))
                 self.phase = .gameOver
                 self.gameDelegate?.gameDidWinBotLadder(score: self.score)
             }
@@ -1184,6 +1200,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         groundLayer.isPaused = false
         backgroundLayer.isPaused = false
         foregroundLayer.isPaused = false
+
+        // Restore HUD visibility (hidden during game-over transition)
+        hudLayer.alpha = 1.0
 
         pipeIndex = 0
         pipeTimer = 0
@@ -1209,8 +1228,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         pendingPowerUpKind = nil
         powerUpSpawner.reset()
 
-        // Reset bread collectibles
+        // Reset bread collectibles & per-game achievement counters
         breadCollected = 0
+        shieldsUsed = 0
+        ghostPipesPhased = 0
+        magnetBreadCollected = 0
+        debuffScoreAtStart = nil
 
         // Reset bot ladder win guard
         botLadderWinTriggered = false
@@ -1377,6 +1400,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         )
         activePowerUps.append(powerUp)
 
+        // Track debuff start score for "debuff survivor" achievements
+        if !kind.isPositive && debuffScoreAtStart == nil {
+            debuffScoreAtStart = score
+        }
+
         switch kind {
         case .shield:
             addShieldVisual()
@@ -1446,6 +1474,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func consumeShield() {
         activePowerUps.removeAll { $0.kind == .shield }
         removeShieldVisual()
+        shieldsUsed += 1
         shieldCooldown = true
 
         // Reset cooldown after 0.5s so repeated contacts don't kill immediately
@@ -1535,25 +1564,30 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         guard let duck else { return }
 
         let container = SKNode()
-        container.position = CGPoint(x: duck.position.x, y: duck.position.y + 30)
+        // Position horizontally centered in the scene (not relative to duck)
+        // to prevent clipping at screen edges
+        let centerX = size.width / 2
+        container.position = CGPoint(x: centerX, y: duck.position.y + 40)
         container.zPosition = 300
 
-        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon, pixelScale: 4.0)
+        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon, pixelScale: 5.0)
         let iconSprite = SKSpriteNode(texture: iconTexture)
-        iconSprite.position = CGPoint(x: 0, y: 12)
+        iconSprite.setScale(1.4)  // Bug #8 fix: larger power-up icon
+        iconSprite.position = CGPoint(x: 0, y: 14)
         container.addChild(iconSprite)
 
         let name = SKLabelNode(fontNamed: GK.pixelFontName)
         name.text = kind.displayName
-        name.fontSize = 10
+        name.fontSize = 12   // Bug #8 fix: larger label text
         name.fontColor = kind.isPositive
             ? .white
             : UIColor(red: 1.0, green: 0.5, blue: 0.5, alpha: 1)
         name.verticalAlignmentMode = .center
-        name.position = CGPoint(x: 0, y: -8)
+        name.position = CGPoint(x: 0, y: -10)
         container.addChild(name)
 
-        worldNode.addChild(container)
+        // Add to scene root (not worldNode) so it stays centered on screen
+        addChild(container)
 
         let floatUp = SKAction.moveBy(x: 0, y: 60, duration: 0.8)
         let fadeOut = SKAction.fadeOut(withDuration: 0.8)
@@ -1578,7 +1612,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             fresh.fontSize = 18
             fresh.fontColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)
             fresh.zPosition = 300
-            fresh.position = CGPoint(x: duck.position.x + 20, y: duck.position.y + 15)
+            fresh.position = CGPoint(x: duck.position.x + 30, y: duck.position.y + 28)
             worldNode.addChild(fresh)
             let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
             let fadeOut = SKAction.fadeOut(withDuration: 0.6)
@@ -1602,7 +1636,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         popup.alpha = 1.0
         popup.setScale(1.0)
         popup.isHidden = false
-        popup.position = CGPoint(x: duck.position.x + 20, y: duck.position.y + 15)
+        popup.position = CGPoint(x: duck.position.x + 30, y: duck.position.y + 28)
 
         let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
         let fadeOut = SKAction.fadeOut(withDuration: 0.6)

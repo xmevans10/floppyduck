@@ -30,6 +30,35 @@ final class TextureFactory {
         cacheOrder.removeAll()
     }
 
+    /// Whether pre-warming has completed.
+    private(set) var isPreWarmed: Bool = false
+
+    /// Pre-generates the most commonly used textures on a background thread.
+    /// Call early (e.g. during SplashView) to avoid hitches on first game start.
+    func preWarm() {
+        guard !isPreWarmed else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            // Duck wing phases (used every frame)
+            for phase in 0...2 {
+                _ = duckTexture(wingPhase: phase)
+            }
+            // Pipes, ground, sky, parallax layers
+            _ = pipeTexture(height: 300)
+            _ = pipeCapTexture()
+            _ = groundTexture()
+            _ = skyTexture()
+            _ = cloudTexture()
+            _ = treesTexture()
+            _ = hillsTexture()
+            // Bread collectible
+            _ = breadTexture()
+
+            DispatchQueue.main.async {
+                self.isPreWarmed = true
+            }
+        }
+    }
+
     /// Store a texture in cache with LRU eviction when over capacity.
     private func cacheStore(_ key: String, _ tex: SKTexture) {
         cache[key] = tex

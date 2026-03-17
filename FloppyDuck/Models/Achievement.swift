@@ -259,3 +259,54 @@ struct AchievementProgress: Codable {
         unlocked.reduce(0) { $0 + $1.breadReward }
     }
 }
+
+// MARK: - Achievement Manager (persistence & event handling)
+
+@MainActor
+final class AchievementManager {
+    static let shared = AchievementManager()
+
+    private let storageKey = "achievementProgress"
+
+    private(set) var progress: AchievementProgress
+
+    private init() {
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let decoded = try? JSONDecoder().decode(AchievementProgress.self, from: data) {
+            progress = decoded
+        } else {
+            progress = AchievementProgress()
+        }
+    }
+
+    /// Save current progress to UserDefaults.
+    func save() {
+        if let data = try? JSONEncoder().encode(progress) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
+    }
+
+    /// Process an achievement event. Returns newly unlocked achievement IDs (empty if none).
+    /// Automatically saves progress and awards bread for new unlocks.
+    @discardableResult
+    func process(event: AchievementEvent, stats: PlayerStats, skinsOwned: Int, manager: GameManager? = nil) -> [AchievementId] {
+        let newlyUnlocked = progress.check(event: event, stats: stats, skinsOwned: skinsOwned)
+
+        if !newlyUnlocked.isEmpty {
+            // Award bread for each newly unlocked achievement
+            let breadEarned = newlyUnlocked.reduce(0) { $0 + $1.breadReward }
+            if breadEarned > 0, let gm = manager {
+                gm.stats.bread += breadEarned
+            }
+            save()
+        }
+
+        return newlyUnlocked
+    }
+
+    /// Reset all achievement progress (for "Reset All Stats").
+    func reset() {
+        progress = AchievementProgress()
+        save()
+    }
+}

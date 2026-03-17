@@ -311,6 +311,7 @@ struct PlayerStats: Codable, Hashable {
     var totalScore: Int = 0
     var elo: Int = 1200
     var bread: Int = 0
+    var totalBreadCollected: Int = 0  // lifetime total (never decremented)
     var recentScores: [Int] = []  // last 20
     var beatenBots: [String] = [] // ids of beaten bot ladder bots
 
@@ -343,6 +344,11 @@ struct PlayerStats: Codable, Hashable {
         } else {
             bread += max(1, score)
         }
+    }
+
+    /// Records bread collected from a single game into lifetime total.
+    mutating func addBreadCollected(_ amount: Int) {
+        totalBreadCollected += amount
     }
 
     mutating func applyMatchResult(_ result: MultiplayerMatchResult) {

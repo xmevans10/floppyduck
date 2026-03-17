@@ -62,7 +62,13 @@ struct SplashView: View {
                     .opacity(subtitleOpacity)
             }
         }
-        .onAppear { runSequence() }
+        .onAppear {
+            // Pre-warm textures on background thread while splash animation plays.
+            // This avoids the ~30s synchronous render hitch on first game start.
+            TextureFactory.shared.preWarm()
+            PixelIconFactory.shared.preWarm()
+            runSequence()
+        }
         // Detect mid-spin to play coin sound at the right moment
         .onChange(of: coinAngle) { angle in
             if angle >= 180 && !hasCoinSounded {

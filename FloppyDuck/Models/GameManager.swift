@@ -208,6 +208,14 @@ final class GameManager: ObservableObject {
         let bonus = min(currentStreak * 5, 50) // 5, 10, 15... up to 50
         stats.bread += bonus
         saveStats()
+
+        // Fire streak achievement event
+        AchievementManager.shared.process(
+            event: .streakUpdated(days: currentStreak),
+            stats: stats,
+            skinsOwned: SkinManager.shared.ownedSkins.count,
+            manager: self
+        )
     }
 
     /// Mark a bot ladder bot as beaten
