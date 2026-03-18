@@ -465,10 +465,21 @@ actor MultiplayerSession {
             try Task.checkCancellation()
 
             let assignment: MultiplayerMatchAssignment?
-            if let roomCode = currentRoomCode {
-                assignment = try await client.checkRoom(code: roomCode)
-            } else {
-                assignment = try await client.checkQueue(ticketId: currentTicket?.ticketId, mode: currentMode)
+            do {
+                if let roomCode = currentRoomCode {
+                    assignment = try await client.checkRoom(code: roomCode)
+                } else {
+                    assignment = try await client.checkQueue(ticketId: currentTicket?.ticketId, mode: currentMode)
+                }
+            } catch let error as CancellationError {
+                throw error
+            } catch {
+                guard shouldRetryMatchPolling(after: error) else {
+                    throw error
+                }
+
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                continue
             }
 
             if let assignment {
@@ -479,6 +490,28 @@ actor MultiplayerSession {
         }
 
         throw MultiplayerSessionError.timeout
+    }
+
+    private func shouldRetryMatchPolling(after error: Error) -> Bool {
+        if let convexError = error as? ConvexError {
+            switch convexError {
+            case .requestFailed:
+                return true
+            case .server(let message):
+                let lowered = message.lowercased()
+                return lowered.contains("resolve user identity")
+                    || lowered.contains("missing device identity")
+                    || lowered.contains("request failed")
+                    || lowered.contains("timed out")
+            case .invalidResponse, .authFailed:
+                return false
+            }
+        }
+
+        let lowered = error.localizedDescription.lowercased()
+        return lowered.contains("network")
+            || lowered.contains("offline")
+            || lowered.contains("timed out")
     }
 }
 

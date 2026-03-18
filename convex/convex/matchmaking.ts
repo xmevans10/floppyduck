@@ -89,19 +89,18 @@ export const leaveQueue = mutation({
     ...identityArgs,
   },
   handler: async (ctx, args) => {
-    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
-
     if (args.ticketId) {
       const byTicket = await ctx.db
         .query("matchmakingQueue")
         .withIndex("by_ticketId", (q) => q.eq("ticketId", args.ticketId!))
         .first();
-      if (byTicket && byTicket.userId === user._id && byTicket.status === "searching") {
+      if (byTicket && byTicket.status === "searching") {
         await ctx.db.delete(byTicket._id);
       }
       return { success: true };
     }
 
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
     const entries = await ctx.db
       .query("matchmakingQueue")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
@@ -123,21 +122,23 @@ export const checkQueue = query({
     ...identityArgs,
   },
   handler: async (ctx, args) => {
-    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
-
     let queueEntry: Doc<"matchmakingQueue"> | null = null;
+    let currentUserId: Id<"users"> | null = null;
 
     if (args.ticketId) {
       queueEntry = await ctx.db
         .query("matchmakingQueue")
         .withIndex("by_ticketId", (q) => q.eq("ticketId", args.ticketId!))
         .first();
-      if (queueEntry && queueEntry.userId !== user._id) {
-        queueEntry = null;
+      if (queueEntry) {
+        currentUserId = queueEntry.userId;
       }
     }
 
     if (!queueEntry) {
+      const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+      currentUserId = user._id;
+
       const entries = await ctx.db
         .query("matchmakingQueue")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
@@ -145,7 +146,7 @@ export const checkQueue = query({
       queueEntry = entries.find((entry) => entry.status === "matched") ?? null;
     }
 
-    if (!queueEntry || !queueEntry.matchId) {
+    if (!queueEntry || !queueEntry.matchId || !currentUserId) {
       return { found: false };
     }
 
@@ -154,7 +155,7 @@ export const checkQueue = query({
       return { found: false };
     }
 
-    const opponentId = match.p1UserId === user._id ? match.p2UserId : match.p1UserId;
+    const opponentId = match.p1UserId === currentUserId ? match.p2UserId : match.p1UserId;
     const opponent = await ctx.db.get(opponentId);
 
     return {

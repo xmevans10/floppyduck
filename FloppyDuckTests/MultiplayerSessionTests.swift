@@ -81,6 +81,29 @@ final class MultiplayerSessionTests: XCTestCase {
         XCTAssertEqual(snapshot.leftQueueTicketIds, ["queue-ticket"])
         XCTAssertEqual(snapshot.leftRoomCodes.count, 0)
     }
+
+    func testQueueForMatchRetriesTransientIdentityPollingFailure() async throws {
+        let expected = MultiplayerMatchAssignment(
+            matchId: "match-3",
+            seed: 1337,
+            opponentName: "DuckBot",
+            mode: .quickPlay,
+            isRanked: false,
+            roomCode: nil
+        )
+
+        let client = MockMultiplayerBackendClient(
+            queueAssignment: expected,
+            queueCheckSteps: [.identityResolutionFailure, .value(expected)]
+        )
+        let session = MultiplayerSession(client: client)
+
+        let assignment = try await session.queueForMatch(mode: .quickPlay, timeout: 3)
+
+        XCTAssertEqual(assignment, expected)
+        let snapshot = await client.snapshot()
+        XCTAssertEqual(snapshot.checkQueueCallCount, 2)
+    }
 }
 
 private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
@@ -90,21 +113,31 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
         var lastJoinRoomCode: String?
         var leftRoomCodes: [String]
         var leftQueueTicketIds: [String?]
+        var checkQueueCallCount: Int
+    }
+
+    enum QueueCheckStep {
+        case value(MultiplayerMatchAssignment?)
+        case identityResolutionFailure
     }
 
     private let queueAssignment: MultiplayerMatchAssignment?
     private let roomAssignment: MultiplayerMatchAssignment?
+    private var queueCheckSteps: [QueueCheckStep]
 
     private var lastCheckQueueTicketId: String?
     private var lastCheckQueueMode: MatchmakingMode?
     private var lastJoinRoomCode: String?
     private var leftRoomCodes: [String] = []
     private var leftQueueTicketIds: [String?] = []
+    private var checkQueueCallCount = 0
 
     init(queueAssignment: MultiplayerMatchAssignment? = nil,
-         roomAssignment: MultiplayerMatchAssignment? = nil) {
+         roomAssignment: MultiplayerMatchAssignment? = nil,
+         queueCheckSteps: [QueueCheckStep] = []) {
         self.queueAssignment = queueAssignment
         self.roomAssignment = roomAssignment
+        self.queueCheckSteps = queueCheckSteps
     }
 
     func snapshot() -> Snapshot {
@@ -113,7 +146,8 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
             lastCheckQueueMode: lastCheckQueueMode,
             lastJoinRoomCode: lastJoinRoomCode,
             leftRoomCodes: leftRoomCodes,
-            leftQueueTicketIds: leftQueueTicketIds
+            leftQueueTicketIds: leftQueueTicketIds,
+            checkQueueCallCount: checkQueueCallCount
         )
     }
 
@@ -173,8 +207,20 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
     }
 
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? {
+        checkQueueCallCount += 1
         lastCheckQueueTicketId = ticketId
         lastCheckQueueMode = mode
+
+        if !queueCheckSteps.isEmpty {
+            let step = queueCheckSteps.removeFirst()
+            switch step {
+            case .value(let assignment):
+                return assignment
+            case .identityResolutionFailure:
+                throw ConvexError.server("Unable to resolve user identity.")
+            }
+        }
+
         return queueAssignment
     }
 

@@ -513,15 +513,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreTrigger.name = "scoreTrigger"
         pipeNode.addChild(scoreTrigger)
 
-        // Attach pending power-up collectible to this pipe
-        if let kind = pendingPowerUpKind {
-            pendingPowerUpKind = nil
-            addPowerUpCollectible(to: pipeNode, gapY: gapY, kind: kind)
-        }
-
         // No SKAction for horizontal movement — update() drives all pipe-layer
         // nodes at currentPipeSpeed so speed changes apply instantly to all.
         pipeLayer.addChild(pipeNode)
+
+        if let kind = pendingPowerUpKind {
+            pendingPowerUpKind = nil
+            spawnPowerUpCollectible(afterPipeX: pipeNode.position.x, gapY: gapY, gapHeight: effectiveGap, kind: kind)
+        }
 
         // Spawn bread collectibles between pipes (~60% chance)
         if CGFloat.random(in: 0...1) < 0.6 {
@@ -1349,11 +1348,32 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // MARK: - Power-Up System
 
-    /// Attaches a collectible power-up node to a pipe at the gap center.
-    private func addPowerUpCollectible(to pipeNode: SKNode, gapY: CGFloat, kind: PowerUpKind) {
+    /// Spawns a collectible power-up somewhere in the open space between pipes.
+    private func spawnPowerUpCollectible(afterPipeX: CGFloat, gapY: CGFloat, gapHeight: CGFloat, kind: PowerUpKind) {
+        let spacing = max(currentPipeSpeed * CGFloat(GK.pipeSpawnInterval), GK.pipeWidth * 2)
+        let xOffset = CGFloat.random(in: (spacing * 0.22)...(spacing * 0.78))
+
+        let minY = GK.groundHeight + 48
+        let maxY = GK.worldHeight - 52
+        let gapInset = min(30, max(18, gapHeight * 0.18))
+        let gapBottom = max(minY, gapY - gapHeight / 2 + gapInset)
+        let gapTop = min(maxY, gapY + gapHeight / 2 - gapInset)
+
+        let y: CGFloat
+        if Bool.random(), gapBottom < gapTop {
+            y = CGFloat.random(in: gapBottom...gapTop)
+        } else {
+            y = CGFloat.random(in: minY...maxY)
+        }
+
+        let collectible = makePowerUpCollectible(kind: kind)
+        collectible.position = CGPoint(x: afterPipeX + xOffset, y: y)
+        pipeLayer.addChild(collectible)
+    }
+
+    private func makePowerUpCollectible(kind: PowerUpKind) -> SKNode {
         let collectible = SKNode()
         collectible.name = "powerUp_\(kind.rawValue)"
-        collectible.position = CGPoint(x: 0, y: gapY)
         collectible.zPosition = 30
 
         // Pixel icon visual
@@ -1384,7 +1404,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         collectible.physicsBody?.contactTestBitMask = GK.duckCategory
         collectible.physicsBody?.collisionBitMask = 0
 
-        pipeNode.addChild(collectible)
+        return collectible
     }
 
     /// Called when the duck contacts a power-up collectible node.
@@ -1425,6 +1445,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         switch kind {
         case .shield:
             addShieldVisual()
+        case .dizzyDuck:
+            activateDizzyDuck()
         case .ghostDuck:
             activateGhostDuck()
         default:
@@ -1437,6 +1459,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         switch powerUp.kind {
         case .shield:
             removeShieldVisual()
+        case .dizzyDuck:
+            deactivateDizzyDuck()
         case .ghostDuck:
             deactivateGhostDuck()
         default:
@@ -1523,6 +1547,25 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.fadeAlpha(to: 1.0, duration: 0.1),
         ])
         duck.run(SKAction.repeat(blink, count: 3), withKey: "shieldBlink")
+    }
+
+    private func activateDizzyDuck() {
+        applyDizzyTransition()
+    }
+
+    private func deactivateDizzyDuck() {
+        applyDizzyTransition()
+    }
+
+    private func applyDizzyTransition() {
+        guard let duck, let body = duck.physicsBody else { return }
+
+        let flippedVelocity = max(min(-body.velocity.dy * 0.85, GK.maxUpSpeed), -GK.maxUpSpeed)
+        body.velocity = CGVector(dx: 0, dy: flippedVelocity)
+
+        let safeMinY = GK.groundHeight + GK.duckRadius * 2
+        let safeMaxY = GK.worldHeight - GK.duckRadius * 2
+        duck.position.y = min(max(duck.position.y, safeMinY), safeMaxY)
     }
 
     // MARK: Ghost Duck Visual
@@ -1732,5 +1775,4 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         tutorialOverlay = nil
     }
 }
-
 

@@ -603,6 +603,14 @@ struct MatchmakingView: View {
             return .failed("Sign in with Apple is required for ranked matchmaking.")
         }
 
+        if lowered.contains("resolve user identity") || lowered.contains("device identity") {
+            return .failed("Profile sync issue. Tap retry.")
+        }
+
+        if raw.count <= 96 {
+            return .failed(raw)
+        }
+
         return .failed("Matchmaking failed. Tap retry.")
     }
 
