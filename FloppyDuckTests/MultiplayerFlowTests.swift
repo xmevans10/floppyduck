@@ -247,6 +247,59 @@ final class MultiplayerFlowTests: XCTestCase {
         XCTAssertEqual(entries.first?.rating, 1500)
         XCTAssertEqual(entries.last?.rank, 3)
     }
+
+    @MainActor
+    func testGameManagerWaitsForAuthoritativeHeadToHeadResult() async {
+        let backend = PendingFinalizationBackend()
+        let manager = GameManager(
+            initialStats: PlayerStats(),
+            multiplayerClient: backend,
+            headToHeadFinalizationPollInterval: 0.01,
+            headToHeadFinalizationTimeout: 0.2
+        )
+
+        let result = await manager.finishHeadToHeadMatch(
+            matchId: "ranked-finalize",
+            score: 12,
+            fallbackOpponentScore: 20,
+            mode: .ranked,
+            opponentName: "Rival"
+        )
+
+        XCTAssertTrue(result.isFinalized)
+        XCTAssertTrue(result.didWin)
+        XCTAssertEqual(result.opponentScore, 8)
+        XCTAssertEqual(manager.stats.gamesPlayed, 1)
+        XCTAssertEqual(manager.stats.wins, 1)
+        XCTAssertEqual(manager.stats.losses, 0)
+        XCTAssertEqual(manager.stats.elo, 1230)
+    }
+
+    @MainActor
+    func testBootstrapRetryRetriesAfterInitialFailure() async {
+        let backend = RetryingBootstrapBackend()
+        let manager = GameManager(initialStats: PlayerStats(), multiplayerClient: backend)
+        let identityStore = MockIdentityStore(didCompleteAuthOnboarding: true)
+        let auth = AuthManager(gameManager: manager, identityStore: identityStore, client: backend)
+        manager.authManager = auth
+
+        await auth.bootstrapIdentityIfNeeded()
+        if case .failed = auth.authState {
+            // Expected after the first bootstrap failure.
+        } else {
+            XCTFail("Expected initial bootstrap to fail")
+        }
+
+        await auth.retryBootstrap()
+        if case .authenticated(.guest) = auth.authState {
+            // Expected after retry.
+        } else {
+            XCTFail("Expected retry to authenticate guest session")
+        }
+
+        let calls = await backend.bootstrapCallCount()
+        XCTAssertEqual(calls, 2)
+    }
 }
 
 // MARK: - Two-Player Mock Backend
@@ -388,5 +441,172 @@ private actor TwoPlayerMock: MultiplayerBackendClient {
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] {
         Array(leaderboardEntries.prefix(limit))
+    }
+}
+
+private actor PendingFinalizationBackend: MultiplayerBackendClient {
+    func setAuthContext(deviceId: String, sessionToken: String?) async {}
+
+    func bootstrapGuest(deviceId: String, localStats: LocalStatsSnapshot?) async throws -> AuthBootstrapResponse {
+        AuthBootstrapResponse(
+            profile: RemotePlayerProfile(userId: "guest", username: "Guest", provider: .guest, stats: PlayerStats()),
+            didMergeStats: false
+        )
+    }
+
+    func linkApple(identityToken: String,
+                   nonce: String,
+                   deviceId: String,
+                   displayName: String?) async throws -> AuthLinkResponse {
+        AuthLinkResponse(
+            profile: RemotePlayerProfile(userId: "apple", username: displayName ?? "Player", provider: .apple, stats: PlayerStats()),
+            sessionToken: "token",
+            sessionExpiresAt: nil,
+            appleUserId: "apple-user",
+            didMergeStats: false
+        )
+    }
+
+    func getProfile() async throws -> RemotePlayerProfile {
+        RemotePlayerProfile(userId: "guest", username: "Guest", provider: .guest, stats: PlayerStats())
+    }
+
+    func signOutSession() async throws {}
+    func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket { QueueTicket(ticketId: "ticket", mode: mode, roomCode: nil) }
+    func leaveMatchmakingQueue(ticketId: String?) async throws {}
+    func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? { nil }
+    func createRoom() async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: "DUCKY") }
+    func joinRoom(code: String) async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: code) }
+    func leaveRoom(code: String) async throws {}
+    func checkRoom(code: String) async throws -> MultiplayerMatchAssignment? { nil }
+    func reportScore(matchId: String, score: Int) async throws {}
+
+    func getMatchState(matchId: String) async throws -> MultiplayerMatchState {
+        MultiplayerMatchState(
+            matchId: matchId,
+            localScore: 12,
+            opponentScore: 8,
+            isFinished: true,
+            opponentName: "Rival",
+            didWin: true,
+            didDraw: false,
+            ratingDelta: 30,
+            newRating: 1230,
+            isRanked: true
+        )
+    }
+
+    func finishMatch(matchId: String,
+                     score: Int,
+                     mode: MatchmakingMode,
+                     fallbackOpponentScore: Int,
+                     opponentName: String?) async throws -> MultiplayerMatchResult {
+        MultiplayerMatchResult(
+            matchId: matchId,
+            mode: mode,
+            opponentName: opponentName ?? "Rival",
+            localScore: score,
+            opponentScore: fallbackOpponentScore,
+            didWin: false,
+            didDraw: false,
+            ratingDelta: nil,
+            newRating: nil,
+            isRanked: mode.isRanked,
+            isFinalized: false
+        )
+    }
+
+    func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] { [] }
+}
+
+private actor RetryingBootstrapBackend: MultiplayerBackendClient {
+    private var bootstrapCalls = 0
+
+    func bootstrapCallCount() -> Int {
+        bootstrapCalls
+    }
+
+    func setAuthContext(deviceId: String, sessionToken: String?) async {}
+
+    func bootstrapGuest(deviceId: String, localStats: LocalStatsSnapshot?) async throws -> AuthBootstrapResponse {
+        bootstrapCalls += 1
+        if bootstrapCalls == 1 {
+            throw ConvexError.requestFailed
+        }
+
+        return AuthBootstrapResponse(
+            profile: RemotePlayerProfile(
+                userId: "guest-user",
+                username: localStats?.username ?? "Guest",
+                provider: .guest,
+                stats: localStats?.asPlayerStats ?? PlayerStats()
+            ),
+            didMergeStats: false
+        )
+    }
+
+    func linkApple(identityToken: String,
+                   nonce: String,
+                   deviceId: String,
+                   displayName: String?) async throws -> AuthLinkResponse {
+        AuthLinkResponse(
+            profile: RemotePlayerProfile(userId: "apple", username: displayName ?? "Player", provider: .apple, stats: PlayerStats()),
+            sessionToken: "token",
+            sessionExpiresAt: nil,
+            appleUserId: "apple-user",
+            didMergeStats: false
+        )
+    }
+
+    func getProfile() async throws -> RemotePlayerProfile {
+        RemotePlayerProfile(userId: "guest-user", username: "Guest", provider: .guest, stats: PlayerStats())
+    }
+
+    func signOutSession() async throws {}
+    func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket { QueueTicket(ticketId: "ticket", mode: mode, roomCode: nil) }
+    func leaveMatchmakingQueue(ticketId: String?) async throws {}
+    func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? { nil }
+    func createRoom() async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: "DUCKY") }
+    func joinRoom(code: String) async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: code) }
+    func leaveRoom(code: String) async throws {}
+    func checkRoom(code: String) async throws -> MultiplayerMatchAssignment? { nil }
+    func reportScore(matchId: String, score: Int) async throws {}
+    func getMatchState(matchId: String) async throws -> MultiplayerMatchState { MultiplayerMatchState(matchId: matchId, localScore: 0, opponentScore: 0, isFinished: false, opponentName: nil) }
+    func finishMatch(matchId: String,
+                     score: Int,
+                     mode: MatchmakingMode,
+                     fallbackOpponentScore: Int,
+                     opponentName: String?) async throws -> MultiplayerMatchResult {
+        MultiplayerMatchResult(
+            matchId: matchId,
+            mode: mode,
+            opponentName: opponentName ?? "Opponent",
+            localScore: score,
+            opponentScore: fallbackOpponentScore,
+            didWin: score > fallbackOpponentScore,
+            didDraw: score == fallbackOpponentScore,
+            ratingDelta: nil,
+            newRating: nil,
+            isRanked: mode.isRanked
+        )
+    }
+
+    func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] { [] }
+}
+
+private final class MockIdentityStore: IdentityStoring {
+    var didCompleteAuthOnboarding: Bool
+    var didMergeLocalStats: Bool = false
+    var sessionToken: String?
+    var appleUserId: String?
+    private let deviceId: String
+
+    init(didCompleteAuthOnboarding: Bool, deviceId: String = "device-1") {
+        self.didCompleteAuthOnboarding = didCompleteAuthOnboarding
+        self.deviceId = deviceId
+    }
+
+    func getOrCreateDeviceId() -> String {
+        deviceId
     }
 }

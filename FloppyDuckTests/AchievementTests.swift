@@ -251,4 +251,38 @@ final class AchievementTests: XCTestCase {
         progress.unlocked.insert(.gettingStarted)
         XCTAssertEqual(progress.totalBreadFromAchievements, 35)
     }
+
+    func testProgressPersistsWhenCounterChangesWithoutUnlock() {
+        let defaults = makeIsolatedDefaults()
+        let manager = AchievementManager(userDefaults: defaults, storageKey: "achievementProgress")
+
+        _ = manager.process(event: .shieldUsed, stats: PlayerStats(), skinsOwned: 1)
+
+        let reloaded = AchievementManager(userDefaults: defaults, storageKey: "achievementProgress")
+        XCTAssertEqual(reloaded.progress.shieldsUsed, 1)
+        XCTAssertFalse(reloaded.progress.unlocked.contains(.shieldBreaker))
+    }
+
+    func testSkinAchievementRewardPersistsWithoutGameManager() throws {
+        let defaults = makeIsolatedDefaults()
+        let initialStats = PlayerStats(bread: 10)
+        let initialData = try XCTUnwrap(try? JSONEncoder().encode(initialStats))
+        defaults.set(initialData, forKey: "playerStats")
+
+        let manager = AchievementManager(userDefaults: defaults, storageKey: "achievementProgress")
+        let unlocked = manager.process(event: .skinPurchased(totalOwned: 5), stats: PlayerStats(), skinsOwned: 5)
+
+        XCTAssertEqual(unlocked, [.collector])
+
+        let storedData = try XCTUnwrap(defaults.data(forKey: "playerStats"))
+        let storedStats = try JSONDecoder().decode(PlayerStats.self, from: storedData)
+        XCTAssertEqual(storedStats.bread, 10 + AchievementId.collector.breadReward)
+    }
+}
+
+private func makeIsolatedDefaults() -> UserDefaults {
+    let suiteName = "AchievementTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    return defaults
 }

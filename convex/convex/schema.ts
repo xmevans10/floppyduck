@@ -15,6 +15,7 @@ export default defineSchema({
     bestScore: v.number(),
     totalScore: v.number(),
     bread: v.number(),
+    totalBreadCollected: v.number(),
     recentScores: v.array(v.number()),
     beatenBots: v.array(v.string()),
 

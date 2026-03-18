@@ -135,6 +135,7 @@ struct LocalStatsSnapshot: Hashable, Codable {
     let totalScore: Int
     let elo: Int
     let bread: Int
+    let totalBreadCollected: Int
     let recentScores: [Int]
     let beatenBots: [String]
 
@@ -147,6 +148,7 @@ struct LocalStatsSnapshot: Hashable, Codable {
         self.totalScore = stats.totalScore
         self.elo = stats.elo
         self.bread = stats.bread
+        self.totalBreadCollected = stats.totalBreadCollected
         self.recentScores = stats.recentScores
         self.beatenBots = stats.beatenBots
     }
@@ -160,6 +162,7 @@ struct LocalStatsSnapshot: Hashable, Codable {
             totalScore: totalScore,
             elo: elo,
             bread: bread,
+            totalBreadCollected: totalBreadCollected,
             recentScores: recentScores,
             beatenBots: beatenBots
         )
@@ -229,6 +232,33 @@ struct MultiplayerMatchState: Hashable, Codable {
     let opponentScore: Int
     let isFinished: Bool
     let opponentName: String?
+    var didWin: Bool? = nil
+    var didDraw: Bool? = nil
+    var ratingDelta: Int? = nil
+    var newRating: Int? = nil
+    var isRanked: Bool? = nil
+
+    func finalizedResult(mode: MatchmakingMode,
+                         fallbackOpponentName: String?) -> MultiplayerMatchResult? {
+        guard isFinished else { return nil }
+
+        let resolvedDidDraw = didDraw ?? (localScore == opponentScore)
+        let resolvedDidWin = didWin ?? (localScore > opponentScore)
+
+        return MultiplayerMatchResult(
+            matchId: matchId,
+            mode: mode,
+            opponentName: opponentName ?? fallbackOpponentName ?? "OPPONENT",
+            localScore: localScore,
+            opponentScore: opponentScore,
+            didWin: resolvedDidWin,
+            didDraw: resolvedDidDraw,
+            ratingDelta: ratingDelta,
+            newRating: newRating,
+            isRanked: isRanked ?? mode.isRanked,
+            isFinalized: true
+        )
+    }
 }
 
 struct MultiplayerMatchResult: Hashable, Codable {
@@ -242,6 +272,7 @@ struct MultiplayerMatchResult: Hashable, Codable {
     let ratingDelta: Int?
     let newRating: Int?
     let isRanked: Bool
+    var isFinalized: Bool = true
 }
 
 // MARK: - Medals
@@ -352,6 +383,8 @@ struct PlayerStats: Codable, Hashable {
     }
 
     mutating func applyMatchResult(_ result: MultiplayerMatchResult) {
+        guard result.isFinalized else { return }
+
         if result.didDraw {
             recordGame(score: result.localScore, won: nil)
         } else {

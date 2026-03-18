@@ -18,15 +18,28 @@ final class GameManager: ObservableObject {
 
     weak var authManager: AuthManager?
 
-    private let multiplayerSession = MultiplayerSession(client: ConvexClient.shared)
+    private let multiplayerSession: MultiplayerSession
+    private let headToHeadFinalizationPollInterval: TimeInterval
+    private let headToHeadFinalizationTimeout: TimeInterval
 
-    init() {
-        if let data = UserDefaults.standard.data(forKey: "playerStats"),
-           let decoded = try? JSONDecoder().decode(PlayerStats.self, from: data) {
+    init(initialStats: PlayerStats? = nil,
+         multiplayerClient: any MultiplayerBackendClient = ConvexClient.shared,
+         headToHeadFinalizationPollInterval: TimeInterval = 1,
+         headToHeadFinalizationTimeout: TimeInterval = 20) {
+        self.multiplayerSession = MultiplayerSession(client: multiplayerClient)
+        self.headToHeadFinalizationPollInterval = headToHeadFinalizationPollInterval
+        self.headToHeadFinalizationTimeout = headToHeadFinalizationTimeout
+
+        if let initialStats {
+            stats = initialStats
+        } else if let data = UserDefaults.standard.data(forKey: "playerStats"),
+                  let decoded = try? JSONDecoder().decode(PlayerStats.self, from: data) {
             stats = decoded
         } else {
             stats = PlayerStats()
         }
+
+        AchievementManager.shared.register(gameManager: self)
     }
 
     func navigate(to route: AppRoute) {
@@ -106,6 +119,14 @@ final class GameManager: ObservableObject {
                                fallbackOpponentScore: Int,
                                mode: MatchmakingMode,
                                opponentName: String?) async -> MultiplayerMatchResult {
+        let pendingFallback = pendingHeadToHeadResult(
+            matchId: matchId,
+            score: score,
+            opponentScore: fallbackOpponentScore,
+            mode: mode,
+            opponentName: opponentName
+        )
+
         do {
             let result = try await multiplayerSession.finishMatch(
                 matchId: matchId,
@@ -114,36 +135,45 @@ final class GameManager: ObservableObject {
                 fallbackOpponentScore: fallbackOpponentScore,
                 opponentName: opponentName
             )
-            applyMatchResult(result)
-            return result
-        } catch {
-            let didWin = score > fallbackOpponentScore
-            let didDraw = score == fallbackOpponentScore
-            let fallback = MultiplayerMatchResult(
+
+            if result.isFinalized {
+                applyMatchResult(result)
+                return result
+            }
+
+            return await awaitAuthoritativeHeadToHeadResult(
                 matchId: matchId,
                 mode: mode,
-                opponentName: opponentName ?? "OPPONENT",
-                localScore: score,
-                opponentScore: fallbackOpponentScore,
-                didWin: didWin,
-                didDraw: didDraw,
-                ratingDelta: nil,
-                newRating: nil,
-                isRanked: mode.isRanked
+                opponentName: opponentName,
+                latestKnownResult: result
             )
-            applyMatchResult(fallback)
-            return fallback
+        } catch {
+            return await awaitAuthoritativeHeadToHeadResult(
+                matchId: matchId,
+                mode: mode,
+                opponentName: opponentName,
+                latestKnownResult: pendingFallback
+            )
         }
     }
 
     func applyMatchResult(_ result: MultiplayerMatchResult) {
+        guard result.isFinalized else { return }
         stats.applyMatchResult(result)
         saveStats()
     }
 
     func applyRemoteProfile(_ profile: RemotePlayerProfile) {
         playerName = profile.username
-        stats = profile.stats
+        var mergedStats = profile.stats
+        mergedStats.totalBreadCollected = max(stats.totalBreadCollected, profile.stats.totalBreadCollected)
+        stats = mergedStats
+        saveStats()
+    }
+
+    func awardAchievementBread(_ amount: Int) {
+        guard amount > 0 else { return }
+        stats.bread += amount
         saveStats()
     }
 
@@ -268,6 +298,61 @@ final class GameManager: ObservableObject {
         if let data = try? JSONEncoder().encode(stats) {
             UserDefaults.standard.set(data, forKey: "playerStats")
         }
+    }
+
+    private func pendingHeadToHeadResult(matchId: String,
+                                         score: Int,
+                                         opponentScore: Int,
+                                         mode: MatchmakingMode,
+                                         opponentName: String?) -> MultiplayerMatchResult {
+        MultiplayerMatchResult(
+            matchId: matchId,
+            mode: mode,
+            opponentName: opponentName ?? "OPPONENT",
+            localScore: score,
+            opponentScore: opponentScore,
+            didWin: score > opponentScore,
+            didDraw: score == opponentScore,
+            ratingDelta: nil,
+            newRating: nil,
+            isRanked: mode.isRanked,
+            isFinalized: false
+        )
+    }
+
+    private func awaitAuthoritativeHeadToHeadResult(matchId: String,
+                                                    mode: MatchmakingMode,
+                                                    opponentName: String?,
+                                                    latestKnownResult: MultiplayerMatchResult) async -> MultiplayerMatchResult {
+        var latestResult = latestKnownResult
+        let deadline = Date().addingTimeInterval(headToHeadFinalizationTimeout)
+
+        while Date() < deadline {
+            do {
+                let state = try await multiplayerSession.fetchMatchState(matchId: matchId)
+                if let finalized = state.finalizedResult(mode: mode, fallbackOpponentName: opponentName) {
+                    applyMatchResult(finalized)
+                    return finalized
+                }
+
+                latestResult = pendingHeadToHeadResult(
+                    matchId: matchId,
+                    score: state.localScore,
+                    opponentScore: state.opponentScore,
+                    mode: mode,
+                    opponentName: state.opponentName ?? opponentName ?? latestResult.opponentName
+                )
+            } catch is CancellationError {
+                return latestResult
+            } catch {
+                // Leave the latest pending state in place and try again until timeout.
+            }
+
+            let interval = max(headToHeadFinalizationPollInterval, 0.1)
+            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+        }
+
+        return latestResult
     }
 }
 

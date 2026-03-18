@@ -51,7 +51,6 @@ actor ConvexClient: MultiplayerBackendClient {
     // MARK: - Configuration
 
     private static let baseURLInfoKey = "CONVEX_BASE_URL"
-    private static let fallbackBaseURL = "https://first-setter-743.convex.cloud"
 
     private let baseURL: String
     private let session: URLSession
@@ -72,7 +71,9 @@ actor ConvexClient: MultiplayerBackendClient {
                 return trimmed
             }
         }
-        return fallbackBaseURL
+
+        assertionFailure("Missing CONVEX_BASE_URL in Info.plist.")
+        return ""
     }
 
     // MARK: - Auth Context
@@ -391,7 +392,12 @@ actor ConvexClient: MultiplayerBackendClient {
                 localScore: local,
                 opponentScore: opponent,
                 isFinished: finished,
-                opponentName: opponentName
+                opponentName: opponentName,
+                didWin: bool(in: dict, keys: ["didWin", "won", "isWinner"]),
+                didDraw: bool(in: dict, keys: ["didDraw", "draw", "isDraw"]),
+                ratingDelta: int(in: dict, keys: ["ratingDelta", "eloDelta", "delta"]),
+                newRating: int(in: dict, keys: ["newRating", "elo", "rating"]),
+                isRanked: bool(in: dict, keys: ["isRanked", "ranked"])
             )
         }
 
@@ -420,6 +426,7 @@ actor ConvexClient: MultiplayerBackendClient {
 
         let didDraw = bool(in: payload, keys: ["didDraw", "draw", "isDraw"]) ?? (localScore == opponentScore)
         let didWin = bool(in: payload, keys: ["didWin", "won", "isWinner"]) ?? (localScore > opponentScore)
+        let isFinalized = bool(in: payload, keys: ["isFinalized", "isFinished", "finished"]) ?? true
 
         let reportedMode = parseMode(from: string(in: payload, keys: ["mode", "queueMode"])) ?? requestedMode
         let isRanked = bool(in: payload, keys: ["isRanked", "ranked"]) ?? reportedMode.isRanked
@@ -438,7 +445,8 @@ actor ConvexClient: MultiplayerBackendClient {
             didDraw: didDraw,
             ratingDelta: int(in: payload, keys: ["ratingDelta", "eloDelta", "delta"]),
             newRating: int(in: payload, keys: ["newRating", "elo", "rating"]),
-            isRanked: isRanked
+            isRanked: isRanked,
+            isFinalized: isFinalized
         )
     }
 
@@ -496,6 +504,7 @@ actor ConvexClient: MultiplayerBackendClient {
             totalScore: int(in: source, keys: ["totalScore", "total_score"]) ?? 0,
             elo: int(in: source, keys: ["elo", "rating"]) ?? 1200,
             bread: int(in: source, keys: ["bread"]) ?? 0,
+            totalBreadCollected: int(in: source, keys: ["totalBreadCollected", "total_bread_collected"]) ?? 0,
             recentScores: intArray(in: source, keys: ["recentScores", "recent_scores"]),
             beatenBots: stringArray(in: source, keys: ["beatenBots", "beaten_bots"])
         )
@@ -719,6 +728,7 @@ private extension LocalStatsSnapshot {
             "totalScore": totalScore,
             "elo": elo,
             "bread": bread,
+            "totalBreadCollected": totalBreadCollected,
             "recentScores": recentScores,
             "beatenBots": beatenBots,
         ]

@@ -54,6 +54,50 @@ final class PlayerStatsTests: XCTestCase {
         XCTAssertEqual(stats.bestScore, 9)
     }
 
+    func testApplyPendingMatchResultDoesNotChangeStats() {
+        var stats = PlayerStats(gamesPlayed: 3, wins: 2, losses: 1, bestScore: 12, totalScore: 30, elo: 1210, bread: 20)
+
+        let pending = MultiplayerMatchResult(
+            matchId: "pending-match",
+            mode: .ranked,
+            opponentName: "Opponent",
+            localScore: 14,
+            opponentScore: 9,
+            didWin: true,
+            didDraw: false,
+            ratingDelta: 18,
+            newRating: 1228,
+            isRanked: true,
+            isFinalized: false
+        )
+
+        stats.applyMatchResult(pending)
+
+        XCTAssertEqual(stats.gamesPlayed, 3)
+        XCTAssertEqual(stats.wins, 2)
+        XCTAssertEqual(stats.losses, 1)
+        XCTAssertEqual(stats.bestScore, 12)
+        XCTAssertEqual(stats.totalScore, 30)
+        XCTAssertEqual(stats.elo, 1210)
+        XCTAssertEqual(stats.bread, 20)
+    }
+
+    @MainActor
+    func testRemoteProfilePreservesHigherLocalTotalBreadCollected() {
+        let localStats = PlayerStats(totalBreadCollected: 125)
+        let manager = GameManager(initialStats: localStats)
+        let remoteProfile = RemotePlayerProfile(
+            userId: "remote-user",
+            username: "CloudDuck",
+            provider: .guest,
+            stats: PlayerStats(totalBreadCollected: 0)
+        )
+
+        manager.applyRemoteProfile(remoteProfile)
+
+        XCTAssertEqual(manager.stats.totalBreadCollected, 125)
+    }
+
     // MARK: - recordGame Field Updates
 
     func testRecordGameUpdatesAllFields() {

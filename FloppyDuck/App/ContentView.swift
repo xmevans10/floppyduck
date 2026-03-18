@@ -109,7 +109,7 @@ struct ContentView: View {
                     .padding(.horizontal, 40)
 
                 Button {
-                    Task { await auth.bootstrapIdentityIfNeeded() }
+                    Task { await auth.retryBootstrap() }
                 } label: {
                     Text("RETRY")
                         .font(.custom(GK.pixelFontName, size: 12))

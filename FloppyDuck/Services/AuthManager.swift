@@ -14,16 +14,17 @@ final class AuthManager: ObservableObject {
     @Published private(set) var needsCloudRestore: Bool = false
 
     private let gameManager: GameManager
-    private let identityStore: IdentityStore
-    private let client: ConvexClient
+    private let identityStore: any IdentityStoring
+    private let client: any MultiplayerBackendClient
     private var didAttemptBootstrap = false
+    private var isBootstrapping = false
 
     /// Retained coordinator — prevents deallocation while Apple Sign In sheet is open.
     private var activeCoordinator: AppleSignInCoordinator?
 
     init(gameManager: GameManager,
-         identityStore: IdentityStore = .shared,
-         client: ConvexClient = .shared) {
+         identityStore: any IdentityStoring = IdentityStore.shared,
+         client: any MultiplayerBackendClient = ConvexClient.shared) {
         self.gameManager = gameManager
         self.identityStore = identityStore
         self.client = client
@@ -61,9 +62,15 @@ final class AuthManager: ObservableObject {
         return false
     }
 
-    func bootstrapIdentityIfNeeded() async {
-        guard !didAttemptBootstrap else { return }
+    func bootstrapIdentityIfNeeded(force: Bool = false) async {
+        guard force || !didAttemptBootstrap else { return }
+        guard !isBootstrapping else { return }
+
         didAttemptBootstrap = true
+        isBootstrapping = true
+        authState = .bootstrapping
+        statusMessage = nil
+        defer { isBootstrapping = false }
 
         let deviceId = identityStore.getOrCreateDeviceId()
         let token = identityStore.sessionToken
@@ -115,6 +122,11 @@ final class AuthManager: ObservableObject {
             await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
             needsCloudRestore = false
         }
+    }
+
+    func retryBootstrap() async {
+        didAttemptBootstrap = false
+        await bootstrapIdentityIfNeeded(force: true)
     }
 
     func continueAsGuest() async {

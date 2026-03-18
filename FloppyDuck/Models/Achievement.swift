@@ -176,7 +176,7 @@ enum AchievementEvent {
 
 // MARK: - Achievement Progress
 
-struct AchievementProgress: Codable {
+struct AchievementProgress: Codable, Equatable {
     var unlocked: Set<AchievementId> = []
     var shieldsUsed: Int = 0
     var ghostPipesPhased: Int = 0
@@ -266,12 +266,19 @@ struct AchievementProgress: Codable {
 final class AchievementManager {
     static let shared = AchievementManager()
 
-    private let storageKey = "achievementProgress"
+    private let storageKey: String
+    private let playerStatsKey = "playerStats"
+    private let userDefaults: UserDefaults
+    private weak var gameManager: GameManager?
 
     private(set) var progress: AchievementProgress
 
-    private init() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+    init(userDefaults: UserDefaults = .standard,
+         storageKey: String = "achievementProgress") {
+        self.userDefaults = userDefaults
+        self.storageKey = storageKey
+
+        if let data = userDefaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode(AchievementProgress.self, from: data) {
             progress = decoded
         } else {
@@ -279,10 +286,14 @@ final class AchievementManager {
         }
     }
 
+    func register(gameManager: GameManager) {
+        self.gameManager = gameManager
+    }
+
     /// Save current progress to UserDefaults.
     func save() {
         if let data = try? JSONEncoder().encode(progress) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            userDefaults.set(data, forKey: storageKey)
         }
     }
 
@@ -290,14 +301,16 @@ final class AchievementManager {
     /// Automatically saves progress and awards bread for new unlocks.
     @discardableResult
     func process(event: AchievementEvent, stats: PlayerStats, skinsOwned: Int, manager: GameManager? = nil) -> [AchievementId] {
+        let previousProgress = progress
         let newlyUnlocked = progress.check(event: event, stats: stats, skinsOwned: skinsOwned)
 
         if !newlyUnlocked.isEmpty {
             // Award bread for each newly unlocked achievement
             let breadEarned = newlyUnlocked.reduce(0) { $0 + $1.breadReward }
-            if breadEarned > 0, let gm = manager {
-                gm.stats.bread += breadEarned
-            }
+            awardBread(breadEarned, manager: manager ?? gameManager)
+        }
+
+        if progress != previousProgress {
             save()
         }
 
@@ -308,5 +321,28 @@ final class AchievementManager {
     func reset() {
         progress = AchievementProgress()
         save()
+    }
+
+    private func awardBread(_ amount: Int, manager: GameManager?) {
+        guard amount > 0 else { return }
+
+        if let manager {
+            manager.awardAchievementBread(amount)
+            return
+        }
+
+        var storedStats: PlayerStats
+        if let data = userDefaults.data(forKey: playerStatsKey),
+           let decoded = try? JSONDecoder().decode(PlayerStats.self, from: data) {
+            storedStats = decoded
+        } else {
+            storedStats = PlayerStats()
+        }
+
+        storedStats.bread += amount
+
+        if let data = try? JSONEncoder().encode(storedStats) {
+            userDefaults.set(data, forKey: playerStatsKey)
+        }
     }
 }

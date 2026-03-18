@@ -9,6 +9,7 @@ export type LocalStatsSnapshot = {
   totalScore?: number;
   elo?: number;
   bread?: number;
+  totalBreadCollected?: number;
   recentScores?: number[];
   beatenBots?: string[];
 };
@@ -22,6 +23,7 @@ export function defaultUserStats() {
     bestScore: 0,
     totalScore: 0,
     bread: 0,
+    totalBreadCollected: 0,
     recentScores: [] as number[],
     beatenBots: [] as string[],
   };
@@ -38,6 +40,7 @@ export function buildUserFromSnapshot(snapshot: LocalStatsSnapshot | undefined) 
     bestScore: snapshot?.bestScore ?? defaults.bestScore,
     totalScore: snapshot?.totalScore ?? defaults.totalScore,
     bread: snapshot?.bread ?? defaults.bread,
+    totalBreadCollected: snapshot?.totalBreadCollected ?? defaults.totalBreadCollected,
     recentScores: sanitizeRecentScores(snapshot?.recentScores ?? defaults.recentScores),
     beatenBots: Array.isArray(snapshot?.beatenBots) ? snapshot!.beatenBots!.slice(0, 32) : defaults.beatenBots,
   };
@@ -91,6 +94,7 @@ export function toPublicProfile(user: Doc<"users">) {
       totalScore: user.totalScore,
       elo: user.rating,
       bread: user.bread,
+      totalBreadCollected: user.totalBreadCollected,
       recentScores: user.recentScores,
       beatenBots: user.beatenBots,
     },

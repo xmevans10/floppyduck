@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mustBeParticipant, resolveUser, userSide } from "./lib/identity";
-import { applyMatchStatsToUser, toPublicProfile, upsertRating } from "./lib/stats";
+import { applyMatchStatsToUser, upsertRating } from "./lib/stats";
 
 const identityArgs = {
   deviceId: v.optional(v.string()),
@@ -51,20 +51,13 @@ export const getState = query({
     }
 
     mustBeParticipant(match, user._id);
+    const p1 = await ctx.db.get(match.p1UserId);
+    const p2 = await ctx.db.get(match.p2UserId);
+    if (!p1 || !p2) {
+      throw new Error("Match users missing.");
+    }
 
-    const isP1 = match.p1UserId === user._id;
-    const localScore = isP1 ? match.p1Score : match.p2Score;
-    const opponentScore = isP1 ? match.p2Score : match.p1Score;
-    const opponentId = isP1 ? match.p2UserId : match.p1UserId;
-    const opponent = await ctx.db.get(opponentId);
-
-    return {
-      matchId: match._id,
-      localScore,
-      opponentScore,
-      isFinished: match.status === "finished",
-      opponentName: opponent?.username ?? "OPPONENT",
-    };
+    return buildPublicMatchState(match, user._id, p1, p2);
   },
 });
 
@@ -108,34 +101,36 @@ export const finishMatch = mutation({
       throw new Error("Match users missing.");
     }
 
-    const isP1 = updatedMatch.p1UserId === user._id;
-    const localScore = isP1 ? updatedMatch.p1Score : updatedMatch.p2Score;
-    const opponentScore = isP1 ? updatedMatch.p2Score : updatedMatch.p1Score;
-
-    const didDraw = localScore === opponentScore;
-    const didWin = localScore > opponentScore;
-
-    const ratingDelta = isP1
-      ? updatedMatch.ratingDeltaP1
-      : updatedMatch.ratingDeltaP2;
-
-    const localProfile = isP1 ? toPublicProfile(p1) : toPublicProfile(p2);
-    const opponentName = isP1 ? p2.username : p1.username;
-
-    return {
-      matchId: updatedMatch._id,
-      mode: updatedMatch.mode,
-      opponentName,
-      localScore,
-      opponentScore,
-      didWin,
-      didDraw,
-      ratingDelta,
-      newRating: localProfile.stats.elo,
-      isRanked: updatedMatch.mode === "ranked",
-    };
+    return buildPublicMatchState(updatedMatch, user._id, p1, p2);
   },
 });
+
+function buildPublicMatchState(match: Doc<"matches">,
+                               userId: Doc<"users">["_id"],
+                               p1: Doc<"users">,
+                               p2: Doc<"users">) {
+  const isP1 = match.p1UserId === userId;
+  const localScore = isP1 ? match.p1Score : match.p2Score;
+  const opponentScore = isP1 ? match.p2Score : match.p1Score;
+  const localUser = isP1 ? p1 : p2;
+  const opponent = isP1 ? p2 : p1;
+  const isFinalized = match.status === "finished";
+
+  return {
+    matchId: match._id,
+    mode: match.mode,
+    opponentName: opponent.username ?? "OPPONENT",
+    localScore,
+    opponentScore,
+    isFinished: isFinalized,
+    isFinalized,
+    didWin: isFinalized ? localScore > opponentScore : undefined,
+    didDraw: isFinalized ? localScore === opponentScore : undefined,
+    ratingDelta: isFinalized ? (isP1 ? match.ratingDeltaP1 : match.ratingDeltaP2) : undefined,
+    newRating: isFinalized ? localUser.rating : undefined,
+    isRanked: match.mode === "ranked",
+  };
+}
 
 async function resolveMatchAndRatings(ctx: any, match: Doc<"matches">): Promise<Doc<"matches">> {
   const now = Date.now();

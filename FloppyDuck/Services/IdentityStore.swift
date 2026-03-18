@@ -1,6 +1,15 @@
 import Foundation
 import Security
 
+protocol IdentityStoring: AnyObject {
+    var didCompleteAuthOnboarding: Bool { get set }
+    var didMergeLocalStats: Bool { get set }
+    var sessionToken: String? { get set }
+    var appleUserId: String? { get set }
+
+    func getOrCreateDeviceId() -> String
+}
+
 final class IdentityStore {
     static let shared = IdentityStore()
 
@@ -110,3 +119,5 @@ final class IdentityStore {
         return value
     }
 }
+
+extension IdentityStore: IdentityStoring {}

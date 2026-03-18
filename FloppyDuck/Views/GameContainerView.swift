@@ -36,6 +36,8 @@ struct GameContainerView: View {
     private var isBotLadder: Bool { config.botCharacterId != nil }
     private var isHeadToHead: Bool { config.mode == .headToHead }
     private var showsVersusScore: Bool { config.mode == .vsBot || config.mode == .headToHead }
+    private var headToHeadOutcomeReady: Bool { !isHeadToHead || (matchResult?.isFinalized ?? false) }
+    private var headToHeadPending: Bool { isHeadToHead && !headToHeadOutcomeReady }
 
     private var ladderWon: Bool {
         guard let target = config.targetScore else { return score > botFinalScore }
@@ -276,23 +278,19 @@ struct GameContainerView: View {
 
     private func finalizeHeadToHeadResult(finalScore: Int, scene: GameScene) {
         guard let matchId = config.matchId else {
-            // Defensive fallback if metadata is missing.
-            let fallbackWin = finalScore > botFinalScore
-            let fallbackDraw = finalScore == botFinalScore
-            let fallback = MultiplayerMatchResult(
+            matchResult = MultiplayerMatchResult(
                 matchId: UUID().uuidString,
                 mode: config.matchmakingMode ?? (config.isRanked ? .ranked : .quickPlay),
                 opponentName: opponentName,
                 localScore: finalScore,
                 opponentScore: botFinalScore,
-                didWin: fallbackWin,
-                didDraw: fallbackDraw,
+                didWin: finalScore > botFinalScore,
+                didDraw: finalScore == botFinalScore,
                 ratingDelta: nil,
                 newRating: nil,
-                isRanked: config.isRanked
+                isRanked: config.isRanked,
+                isFinalized: false
             )
-            manager.applyMatchResult(fallback)
-            matchResult = fallback
 
             withAnimation(.easeOut(duration: 0.35)) {
                 phase = .gameOver
@@ -303,6 +301,12 @@ struct GameContainerView: View {
 
         let mode = config.matchmakingMode ?? (config.isRanked ? .ranked : .quickPlay)
         finishingMatch = true
+        matchResult = nil
+
+        withAnimation(.easeOut(duration: 0.35)) {
+            phase = .gameOver
+        }
+        startGameOverAnimation()
 
         Task {
             let result = await manager.finishHeadToHeadMatch(
@@ -319,20 +323,17 @@ struct GameContainerView: View {
                 scene.setOpponentScore(result.opponentScore)
                 finishingMatch = false
 
-                if result.didDraw {
-                    SoundManager.shared.play(.milestone)
-                } else if result.didWin {
-                    SoundManager.shared.play(.win)
-                    Haptic.win()
-                } else {
-                    SoundManager.shared.play(.lose)
-                    Haptic.lose()
+                if result.isFinalized {
+                    if result.didDraw {
+                        SoundManager.shared.play(.milestone)
+                    } else if result.didWin {
+                        SoundManager.shared.play(.win)
+                        Haptic.win()
+                    } else {
+                        SoundManager.shared.play(.lose)
+                        Haptic.lose()
+                    }
                 }
-
-                withAnimation(.easeOut(duration: 0.35)) {
-                    phase = .gameOver
-                }
-                startGameOverAnimation()
             }
         }
     }
@@ -532,6 +533,10 @@ struct GameContainerView: View {
                 Text("FINALIZING MATCH...")
                     .font(.custom(GK.pixelFontName, size: 8))
                     .foregroundColor(.white.opacity(0.85))
+            } else if headToHeadPending {
+                Text("WAITING FOR OPPONENT...")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(.white.opacity(0.85))
             }
 
             if countingDone && !finishingMatch {
@@ -558,26 +563,28 @@ struct GameContainerView: View {
                 .padding(.horizontal, 40)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
 
-                Button {
-                    shareScore()
-                } label: {
-                    HStack(spacing: 8) {
-                        pixelIcon(.share, size: 16)
-                        Text("SHARE")
-                            .font(.custom(GK.pixelFontName, size: 9))
+                if !isHeadToHead || headToHeadOutcomeReady {
+                    Button {
+                        shareScore()
+                    } label: {
+                        HStack(spacing: 8) {
+                            pixelIcon(.share, size: 16)
+                            Text("SHARE")
+                                .font(.custom(GK.pixelFontName, size: 9))
+                        }
+                        .foregroundColor(GK.Colors.panelBorder)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(GK.Colors.panelCream)
+                                .overlay(Capsule().stroke(GK.Colors.panelBorder, lineWidth: 2))
+                        )
                     }
-                    .foregroundColor(GK.Colors.panelBorder)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(GK.Colors.panelCream)
-                            .overlay(Capsule().stroke(GK.Colors.panelBorder, lineWidth: 2))
-                    )
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Share score")
+                    .transition(.opacity)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Share score")
-                .transition(.opacity)
             }
         }
     }
@@ -587,7 +594,12 @@ struct GameContainerView: View {
     @ViewBuilder
     private var gameOverTitle: some View {
         if config.mode == .headToHead {
-            if headToHeadDidDraw {
+            if !headToHeadOutcomeReady {
+                Text(finishingMatch ? "FINALIZING..." : "MATCH PENDING")
+                    .font(.custom(GK.pixelFontName, size: 18))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            } else if headToHeadDidDraw {
                 Text("DRAW")
                     .font(.custom(GK.pixelFontName, size: 22))
                     .foregroundColor(.white)
@@ -743,7 +755,7 @@ struct GameContainerView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            if showBread {
+            if showBread && (!isHeadToHead || headToHeadOutcomeReady) {
                 Divider()
                 HStack {
                     Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))

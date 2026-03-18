@@ -128,7 +128,7 @@ struct LeaderboardView: View {
     // MARK: - Row
 
     private func leaderboardRow(_ entry: LeaderboardEntry) -> some View {
-        let isCurrentPlayer = entry.username.lowercased() == manager.playerName.lowercased()
+        let isCurrentPlayer = entry.id == manager.authManager?.identity?.userId
 
         return HStack(spacing: 12) {
             // Rank
