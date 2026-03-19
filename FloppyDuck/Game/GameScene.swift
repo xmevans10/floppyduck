@@ -32,7 +32,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private(set) var phase: GamePhase = .ready
     private(set) var score: Int = 0
-    private(set) var botScore: Int = 0
+
+    /// Bot/opponent score — delegates to BotController when available.
+    var botScore: Int { botController?.score ?? 0 }
 
     private var prng: SeededRandom
     private var gapPositions: [CGFloat] = []
@@ -53,22 +55,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let foregroundLayer = SKNode()   // Enhanced ground decorations (grass blades, pebbles)
     private let hudLayer = SKNode()
 
-    // Parallax controller (manages sky, clouds, hills, trees, ground tiles, details, stars)
+    // Controllers
     private var parallax: ParallaxManager!
+    private var botController: BotController?
+    private var powerUpCtrl: PowerUpController!
 
     // Duck (Item 2: optional safety)
     private var duck: SKSpriteNode?
     private var duckTextures: [SKTexture] = []
-
-    // Bot / opponent score HUD state (Item 2: already optional)
-    private var botDuck: SKSpriteNode?
-    private var botTextures: [SKTexture] = []
-    private var botY: CGFloat = GK.duckStartY
-    private var botVelocity: CGFloat = 0
-    private var botAlive: Bool = true
-    private var botPipesPassed: Set<String> = []
-    private var botScoreLabel: SKLabelNode?
-    private var botScoreShadow: SKLabelNode?
 
     // Score (Item 2: optional safety)
     private var scoreLabel: SKLabelNode?
@@ -85,20 +79,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Progressive difficulty
     private let difficulty = DifficultyManager()
     private var currentPipeSpeed: CGFloat = GK.pipeSpeed
-
-    // Speed power-up grace period: smoothly ramps speed back to 1.0
-    // after slow-mo / speed-burst expires, so the transition isn't jarring.
-    private var speedPowerUpModifier: CGFloat = 1.0
-
-    // Power-up system
-    private let powerUpSpawner = PowerUpSpawnManager()
-    private var activePowerUps: [ActivePowerUp] = []
-    private var shieldNode: SKShapeNode?
-    private var pendingPowerUpKind: PowerUpKind?
-    private var shieldCooldown: Bool = false
-
-    // Ghost duck visual
-    private var ghostGlowNode: SKShapeNode?
 
     // Bread collectibles
     private var breadCollected: Int = 0
@@ -190,8 +170,35 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupDuck()
         setupHUD()
 
-        if mode == .vsBot {
-            setupBotDuck()
+        // Power-up controller
+        powerUpCtrl = PowerUpController(
+            worldNode: worldNode,
+            pipeLayer: pipeLayer,
+            duck: duck,
+            difficulty: difficulty
+        )
+        powerUpCtrl.labelParentOverride = self
+        powerUpCtrl.onPowerUpCollected = { [weak self] kind in
+            guard let self else { return }
+            if !kind.isPositive && self.debuffScoreAtStart == nil {
+                self.debuffScoreAtStart = self.score
+            }
+        }
+        powerUpCtrl.onShieldConsumed = { [weak self] in
+            self?.shieldsUsed += 1
+        }
+
+        // Bot controller (vsBot = sprite + AI, headToHead = score HUD only)
+        if mode == .vsBot || mode == .headToHead {
+            let bc = BotController(worldNode: worldNode, hudLayer: hudLayer)
+            if mode == .vsBot {
+                bc.setup(skin: playerSkin, difficulty: botDiff)
+            }
+            bc.setupScoreHUD(mode: mode, opponentName: opponentName)
+            bc.onScoreChanged = { [weak self] newScore in
+                self?.gameDelegate?.botDidScore(newScore)
+            }
+            botController = bc
         }
 
         // Duck floats gently before first tap
@@ -257,32 +264,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck?.run(SKAction.repeatForever(wingAction), withKey: "wings")
     }
 
-    // MARK: - Bot Ghost Duck
-
-    private func setupBotDuck() {
-        botTextures = (0...2).map { factory.skinBotDuckTexture(skin: playerSkin, wingPhase: $0) }
-
-        let bot = SKSpriteNode(texture: botTextures[1],
-                               size: playerSkin.spriteSize)
-        bot.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
-        bot.zPosition = 35
-
-        let wingAction = SKAction.animate(with: botTextures, timePerFrame: 0.10)
-        bot.run(SKAction.repeatForever(wingAction), withKey: "botWings")
-
-        let float = SKAction.sequence([
-            SKAction.moveBy(x: 0, y: 10, duration: 0.5),
-            SKAction.moveBy(x: 0, y: -10, duration: 0.5)
-        ])
-        bot.run(SKAction.repeatForever(float), withKey: "botFloat")
-
-        worldNode.addChild(bot)
-        botDuck = bot
-        botY = GK.duckStartY
-        botVelocity = 0
-        botAlive = true
-    }
-
     // MARK: - HUD
 
     private func setupHUD() {
@@ -305,9 +286,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             scoreOutlines.append(outline)
         }
 
-        // Shadow node removed — diagonal outlines give sufficient legibility,
-        // eliminating one more text mutation per point.
-
         let label = SKLabelNode(fontNamed: GK.pixelFontName)
         label.fontSize = 36
         label.fontColor = .white
@@ -319,9 +297,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         hudLayer.addChild(label)
         scoreLabel = label
 
-        if mode == .vsBot || mode == .headToHead {
-            setupBotScoreHUD()
-        }
+        // Bot/opponent score HUD is now managed by BotController
+        // (created in didMove after this method)
 
         // Pre-allocate floating score popup pool (avoids addChild/removeFromParent per point)
         scorePopupPool = (0..<3).map { _ in
@@ -334,38 +311,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return node
         }
         scorePopupPoolIndex = 0
-    }
-
-    // Item 2: Force unwrap safety — all bot score HUD uses safe optional chaining
-    private func setupBotScoreHUD() {
-        let labelText: String
-        if mode == .headToHead {
-            labelText = opponentName ?? "OPPONENT"
-        } else {
-            labelText = opponentName ?? "BOT"
-        }
-
-        let shadow = SKLabelNode(fontNamed: GK.pixelFontName)
-        shadow.fontSize = 14
-        shadow.fontColor = UIColor(red: 0.42, green: 0.12, blue: 0.12, alpha: 0.7)
-        shadow.position = CGPoint(x: GK.worldWidth / 2 + 1, y: GK.worldHeight - 108)
-        shadow.zPosition = 200
-        shadow.text = "\(labelText): 0"
-        shadow.verticalAlignmentMode = .center
-        shadow.horizontalAlignmentMode = .center
-        hudLayer.addChild(shadow)
-        botScoreShadow = shadow
-
-        let label = SKLabelNode(fontNamed: GK.pixelFontName)
-        label.fontSize = 14
-        label.fontColor = UIColor(red: 0.95, green: 0.60, blue: 0.60, alpha: 0.9)
-        label.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight - 107)
-        label.zPosition = 201
-        label.text = "\(labelText): 0"
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        hudLayer.addChild(label)
-        botScoreLabel = label
     }
 
     private func updateScore() {
@@ -382,23 +327,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
-    private func updateBotScoreHUD() {
-        let label: String
-        if mode == .headToHead {
-            label = opponentName ?? "OPPONENT"
-        } else {
-            label = opponentName ?? "BOT"
-        }
-        let text = "\(label): \(botScore)"
-        botScoreLabel?.text = text
-        botScoreShadow?.text = text
-    }
-
     /// Multiplayer-only update hook used by GameContainerView polling.
     func setOpponentScore(_ score: Int) {
         guard mode == .headToHead else { return }
-        botScore = max(0, score)
-        updateBotScoreHUD()
+        botController?.setScore(max(0, score))
     }
 
     // MARK: - Pipes
@@ -409,15 +341,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let currentPipeIndex = pipeIndex
         pipeIndex += 1
 
-        var effectiveGap = difficulty.effectivePipeGap
-
-        // Power-up gap modifiers
-        if activePowerUps.contains(where: { $0.kind == .pipeExpander && ($0.remainingPipes ?? 0) > 0 }) {
-            effectiveGap *= 1.3
-        }
-        if activePowerUps.contains(where: { $0.kind == .pipeSqueeze && ($0.remainingPipes ?? 0) > 0 }) {
-            effectiveGap *= 0.8
-        }
+        let effectiveGap = powerUpCtrl.effectivePipeGap
 
         let pipeNode = SKNode()
         pipeNode.position = CGPoint(x: GK.worldWidth + GK.pipeWidth, y: 0)
@@ -517,8 +441,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // nodes at currentPipeSpeed so speed changes apply instantly to all.
         pipeLayer.addChild(pipeNode)
 
-        if let kind = pendingPowerUpKind {
-            pendingPowerUpKind = nil
+        // Spawn pending power-up collectible between pipes (free-floating in pipeLayer)
+        if let kind = powerUpCtrl.consumePendingKind() {
             spawnPowerUpCollectible(afterPipeX: pipeNode.position.x, gapY: gapY, gapHeight: effectiveGap, kind: kind)
         }
 
@@ -526,6 +450,69 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if CGFloat.random(in: 0...1) < 0.6 {
             spawnBreadGroup(afterPipeX: GK.worldWidth + GK.pipeWidth, gapY: gapY)
         }
+    }
+
+    // MARK: - Power-Up Collectible Spawning
+
+    /// Spawns a collectible power-up somewhere in the open space between pipes.
+    /// Positioning logic lives in GameScene (knows about pipe layout); the
+    /// PowerUpController handles activation, effects, and lifecycle.
+    private func spawnPowerUpCollectible(afterPipeX: CGFloat, gapY: CGFloat, gapHeight: CGFloat, kind: PowerUpKind) {
+        let spacing = max(currentPipeSpeed * CGFloat(GK.pipeSpawnInterval), GK.pipeWidth * 2)
+        let xOffset = CGFloat.random(in: (spacing * 0.22)...(spacing * 0.78))
+
+        let minY = GK.groundHeight + 48
+        let maxY = GK.worldHeight - 52
+        let gapInset = min(30, max(18, gapHeight * 0.18))
+        let gapBottom = max(minY, gapY - gapHeight / 2 + gapInset)
+        let gapTop = min(maxY, gapY + gapHeight / 2 - gapInset)
+
+        let y: CGFloat
+        if Bool.random(), gapBottom < gapTop {
+            y = CGFloat.random(in: gapBottom...gapTop)
+        } else {
+            y = CGFloat.random(in: minY...maxY)
+        }
+
+        let collectible = makePowerUpCollectible(kind: kind)
+        collectible.position = CGPoint(x: afterPipeX + xOffset, y: y)
+        pipeLayer.addChild(collectible)
+    }
+
+    private func makePowerUpCollectible(kind: PowerUpKind) -> SKNode {
+        let collectible = SKNode()
+        collectible.name = "powerUp_\(kind.rawValue)"
+        collectible.zPosition = 30
+
+        // Pixel icon visual
+        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon)
+        let iconSprite = SKSpriteNode(texture: iconTexture)
+        iconSprite.setScale(0.8)
+        collectible.addChild(iconSprite)
+
+        // Glow ring
+        let glow = SKShapeNode(circleOfRadius: PowerUpKind.collectibleSize * 0.7)
+        glow.fillColor = kind.glowColor.withAlphaComponent(0.25)
+        glow.strokeColor = kind.glowColor.withAlphaComponent(0.6)
+        glow.lineWidth = 1.5
+        glow.zPosition = -1
+        collectible.addChild(glow)
+
+        // Pulse animation
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.15, duration: 0.4),
+            SKAction.scale(to: 0.9, duration: 0.4),
+        ])
+        collectible.run(SKAction.repeatForever(pulse))
+
+        // Physics
+        collectible.physicsBody = SKPhysicsBody(circleOfRadius: PowerUpKind.collectibleSize * 0.6)
+        collectible.physicsBody?.isDynamic = false
+        collectible.physicsBody?.categoryBitMask = GK.powerUpCategory
+        collectible.physicsBody?.contactTestBitMask = GK.duckCategory
+        collectible.physicsBody?.collisionBitMask = 0
+
+        return collectible
     }
 
     // MARK: - Bread Collectibles
@@ -576,7 +563,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         Haptic.score()
 
         // Track bread collected while magnet is active (for achievement)
-        if activePowerUps.contains(where: { $0.kind == .breadMagnet && ($0.remainingPipes ?? 0) > 0 }) {
+        if powerUpCtrl.isBreadMagnetActive {
             magnetBreadCollected += 1
         }
 
@@ -596,28 +583,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.group([floatUp, fadeOut]),
             SKAction.removeFromParent()
         ]))
-    }
-
-    // MARK: - Bread Magnet Effect
-
-    /// Attracts nearby bread nodes toward the duck each frame when breadMagnet is active.
-    private func applyBreadMagnetEffect() {
-        guard let duck else { return }
-        let magnetRadius: CGFloat = 120
-        let magnetStrength: CGFloat = 3.0
-
-        for child in pipeLayer.children where child.name == "bread" {
-            let breadWorldPos = child.convert(CGPoint.zero, to: worldNode)
-            let dx = duck.position.x - breadWorldPos.x
-            let dy = duck.position.y - breadWorldPos.y
-            let distance = sqrt(dx * dx + dy * dy)
-
-            if distance < magnetRadius && distance > 1 {
-                let factor = magnetStrength * (1.0 - distance / magnetRadius)
-                child.position.x += dx / distance * factor
-                child.position.y += dy / distance * factor
-            }
-        }
     }
 
     // MARK: - Touch / Flap
@@ -651,13 +616,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     func flap() {
         guard phase == .playing, let duck else { return }
 
-        // DizzyDuck: invert flap direction (push down instead of up)
-        let impulse: CGFloat
-        if activePowerUps.contains(where: { $0.kind == .dizzyDuck }) {
-            impulse = -difficulty.effectiveFlapImpulse
-        } else {
-            impulse = difficulty.effectiveFlapImpulse
-        }
+        let impulse = powerUpCtrl.effectiveFlapImpulse
 
         duck.physicsBody?.velocity = CGVector(dx: 0, dy: impulse)
         Haptic.flap()
@@ -682,7 +641,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck?.physicsBody?.isDynamic = true
 
         if mode == .vsBot {
-            botDuck?.removeAction(forKey: "botFloat")
+            botController?.startPlaying()
         }
 
         gameDelegate?.gameDidStart()
@@ -706,51 +665,21 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let dt = lastUpdate == 0 ? 0 : currentTime - lastUpdate
         lastUpdate = currentTime
 
-        // --- Power-up tick: expire finished effects ---
-        tickPowerUps(currentTime: currentTime)
+        // --- Power-up tick: expire finished effects, update speed modifier ---
+        powerUpCtrl.update(dt: dt, currentTime: currentTime)
 
-        // --- Difficulty-driven gravity ---
-        var gravity = difficulty.effectiveGravity
+        // --- Difficulty-driven gravity (with power-up modifiers) ---
+        physicsWorld.gravity = CGVector(dx: 0, dy: powerUpCtrl.effectiveGravity / 60)
 
-        // DizzyDuck: invert gravity direction
-        if activePowerUps.contains(where: { $0.kind == .dizzyDuck }) {
-            gravity = -gravity
-        }
-
-        physicsWorld.gravity = CGVector(dx: 0, dy: gravity / 60)
-
-        // --- Difficulty-driven pipe speed + power-up modifier with grace period ---
-        let baseSpeed = difficulty.effectivePipeSpeed
-
-        // Determine target speed modifier from active power-ups (multiplicative)
-        var targetModifier: CGFloat = 1.0
-        if activePowerUps.contains(where: { $0.kind == .slowMotion }) {
-            targetModifier *= 0.65
-        }
-        if activePowerUps.contains(where: { $0.kind == .speedBurst }) {
-            targetModifier *= 1.4
-        }
-
-        // Smooth lerp: ramp ON quickly (2.0/s), ramp OFF gently (0.25/s grace period).
-        // Going from 0.65→1.0 takes ~1.4s; going from 1.0→0.65 takes ~0.18s.
-        let isRampingOff = targetModifier == 1.0 && speedPowerUpModifier != 1.0
-        let rampRate: CGFloat = isRampingOff ? 0.25 : 2.0
-        if speedPowerUpModifier < targetModifier {
-            speedPowerUpModifier = min(targetModifier, speedPowerUpModifier + rampRate * CGFloat(dt))
-        } else if speedPowerUpModifier > targetModifier {
-            speedPowerUpModifier = max(targetModifier, speedPowerUpModifier - rampRate * CGFloat(dt))
-        }
-
-        currentPipeSpeed = baseSpeed * speedPowerUpModifier
+        // --- Pipe speed (grace period handled by PowerUpController) ---
+        currentPipeSpeed = powerUpCtrl.effectivePipeSpeed
 
         // --- GhostDuck visual: maintain alpha while active ---
-        if activePowerUps.contains(where: { $0.kind == .ghostDuck }) {
-            duck?.alpha = 0.4
-        }
+        powerUpCtrl.applyGhostAlpha()
 
         // --- BreadMagnet: attract nearby bread each frame ---
-        if activePowerUps.contains(where: { $0.kind == .breadMagnet && ($0.remainingPipes ?? 0) > 0 }) {
-            applyBreadMagnetEffect()
+        if powerUpCtrl.isBreadMagnetActive {
+            powerUpCtrl.applyBreadMagnetEffect()
         }
 
         // Spawn pipes
@@ -791,123 +720,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         if mode == .vsBot {
-            updateBot(dt: dt)
+            botController?.update(
+                dt: dt,
+                pipeNodes: pipeLayer.children,
+                activePowerUps: powerUpCtrl.activePowerUps,
+                effectivePipeGap: difficulty.effectivePipeGap
+            )
         }
-    }
-
-    // MARK: - Bot AI (configurable difficulty)
-
-    private func updateBot(dt: TimeInterval) {
-        guard botAlive, let bot = botDuck else { return }
-
-        let diff = botDiff ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
-
-        // Apply gravity
-        botVelocity += GK.gravity / 60 * CGFloat(dt) * 60
-        botY += botVelocity * CGFloat(dt)
-
-        // Use full duckRadius (was * 0.85 which let the sprite clip into pipe caps)
-        let botR = GK.duckRadius
-
-        // Ground collision
-        if botY <= GK.groundHeight + botR {
-            botY = GK.groundHeight + botR
-            botDied()
-            return
-        }
-
-        // Ceiling clamp
-        if botY >= GK.worldHeight - botR {
-            botY = GK.worldHeight - botR
-            botVelocity = 0
-        }
-
-        // Single-pass pipe iteration: find nearest pipe, check collision, check scoring all at once
-        var targetGapY: CGFloat = GK.duckStartY
-        var nearestDist: CGFloat = CGFloat.greatestFiniteMagnitude
-
-        // Bot uses the same effective gap as actual pipes (including power-up modifiers)
-        var effectiveBotGap = difficulty.effectivePipeGap
-        if activePowerUps.contains(where: { $0.kind == .pipeExpander && ($0.remainingPipes ?? 0) > 0 }) {
-            effectiveBotGap *= 1.3
-        }
-        if activePowerUps.contains(where: { $0.kind == .pipeSqueeze && ($0.remainingPipes ?? 0) > 0 }) {
-            effectiveBotGap *= 0.8
-        }
-
-        for child in pipeLayer.children {
-            let pipeX = child.position.x
-            let dist = pipeX - GK.duckStartX
-
-            // Find nearest pipe ahead
-            if dist > -(GK.pipeWidth / 2) && dist < nearestDist {
-                if let trigger = child.childNode(withName: "scoreTrigger") {
-                    targetGapY = trigger.position.y
-                    nearestDist = dist
-                }
-            }
-
-            // Pipe collision (only check pipes near the bot)
-            if abs(dist) < GK.pipeWidth / 2 + botR * 0.6 {
-                if let trigger = child.childNode(withName: "scoreTrigger") {
-                    let gapY = trigger.position.y
-                    // 14pt inset accounts for the pipe cap overhang (was 5pt,
-                    // which left the bot sprite visually clipping into caps)
-                    let gapTop = gapY + effectiveBotGap / 2 - 14
-                    let gapBottom = gapY - effectiveBotGap / 2 + 14
-                    if botY + botR > gapTop || botY - botR < gapBottom {
-                        botDied()
-                        return
-                    }
-                }
-            }
-
-            // Bot scoring
-            if let pipeName = child.name, pipeX < GK.duckStartX - GK.pipeWidth / 2 {
-                if !botPipesPassed.contains(pipeName) {
-                    botPipesPassed.insert(pipeName)
-                    botScore += 1
-                    updateBotScoreHUD()
-                    gameDelegate?.botDidScore(botScore)
-                }
-            }
-        }
-
-        // Noise based on difficulty
-        let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
-        let adjustedTarget = targetGapY + noise
-
-        // Error rate: sometimes fail to flap
-        let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
-
-        // Flap when below target (unless error)
-        if !shouldError && botY < adjustedTarget - 8 && botVelocity < GK.flapImpulse * 0.5 {
-            botVelocity = GK.flapImpulse * diff.flapStrength
-        }
-
-        bot.position.y = botY
-
-        let target = botVelocity > 0
-            ? min(botVelocity / GK.flapImpulse * 0.4, 0.4)
-            : max(botVelocity / 400, -CGFloat.pi / 2)
-        bot.zRotation += (target - bot.zRotation) * 0.10
-    }
-
-    private func botDied() {
-        botAlive = false
-        guard let bot = botDuck else { return }
-        bot.removeAction(forKey: "botWings")
-        bot.run(SKAction.sequence([
-            SKAction.group([
-                SKAction.moveBy(x: 0, y: 30, duration: 0.3),
-                SKAction.rotate(byAngle: -CGFloat.pi / 2, duration: 0.3),
-            ]),
-            SKAction.group([
-                SKAction.moveTo(y: GK.groundHeight, duration: 0.5),
-                SKAction.rotate(byAngle: -CGFloat.pi, duration: 0.5),
-            ]),
-            SKAction.fadeOut(withDuration: 0.3),
-        ]))
     }
 
     // MARK: - Collision
@@ -942,17 +761,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 showTierChangeLabel(tier: difficulty.currentTier)
             }
 
-            // --- Power-up spawn check ---
-            if let kind = powerUpSpawner.onPipeScored(currentScore: score, tier: difficulty.currentTier) {
-                pendingPowerUpKind = kind
-            }
-
-            // --- Pipe-count-based power-up tracking (breadMagnet, pipeExpander, pipeSqueeze) ---
-            for i in activePowerUps.indices {
-                if activePowerUps[i].remainingPipes != nil {
-                    activePowerUps[i].remainingPipes! -= 1
-                }
-            }
+            // --- Power-up: spawn check + decrement pipe-count trackers ---
+            powerUpCtrl.onPipeScored(currentScore: score, tier: difficulty.currentTier)
 
             // Milestone haptic every 5 pipes
             if isMilestone {
@@ -976,7 +786,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // --- Power-up collectible contact ---
         if masks.contains(GK.powerUpCategory) && masks.contains(GK.duckCategory) {
             if let powerUpNode = bodies.first(where: { $0.categoryBitMask == GK.powerUpCategory })?.node {
-                collectPowerUp(node: powerUpNode)
+                powerUpCtrl.collectPowerUp(node: powerUpNode)
             }
             return
         }
@@ -985,21 +795,23 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if phase == .playing {
             // GhostDuck: ignore pipe collisions entirely
             let isPipeHit = masks.contains(GK.pipeCategory)
-            if isPipeHit && activePowerUps.contains(where: { $0.kind == .ghostDuck }) {
+            if isPipeHit && powerUpCtrl.isGhostActive {
                 ghostPipesPhased += 1
                 return
             }
 
             // Shield absorbs pipe collisions (not ground)
-            if isPipeHit && (hasActiveShield() || shieldCooldown) {
-                if hasActiveShield() {
-                    consumeShield()
+            if isPipeHit && (powerUpCtrl.hasActiveShield || powerUpCtrl.isShieldOnCooldown) {
+                if powerUpCtrl.hasActiveShield {
+                    powerUpCtrl.consumeShield(scene: self)
                 }
                 return
             }
             die()
         }
     }
+
+    // MARK: - Death
 
     private func die() {
         phase = .dead
@@ -1013,9 +825,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Bump duck above ground layers so it doesn't clip behind them
         duck.zPosition = 60
 
-        // Restore duck alpha in case ghostDuck was active
-        duck.alpha = 1.0
-        removeGhostGlow()
+        // Restore duck alpha and remove power-up visuals (ghost glow, shield ring)
+        powerUpCtrl.cleanupDuckVisuals()
 
         // Freeze all scrolling layers — parallax stops immediately on death
         pipeLayer.isPaused = true
@@ -1045,7 +856,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
 
         // Item 6: Red vignette overlay that fades
-        // Delay start until white flash recedes so the red tint is actually visible
         let vignette = SKSpriteNode(color: UIColor(red: 0.8, green: 0.0, blue: 0.0, alpha: 0.45), size: self.size)
         vignette.position = CGPoint(x: size.width / 2, y: size.height / 2)
         vignette.zPosition = 499
@@ -1053,7 +863,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         addChild(vignette)
         deathVignette = vignette
         vignette.run(SKAction.sequence([
-            SKAction.wait(forDuration: 0.2),          // wait for flash to fade
+            SKAction.wait(forDuration: 0.2),
             SKAction.fadeAlpha(to: 0.5, duration: 0.12),
             SKAction.fadeOut(withDuration: 0.9),
             SKAction.removeFromParent()
@@ -1070,6 +880,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.moveBy(x: 2, y: 1, duration: 0.025),
             SKAction.move(to: .zero, duration: 0.03),
         ]))
+
+        // --- Death particle burst: 12–15 pixel-art particles radiating outward ---
+        spawnDeathParticles(at: duck.position)
 
         duck.removeAction(forKey: "wings")
         duck.texture = duckTextures[0]
@@ -1112,6 +925,47 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 self.gameDelegate?.gameDidEnd(score: self.score)
             }
         ]))
+    }
+
+    // MARK: - Death Particle Burst
+
+    /// Spawns 12–15 small pixel-art particle nodes radiating outward from the
+    /// duck's position. Uses duck palette colors (green, brown, gray) to match
+    /// the existing 8-bit visual style.
+    private func spawnDeathParticles(at position: CGPoint) {
+        let particleCount = Int.random(in: 12...15)
+
+        let colors: [UIColor] = [
+            UIColor(GK.Colors.duckGreen),
+            UIColor(GK.Colors.duckGreen),
+            UIColor(GK.Colors.duckBrown),
+            UIColor(GK.Colors.duckBrown),
+            UIColor(GK.Colors.duckGray),
+            .white,
+        ]
+
+        for _ in 0..<particleCount {
+            let size = CGFloat.random(in: 3...7)
+            let particle = SKSpriteNode(color: colors.randomElement()!, size: CGSize(width: size, height: size))
+            particle.position = position
+            particle.zPosition = 450  // above duck but below flash
+
+            let angle = CGFloat.random(in: 0...(2 * .pi))
+            let distance = CGFloat.random(in: 40...100)
+            let dx = cos(angle) * distance
+            let dy = sin(angle) * distance
+
+            worldNode.addChild(particle)
+
+            particle.run(SKAction.sequence([
+                SKAction.group([
+                    SKAction.moveBy(x: dx, y: dy, duration: 0.5),
+                    SKAction.fadeOut(withDuration: 0.5),
+                    SKAction.rotate(byAngle: CGFloat.random(in: -2...2), duration: 0.5),
+                ]),
+                SKAction.removeFromParent(),
+            ]))
+        }
     }
 
     // MARK: - Bot Ladder Win Celebration
@@ -1223,10 +1077,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         pipeTimer = 0
         lastUpdate = 0
         score = 0
-        botScore = 0
         currentPipeSpeed = GK.pipeSpeed
-        speedPowerUpModifier = 1.0
-        botPipesPassed.removeAll()
         phase = .ready
 
         let newSeed = Int.random(in: 1...999999)
@@ -1236,13 +1087,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Reset progressive difficulty
         difficulty.reset()
 
-        // Clear power-up state
-        activePowerUps.removeAll()
-        removeShieldVisual()
-        removeGhostGlow()
-        shieldCooldown = false
-        pendingPowerUpKind = nil
-        powerUpSpawner.reset()
+        // Clear power-up state (also resets speed modifier)
+        powerUpCtrl.reset()
 
         // Reset bread collectibles & per-game achievement counters
         breadCollected = 0
@@ -1282,6 +1128,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         body.velocity = .zero
         duck.physicsBody = body
 
+        // Re-bind duck reference in PowerUpController after physics body reset
+        powerUpCtrl.setDuck(duck)
+
         worldNode.setScale(1.0)  // Reset zoom from death effect
         worldNode.position = .zero  // Reset shake offset
 
@@ -1300,12 +1149,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         deathVignette?.removeFromParent()
         deathVignette = nil
 
+        // Reset bot controller
         if mode == .vsBot {
-            botDuck?.removeFromParent()
-            setupBotDuck()
-            updateBotScoreHUD()
+            botController?.reset(skin: playerSkin)
         } else if mode == .headToHead {
-            updateBotScoreHUD()
+            botController?.setScore(0)
         }
     }
 
@@ -1344,317 +1192,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
 
         Haptic.milestone()
-    }
-
-    // MARK: - Power-Up System
-
-    /// Spawns a collectible power-up somewhere in the open space between pipes.
-    private func spawnPowerUpCollectible(afterPipeX: CGFloat, gapY: CGFloat, gapHeight: CGFloat, kind: PowerUpKind) {
-        let spacing = max(currentPipeSpeed * CGFloat(GK.pipeSpawnInterval), GK.pipeWidth * 2)
-        let xOffset = CGFloat.random(in: (spacing * 0.22)...(spacing * 0.78))
-
-        let minY = GK.groundHeight + 48
-        let maxY = GK.worldHeight - 52
-        let gapInset = min(30, max(18, gapHeight * 0.18))
-        let gapBottom = max(minY, gapY - gapHeight / 2 + gapInset)
-        let gapTop = min(maxY, gapY + gapHeight / 2 - gapInset)
-
-        let y: CGFloat
-        if Bool.random(), gapBottom < gapTop {
-            y = CGFloat.random(in: gapBottom...gapTop)
-        } else {
-            y = CGFloat.random(in: minY...maxY)
-        }
-
-        let collectible = makePowerUpCollectible(kind: kind)
-        collectible.position = CGPoint(x: afterPipeX + xOffset, y: y)
-        pipeLayer.addChild(collectible)
-    }
-
-    private func makePowerUpCollectible(kind: PowerUpKind) -> SKNode {
-        let collectible = SKNode()
-        collectible.name = "powerUp_\(kind.rawValue)"
-        collectible.zPosition = 30
-
-        // Pixel icon visual
-        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon)
-        let iconSprite = SKSpriteNode(texture: iconTexture)
-        iconSprite.setScale(0.8)
-        collectible.addChild(iconSprite)
-
-        // Glow ring
-        let glow = SKShapeNode(circleOfRadius: PowerUpKind.collectibleSize * 0.7)
-        glow.fillColor = kind.glowColor.withAlphaComponent(0.25)
-        glow.strokeColor = kind.glowColor.withAlphaComponent(0.6)
-        glow.lineWidth = 1.5
-        glow.zPosition = -1
-        collectible.addChild(glow)
-
-        // Pulse animation
-        let pulse = SKAction.sequence([
-            SKAction.scale(to: 1.15, duration: 0.4),
-            SKAction.scale(to: 0.9, duration: 0.4),
-        ])
-        collectible.run(SKAction.repeatForever(pulse))
-
-        // Physics
-        collectible.physicsBody = SKPhysicsBody(circleOfRadius: PowerUpKind.collectibleSize * 0.6)
-        collectible.physicsBody?.isDynamic = false
-        collectible.physicsBody?.categoryBitMask = GK.powerUpCategory
-        collectible.physicsBody?.contactTestBitMask = GK.duckCategory
-        collectible.physicsBody?.collisionBitMask = 0
-
-        return collectible
-    }
-
-    /// Called when the duck contacts a power-up collectible node.
-    private func collectPowerUp(node: SKNode) {
-        guard let name = node.name, name.hasPrefix("powerUp_") else { return }
-        let kindStr = String(name.dropFirst("powerUp_".count))
-        guard let kind = PowerUpKind(rawValue: kindStr) else { return }
-
-        node.removeFromParent()
-
-        showPowerUpCollectedLabel(kind: kind)
-        activatePowerUp(kind: kind)
-
-        Haptic.score()
-
-        // Play appropriate sound: positive power-ups get .powerUp, negative get .debuff
-        if kind.isPositive {
-            SoundManager.shared.play(.powerUp)
-        } else {
-            SoundManager.shared.play(.debuff)
-        }
-    }
-
-    /// Activates a power-up effect.
-    private func activatePowerUp(kind: PowerUpKind) {
-        let powerUp = ActivePowerUp(
-            kind: kind,
-            startTime: lastUpdate,
-            remainingPipes: kind.initialPipeCount
-        )
-        activePowerUps.append(powerUp)
-
-        // Track debuff start score for "debuff survivor" achievements
-        if !kind.isPositive && debuffScoreAtStart == nil {
-            debuffScoreAtStart = score
-        }
-
-        switch kind {
-        case .shield:
-            addShieldVisual()
-        case .dizzyDuck:
-            activateDizzyDuck()
-        case .ghostDuck:
-            activateGhostDuck()
-        default:
-            break
-        }
-    }
-
-    /// Deactivates an expired power-up and removes its visual effects.
-    private func deactivatePowerUp(_ powerUp: ActivePowerUp) {
-        switch powerUp.kind {
-        case .shield:
-            removeShieldVisual()
-        case .dizzyDuck:
-            deactivateDizzyDuck()
-        case .ghostDuck:
-            deactivateGhostDuck()
-        default:
-            break
-        }
-    }
-
-    /// Expires finished power-ups each frame.
-    private func tickPowerUps(currentTime: TimeInterval) {
-        var expired: [ActivePowerUp] = []
-        activePowerUps.removeAll { powerUp in
-            if powerUp.isExpired(currentTime: currentTime) {
-                expired.append(powerUp)
-                return true
-            }
-            return false
-        }
-        for powerUp in expired {
-            deactivatePowerUp(powerUp)
-        }
-    }
-
-    // MARK: Shield Visual
-
-    private func addShieldVisual() {
-        guard shieldNode == nil, let duck else { return }
-        let shield = SKShapeNode(circleOfRadius: GK.duckRadius * 1.5)
-        shield.strokeColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.8)
-        shield.fillColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.15)
-        shield.lineWidth = 2.5
-        shield.zPosition = 1
-        shield.name = "shieldRing"
-        duck.addChild(shield)
-        shieldNode = shield
-
-        let pulse = SKAction.sequence([
-            SKAction.scale(to: 1.1, duration: 0.5),
-            SKAction.scale(to: 0.95, duration: 0.5),
-        ])
-        shield.run(SKAction.repeatForever(pulse))
-    }
-
-    private func removeShieldVisual() {
-        shieldNode?.removeFromParent()
-        shieldNode = nil
-    }
-
-    private func hasActiveShield() -> Bool {
-        activePowerUps.contains { $0.kind == .shield }
-    }
-
-    private func consumeShield() {
-        activePowerUps.removeAll { $0.kind == .shield }
-        removeShieldVisual()
-        shieldsUsed += 1
-        shieldCooldown = true
-
-        // Reset cooldown after 0.5s so repeated contacts don't kill immediately
-        run(SKAction.sequence([
-            SKAction.wait(forDuration: 0.5),
-            SKAction.run { [weak self] in
-                self?.shieldCooldown = false
-            }
-        ]), withKey: "shieldCooldown")
-
-        Haptic.score()
-        SoundManager.shared.play(.powerUp)
-
-        // Visual: golden burst on duck
-        guard let duck else { return }
-        let burst = SKShapeNode(circleOfRadius: GK.duckRadius * 2)
-        burst.fillColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.5)
-        burst.strokeColor = .clear
-        burst.zPosition = 2
-        duck.addChild(burst)
-        burst.run(SKAction.sequence([
-            SKAction.fadeOut(withDuration: 0.3),
-            SKAction.removeFromParent()
-        ]))
-
-        // Duck blinks briefly to show invincibility
-        let blink = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.3, duration: 0.1),
-            SKAction.fadeAlpha(to: 1.0, duration: 0.1),
-        ])
-        duck.run(SKAction.repeat(blink, count: 3), withKey: "shieldBlink")
-    }
-
-    private func activateDizzyDuck() {
-        applyDizzyTransition()
-    }
-
-    private func deactivateDizzyDuck() {
-        applyDizzyTransition()
-    }
-
-    private func applyDizzyTransition() {
-        guard let duck, let body = duck.physicsBody else { return }
-
-        let flippedVelocity = max(min(-body.velocity.dy * 0.85, GK.maxUpSpeed), -GK.maxUpSpeed)
-        body.velocity = CGVector(dx: 0, dy: flippedVelocity)
-
-        let safeMinY = GK.groundHeight + GK.duckRadius * 2
-        let safeMaxY = GK.worldHeight - GK.duckRadius * 2
-        duck.position.y = min(max(duck.position.y, safeMinY), safeMaxY)
-    }
-
-    // MARK: Ghost Duck Visual
-
-    private func activateGhostDuck() {
-        guard let duck else { return }
-
-        // Semi-transparent duck
-        duck.alpha = 0.4
-
-        // Disable pipe collision while ghost is active
-        duck.physicsBody?.contactTestBitMask = GK.groundCategory | GK.powerUpCategory | GK.breadCategory
-        duck.physicsBody?.collisionBitMask = GK.groundCategory
-
-        // Add subtle white glow behind duck
-        guard ghostGlowNode == nil else { return }
-        let glow = SKShapeNode(circleOfRadius: GK.duckRadius * 1.8)
-        glow.fillColor = UIColor(white: 1.0, alpha: 0.15)
-        glow.strokeColor = UIColor(white: 1.0, alpha: 0.3)
-        glow.lineWidth = 1.5
-        glow.zPosition = -1
-        glow.name = "ghostGlow"
-
-        let pulse = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.08, duration: 0.6),
-            SKAction.fadeAlpha(to: 0.2, duration: 0.6),
-        ])
-        glow.run(SKAction.repeatForever(pulse))
-
-        duck.addChild(glow)
-        ghostGlowNode = glow
-    }
-
-    private func deactivateGhostDuck() {
-        guard let duck else { return }
-
-        // Restore full opacity
-        duck.alpha = 1.0
-
-        // Re-enable pipe contact detection (game over) — no physics collision (prevents drift)
-        duck.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
-        duck.physicsBody?.collisionBitMask = GK.groundCategory
-
-        // Remove glow
-        removeGhostGlow()
-    }
-
-    private func removeGhostGlow() {
-        ghostGlowNode?.removeFromParent()
-        ghostGlowNode = nil
-    }
-
-    // MARK: Power-Up Collected Label
-
-    private func showPowerUpCollectedLabel(kind: PowerUpKind) {
-        guard let duck else { return }
-
-        let container = SKNode()
-        // Position horizontally centered in the scene (not relative to duck)
-        // to prevent clipping at screen edges
-        let centerX = size.width / 2
-        container.position = CGPoint(x: centerX, y: duck.position.y + 40)
-        container.zPosition = 300
-
-        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon, pixelScale: 5.0)
-        let iconSprite = SKSpriteNode(texture: iconTexture)
-        iconSprite.setScale(1.4)  // Bug #8 fix: larger power-up icon
-        iconSprite.position = CGPoint(x: 0, y: 14)
-        container.addChild(iconSprite)
-
-        let name = SKLabelNode(fontNamed: GK.pixelFontName)
-        name.text = kind.displayName
-        name.fontSize = 12   // Bug #8 fix: larger label text
-        name.fontColor = kind.isPositive
-            ? .white
-            : UIColor(red: 1.0, green: 0.5, blue: 0.5, alpha: 1)
-        name.verticalAlignmentMode = .center
-        name.position = CGPoint(x: 0, y: -10)
-        container.addChild(name)
-
-        // Add to scene root (not worldNode) so it stays centered on screen
-        addChild(container)
-
-        let floatUp = SKAction.moveBy(x: 0, y: 60, duration: 0.8)
-        let fadeOut = SKAction.fadeOut(withDuration: 0.8)
-        container.run(SKAction.sequence([
-            SKAction.group([floatUp, fadeOut]),
-            SKAction.removeFromParent()
-        ]))
     }
 
     // MARK: - Floating Score Popups (Item 5)
@@ -1707,8 +1244,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.run { popup.isHidden = true }
         ]))
     }
-
-
 
     // MARK: - First-Launch Tutorial (Item 8)
 
@@ -1775,4 +1310,3 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         tutorialOverlay = nil
     }
 }
-

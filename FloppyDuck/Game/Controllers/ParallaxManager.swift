@@ -85,14 +85,23 @@ final class ParallaxManager {
     }
 
     /// Drive all scrolling. Call every frame from `update(_:)` while the game is playing.
+    ///
+    /// When Reduce Motion is enabled (Settings → Accessibility → Motion), decorative
+    /// parallax layers (clouds, hills, trees) stop scrolling. Ground tiles and details
+    /// always scroll because they provide gameplay-relevant motion cues.
     func update(dt: TimeInterval) {
         let dtF = CGFloat(dt)
 
+        // Ground is gameplay-relevant — always scrolls
         scrollGroundTiles(dtF)
         scrollGroundDetails(dtF)
-        scrollClouds(dtF)
-        scrollHills(dtF)
-        scrollTrees(dtF)
+
+        // Decorative layers respect Reduce Motion preference
+        if !UIAccessibility.isReduceMotionEnabled {
+            scrollClouds(dtF)
+            scrollHills(dtF)
+            scrollTrees(dtF)
+        }
     }
 
     // MARK: - Sky Gradient

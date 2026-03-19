@@ -46,6 +46,22 @@ final class PowerUpController {
     // Ghost duck
     private var ghostGlowNode: SKShapeNode?
 
+    // Speed modifier grace period — smooth lerp instead of snap-back
+    // when slowMotion or speedBurst expires.
+    private var speedModifier: CGFloat = 1.0
+
+    // MARK: - Callbacks
+
+    /// Called when a power-up is collected (before activation). Use for achievement tracking.
+    var onPowerUpCollected: ((PowerUpKind) -> Void)?
+
+    /// Called when a shield absorbs a hit. Use for shield-usage stats.
+    var onShieldConsumed: (() -> Void)?
+
+    /// Override for collected-label parent node. When set, labels are added here
+    /// instead of worldNode — prevents shake during death screen-shake.
+    weak var labelParentOverride: SKNode?
+
     // MARK: - Init
 
     init(worldNode: SKNode,
@@ -65,9 +81,32 @@ final class PowerUpController {
 
     // MARK: - Per-Frame Update
 
-    /// Tick power-up timers; call once per frame from the game update loop.
+    /// Tick power-up timers and speed modifier; call once per frame from the game update loop.
     func update(dt: TimeInterval, currentTime: TimeInterval) {
         tickExpiry(currentTime: currentTime)
+        updateSpeedModifier(dt: dt)
+    }
+
+    /// Smooth lerp for speed modifier transitions.
+    /// Ramp-off (back to 1.0) is slow (0.25/s) for graceful transitions.
+    /// Ramp-on (to target) is fast (2.0/s) so effects feel immediate.
+    private func updateSpeedModifier(dt: TimeInterval) {
+        var target: CGFloat = 1.0
+        if hasActive(.slowMotion) { target = 0.65 }
+        if hasActive(.speedBurst) { target = 1.4 }
+
+        let isRampingOff = target == 1.0 && speedModifier != 1.0
+        let rate: CGFloat = isRampingOff ? 0.25 : 2.0
+
+        if abs(speedModifier - target) < 0.01 {
+            speedModifier = target
+        } else {
+            let dir: CGFloat = target > speedModifier ? 1.0 : -1.0
+            speedModifier += dir * rate * CGFloat(dt)
+            speedModifier = dir > 0
+                ? min(speedModifier, target)
+                : max(speedModifier, target)
+        }
     }
 
     // MARK: - Queries
@@ -111,16 +150,9 @@ final class PowerUpController {
         return gap
     }
 
-    /// Pipe scroll speed adjusted for slowMotion / speedBurst.
+    /// Pipe scroll speed with smooth speed modifier grace period.
     var effectivePipeSpeed: CGFloat {
-        var speed = difficulty.effectivePipeSpeed
-        if hasActive(.slowMotion) {
-            speed *= 0.65
-        }
-        if hasActive(.speedBurst) {
-            speed *= 1.4
-        }
-        return speed
+        difficulty.effectivePipeSpeed * speedModifier
     }
 
     /// Flap impulse adjusted for dizzyDuck (inverted controls).
@@ -155,6 +187,14 @@ final class PowerUpController {
         return nil
     }
 
+    /// Consumes and returns the pending power-up kind, or nil if none queued.
+    /// GameScene uses this to position the collectible in the gap between pipes.
+    func consumePendingKind() -> PowerUpKind? {
+        guard let kind = pendingPowerUpKind else { return nil }
+        pendingPowerUpKind = nil
+        return kind
+    }
+
     /// Consumes the pending kind and attaches a collectible node to the given pipe.
     /// Call this inside `spawnPipe()` right after building the pipe geometry.
     ///
@@ -177,6 +217,7 @@ final class PowerUpController {
 
         node.removeFromParent()
 
+        onPowerUpCollected?(kind)
         showCollectedLabel(kind: kind)
         activate(kind: kind)
 
@@ -198,6 +239,7 @@ final class PowerUpController {
         activePowerUps.removeAll { $0.kind == .shield }
         removeShieldVisual()
         shieldCooldown = true
+        onShieldConsumed?()
 
         // Brief invincibility after shield break
         scene.run(SKAction.sequence([
@@ -261,6 +303,16 @@ final class PowerUpController {
         }
     }
 
+    // MARK: - Death Cleanup
+
+    /// Restores duck alpha and removes power-up visuals (shield ring, ghost glow)
+    /// during death without resetting the full power-up state. Call from `die()`.
+    func cleanupDuckVisuals() {
+        duck?.alpha = 1.0
+        removeShieldVisual()
+        removeGhostGlow()
+    }
+
     // MARK: - Reset
 
     /// Clear all power-up state for a new game / retry.
@@ -270,6 +322,7 @@ final class PowerUpController {
         removeGhostGlow()
         shieldCooldown = false
         pendingPowerUpKind = nil
+        speedModifier = 1.0
         spawner.reset()
     }
 
@@ -289,6 +342,8 @@ final class PowerUpController {
         switch kind {
         case .shield:
             addShieldVisual()
+        case .dizzyDuck:
+            applyDizzyTransition()
         case .ghostDuck:
             activateGhostDuck()
         default:
@@ -302,6 +357,8 @@ final class PowerUpController {
         switch powerUp.kind {
         case .shield:
             removeShieldVisual()
+        case .dizzyDuck:
+            applyDizzyTransition()
         case .ghostDuck:
             deactivateGhostDuck()
         default:
@@ -389,6 +446,21 @@ final class PowerUpController {
         shieldNode = nil
     }
 
+    // MARK: - DizzyDuck Transition
+
+    /// Flips the duck's velocity when dizzyDuck activates or deactivates,
+    /// clamped to maxUpSpeed. Also clamps duck Y to safe bounds.
+    private func applyDizzyTransition() {
+        guard let duck, let body = duck.physicsBody else { return }
+
+        let flippedVelocity = max(min(-body.velocity.dy * 0.85, GK.maxUpSpeed), -GK.maxUpSpeed)
+        body.velocity = CGVector(dx: 0, dy: flippedVelocity)
+
+        let safeMinY = GK.groundHeight + GK.duckRadius * 2
+        let safeMaxY = GK.worldHeight - GK.duckRadius * 2
+        duck.position.y = min(max(duck.position.y, safeMinY), safeMaxY)
+    }
+
     // MARK: - Ghost Duck Visual
 
     private func activateGhostDuck() {
@@ -445,25 +517,32 @@ final class PowerUpController {
         guard let duck else { return }
 
         let container = SKNode()
-        container.position = CGPoint(x: duck.position.x, y: duck.position.y + 30)
+        // Position horizontally centered in the scene (not relative to duck)
+        // to prevent clipping at screen edges
+        let parentNode = labelParentOverride ?? worldNode
+        let centerX = labelParentOverride != nil
+            ? (labelParentOverride?.frame.width ?? 0) / 2
+            : duck.position.x
+        container.position = CGPoint(x: centerX, y: duck.position.y + 40)
         container.zPosition = 300
 
-        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon, pixelScale: 4.0)
+        let iconTexture = PixelIconFactory.shared.skTexture(for: kind.pixelIcon, pixelScale: 5.0)
         let iconSprite = SKSpriteNode(texture: iconTexture)
-        iconSprite.position = CGPoint(x: 0, y: 12)
+        iconSprite.setScale(1.4)  // Larger icon for better visibility
+        iconSprite.position = CGPoint(x: 0, y: 14)
         container.addChild(iconSprite)
 
         let name = SKLabelNode(fontNamed: GK.pixelFontName)
         name.text = kind.displayName
-        name.fontSize = 10
+        name.fontSize = 12   // Larger text for readability
         name.fontColor = kind.isPositive
             ? .white
             : UIColor(red: 1.0, green: 0.5, blue: 0.5, alpha: 1)
         name.verticalAlignmentMode = .center
-        name.position = CGPoint(x: 0, y: -8)
+        name.position = CGPoint(x: 0, y: -10)
         container.addChild(name)
 
-        worldNode.addChild(container)
+        parentNode.addChild(container)
 
         let floatUp = SKAction.moveBy(x: 0, y: 60, duration: 0.8)
         let fadeOut = SKAction.fadeOut(withDuration: 0.8)
