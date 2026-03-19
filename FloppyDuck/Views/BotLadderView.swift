@@ -52,6 +52,7 @@ struct BotLadderView: View {
                     .padding(8)
                     .background(Circle().fill(Color.black.opacity(0.15)))
             }
+            .accessibilityLabel("Back")
             Spacer()
             VStack(spacing: 2) {
                 Text("BOT LADDER")
@@ -68,6 +69,7 @@ struct BotLadderView: View {
                 .font(.custom(GK.pixelFontName, size: 12))
                 .foregroundColor(GK.Colors.scoreYellow)
                 .padding(8)
+                .accessibilityLabel("\(beaten) of \(bots.count) bots beaten")
         }
     }
 
@@ -198,6 +200,9 @@ struct BotLadderView: View {
         }
         .buttonStyle(.plain)
         .disabled(locked)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(bot.name), \(bot.title), ELO \(bot.elo)\(beaten ? ", beaten" : isNext ? ", next challenge" : locked ? ", locked" : "")")
+        .accessibilityHint(isNext ? "Double-tap to challenge" : locked ? "Beat previous bots to unlock" : beaten ? "Already beaten" : "")
     }
 
     // MARK: - Path Segment

@@ -191,6 +191,11 @@ First-frame stutter can occur if textures aren't pre-warmed — see ROADMAP Phas
 - ✅ Reduce-motion accessibility in ParallaxManager
 - ✅ GameScene: 1778 → ~1300 lines (-27%)
 
+### Launch Polish (This Commit)
+- ✅ LeaderboardView: pull-to-refresh (`.refreshable`), auto-scroll to current player row (`ScrollViewReader`), smart loading (spinner only on first load)
+- ✅ Accessibility labels across 5 views: LeaderboardView, ShopView, BotLadderView, AchievementsView, StatsView
+- ✅ Already done (discovered pre-existing): TextureFactory pre-warm (in SplashView), per-skin death sounds (in SoundManager)
+
 ### Previous Commits
 - Bug fixes (stat timing, head-to-head results, 4 gameplay issues, 5 visual bugs)
 - Infrastructure (TextureFactory LRU cache, GK.Animation constants, dead code removal)

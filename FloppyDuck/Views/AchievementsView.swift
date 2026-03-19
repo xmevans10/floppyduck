@@ -72,6 +72,7 @@ struct AchievementsView: View {
                     .background(Circle().fill(Color.black.opacity(0.15)))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
             Spacer()
 
@@ -137,6 +138,8 @@ struct AchievementsView: View {
                         .stroke(Color.white.opacity(0.15), lineWidth: 1)
                 )
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(unlockedCount) of \(totalCount) achievements unlocked. \(progress.totalBreadFromAchievements) bread earned from achievements")
     }
 
     // MARK: - Achievement Card
@@ -242,5 +245,9 @@ struct AchievementsView: View {
                 )
         )
         .opacity(isUnlocked ? 1.0 : 0.7)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(isHidden
+            ? "Secret achievement, locked"
+            : "\(achievement.title), \(isUnlocked ? "unlocked" : "locked"). \(achievement.description). Reward: \(achievement.breadReward) bread")
     }
 }

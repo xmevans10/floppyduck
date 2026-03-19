@@ -38,6 +38,7 @@ struct ShopView: View {
                             .padding(8)
                             .background(Circle().fill(Color.black.opacity(0.15)))
                     }
+                    .accessibilityLabel("Back")
                     Spacer()
                     Text("SHOP")
                         .font(.custom(GK.pixelFontName, size: 22))
@@ -57,6 +58,7 @@ struct ShopView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.25)))
+                    .accessibilityLabel("Bread balance: \(manager.stats.bread)")
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -258,6 +260,9 @@ struct ShopView: View {
         }
         .buttonStyle(.plain)
         .disabled(skin.isPremium && skinManager.purchasing != nil)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(skin.displayName), \(skin.subtitle)\(selected ? ", equipped" : owned ? ", owned" : ", \(skin.priceDisplay)")")
+        .accessibilityHint(selected ? "Currently equipped" : owned ? "Double-tap to equip" : "Double-tap to purchase")
     }
 
     private func priceBadge(for skin: DuckSkin) -> some View {
@@ -436,6 +441,9 @@ struct ShopView: View {
         }
         .buttonStyle(.plain)
         .disabled(theme.isPremium && themeManager.purchasing != nil)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(theme.displayName) background, \(theme.subtitle)\(selected ? ", equipped" : owned ? ", owned" : ", \(theme.priceDisplay)")")
+        .accessibilityHint(selected ? "Currently equipped" : owned ? "Double-tap to equip" : "Double-tap to purchase")
     }
 
     private func themePriceBadge(for theme: BackgroundTheme) -> some View {

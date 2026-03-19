@@ -164,6 +164,8 @@ struct StatsView: View {
                         .stroke(GK.Colors.panelBorder, lineWidth: 2)
                 )
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 
     // MARK: - Recent Scores
@@ -213,5 +215,6 @@ struct StatsView: View {
                 .background(Circle().fill(Color.white.opacity(0.2)))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Back")
     }
 }

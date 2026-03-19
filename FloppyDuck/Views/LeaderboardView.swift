@@ -9,6 +9,11 @@ struct LeaderboardView: View {
 
     private let icons = PixelIconFactory.shared
 
+    /// The current player's userId for highlighting and auto-scroll.
+    private var currentUserId: String? {
+        manager.authManager?.identity?.userId
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -32,6 +37,7 @@ struct LeaderboardView: View {
                             .padding(8)
                             .background(Circle().fill(Color.black.opacity(0.15)))
                     }
+                    .accessibilityLabel("Back")
                     Spacer()
                     Text("LEADERBOARD")
                         .font(.custom(GK.pixelFontName, size: 18))
@@ -82,6 +88,7 @@ struct LeaderboardView: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Retry loading leaderboard")
                     }
                     .padding(30)
                     Spacer()
@@ -92,15 +99,24 @@ struct LeaderboardView: View {
                         .foregroundColor(.white.opacity(0.6))
                     Spacer()
                 } else {
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 8) {
-                            ForEach(entries) { entry in
-                                leaderboardRow(entry)
+                    ScrollViewReader { proxy in
+                        ScrollView(showsIndicators: false) {
+                            VStack(spacing: 8) {
+                                ForEach(entries) { entry in
+                                    leaderboardRow(entry)
+                                        .id(entry.id)
+                                }
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 14)
+                            .padding(.bottom, 30)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 14)
-                        .padding(.bottom, 30)
+                        .refreshable {
+                            await loadLeaderboard()
+                        }
+                        .onChange(of: entries) { _ in
+                            scrollToCurrentPlayer(proxy: proxy)
+                        }
                     }
                 }
             }
@@ -111,10 +127,25 @@ struct LeaderboardView: View {
         }
     }
 
+    // MARK: - Auto-Scroll
+
+    /// Scrolls to the current player's row after data loads.
+    private func scrollToCurrentPlayer(proxy: ScrollViewProxy) {
+        guard let userId = currentUserId,
+              entries.contains(where: { $0.id == userId }) else { return }
+
+        // Brief delay so the ScrollView has laid out its content
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                proxy.scrollTo(userId, anchor: .center)
+            }
+        }
+    }
+
     // MARK: - Load Data
 
     private func loadLeaderboard() async {
-        isLoading = true
+        isLoading = entries.isEmpty  // Only show spinner on first load
         errorMessage = nil
         do {
             entries = try await ConvexClient.shared.getLeaderboard(limit: 50)
@@ -128,7 +159,7 @@ struct LeaderboardView: View {
     // MARK: - Row
 
     private func leaderboardRow(_ entry: LeaderboardEntry) -> some View {
-        let isCurrentPlayer = entry.id == manager.authManager?.identity?.userId
+        let isCurrentPlayer = entry.id == currentUserId
 
         return HStack(spacing: 12) {
             // Rank
@@ -161,6 +192,8 @@ struct LeaderboardView: View {
                 .stroke(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder,
                         lineWidth: isCurrentPlayer ? 3 : 2)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Rank \(entry.rank), \(entry.username), rating \(entry.rating)\(isCurrentPlayer ? ", you" : "")")
     }
 
     private func rankColor(_ rank: Int) -> Color {
