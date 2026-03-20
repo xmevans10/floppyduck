@@ -844,13 +844,12 @@ struct GameContainerView: View {
         )
         let cardImage = shareCard.renderToImage()
 
-        // Item 14: App Store link placeholder
         let medalText = medal != .none ? " \(medal.displayName) medal!" : ""
         let modeText = isHeadToHead ? " in Head to Head" : ""
         let text = "I scored \(score)\(modeText) in Floppy Duck!\(medalText) Can you beat that?"
 
         var items: [Any] = [cardImage, text]
-        if let appStoreURL = URL(string: GK.appStoreURL) {
+        if let appStoreURL = GK.appStoreURL {
             items.append(appStoreURL)
         }
         let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)

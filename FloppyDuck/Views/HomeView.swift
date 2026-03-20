@@ -415,7 +415,7 @@ struct HomeView: View {
     private func shareApp() {
         let text = "Check out Floppy Duck! Can you beat my high score of \(manager.stats.bestScore)?"
         var items: [Any] = [text]
-        if let url = URL(string: GK.appStoreURL) {
+        if let url = GK.appStoreURL {
             items.append(url)
         }
         let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)

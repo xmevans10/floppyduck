@@ -75,7 +75,17 @@ enum GK {
 
     // MARK: - App Store
     /// Update this once the real App Store ID is assigned.
-    static let appStoreURL = "https://apps.apple.com/app/floppy-duck/id000000000"
+    static let appStoreID = "000000000"
+    static var appStoreURL: URL? {
+        makeAppStoreURL(appID: appStoreID)
+    }
+
+    static func makeAppStoreURL(appID: String) -> URL? {
+        let sanitizedID = appID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitizedID.isEmpty, sanitizedID != "000000000" else { return nil }
+        guard CharacterSet.decimalDigits.isSuperset(of: CharacterSet(charactersIn: sanitizedID)) else { return nil }
+        return URL(string: "https://apps.apple.com/app/floppy-duck/id\(sanitizedID)")
+    }
 
     // MARK: - Collision Bitmasks
     static let duckCategory:    UInt32 = 0x1 << 0

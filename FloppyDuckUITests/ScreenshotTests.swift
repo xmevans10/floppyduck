@@ -18,6 +18,7 @@ final class ScreenshotTests: XCTestCase {
         continueAfterFailure = true
         app = XCUIApplication()
         app.launchArguments += ["-UITestMode", "true"]
+        app.launchEnvironment["UITEST_MODE"] = "1"
         app.launch()
     }
 
@@ -33,92 +34,97 @@ final class ScreenshotTests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.5)
         capture("01_splash")
 
-        // 2. Wait for splash to finish → home screen
-        let shopButton = app.buttons["Shop"]
-        let homeAppeared = shopButton.waitForExistence(timeout: 5)
-        if homeAppeared {
-            capture("02_home")
+        // 2. On a clean simulator we may land in auth onboarding before Home.
+        let guestButton = app.buttons["CONTINUE AS GUEST"]
+        if guestButton.waitForExistence(timeout: 5) {
+            capture("02_auth_onboarding")
+            tapCentered(guestButton)
+            waitForAnimation(duration: 0.8)
         }
 
-        // 3. Shop — tap shop button
+        // 3. Wait for splash / onboarding to finish → home screen
+        let shopButton = app.buttons["Shop"]
+        XCTAssertTrue(shopButton.waitForExistence(timeout: 10), "Home screen did not appear in time")
+        capture("03_home")
+
+        // 4. Shop — tap shop button
         if shopButton.exists {
             shopButton.tap()
-            Thread.sleep(forTimeInterval: 0.5)
-            capture("03_shop_ducks")
+            waitForAnimation()
+            capture("04_shop_ducks")
 
             // Tap BACKGROUNDS tab if visible
             let bgTab = app.buttons["BACKGROUNDS"]
             if bgTab.waitForExistence(timeout: 2) {
                 bgTab.tap()
-                Thread.sleep(forTimeInterval: 0.3)
-                capture("04_shop_backgrounds")
+                waitForAnimation()
+                capture("05_shop_backgrounds")
             }
 
-            // Go back
-            let backButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'back' OR label CONTAINS 'Back' OR label CONTAINS 'Home'")).firstMatch
-            if backButton.exists { backButton.tap() }
-            Thread.sleep(forTimeInterval: 0.3)
+            goBackToPreviousScreen()
         }
 
-        // 4. Closet
+        // 5. Closet
         let closetButton = app.buttons["Closet"]
         if closetButton.waitForExistence(timeout: 2) {
             closetButton.tap()
-            Thread.sleep(forTimeInterval: 0.5)
-            capture("05_closet_skins")
+            waitForAnimation()
+            capture("06_closet_skins")
 
             // Tap BACKGROUNDS tab
             let bgTab = app.buttons["BACKGROUNDS"]
             if bgTab.waitForExistence(timeout: 2) {
                 bgTab.tap()
-                Thread.sleep(forTimeInterval: 0.3)
-                capture("06_closet_backgrounds")
+                waitForAnimation()
+                capture("07_closet_backgrounds")
             }
 
-            let backButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'back' OR label CONTAINS 'Back' OR label CONTAINS 'Home'")).firstMatch
-            if backButton.exists { backButton.tap() }
-            Thread.sleep(forTimeInterval: 0.3)
+            goBackToPreviousScreen()
         }
 
-        // 5. Stats
+        // 6. Stats
         let statsButton = app.buttons["Stats"]
         if statsButton.waitForExistence(timeout: 2) {
             statsButton.tap()
-            Thread.sleep(forTimeInterval: 0.5)
-            capture("07_stats")
+            waitForAnimation()
+            capture("08_stats")
 
-            let backButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'back' OR label CONTAINS 'Back' OR label CONTAINS 'Home'")).firstMatch
-            if backButton.exists { backButton.tap() }
-            Thread.sleep(forTimeInterval: 0.3)
+            let leaderboardButton = app.buttons["LEADERBOARD"]
+            if leaderboardButton.waitForExistence(timeout: 2) {
+                leaderboardButton.tap()
+                waitForAnimation(duration: 1.0)
+                capture("09_leaderboard")
+                goBackToPreviousScreen()
+            }
+
+            goBackToPreviousScreen()
         }
 
-        // 6. Settings
+        // 7. Settings
         let settingsButton = app.buttons["Settings"]
         if settingsButton.waitForExistence(timeout: 2) {
             settingsButton.tap()
-            Thread.sleep(forTimeInterval: 0.5)
-            capture("08_settings")
+            waitForAnimation()
+            capture("10_settings")
 
-            let backButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'back' OR label CONTAINS 'Back' OR label CONTAINS 'Home'")).firstMatch
-            if backButton.exists { backButton.tap() }
-            Thread.sleep(forTimeInterval: 0.3)
+            goBackToPreviousScreen()
         }
 
-        // 7. Start Classic game → gameplay
+        // 8. Start Classic game → gameplay
         let classicButton = app.buttons["Classic"]
         if classicButton.waitForExistence(timeout: 2) {
             classicButton.tap()
             Thread.sleep(forTimeInterval: 1.0)
-            capture("09_gameplay_ready")
+            capture("11_gameplay_ready")
 
             // Tap to start playing
             app.tap()
-            Thread.sleep(forTimeInterval: 0.5)
-            capture("10_gameplay_playing")
+            waitForAnimation()
+            capture("12_gameplay_playing")
 
             // Wait for death (don't tap, duck will fall into ground)
             Thread.sleep(forTimeInterval: 4.0)
-            capture("11_game_over")
+            capture("13_game_over")
         }
     }
 
@@ -130,5 +136,21 @@ final class ScreenshotTests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func waitForAnimation(duration: TimeInterval = 0.4) {
+        Thread.sleep(forTimeInterval: duration)
+    }
+
+    private func tapCentered(_ element: XCUIElement) {
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    }
+
+    private func goBackToPreviousScreen() {
+        let backButton = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'back' OR label CONTAINS[c] 'home'")).firstMatch
+        if backButton.waitForExistence(timeout: 2) {
+            backButton.tap()
+            waitForAnimation(duration: 0.3)
+        }
     }
 }

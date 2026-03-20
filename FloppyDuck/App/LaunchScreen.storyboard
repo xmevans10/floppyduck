@@ -14,6 +14,26 @@
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchBackground" translatesAutoresizingMaskIntoConstraints="NO" id="X4x-3A-9m3">
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                            </imageView>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchDuck" translatesAutoresizingMaskIntoConstraints="NO" id="N6K-hL-6Da">
+                                <rect key="frame" x="96.5" y="305.5" width="200" height="137.5"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="137.5" id="0i4-fI-cTF"/>
+                                    <constraint firstAttribute="width" constant="200" id="aP4-Pn-R1U"/>
+                                </constraints>
+                            </imageView>
+                        </subviews>
+                        <constraints>
+                            <constraint firstItem="X4x-3A-9m3" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="4Jw-dW-V2D"/>
+                            <constraint firstItem="X4x-3A-9m3" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="G5W-Ws-4Nq"/>
+                            <constraint firstAttribute="trailing" secondItem="X4x-3A-9m3" secondAttribute="trailing" id="OtT-HX-IJ2"/>
+                            <constraint firstAttribute="bottom" secondItem="X4x-3A-9m3" secondAttribute="bottom" id="WbM-Cv-HcL"/>
+                            <constraint firstItem="N6K-hL-6Da" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="YAc-Zb-MzH"/>
+                            <constraint firstItem="N6K-hL-6Da" firstAttribute="centerY" secondItem="Bcu-3y-fUS" secondAttribute="centerY" constant="-84" id="feK-oS-JtQ"/>
+                        </constraints>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
                         <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
@@ -23,4 +43,8 @@
             <point key="canvasLocation" x="132" y="119"/>
         </scene>
     </scenes>
+    <resources>
+        <image name="LaunchBackground" width="1290" height="2796"/>
+        <image name="LaunchDuck" width="512" height="352"/>
+    </resources>
 </document>

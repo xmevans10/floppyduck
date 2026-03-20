@@ -267,6 +267,20 @@ final class AuthManager: ObservableObject {
 
         let deviceId = identityStore.getOrCreateDeviceId()
 
+        if isUITestMode {
+            completeLocalGuestBootstrap(
+                deviceId: deviceId,
+                markOnboardingComplete: markOnboardingComplete,
+                userIdPrefix: "uitest"
+            )
+            authState = .authenticated(.guest)
+            if !silentFailure {
+                statusMessage = nil
+            }
+            needsCloudRestore = false
+            return
+        }
+
         await client.setAuthContext(deviceId: deviceId, sessionToken: nil)
 
         let shouldAttemptMerge = !identityStore.didMergeLocalStats
@@ -327,6 +341,33 @@ final class AuthManager: ObservableObject {
         }
     }
 
+    private func completeLocalGuestBootstrap(deviceId: String,
+                                             markOnboardingComplete: Bool,
+                                             userIdPrefix: String = "local") {
+        if markOnboardingComplete {
+            identityStore.didCompleteAuthOnboarding = true
+        }
+
+        identityStore.sessionToken = nil
+
+        let fallbackProfile = RemotePlayerProfile(
+            userId: "\(userIdPrefix)-\(deviceId)",
+            username: gameManager.playerName,
+            provider: .guest,
+            stats: gameManager.stats
+        )
+
+        applyAuthenticatedState(
+            provider: .guest,
+            userId: fallbackProfile.userId,
+            deviceId: deviceId,
+            appleUserId: nil,
+            sessionToken: nil,
+            sessionExpiresAt: nil,
+            profile: fallbackProfile
+        )
+    }
+
     private func applyAuthenticatedState(provider: AuthProvider,
                                          userId: String,
                                          deviceId: String,
@@ -356,6 +397,12 @@ final class AuthManager: ObservableObject {
             return value
         }
         return true
+    }
+
+    private var isUITestMode: Bool {
+        let processInfo = ProcessInfo.processInfo
+        return processInfo.environment["UITEST_MODE"] == "1"
+            || processInfo.arguments.contains("-UITestMode")
     }
 
     private static let syncFormatter: DateFormatter = {

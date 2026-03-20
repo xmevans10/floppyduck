@@ -67,6 +67,17 @@ final class GameModelTests: XCTestCase {
 
     // MARK: - BackgroundTheme
 
+    func testPlaceholderAppStoreIDDoesNotProduceShareURL() {
+        XCTAssertNil(GK.makeAppStoreURL(appID: "000000000"))
+        XCTAssertNil(GK.makeAppStoreURL(appID: ""))
+        XCTAssertNil(GK.makeAppStoreURL(appID: "not-a-real-id"))
+    }
+
+    func testRealAppStoreIDProducesShareURL() {
+        let url = GK.makeAppStoreURL(appID: "1234567890")
+        XCTAssertEqual(url?.absoluteString, "https://apps.apple.com/app/floppy-duck/id1234567890")
+    }
+
     func testBackgroundThemeGradients() {
         for theme in BackgroundTheme.allCases {
             XCTAssertGreaterThanOrEqual(theme.gradientColors.count, 2,
