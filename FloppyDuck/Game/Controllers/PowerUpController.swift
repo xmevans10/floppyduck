@@ -498,9 +498,10 @@ final class PowerUpController {
         // Restore full opacity
         duck.alpha = 1.0
 
-        // Re-enable pipe collisions
+        // Re-enable pipe contact detection, but keep physical collision disabled
+        // to avoid SpriteKit pushing the duck left during pipe contacts.
         duck.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
-        duck.physicsBody?.collisionBitMask = GK.groundCategory | GK.pipeCategory
+        duck.physicsBody?.collisionBitMask = GK.groundCategory
 
         // Remove glow
         removeGhostGlow()

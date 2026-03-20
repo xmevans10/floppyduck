@@ -325,7 +325,7 @@ enum Medal: String {
 
 // MARK: - Leaderboard
 
-struct LeaderboardEntry: Identifiable, Codable {
+struct LeaderboardEntry: Identifiable, Codable, Hashable {
     let id: String
     let username: String
     let rating: Int

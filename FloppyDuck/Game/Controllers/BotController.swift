@@ -181,7 +181,9 @@ final class BotController {
         velocity += GK.gravity / 60 * CGFloat(dt) * 60
         posY += velocity * CGFloat(dt)
 
-        let botR = GK.duckRadius * 0.85
+        // Match GameScene's collision envelope so controller wiring doesn't
+        // regress the cap-clipping fix.
+        let botR = GK.duckRadius
 
         // Ground collision → die
         if posY <= GK.groundHeight + botR {
@@ -225,8 +227,8 @@ final class BotController {
             if abs(dist) < GK.pipeWidth / 2 + botR * 0.6 {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     let gapY = trigger.position.y
-                    let gapTop = gapY + gap / 2 - 5
-                    let gapBottom = gapY - gap / 2 + 5
+                    let gapTop = gapY + gap / 2 - 14
+                    let gapBottom = gapY - gap / 2 + 14
                     if posY + botR > gapTop || posY - botR < gapBottom {
                         die()
                         return

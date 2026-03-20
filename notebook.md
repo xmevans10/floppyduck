@@ -245,3 +245,33 @@ First-frame stutter can occur if textures aren't pre-warmed — see ROADMAP Phas
 | `PowerUpController.swift` | ~550 | `PowerUpController` |
 | `ParallaxManager.swift` | ~345 | `ParallaxManager` |
 | `GameModels.swift` | ~350 | `GameMode`, `PlayerStats`, `Medal`, multiplayer types |
+
+---
+
+## Reflection — March 20, 2026
+
+- Synced local `main` from `639f555` to `3d84450` before making changes.
+- The incoming wiring commit made controller parity a live stability issue, not a future refactor item.
+- Fixes applied after sync:
+  - `BotController` now matches the current scene collision envelope (`duckRadius`, 14pt cap inset).
+  - `PowerUpController` now restores ground-only physical collision after ghost-duck expiry.
+  - `LeaderboardEntry` now conforms to `Hashable`, which fixes `LeaderboardView`'s `.onChange(of: entries)` build break.
+  - `MultiplayerFlowTests` no longer rely on tuple array `Equatable` synthesis.
+  - `AchievementTests` now run on the main actor where `AchievementManager` requires it.
+- Added regression coverage for:
+  - bot controller collision parity
+  - ghost-duck expiry collision-mask restoration
+  - power-up collection / shield-consumption achievement callbacks
+- Validation result:
+  - `xcodebuild test -project FloppyDuck.xcodeproj -scheme FloppyDuck -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:FloppyDuckTests -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY='' CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`
+  - 106 tests passing
+- Roadmap corrections made:
+  - app icons and privacy manifest moved to done/present
+  - launch screen marked partial because the storyboard still does not use the launch assets
+  - controller wiring removed from "next up" and reframed as live code that needs parity protection
+  - leaderboard pagination kept as future work
+- Recommended follow-ups:
+  - wire `LaunchBackground` / `LaunchDuck` into `LaunchScreen.storyboard`
+  - replace the placeholder App Store URL
+  - run two-device auth/multiplayer smoke tests plus StoreKit sandbox validation
+  - add leaderboard pagination and abandoned-match handling

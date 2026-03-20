@@ -30,7 +30,9 @@ final class MultiplayerFlowTests: XCTestCase {
         // Player reports score during game
         await session.reportScore(matchId: "qp-match-1", score: 7)
         let snap = await mock.snapshot()
-        XCTAssertEqual(snap.reportedScores, [("qp-match-1", 7)])
+        XCTAssertEqual(snap.reportedScores.count, 1)
+        XCTAssertEqual(snap.reportedScores.first?.0, "qp-match-1")
+        XCTAssertEqual(snap.reportedScores.first?.1, 7)
 
         // Player finishes match
         let result = try await session.finishMatch(

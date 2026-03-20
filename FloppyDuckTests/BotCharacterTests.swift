@@ -1,3 +1,4 @@
+import SpriteKit
 import XCTest
 @testable import FloppyDuck
 
@@ -60,5 +61,35 @@ final class BotCharacterTests: XCTestCase {
     func testFindByIdReturnsNilForInvalid() {
         XCTAssertNil(BotCharacter.find("nonexistent"))
         XCTAssertNil(BotCharacter.find(""))
+    }
+
+    // MARK: - Controller Parity
+
+    func testBotControllerMatchesCurrentPipeCollisionEnvelope() {
+        let worldNode = SKNode()
+        let hudLayer = SKNode()
+        let controller = BotController(worldNode: worldNode, hudLayer: hudLayer)
+        controller.setup(skin: .classic)
+
+        let pipe = SKNode()
+        pipe.position = CGPoint(x: GK.duckStartX, y: 0)
+        pipe.name = "pipe_0"
+
+        let trigger = SKNode()
+        trigger.name = "scoreTrigger"
+        trigger.position = CGPoint(x: 0, y: 340)
+        pipe.addChild(trigger)
+
+        controller.update(
+            dt: 0,
+            pipeNodes: [pipe],
+            activePowerUps: [],
+            effectivePipeGap: GK.pipeGap
+        )
+
+        XCTAssertTrue(
+            controller.isDead,
+            "BotController should use the same full-radius, cap-aware collision envelope as GameScene."
+        )
     }
 }

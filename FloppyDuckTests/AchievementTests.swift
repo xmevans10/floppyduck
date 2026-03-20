@@ -1,6 +1,7 @@
 import XCTest
 @testable import FloppyDuck
 
+@MainActor
 final class AchievementTests: XCTestCase {
 
     // MARK: - Score Milestone Unlocks

@@ -1,3 +1,5 @@
+import QuartzCore
+import SpriteKit
 import XCTest
 @testable import FloppyDuck
 
@@ -287,4 +289,102 @@ final class PowerUpTests: XCTestCase {
         XCTAssertFalse(shieldSpawned,
             "Shield should never spawn at easy tier")
     }
+
+    // MARK: - Controller Parity
+
+    func testCollectingPowerUpReportsKindForAchievementTracking() {
+        let harness = makePowerUpHarness()
+        let controller = harness.controller
+        var collectedKinds: [PowerUpKind] = []
+        controller.onPowerUpCollected = { collectedKinds.append($0) }
+
+        let node = SKNode()
+        node.name = "powerUp_dizzyDuck"
+        controller.collectPowerUp(node: node)
+
+        XCTAssertEqual(collectedKinds, [.dizzyDuck])
+    }
+
+    func testShieldConsumptionReportsUsageForAchievementTracking() {
+        let harness = makePowerUpHarness()
+        let controller = harness.controller
+        var shieldConsumptions = 0
+        controller.onShieldConsumed = { shieldConsumptions += 1 }
+
+        let node = SKNode()
+        node.name = "powerUp_shield"
+        controller.collectPowerUp(node: node)
+
+        controller.consumeShield(scene: SKScene(size: CGSize(width: GK.worldWidth, height: GK.worldHeight)))
+
+        XCTAssertEqual(shieldConsumptions, 1)
+        XCTAssertFalse(controller.hasActiveShield)
+    }
+
+    func testGhostDuckExpiryRestoresGroundOnlyCollisionMask() {
+        let harness = makePowerUpHarness()
+        let duck = harness.duck
+        let controller = harness.controller
+
+        let node = SKNode()
+        node.name = "powerUp_ghostDuck"
+        controller.collectPowerUp(node: node)
+
+        XCTAssertEqual(duck.physicsBody?.collisionBitMask, GK.groundCategory)
+
+        controller.update(
+            dt: 0,
+            currentTime: CACurrentMediaTime() + PowerUpKind.ghostDuck.duration + 0.1
+        )
+
+        XCTAssertEqual(
+            duck.physicsBody?.contactTestBitMask,
+            GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
+        )
+        XCTAssertEqual(duck.physicsBody?.collisionBitMask, GK.groundCategory)
+    }
+}
+
+private struct PowerUpHarness {
+    let worldNode: SKNode
+    let pipeLayer: SKNode
+    let duck: SKSpriteNode
+    let controller: PowerUpController
+}
+
+private func makePowerUpHarness(duck: SKSpriteNode? = nil) -> PowerUpHarness {
+    let worldNode = SKNode()
+    let pipeLayer = SKNode()
+    let sprite = duck ?? makeTestDuck()
+    worldNode.addChild(pipeLayer)
+    worldNode.addChild(sprite)
+    let controller = PowerUpController(
+        worldNode: worldNode,
+        pipeLayer: pipeLayer,
+        duck: sprite,
+        difficulty: DifficultyManager()
+    )
+    return PowerUpHarness(
+        worldNode: worldNode,
+        pipeLayer: pipeLayer,
+        duck: sprite,
+        controller: controller
+    )
+}
+
+private func makeTestDuck() -> SKSpriteNode {
+    let duck = SKSpriteNode(color: .white, size: CGSize(width: 32, height: 32))
+    duck.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
+
+    let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
+    body.categoryBitMask = GK.duckCategory
+    body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
+    body.collisionBitMask = GK.groundCategory
+    body.allowsRotation = false
+    body.restitution = 0
+    body.linearDamping = 0
+    body.usesPreciseCollisionDetection = true
+    duck.physicsBody = body
+
+    return duck
 }
