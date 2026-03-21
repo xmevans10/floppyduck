@@ -69,6 +69,8 @@ Free (with in-app purchases)
 | com.floppyduck.skin.alien | Non-Consumable | $0.49 | Alien Skin |
 | com.floppyduck.skin.wizard | Non-Consumable | $0.49 | Wizard Skin |
 | com.floppyduck.skin.devil | Non-Consumable | $0.49 | Devil Skin |
+| com.floppyduck.theme.space | Non-Consumable | $0.99 | Space Background |
+| com.floppyduck.theme.pixelTokyo | Non-Consumable | $0.99 | Tokyo Background |
 
 ## Copyright
 © 2026 Floppy Duck

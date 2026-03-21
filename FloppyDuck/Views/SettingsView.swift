@@ -152,6 +152,34 @@ struct SettingsView: View {
                             }
                         }
 
+                        // Restore purchases
+                        settingsPanel {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("PURCHASES")
+                                    .font(.custom(GK.pixelFontName, size: 10))
+                                    .foregroundColor(GK.Colors.panelBorder)
+
+                                Button {
+                                    Task {
+                                        await SkinManager.shared.restorePurchases()
+                                        await ThemeManager.shared.restorePurchases()
+                                    }
+                                } label: {
+                                    Text("RESTORE PURCHASES")
+                                        .font(.custom(GK.pixelFontName, size: 8))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonBlue))
+                                }
+                                .buttonStyle(.plain)
+
+                                Text("Restores any previously purchased skins or backgrounds.")
+                                    .font(.custom(GK.pixelFontName, size: 6))
+                                    .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                            }
+                        }
+
                         // Version info
                         settingsPanel {
                             HStack {
