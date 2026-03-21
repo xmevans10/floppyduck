@@ -74,7 +74,8 @@ enum GK {
     static let roomCodeLength = 5
 
     // MARK: - App Store
-    /// Update this once the real App Store ID is assigned.
+    // TODO: Replace with real App Store ID after creating the app in App Store Connect.
+    // While this is "000000000", GK.appStoreURL returns nil and share sheets omit the link.
     static let appStoreID = "000000000"
     static var appStoreURL: URL? {
         makeAppStoreURL(appID: appStoreID)

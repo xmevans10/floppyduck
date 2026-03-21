@@ -159,7 +159,7 @@ struct SettingsView: View {
                                     .font(.custom(GK.pixelFontName, size: 8))
                                     .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
                                 Spacer()
-                                Text("1.0.0")
+                                Text(Self.versionString)
                                     .font(.custom(GK.pixelFontName, size: 8))
                                     .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
                             }
@@ -206,6 +206,14 @@ struct SettingsView: View {
         .onChange(of: manager.soundEnabled) { _, _ in
             SoundManager.shared.refreshAudioPreference()
         }
+    }
+
+    // MARK: - Version
+
+    private static var versionString: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "\(version) (\(build))"
     }
 
     // MARK: - Settings Panel
