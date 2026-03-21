@@ -250,6 +250,62 @@ export const getProfile = query({
   },
 });
 
+export const deleteAccount = mutation({
+  args: {
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { requireLinked: true });
+    const userId = user._id;
+
+    // Delete all sessions for this user
+    const sessions = await ctx.db
+      .query("sessions")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+    for (const session of sessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    // Delete matchmaking queue entries
+    const queueEntries = await ctx.db
+      .query("matchmakingQueue")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+    for (const entry of queueEntries) {
+      await ctx.db.delete(entry._id);
+    }
+
+    // Delete rooms where user is host and status is "waiting"
+    const rooms = await ctx.db
+      .query("rooms")
+      .withIndex("by_hostUserId", (q) => q.eq("hostUserId", userId))
+      .collect();
+    for (const room of rooms) {
+      if (room.status === "waiting") {
+        await ctx.db.delete(room._id);
+      }
+    }
+
+    // Delete ratings entry
+    const rating = await ctx.db
+      .query("ratings")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    if (rating) {
+      await ctx.db.delete(rating._id);
+    }
+
+    // Delete the user document itself
+    await ctx.db.delete(userId);
+
+    // NOTE: Matches are intentionally preserved — they reference two players
+    // and deleting would affect data integrity for the other participant.
+
+    return { success: true };
+  },
+});
+
 export const signOutSession = mutation({
   args: {
     ...identityArgs,

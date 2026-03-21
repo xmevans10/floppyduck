@@ -24,7 +24,7 @@ deletion. Floppy Duck supports Sign in with Apple → this is mandatory.
 - [x] Button calls `auth:deleteAccount` mutation on Convex backend
 - [x] After deletion: clear local Keychain + UserDefaults, reset to guest state
 - [x] Confirmation dialog warns this is permanent
-- [ ] 🔧 Implement `auth:deleteAccount` Convex mutation server-side (deletes user doc, stats, sessions)
+- [x] 🔧 Implement `auth:deleteAccount` Convex mutation server-side (deletes user doc, stats, sessions)
 - [ ] 🔧 Verify deletion works end-to-end on device
 
 > **Why this matters**: Apps have been rejected for hiding account deletion behind
