@@ -42,8 +42,9 @@ final class ScreenshotTests: XCTestCase {
             waitForAnimation(duration: 0.8)
         }
 
-        // 3. Wait for splash / onboarding to finish → home screen
-        let shopButton = app.buttons["Shop"]
+        // 3. Wait for splash / onboarding to finish → home screen.
+        //    Button labels are ALL-CAPS in the UI (e.g. "SHOP"), so match exactly.
+        let shopButton = app.buttons["SHOP"]
         XCTAssertTrue(shopButton.waitForExistence(timeout: 10), "Home screen did not appear in time")
         capture("03_home")
 
@@ -64,26 +65,26 @@ final class ScreenshotTests: XCTestCase {
             goBackToPreviousScreen()
         }
 
-        // 5. Closet
-        let closetButton = app.buttons["Closet"]
-        if closetButton.waitForExistence(timeout: 2) {
-            closetButton.tap()
+        // 5. Collection (skins + backgrounds closet)
+        let collectionButton = app.buttons["COLLECTION"]
+        if collectionButton.waitForExistence(timeout: 2) {
+            collectionButton.tap()
             waitForAnimation()
-            capture("06_closet_skins")
+            capture("06_collection_skins")
 
             // Tap BACKGROUNDS tab
             let bgTab = app.buttons["BACKGROUNDS"]
             if bgTab.waitForExistence(timeout: 2) {
                 bgTab.tap()
                 waitForAnimation()
-                capture("07_closet_backgrounds")
+                capture("07_collection_backgrounds")
             }
 
             goBackToPreviousScreen()
         }
 
         // 6. Stats
-        let statsButton = app.buttons["Stats"]
+        let statsButton = app.buttons["STATS"]
         if statsButton.waitForExistence(timeout: 2) {
             statsButton.tap()
             waitForAnimation()
@@ -101,7 +102,7 @@ final class ScreenshotTests: XCTestCase {
         }
 
         // 7. Settings
-        let settingsButton = app.buttons["Settings"]
+        let settingsButton = app.buttons["SETTINGS"]
         if settingsButton.waitForExistence(timeout: 2) {
             settingsButton.tap()
             waitForAnimation()
@@ -110,8 +111,9 @@ final class ScreenshotTests: XCTestCase {
             goBackToPreviousScreen()
         }
 
-        // 8. Start Classic game → gameplay
-        let classicButton = app.buttons["Classic"]
+        // 8. Start Classic game → gameplay.
+        //    The play-mode button label is "Classic, Solo Run" (from accessibilityLabel).
+        let classicButton = app.buttons["Classic, Solo Run"]
         if classicButton.waitForExistence(timeout: 2) {
             classicButton.tap()
             Thread.sleep(forTimeInterval: 1.0)
