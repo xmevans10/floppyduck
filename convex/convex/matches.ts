@@ -53,10 +53,9 @@ export const getState = query({
     mustBeParticipant(match, user._id);
     const p1 = await ctx.db.get(match.p1UserId);
     const p2 = await ctx.db.get(match.p2UserId);
-    if (!p1 || !p2) {
-      throw new Error("Match users missing.");
-    }
 
+    // Gracefully handle deleted opponents — matches are preserved after
+    // account deletion so the remaining player can still query state.
     return buildPublicMatchState(match, user._id, p1, p2);
   },
 });
@@ -97,18 +96,17 @@ export const finishMatch = mutation({
 
     const p1 = await ctx.db.get(updatedMatch.p1UserId);
     const p2 = await ctx.db.get(updatedMatch.p2UserId);
-    if (!p1 || !p2) {
-      throw new Error("Match users missing.");
-    }
 
+    // Gracefully handle deleted opponents — matches are preserved after
+    // account deletion so the remaining player can still finish.
     return buildPublicMatchState(updatedMatch, user._id, p1, p2);
   },
 });
 
 function buildPublicMatchState(match: Doc<"matches">,
                                userId: Doc<"users">["_id"],
-                               p1: Doc<"users">,
-                               p2: Doc<"users">) {
+                               p1: Doc<"users"> | null,
+                               p2: Doc<"users"> | null) {
   const isP1 = match.p1UserId === userId;
   const localScore = isP1 ? match.p1Score : match.p2Score;
   const opponentScore = isP1 ? match.p2Score : match.p1Score;
@@ -119,7 +117,7 @@ function buildPublicMatchState(match: Doc<"matches">,
   return {
     matchId: match._id,
     mode: match.mode,
-    opponentName: opponent.username ?? "OPPONENT",
+    opponentName: opponent?.username ?? "OPPONENT",
     localScore,
     opponentScore,
     isFinished: isFinalized,
@@ -127,7 +125,7 @@ function buildPublicMatchState(match: Doc<"matches">,
     didWin: isFinalized ? localScore > opponentScore : undefined,
     didDraw: isFinalized ? localScore === opponentScore : undefined,
     ratingDelta: isFinalized ? (isP1 ? match.ratingDeltaP1 : match.ratingDeltaP2) : undefined,
-    newRating: isFinalized ? localUser.rating : undefined,
+    newRating: isFinalized ? (localUser?.rating ?? undefined) : undefined,
     isRanked: match.mode === "ranked",
   };
 }
@@ -137,8 +135,20 @@ async function resolveMatchAndRatings(ctx: any, match: Doc<"matches">): Promise<
 
   const p1 = await ctx.db.get(match.p1UserId);
   const p2 = await ctx.db.get(match.p2UserId);
-  if (!p1 || !p2) {
-    throw new Error("Unable to resolve match participants.");
+
+  // At least one participant must still exist to finalize the match.
+  if (!p1 && !p2) {
+    // Both deleted — just mark the match finished with no rating changes.
+    await ctx.db.patch(match._id, {
+      status: "finished",
+      finishedAt: now,
+      updatedAt: now,
+    });
+    const updatedMatch = await ctx.db.get(match._id);
+    if (!updatedMatch) {
+      throw new Error("Unable to read resolved match.");
+    }
+    return updatedMatch;
   }
 
   const p1Score = match.p1Score;
@@ -146,20 +156,24 @@ async function resolveMatchAndRatings(ctx: any, match: Doc<"matches">): Promise<
 
   let winnerUserId = undefined;
   if (p1Score > p2Score) {
-    winnerUserId = p1._id;
+    winnerUserId = p1?._id;
   } else if (p2Score > p1Score) {
-    winnerUserId = p2._id;
+    winnerUserId = p2?._id;
   }
 
   let ratingDeltaP1 = 0;
   let ratingDeltaP2 = 0;
 
-  let p1NewRating = p1.rating;
-  let p2NewRating = p2.rating;
+  // Use actual rating or default 1200 for deleted opponents.
+  const p1Rating = p1?.rating ?? 1200;
+  const p2Rating = p2?.rating ?? 1200;
+
+  let p1NewRating = p1Rating;
+  let p2NewRating = p2Rating;
 
   if (match.mode === "ranked") {
-    const p1Expected = 1 / (1 + Math.pow(10, (p2.rating - p1.rating) / 400));
-    const p2Expected = 1 / (1 + Math.pow(10, (p1.rating - p2.rating) / 400));
+    const p1Expected = 1 / (1 + Math.pow(10, (p2Rating - p1Rating) / 400));
+    const p2Expected = 1 / (1 + Math.pow(10, (p1Rating - p2Rating) / 400));
 
     const p1ScoreValue = p1Score === p2Score ? 0.5 : p1Score > p2Score ? 1 : 0;
     const p2ScoreValue = p1Score === p2Score ? 0.5 : p2Score > p1Score ? 1 : 0;
@@ -167,37 +181,40 @@ async function resolveMatchAndRatings(ctx: any, match: Doc<"matches">): Promise<
     ratingDeltaP1 = Math.round(K_FACTOR * (p1ScoreValue - p1Expected));
     ratingDeltaP2 = Math.round(K_FACTOR * (p2ScoreValue - p2Expected));
 
-    p1NewRating = p1.rating + ratingDeltaP1;
-    p2NewRating = p2.rating + ratingDeltaP2;
+    p1NewRating = p1Rating + ratingDeltaP1;
+    p2NewRating = p2Rating + ratingDeltaP2;
   }
 
-  const p1StatsPatch = applyMatchStatsToUser(
-    p1,
-    p1Score,
-    p1Score > p2Score,
-    p1Score === p2Score,
-    p1NewRating,
-  );
-  const p2StatsPatch = applyMatchStatsToUser(
-    p2,
-    p2Score,
-    p2Score > p1Score,
-    p1Score === p2Score,
-    p2NewRating,
-  );
+  // Only update stats for users that still exist.
+  if (p1) {
+    const p1StatsPatch = applyMatchStatsToUser(
+      p1,
+      p1Score,
+      p1Score > p2Score,
+      p1Score === p2Score,
+      p1NewRating,
+    );
+    await ctx.db.patch(p1._id, {
+      ...p1StatsPatch,
+      updatedAt: now,
+    });
+    await upsertRating(ctx, p1._id, p1NewRating, now);
+  }
 
-  await ctx.db.patch(p1._id, {
-    ...p1StatsPatch,
-    updatedAt: now,
-  });
-
-  await ctx.db.patch(p2._id, {
-    ...p2StatsPatch,
-    updatedAt: now,
-  });
-
-  await upsertRating(ctx, p1._id, p1NewRating, now);
-  await upsertRating(ctx, p2._id, p2NewRating, now);
+  if (p2) {
+    const p2StatsPatch = applyMatchStatsToUser(
+      p2,
+      p2Score,
+      p2Score > p1Score,
+      p1Score === p2Score,
+      p2NewRating,
+    );
+    await ctx.db.patch(p2._id, {
+      ...p2StatsPatch,
+      updatedAt: now,
+    });
+    await upsertRating(ctx, p2._id, p2NewRating, now);
+  }
 
   await ctx.db.patch(match._id, {
     status: "finished",

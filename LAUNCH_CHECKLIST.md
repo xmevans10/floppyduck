@@ -336,5 +336,10 @@ Ship within 1-2 weeks of launch:
 | 7. Post-Launch | 9 | 0 | 9 |
 
 **Code-side items complete: 37 of 125 total**
-**Next action: Account deletion is the critical path** — everything else is
-Xcode/portal work, but this is a code change that blocks submission.
+**All code-side items are done.** Remaining 88 items require Xcode, device,
+Apple Developer portal, or App Store Connect. The critical path is:
+1. Create app in App Store Connect → get real App Store ID
+2. Enable GitHub Pages (Settings → Pages → Deploy from branch, `/docs` folder)
+3. Register 5 IAPs + accept Paid Applications Agreement
+4. Complete age rating + privacy nutrition label
+5. Upload screenshots at required sizes

@@ -277,11 +277,22 @@ export const deleteAccount = mutation({
     }
 
     // Delete rooms where user is host and status is "waiting"
-    const rooms = await ctx.db
+    const hostedRooms = await ctx.db
       .query("rooms")
       .withIndex("by_hostUserId", (q) => q.eq("hostUserId", userId))
       .collect();
-    for (const room of rooms) {
+    for (const room of hostedRooms) {
+      if (room.status === "waiting") {
+        await ctx.db.delete(room._id);
+      }
+    }
+
+    // Also clean up rooms where user joined as guest
+    const guestRooms = await ctx.db
+      .query("rooms")
+      .withIndex("by_guestUserId", (q) => q.eq("guestUserId", userId))
+      .collect();
+    for (const room of guestRooms) {
       if (room.status === "waiting") {
         await ctx.db.delete(room._id);
       }
