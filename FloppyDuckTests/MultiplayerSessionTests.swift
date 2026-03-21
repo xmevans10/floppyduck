@@ -198,6 +198,10 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
         // Not needed for these tests.
     }
 
+    func deleteAccount() async throws {
+        // Not needed for these tests.
+    }
+
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket {
         QueueTicket(ticketId: "queue-ticket", mode: mode, roomCode: nil)
     }

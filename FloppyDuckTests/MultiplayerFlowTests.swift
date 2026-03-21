@@ -377,6 +377,7 @@ private actor TwoPlayerMock: MultiplayerBackendClient {
     }
 
     func signOutSession() async throws {}
+    func deleteAccount() async throws {}
 
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket {
         QueueTicket(ticketId: "tick-\(mode.rawValue)", mode: mode, roomCode: nil)
@@ -474,6 +475,7 @@ private actor PendingFinalizationBackend: MultiplayerBackendClient {
     }
 
     func signOutSession() async throws {}
+    func deleteAccount() async throws {}
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket { QueueTicket(ticketId: "ticket", mode: mode, roomCode: nil) }
     func leaveMatchmakingQueue(ticketId: String?) async throws {}
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? { nil }
@@ -565,6 +567,7 @@ private actor RetryingBootstrapBackend: MultiplayerBackendClient {
     }
 
     func signOutSession() async throws {}
+    func deleteAccount() async throws {}
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket { QueueTicket(ticketId: "ticket", mode: mode, roomCode: nil) }
     func leaveMatchmakingQueue(ticketId: String?) async throws {}
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? { nil }

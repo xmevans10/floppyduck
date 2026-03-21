@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var manager: GameManager
     @EnvironmentObject var auth: AuthManager
     @State private var showResetConfirm = false
+    @State private var showDeleteAccountConfirm = false
     private let icons = PixelIconFactory.shared
 
     var body: some View {
@@ -180,6 +181,35 @@ struct SettingsView: View {
                             }
                         }
 
+                        // Delete account (Apple requirement 5.1.1(v))
+                        if auth.isAppleLinked {
+                            settingsPanel {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("DELETE ACCOUNT")
+                                        .font(.custom(GK.pixelFontName, size: 10))
+                                        .foregroundColor(GK.Colors.buttonRed)
+
+                                    Text("Permanently deletes your account, stats, and all data from our servers. This cannot be undone.")
+                                        .font(.custom(GK.pixelFontName, size: 6))
+                                        .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+
+                                    Button {
+                                        showDeleteAccountConfirm = true
+                                    } label: {
+                                        Text("DELETE MY ACCOUNT")
+                                            .font(.custom(GK.pixelFontName, size: 8))
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonRed))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(auth.isBusy)
+                                    .opacity(auth.isBusy ? 0.6 : 1)
+                                }
+                            }
+                        }
+
                         // Version info
                         settingsPanel {
                             HStack {
@@ -230,6 +260,14 @@ struct SettingsView: View {
             }
         } message: {
             Text("This will erase all your scores, bread, and ELO. This cannot be undone.")
+        }
+        .alert("DELETE ACCOUNT?", isPresented: $showDeleteAccountConfirm) {
+            Button("CANCEL", role: .cancel) {}
+            Button("DELETE EVERYTHING", role: .destructive) {
+                Task { await auth.deleteAccount() }
+            }
+        } message: {
+            Text("This will permanently delete your account, all stats, purchases history, and cloud data. You will start fresh as a new guest. This cannot be undone.")
         }
         .onChange(of: manager.soundEnabled) { _, _ in
             SoundManager.shared.refreshAudioPreference()

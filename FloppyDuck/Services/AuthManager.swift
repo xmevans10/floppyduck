@@ -252,6 +252,41 @@ final class AuthManager: ObservableObject {
         needsCloudRestore = false
     }
 
+    /// Permanently deletes the user's account and all associated server-side
+    /// data. Required by App Store Review Guideline 5.1.1(v) for any app that
+    /// supports account creation (Sign in with Apple).
+    func deleteAccount() async {
+        isBusy = true
+        defer { isBusy = false }
+
+        // 1. Ask backend to delete the user record, stats, sessions, etc.
+        do {
+            try await client.deleteAccount()
+        } catch {
+            statusMessage = "Account deletion failed: \(error.localizedDescription)"
+            return
+        }
+
+        // 2. Wipe all local credentials and cached state.
+        identityStore.sessionToken = nil
+        identityStore.appleUserId = nil
+        identityStore.didCompleteAuthOnboarding = false
+        identityStore.didMergeLocalStats = false
+
+        // 3. Reset local game state.
+        gameManager.resetStats()
+
+        // 4. Clear identity and profile.
+        identity = nil
+        profile = nil
+        lastCloudSyncAt = nil
+        needsCloudRestore = false
+
+        // 5. Return to onboarding (fresh install state).
+        authState = .onboardingRequired
+        statusMessage = "Account deleted."
+    }
+
     func ensureRankedAccess() -> Bool {
         if isAppleLinked {
             return true

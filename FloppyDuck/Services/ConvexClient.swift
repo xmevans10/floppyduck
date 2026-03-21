@@ -14,6 +14,7 @@ protocol MultiplayerBackendClient: Sendable {
 
     func getProfile() async throws -> RemotePlayerProfile
     func signOutSession() async throws
+    func deleteAccount() async throws
 
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket
     func leaveMatchmakingQueue(ticketId: String?) async throws
@@ -285,6 +286,10 @@ actor ConvexClient: MultiplayerBackendClient {
 
     func signOutSession() async throws {
         _ = try await mutationRaw("auth:signOutSession")
+    }
+
+    func deleteAccount() async throws {
+        _ = try await mutationRaw("auth:deleteAccount")
     }
 
     // MARK: - Matchmaking
