@@ -17,6 +17,13 @@
 - Privacy manifest exists in `FloppyDuck/PrivacyInfo.xcprivacy`.
 - Screenshot CI workflow exists in `.github/workflows/ci.yml`.
 
+### Launch Hardening (Code-Side)
+- `LaunchScreen.storyboard` wired: `LaunchBackground` (full-bleed, scaleAspectFill) and `LaunchDuck` (centered, 200×137.5) with proper Auto Layout constraints.
+- `GK.appStoreURL` refactored to `URL?` via `makeAppStoreURL(appID:)` — returns `nil` for placeholder `"000000000"`. Callers (`HomeView`, `GameContainerView`) handle nil safely.
+- Test coverage: `testPlaceholderAppStoreIDDoesNotProduceShareURL` and `testRealAppStoreIDProducesShareURL`.
+- `Info.plist` `CONVEX_BASE_URL` already set to production (`first-setter-743`). No dev URL present.
+- App Store metadata drafted in `docs/APPSTORE_METADATA.md`. Privacy policy and support pages live in `docs/`.
+
 ### Test Baseline
 - `xcodebuild test -project FloppyDuck.xcodeproj -scheme FloppyDuck -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:FloppyDuckTests -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY='' CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`
 - Current result: 106 tests passing.
@@ -24,9 +31,9 @@
 ## 🟡 Partial / Needs Verification
 
 ### Launch Hardening
-- Launch screen assets exist, but `LaunchScreen.storyboard` still renders a black screen until the artwork is actually wired in.
 - App Store metadata docs exist, but final screenshots, StoreKit sandbox validation, and TestFlight/submission checks still need verification.
 - Head-to-head auth + multiplayer flows are implemented, but two-device smoke validation is still outstanding.
+- `GK.appStoreID` is still the placeholder `"000000000"` — needs the real ID once the app is registered in App Store Connect.
 
 ### Leaderboard
 - UX polish is in place, but leaderboard loading is still fixed-limit rather than paginated.
@@ -41,12 +48,12 @@
 
 ## 🔜 Next Up
 
-### 1. Launch Hardening
-- Replace the placeholder App Store URL in `GK.appStoreURL`.
-- Wire `LaunchBackground` / `LaunchDuck` into `LaunchScreen.storyboard`.
-- Verify screenshot CI output across all required sizes.
+### 1. Launch Hardening (Remaining)
+- Replace `GK.appStoreID` placeholder with real App Store ID once assigned.
+- Verify screenshot CI output across all required sizes (run on device/simulator).
 - Run StoreKit sandbox validation plus two-device auth/multiplayer smoke tests.
 - Finalize TestFlight / App Store metadata and disclosure checks.
+- Complete release checklist items (see `RELEASE_CHECKLIST.md` audit annotations).
 
 ### 2. Multiplayer Resilience
 - Reconnect cleanly when a head-to-head match backgrounds and returns.

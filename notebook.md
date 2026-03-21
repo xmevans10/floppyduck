@@ -208,15 +208,19 @@ First-frame stutter can occur if textures aren't pre-warmed — see ROADMAP Phas
 
 ## What's Next (from ROADMAP.md)
 
-1. **Dynamic gap difficulty** — PRNG generates static gaps; could vary maxPipeDelta
-   per difficulty tier (must preserve multiplayer determinism)
-2. **Per-skin death sounds** — SoundManager already has skin awareness
-3. **Accessibility** — Dynamic Type for pixel font, VoiceOver labels on all
-   interactive elements (reduce-motion is now done)
+### Launch Hardening (Remaining — needs Xcode / device / portal)
+1. **Real App Store ID** — Replace `GK.appStoreID` `"000000000"` once the app is created in App Store Connect.
+2. **Screenshot CI** — Run UI tests at 6.7" / 6.5" / 5.5" sizes. Tests exist in `ScreenshotTests.swift`.
+3. **StoreKit sandbox** — Validate IAP flow before submission.
+4. **Two-device smoke tests** — Auth + multiplayer end-to-end on real hardware.
+5. **TestFlight metadata** — Age rating questionnaire in App Store Connect.
+6. **Backend security** — Verify Apple JWKS validation + claim checks in Convex deployment.
+
+### Gameplay / Performance (Future)
+1. **Dynamic gap difficulty** — vary maxPipeDelta per difficulty tier (preserve multiplayer determinism)
+2. **Multiplayer reconnection** — handle app backgrounding during matches
+3. **Leaderboard pagination** — cursor-based instead of fixed-limit
 4. **SpriteKit draw call batching** — texture atlases to reduce GPU state changes
-5. **Pre-warm TextureFactory** — generate common textures during splash screen
-6. **Multiplayer reconnection** — handle app backgrounding during matches
-7. **App Store readiness** — real App Store URL, privacy manifest, app icons
 
 ---
 
@@ -271,7 +275,26 @@ First-frame stutter can occur if textures aren't pre-warmed — see ROADMAP Phas
   - controller wiring removed from "next up" and reframed as live code that needs parity protection
   - leaderboard pagination kept as future work
 - Recommended follow-ups:
-  - wire `LaunchBackground` / `LaunchDuck` into `LaunchScreen.storyboard`
-  - replace the placeholder App Store URL
+  - wire `LaunchBackground` / `LaunchDuck` into `LaunchScreen.storyboard` → ✅ Done in `a03b704`
+  - replace the placeholder App Store URL → ✅ Refactored to safe `URL?` in `a03b704`, still needs real ID
   - run two-device auth/multiplayer smoke tests plus StoreKit sandbox validation
   - add leaderboard pagination and abandoned-match handling
+
+## Reflection — March 20, 2026 (Launch Hardening Audit)
+
+- Sally's commit `a03b704` ("yaaaaa") already landed storyboard wiring, App Store URL
+  refactoring, view updates, and test coverage. Storyboard and URL are no longer blockers.
+- Release checklist audited: 6 items verifiable code-side (2 security, 4 metadata), remaining
+  42 items need Xcode, real devices, Apple Developer portal, or Convex dashboard.
+- No placeholder copy found in user-facing Swift code (grep for TODO/FIXME/lorem/dummy/placeholder).
+- `Info.plist` confirmed on production Convex URL. No dev URLs anywhere in source.
+- `GK.appStoreID` still `"000000000"` — harmless (share sheets omit nil URL) but should be
+  replaced once the app is registered in App Store Connect.
+- ROADMAP.md updated to reflect current state: storyboard + URL moved to done, remaining
+  items clearly scoped to what needs Xcode/device/portal.
+- Key finding: the biggest remaining blockers are all manual/device-side — this project is
+  in good shape code-wise for TestFlight. The critical path is:
+  1. Create the app in App Store Connect → get real App Store ID
+  2. Run screenshot CI at required sizes
+  3. Two-device auth + multiplayer smoke tests
+  4. Verify Convex backend security (JWKS, claim checks, audiences)
