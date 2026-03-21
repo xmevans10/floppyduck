@@ -72,6 +72,29 @@ Free (with in-app purchases)
 | com.floppyduck.theme.space | Non-Consumable | $0.99 | Space Background |
 | com.floppyduck.theme.pixelTokyo | Non-Consumable | $0.99 | Tokyo Background |
 
+## App Review Notes
+
+The app starts in GUEST MODE — no sign-in needed. Tap "Classic" to play immediately.
+
+KEY FEATURES FOR REVIEW:
+• CLASSIC MODE: Tap to flap, dodge pipes, score points. Available from the home screen.
+• VS BOT: Tap "VS Bot" → select a bot → play. Beating a bot unlocks their unique skin.
+• HEAD TO HEAD: Tap "Head to Head" → Quick Play or Ranked (requires Sign in with Apple). Private rooms require a second device with the join code.
+• SHOP: Tap "Shop" from home. DUCKS tab → scroll to PREMIUM for paid skins ($0.49 each). BACKGROUNDS tab for paid themes ($0.99 each). Restore Purchases button at bottom.
+• CLOSET: Tap "Collection" from home to see owned skins. Tap to equip.
+• STATS: Tap "Stats" from home for player stats and global leaderboard.
+• SETTINGS: Tap gear icon. Sign in with Apple, Sign Out, Restore Purchases, and Delete Account are here.
+
+ACCOUNT DELETION: Settings → Delete Account (visible when signed in with Apple) → confirm in dialog. Immediately deletes all user data.
+
+IN-APP PURCHASES (5 Non-Consumable):
+• 3 skins at $0.49: Alien, Wizard, Devil
+• 2 backgrounds at $0.99: Space, Tokyo
+
+MULTIPLAYER NOTE: Head to Head modes require two devices. Quick Play and Ranked match random players. Private rooms use a 6-character code.
+
+NO DEMO CREDENTIALS NEEDED — the app is fully functional in guest mode.
+
 ## Copyright
 © 2026 Floppy Duck
 
