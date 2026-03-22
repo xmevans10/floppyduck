@@ -20,6 +20,7 @@ export const leaderboard = query({
       const row = rows[index];
       const user = await ctx.db.get(row.userId);
       if (!user) {
+        // User was deleted — skip but don't leave a rank gap.
         continue;
       }
 
@@ -27,7 +28,7 @@ export const leaderboard = query({
         userId: user._id,
         username: user.username,
         rating: row.rating,
-        rank: index + 1,
+        rank: result.length + 1,
       });
     }
 

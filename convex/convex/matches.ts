@@ -77,6 +77,15 @@ export const finishMatch = mutation({
     mustBeParticipant(match, user._id);
 
     const side = userSide(match, user._id);
+
+    // Guard: prevent a player from re-submitting after they already finished.
+    const alreadyFinished = side === "p1" ? match.p1Finished : match.p2Finished;
+    if (alreadyFinished) {
+      const p1 = await ctx.db.get(match.p1UserId);
+      const p2 = await ctx.db.get(match.p2UserId);
+      return buildPublicMatchState(match, user._id, p1, p2);
+    }
+
     const now = Date.now();
 
     const patch = side === "p1"
