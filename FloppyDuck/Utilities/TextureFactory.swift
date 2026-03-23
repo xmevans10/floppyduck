@@ -53,6 +53,21 @@ final class TextureFactory {
             // Bread collectible
             _ = breadTexture()
 
+            // Theme-specific textures (avoids first-frame stalls on non-day themes)
+            for theme in BackgroundTheme.allCases where theme != .day {
+                _ = self.themedHillsTexture(theme: theme)
+                _ = self.themedTreesTexture(theme: theme)
+                _ = self.themedBushTexture(theme: theme)
+            }
+
+            // Performance textures (batched ground details, star field)
+            _ = self.groundDetailTexture(tileWidth: GK.worldWidth + 10,
+                                         groundHeight: GK.groundHeight,
+                                         seed: 0)
+            _ = self.starFieldTexture(width: GK.worldWidth,
+                                       height: GK.worldHeight * 0.6,
+                                       count: 40, seed: 42)
+
             DispatchQueue.main.async {
                 self.isPreWarmed = true
             }
@@ -180,6 +195,132 @@ final class TextureFactory {
     /// UIImage of pixel cloud for SwiftUI home background
     func cloudUIImage() -> UIImage {
         return renderPixelCloud()
+    }
+
+    // MARK: - Performance Textures (batched replacements for SKShapeNodes)
+
+    /// Pre-rendered ground detail tile (grass blades + pebbles) — replaces 22
+    /// individual SKShapeNodes per tile with a single SKSpriteNode.
+    func groundDetailTexture(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int = 0) -> SKTexture {
+        let key = "groundDetail_\(Int(tileWidth))_\(seed)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed))
+        tex.filteringMode = .nearest
+        cacheStore(key, tex)
+        return tex
+    }
+
+    /// Pre-rendered star field — replaces 40 individual SKShapeNodes with a
+    /// single SKSpriteNode.
+    func starFieldTexture(width: CGFloat, height: CGFloat, count: Int = 40, seed: Int = 42) -> SKTexture {
+        let key = "starField_\(Int(width))_\(Int(height))_\(count)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderStarField(width: width, height: height, count: count, seed: seed))
+        tex.filteringMode = .nearest
+        cacheStore(key, tex)
+        return tex
+    }
+
+    /// Pre-rendered glow circle — replaces SKShapeNode glow rings on power-ups
+    /// and shields.  Returns a soft radial glow texture.
+    func glowCircleTexture(radius: CGFloat, color: UIColor) -> SKTexture {
+        let r = Int(radius)
+        let key = "glow_\(r)_\(color.description.hashValue)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(image: renderGlowCircle(radius: radius, color: color))
+        tex.filteringMode = .linear
+        cacheStore(key, tex)
+        return tex
+    }
+
+    // MARK: - Ground Detail Rendering
+
+    private func renderGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        // Deterministic PRNG for consistent tiles
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20  // extra room for grass tips above groundHeight
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            // Grass blades — 14 per tile
+            for _ in 0..<14 {
+                let x = CGFloat(drand48()) * tileWidth
+                let bladeH = CGFloat(drand48()) * 8 + 6  // 6…14
+                let halfW: CGFloat = 1.5
+                let baseY = h - groundHeight  // ground top, in image coords top-down → this is the Y where grass starts
+
+                // Grass color
+                let r = 0.25 + CGFloat(drand48()) * 0.20
+                let g = 0.55 + CGFloat(drand48()) * 0.20
+                let b = 0.10 + CGFloat(drand48()) * 0.12
+                c.setFillColor(UIColor(red: r, green: g, blue: b, alpha: 1).cgColor)
+
+                // Triangle blade (rendered upward from ground top)
+                let path = CGMutablePath()
+                path.move(to: CGPoint(x: x - halfW, y: baseY))
+                path.addLine(to: CGPoint(x: x, y: baseY - bladeH))
+                path.addLine(to: CGPoint(x: x + halfW, y: baseY))
+                path.closeSubpath()
+                c.addPath(path)
+                c.fillPath()
+            }
+
+            // Pebbles — 8 per tile
+            for _ in 0..<8 {
+                let x = CGFloat(drand48()) * tileWidth
+                let radius = CGFloat(drand48()) * 2.0 + 1.5  // 1.5…3.5
+                let gray = CGFloat(drand48()) * 0.20 + 0.45
+                c.setFillColor(UIColor(red: gray, green: gray - 0.05, blue: gray - 0.10, alpha: 0.8).cgColor)
+                let pebbleY = h - groundHeight + 2  // just below ground line
+                c.fillEllipse(in: CGRect(x: x - radius, y: pebbleY - radius, width: radius * 2, height: radius * 2))
+            }
+        }
+    }
+
+    // MARK: - Star Field Rendering
+
+    private func renderStarField(width: CGFloat, height: CGFloat, count: Int, seed: Int) -> UIImage {
+        srand48(seed)
+        let size = CGSize(width: width, height: height)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for _ in 0..<count {
+                let x = CGFloat(drand48()) * width
+                let y = CGFloat(drand48()) * height
+                let radius = CGFloat(drand48()) * 1.5 + 1.0  // 1…2.5
+                let alpha = CGFloat(drand48()) * 0.6 + 0.3   // 0.3…0.9
+                c.setFillColor(UIColor.white.withAlphaComponent(alpha).cgColor)
+                c.fillEllipse(in: CGRect(x: x - radius, y: y - radius,
+                                          width: radius * 2, height: radius * 2))
+            }
+        }
+    }
+
+    // MARK: - Glow Circle Rendering
+
+    private func renderGlowCircle(radius: CGFloat, color: UIColor) -> UIImage {
+        let padding: CGFloat = 4
+        let size = CGSize(width: (radius + padding) * 2, height: (radius + padding) * 2)
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            color.getRed(&r, green: &g, blue: &b, alpha: &a)
+
+            // Inner fill
+            c.setFillColor(UIColor(red: r, green: g, blue: b, alpha: 0.25).cgColor)
+            c.fillEllipse(in: CGRect(x: center.x - radius, y: center.y - radius,
+                                      width: radius * 2, height: radius * 2))
+            // Outer stroke ring
+            c.setStrokeColor(UIColor(red: r, green: g, blue: b, alpha: 0.6).cgColor)
+            c.setLineWidth(1.5)
+            c.strokeEllipse(in: CGRect(x: center.x - radius, y: center.y - radius,
+                                        width: radius * 2, height: radius * 2))
+        }
     }
 
     /// UIImage of pixel hills for SwiftUI home background
