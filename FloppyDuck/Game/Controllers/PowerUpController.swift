@@ -38,13 +38,9 @@ final class PowerUpController {
 
     private let spawner = PowerUpSpawnManager()
 
-    // Shield
-    private var shieldNode: SKShapeNode?
+    // Shield (visual node managed by addShieldVisual/removeShieldVisual)
     private var shieldCooldown: Bool = false
     private var shieldCooldownAction: SKAction?
-
-    // Ghost duck
-    private var ghostGlowNode: SKShapeNode?
 
     // Speed modifier grace period — smooth lerp instead of snap-back
     // when slowMotion or speedBurst expires.
@@ -252,11 +248,13 @@ final class PowerUpController {
         Haptic.score()
         SoundManager.shared.play(.powerUp)
 
-        // Golden burst on duck
+        // Golden burst on duck — pre-rendered texture instead of SKShapeNode
         guard let duck else { return }
-        let burst = SKShapeNode(circleOfRadius: GK.duckRadius * 2)
-        burst.fillColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.5)
-        burst.strokeColor = .clear
+        let burstTex = TextureFactory.shared.glowCircleTexture(
+            radius: GK.duckRadius * 2,
+            color: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1)
+        )
+        let burst = SKSpriteNode(texture: burstTex)
         burst.zPosition = 2
         duck.addChild(burst)
         burst.run(SKAction.sequence([
@@ -396,11 +394,12 @@ final class PowerUpController {
         iconSprite.setScale(0.8)
         collectible.addChild(iconSprite)
 
-        // Glow ring
-        let glow = SKShapeNode(circleOfRadius: PowerUpKind.collectibleSize * 0.7)
-        glow.fillColor = kind.glowColor.withAlphaComponent(0.25)
-        glow.strokeColor = kind.glowColor.withAlphaComponent(0.6)
-        glow.lineWidth = 1.5
+        // Glow ring — pre-rendered texture instead of SKShapeNode
+        let glowTex = TextureFactory.shared.glowCircleTexture(
+            radius: PowerUpKind.collectibleSize * 0.7,
+            color: kind.glowColor
+        )
+        let glow = SKSpriteNode(texture: glowTex)
         glow.zPosition = -1
         collectible.addChild(glow)
 
@@ -422,17 +421,22 @@ final class PowerUpController {
     }
 
     // MARK: - Shield Visual
+    //
+    // PERF: Replaced SKShapeNode with pre-rendered glow texture sprite.
+
+    private var shieldSpriteNode: SKSpriteNode?
 
     private func addShieldVisual() {
-        guard shieldNode == nil, let duck else { return }
-        let shield = SKShapeNode(circleOfRadius: GK.duckRadius * 1.5)
-        shield.strokeColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.8)
-        shield.fillColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.15)
-        shield.lineWidth = 2.5
+        guard shieldSpriteNode == nil, let duck else { return }
+        let tex = TextureFactory.shared.glowCircleTexture(
+            radius: GK.duckRadius * 1.5,
+            color: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1)
+        )
+        let shield = SKSpriteNode(texture: tex)
         shield.zPosition = 1
         shield.name = "shieldRing"
         duck.addChild(shield)
-        shieldNode = shield
+        shieldSpriteNode = shield
 
         let pulse = SKAction.sequence([
             SKAction.scale(to: 1.1, duration: 0.5),
@@ -442,8 +446,8 @@ final class PowerUpController {
     }
 
     private func removeShieldVisual() {
-        shieldNode?.removeFromParent()
-        shieldNode = nil
+        shieldSpriteNode?.removeFromParent()
+        shieldSpriteNode = nil
     }
 
     // MARK: - DizzyDuck Transition
@@ -462,6 +466,10 @@ final class PowerUpController {
     }
 
     // MARK: - Ghost Duck Visual
+    //
+    // PERF: Replaced SKShapeNode with pre-rendered glow texture sprite.
+
+    private var ghostGlowSpriteNode: SKSpriteNode?
 
     private func activateGhostDuck() {
         guard let duck else { return }
@@ -473,12 +481,14 @@ final class PowerUpController {
         duck.physicsBody?.contactTestBitMask = GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         duck.physicsBody?.collisionBitMask = GK.groundCategory
 
-        // Subtle white glow behind duck
-        guard ghostGlowNode == nil else { return }
-        let glow = SKShapeNode(circleOfRadius: GK.duckRadius * 1.8)
-        glow.fillColor = UIColor(white: 1.0, alpha: 0.15)
-        glow.strokeColor = UIColor(white: 1.0, alpha: 0.3)
-        glow.lineWidth = 1.5
+        // Subtle white glow behind duck — pre-rendered texture
+        guard ghostGlowSpriteNode == nil else { return }
+        let tex = TextureFactory.shared.glowCircleTexture(
+            radius: GK.duckRadius * 1.8,
+            color: .white
+        )
+        let glow = SKSpriteNode(texture: tex)
+        glow.alpha = 0.15
         glow.zPosition = -1
         glow.name = "ghostGlow"
 
@@ -489,7 +499,7 @@ final class PowerUpController {
         glow.run(SKAction.repeatForever(pulse))
 
         duck.addChild(glow)
-        ghostGlowNode = glow
+        ghostGlowSpriteNode = glow
     }
 
     private func deactivateGhostDuck() {
@@ -508,8 +518,8 @@ final class PowerUpController {
     }
 
     private func removeGhostGlow() {
-        ghostGlowNode?.removeFromParent()
-        ghostGlowNode = nil
+        ghostGlowSpriteNode?.removeFromParent()
+        ghostGlowSpriteNode = nil
     }
 
     // MARK: - Collected Label Popup

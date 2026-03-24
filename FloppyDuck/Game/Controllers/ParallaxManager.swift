@@ -44,9 +44,9 @@ final class ParallaxManager {
 
     private var groundDetailTiles: [SKNode] = []
 
-    // MARK: - Stars (night / space themes)
+    // MARK: - Stars (night / space themes) — single batched sprite
 
-    private var starNodes: [SKShapeNode] = []
+    private var starSprite: SKSpriteNode?
 
     // MARK: - Init
 
@@ -72,6 +72,9 @@ final class ParallaxManager {
 
     /// Call once during `didMove(to:)` after layers are added to the scene.
     func setup() {
+        // Cache accessibility state once to avoid per-frame system queries
+        reduceMotionEnabled = UIAccessibility.isReduceMotionEnabled
+
         setupBackground()
         setupClouds()
         setupHills()
@@ -83,6 +86,11 @@ final class ParallaxManager {
             setupStars()
         }
     }
+
+    // MARK: - Cached Accessibility State
+
+    /// Cached at setup() time to avoid querying UIAccessibility every frame.
+    private var reduceMotionEnabled: Bool = false
 
     /// Drive all scrolling. Call every frame from `update(_:)` while the game is playing.
     ///
@@ -96,8 +104,8 @@ final class ParallaxManager {
         scrollGroundTiles(dtF)
         scrollGroundDetails(dtF)
 
-        // Decorative layers respect Reduce Motion preference
-        if !UIAccessibility.isReduceMotionEnabled {
+        // Decorative layers respect Reduce Motion preference (cached at setup)
+        if !reduceMotionEnabled {
             scrollClouds(dtF)
             scrollHills(dtF)
             scrollTrees(dtF)
@@ -207,89 +215,59 @@ final class ParallaxManager {
     }
 
     // MARK: - Ground Details (grass blades & pebbles)
+    //
+    // PERF: Replaced 66 individual SKShapeNodes (42 grass + 24 pebbles) with 3
+    //       pre-rendered SKSpriteNodes.  Each tile's grass and pebbles are baked
+    //       into a single texture via TextureFactory.groundDetailTexture().
+    //       Eliminates 66 CPU-rendered draw calls and 42 sway SKActions per frame.
 
     private func setupGroundDetails() {
+        let factory = TextureFactory.shared
         for i in 0..<3 {
-            let tile = SKNode()
-            tile.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
-            tile.zPosition = 55
-
-            // Small animated grass blades
-            for _ in 0..<14 {
-                let x = CGFloat.random(in: 0..<groundTileWidth)
-                let height = CGFloat.random(in: 6...14)
-                let halfW: CGFloat = 1.5
-
-                let path = CGMutablePath()
-                path.move(to: CGPoint(x: -halfW, y: 0))
-                path.addLine(to: CGPoint(x: 0, y: height))
-                path.addLine(to: CGPoint(x: halfW, y: 0))
-                path.closeSubpath()
-
-                let blade = SKShapeNode(path: path)
-                blade.fillColor = UIColor(
-                    red: CGFloat.random(in: 0.25...0.45),
-                    green: CGFloat.random(in: 0.55...0.75),
-                    blue: CGFloat.random(in: 0.10...0.22),
-                    alpha: 1
-                )
-                blade.strokeColor = .clear
-                blade.position = CGPoint(x: x, y: GK.groundHeight)
-
-                // Gentle sway animation
-                let swayAngle = CGFloat.random(in: 0.05...0.12)
-                let swayDur = Double.random(in: 0.7...1.3)
-                let sway = SKAction.sequence([
-                    SKAction.rotate(byAngle: swayAngle, duration: swayDur),
-                    SKAction.rotate(byAngle: -swayAngle * 2, duration: swayDur * 2),
-                    SKAction.rotate(byAngle: swayAngle, duration: swayDur),
-                ])
-                blade.run(SKAction.repeatForever(sway))
-
-                tile.addChild(blade)
-            }
-
-            // Pebble sprites
-            for _ in 0..<8 {
-                let x = CGFloat.random(in: 0..<groundTileWidth)
-                let radius = CGFloat.random(in: 1.5...3.5)
-                let pebble = SKShapeNode(circleOfRadius: radius)
-                let gray = CGFloat.random(in: 0.45...0.65)
-                pebble.fillColor = UIColor(red: gray, green: gray - 0.05, blue: gray - 0.10, alpha: 0.8)
-                pebble.strokeColor = .clear
-                pebble.position = CGPoint(x: x, y: GK.groundHeight - 2)
-                tile.addChild(pebble)
-            }
-
-            foregroundLayer.addChild(tile)
-            groundDetailTiles.append(tile)
+            let tex = factory.groundDetailTexture(
+                tileWidth: groundTileWidth,
+                groundHeight: GK.groundHeight,
+                seed: i * 1337  // deterministic, visually distinct per tile
+            )
+            let sprite = SKSpriteNode(texture: tex)
+            sprite.anchorPoint = CGPoint(x: 0, y: 0)
+            sprite.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
+            sprite.zPosition = 55
+            foregroundLayer.addChild(sprite)
+            groundDetailTiles.append(sprite)
         }
     }
 
     // MARK: - Stars (night / space themes)
+    //
+    // PERF: Replaced 40 individual SKShapeNodes (each with its own twinkle
+    //       SKAction) with a single pre-rendered SKSpriteNode.  A single subtle
+    //       twinkle action on the whole sprite keeps the visual effect while
+    //       eliminating 40 draw calls and 40 action evaluations per frame.
 
     private func setupStars() {
-        for _ in 0..<40 {
-            let star = SKShapeNode(circleOfRadius: CGFloat.random(in: 1...2.5))
-            star.fillColor = .white
-            star.strokeColor = .clear
-            star.position = CGPoint(
-                x: CGFloat.random(in: 0...GK.worldWidth),
-                y: CGFloat.random(in: (GK.worldHeight * 0.4)...GK.worldHeight)
-            )
-            star.zPosition = -95
-            star.alpha = CGFloat.random(in: 0.3...0.9)
+        let factory = TextureFactory.shared
+        let starH = GK.worldHeight * 0.6  // stars cover top 60%
+        let tex = factory.starFieldTexture(
+            width: GK.worldWidth,
+            height: starH,
+            count: 40,
+            seed: 42
+        )
+        let sprite = SKSpriteNode(texture: tex)
+        sprite.anchorPoint = CGPoint(x: 0, y: 0)
+        sprite.position = CGPoint(x: 0, y: GK.worldHeight * 0.4)
+        sprite.zPosition = -95
 
-            // Twinkle animation
-            let twinkle = SKAction.sequence([
-                SKAction.fadeAlpha(to: CGFloat.random(in: 0.2...0.5), duration: Double.random(in: 0.8...2.0)),
-                SKAction.fadeAlpha(to: CGFloat.random(in: 0.6...1.0), duration: Double.random(in: 0.8...2.0)),
-            ])
-            star.run(SKAction.repeatForever(twinkle))
+        // Single gentle twinkle on the whole star field (replaces 40 individual actions)
+        let twinkle = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.65, duration: 2.0),
+            SKAction.fadeAlpha(to: 1.0, duration: 2.0),
+        ])
+        sprite.run(SKAction.repeatForever(twinkle))
 
-            backgroundLayer.addChild(star)
-            starNodes.append(star)
-        }
+        backgroundLayer.addChild(sprite)
+        starSprite = sprite
     }
 
     // MARK: - Scroll Updates (private)

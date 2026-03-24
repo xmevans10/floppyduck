@@ -109,6 +109,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var scorePopupPool: [SKLabelNode] = []
     private var scorePopupPoolIndex: Int = 0
 
+    // Bread "+1" popup pool — same pattern as scorePopupPool
+    private var breadPopupPool: [SKLabelNode] = []
+    private var breadPopupPoolIndex: Int = 0
+
     // MARK: - Init
 
     init(seed: Int = Int.random(in: 1...999999),
@@ -311,6 +315,19 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return node
         }
         scorePopupPoolIndex = 0
+
+        // Pre-allocate bread "+1" popup pool (avoids per-collection SKLabelNode allocs)
+        breadPopupPool = (0..<4).map { _ in
+            let node = SKLabelNode(fontNamed: GK.pixelFontName)
+            node.text = "+1"
+            node.fontSize = 12
+            node.fontColor = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1)
+            node.zPosition = 300
+            node.isHidden = true
+            worldNode.addChild(node)
+            return node
+        }
+        breadPopupPoolIndex = 0
     }
 
     private func updateScore() {
@@ -490,11 +507,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         iconSprite.setScale(0.8)
         collectible.addChild(iconSprite)
 
-        // Glow ring
-        let glow = SKShapeNode(circleOfRadius: PowerUpKind.collectibleSize * 0.7)
-        glow.fillColor = kind.glowColor.withAlphaComponent(0.25)
-        glow.strokeColor = kind.glowColor.withAlphaComponent(0.6)
-        glow.lineWidth = 1.5
+        // Glow ring — pre-rendered texture instead of SKShapeNode
+        let glowTex = TextureFactory.shared.glowCircleTexture(
+            radius: PowerUpKind.collectibleSize * 0.7,
+            color: kind.glowColor
+        )
+        let glow = SKSpriteNode(texture: glowTex)
         glow.zPosition = -1
         collectible.addChild(glow)
 
@@ -567,21 +585,22 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             magnetBreadCollected += 1
         }
 
-        // "+1" bread popup — offset further from duck so it doesn't overlap
-        guard let duck else { return }
-        let popup = SKLabelNode(fontNamed: GK.pixelFontName)
-        popup.text = "+1"
-        popup.fontSize = 12
-        popup.fontColor = UIColor(red: 0.85, green: 0.68, blue: 0.30, alpha: 1)
+        // "+1" bread popup — uses pre-allocated pool to avoid per-collection allocs
+        guard let duck, !breadPopupPool.isEmpty else { return }
+        let popup = breadPopupPool[breadPopupPoolIndex % breadPopupPool.count]
+        breadPopupPoolIndex += 1
+
+        popup.removeAllActions()
+        popup.alpha = 1.0
+        popup.isHidden = false
+        popup.setScale(1.0)
         popup.position = CGPoint(x: duck.position.x + 28, y: duck.position.y + 28)
-        popup.zPosition = 300
-        worldNode.addChild(popup)
 
         let floatUp = SKAction.moveBy(x: 0, y: 35, duration: 0.5)
         let fadeOut = SKAction.fadeOut(withDuration: 0.5)
         popup.run(SKAction.sequence([
             SKAction.group([floatUp, fadeOut]),
-            SKAction.removeFromParent()
+            SKAction.run { popup.isHidden = true }
         ]))
     }
 
@@ -1007,15 +1026,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.run(victoryFlight)
 
         // Celebratory pixel particles — burst of stars/sparkles
+        // PERF: Uses pre-rendered glow textures instead of 20 SKShapeNodes
+        let celebColors: [UIColor] = [
+            UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1),   // gold
+            UIColor.white,
+            UIColor(red: 1.0, green: 0.60, blue: 0.0, alpha: 1),   // orange
+            UIColor(red: 0.42, green: 0.73, blue: 0.20, alpha: 1), // green
+        ]
         for i in 0..<20 {
-            let star = SKShapeNode(circleOfRadius: CGFloat.random(in: 2...5))
-            star.fillColor = [
-                UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1),   // gold
-                UIColor.white,
-                UIColor(red: 1.0, green: 0.60, blue: 0.0, alpha: 1),   // orange
-                UIColor(red: 0.42, green: 0.73, blue: 0.20, alpha: 1), // green
-            ].randomElement()!
-            star.strokeColor = .clear
+            let color = celebColors[i % celebColors.count]
+            let radius = CGFloat.random(in: 2...5)
+            let tex = TextureFactory.shared.glowCircleTexture(radius: radius, color: color)
+            let star = SKSpriteNode(texture: tex)
             star.position = duck.position
             star.zPosition = 99
 
