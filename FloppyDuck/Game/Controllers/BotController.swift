@@ -40,6 +40,9 @@ final class BotController {
     /// Fired every time the bot scores a point. Parameter is the new total.
     var onScoreChanged: ((Int) -> Void)?
 
+    /// Fired when the bot dies (hit ground, pipe, or reached deathScore).
+    var onBotDied: (() -> Void)?
+
     // MARK: - Public Read-Only State
 
     /// The bot's current score.
@@ -68,6 +71,10 @@ final class BotController {
     /// Active difficulty parameters; set during `setup`.
     private var diff = BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
 
+    /// If set, the bot will deterministically die upon reaching this score.
+    /// Used in bot-ladder mode so each bot has a fixed score ceiling.
+    private var deathScore: Int?
+
     // MARK: - Score HUD
 
     private var scoreLabel: SKLabelNode?
@@ -92,8 +99,11 @@ final class BotController {
     ///   - skin: Duck skin used for the ghost textures.
     ///   - difficulty: AI tuning parameters (noise, flap strength, error rate).
     ///                 Defaults to a mid-tier difficulty if `nil`.
-    func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil) {
+    ///   - deathScore: If set, the bot will die deterministically when it
+    ///                 reaches this score. Used in bot-ladder mode.
+    func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil, deathScore: Int? = nil) {
         self.diff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
+        self.deathScore = deathScore
 
         textures = (0...2).map { factory.skinBotDuckTexture(skin: skin, wingPhase: $0) }
 
@@ -243,6 +253,12 @@ final class BotController {
                     score += 1
                     updateScoreHUD()
                     onScoreChanged?(score)
+
+                    // Deterministic death: bot dies when it reaches its ceiling score
+                    if let cap = deathScore, score >= cap {
+                        die()
+                        return
+                    }
                 }
             }
         }
@@ -268,7 +284,7 @@ final class BotController {
 
     // MARK: - Death
 
-    /// Plays the bot death animation (tumble + fall + fade).
+    /// Plays the bot death animation (tumble + fall + fade) and fires `onBotDied`.
     private func die() {
         alive = false
         guard let bot = sprite else { return }
@@ -285,6 +301,8 @@ final class BotController {
             ]),
             SKAction.fadeOut(withDuration: 0.3),
         ]))
+
+        onBotDied?()
     }
 
     // MARK: - Score HUD
@@ -312,7 +330,7 @@ final class BotController {
         sprite = nil
         score = 0
         pipesPassed.removeAll()
-        setup(skin: skin, difficulty: diff)
+        setup(skin: skin, difficulty: diff, deathScore: deathScore)
         updateScoreHUD()
     }
 }
