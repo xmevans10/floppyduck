@@ -75,6 +75,10 @@ final class BotController {
     /// Used in bot-ladder mode so each bot has a fixed score ceiling.
     private var deathScore: Int?
 
+    /// When true the bot's AI is disabled — it stops flapping and naturally
+    /// falls into the next pipe or the ground.  Set when `score >= deathScore`.
+    private var doomed: Bool = false
+
     // MARK: - Score HUD
 
     private var scoreLabel: SKLabelNode?
@@ -254,23 +258,27 @@ final class BotController {
                     updateScoreHUD()
                     onScoreChanged?(score)
 
-                    // Deterministic death: bot dies when it reaches its ceiling score
+                    // Deterministic death: once the bot hits its ceiling score,
+                    // disable its AI so it naturally falls into the next pipe.
                     if let cap = deathScore, score >= cap {
-                        die()
-                        return
+                        doomed = true
                     }
                 }
             }
         }
 
         // --- AI decision: noise + error + flap ---
-        let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
-        let adjustedTarget = targetGapY + noise
+        // When doomed the bot simply stops flapping and gravity takes over —
+        // it will naturally collide with the next pipe or hit the ground.
+        if !doomed {
+            let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
+            let adjustedTarget = targetGapY + noise
 
-        let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
+            let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
 
-        if !shouldError && posY < adjustedTarget - 8 && velocity < GK.flapImpulse * 0.5 {
-            velocity = GK.flapImpulse * diff.flapStrength
+            if !shouldError && posY < adjustedTarget - 8 && velocity < GK.flapImpulse * 0.5 {
+                velocity = GK.flapImpulse * diff.flapStrength
+            }
         }
 
         // --- Apply position & rotation ---
@@ -329,6 +337,7 @@ final class BotController {
         sprite?.removeFromParent()
         sprite = nil
         score = 0
+        doomed = false
         pipesPassed.removeAll()
         setup(skin: skin, difficulty: diff, deathScore: deathScore)
         updateScoreHUD()
