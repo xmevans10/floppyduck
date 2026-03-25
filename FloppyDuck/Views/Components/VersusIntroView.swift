@@ -154,6 +154,7 @@ struct VersusIntroView: View {
         }
         .opacity(dismissOpacity)
         .onAppear { runAnimation() }
+        }
     }
 
     // MARK: - Duck Portrait
@@ -223,7 +224,6 @@ struct VersusIntroView: View {
                 onComplete()
             }
         }
-        }
     }
 }
 
@@ -237,7 +237,6 @@ private struct PlayerBackgroundHalf: View {
     // Create repeating diagonal stripes
     var body: some View {
         GeometryReader { geo in
-            let w = geo.size.width
             let h = geo.size.height
             
             Path { p in
