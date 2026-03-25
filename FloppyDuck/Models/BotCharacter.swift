@@ -15,7 +15,7 @@ struct BotCharacter: Identifiable, Hashable {
     let elo: Int
     let difficulty: BotDifficulty
     let accentColor: Color
-    let targetScore: Int         // player must reach this score to beat the bot
+    let targetScore: Int         // bot dies deterministically at this score — player wins by surviving
     let skin: DuckSkin           // unique skin for this bot
     let taunt: String            // shown before match
 

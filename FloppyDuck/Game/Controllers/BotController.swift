@@ -40,6 +40,9 @@ final class BotController {
     /// Fired every time the bot scores a point. Parameter is the new total.
     var onScoreChanged: ((Int) -> Void)?
 
+    /// Fired when the bot dies (hit ground, pipe, or reached deathScore).
+    var onBotDied: (() -> Void)?
+
     // MARK: - Public Read-Only State
 
     /// The bot's current score.
@@ -68,6 +71,14 @@ final class BotController {
     /// Active difficulty parameters; set during `setup`.
     private var diff = BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
 
+    /// If set, the bot will deterministically die upon reaching this score.
+    /// Used in bot-ladder mode so each bot has a fixed score ceiling.
+    private var deathScore: Int?
+
+    /// When true the bot's AI is disabled — it stops flapping and naturally
+    /// falls into the next pipe or the ground.  Set when `score >= deathScore`.
+    private var doomed: Bool = false
+
     // MARK: - Score HUD
 
     private var scoreLabel: SKLabelNode?
@@ -92,8 +103,11 @@ final class BotController {
     ///   - skin: Duck skin used for the ghost textures.
     ///   - difficulty: AI tuning parameters (noise, flap strength, error rate).
     ///                 Defaults to a mid-tier difficulty if `nil`.
-    func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil) {
+    ///   - deathScore: If set, the bot will die deterministically when it
+    ///                 reaches this score. Used in bot-ladder mode.
+    func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil, deathScore: Int? = nil) {
         self.diff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
+        self.deathScore = deathScore
 
         textures = (0...2).map { factory.skinBotDuckTexture(skin: skin, wingPhase: $0) }
 
@@ -243,18 +257,28 @@ final class BotController {
                     score += 1
                     updateScoreHUD()
                     onScoreChanged?(score)
+
+                    // Deterministic death: once the bot hits its ceiling score,
+                    // disable its AI so it naturally falls into the next pipe.
+                    if let cap = deathScore, score >= cap {
+                        doomed = true
+                    }
                 }
             }
         }
 
         // --- AI decision: noise + error + flap ---
-        let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
-        let adjustedTarget = targetGapY + noise
+        // When doomed the bot simply stops flapping and gravity takes over —
+        // it will naturally collide with the next pipe or hit the ground.
+        if !doomed {
+            let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
+            let adjustedTarget = targetGapY + noise
 
-        let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
+            let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
 
-        if !shouldError && posY < adjustedTarget - 8 && velocity < GK.flapImpulse * 0.5 {
-            velocity = GK.flapImpulse * diff.flapStrength
+            if !shouldError && posY < adjustedTarget - 8 && velocity < GK.flapImpulse * 0.5 {
+                velocity = GK.flapImpulse * diff.flapStrength
+            }
         }
 
         // --- Apply position & rotation ---
@@ -268,7 +292,7 @@ final class BotController {
 
     // MARK: - Death
 
-    /// Plays the bot death animation (tumble + fall + fade).
+    /// Plays the bot death animation (tumble + fall + fade) and fires `onBotDied`.
     private func die() {
         alive = false
         guard let bot = sprite else { return }
@@ -285,6 +309,8 @@ final class BotController {
             ]),
             SKAction.fadeOut(withDuration: 0.3),
         ]))
+
+        onBotDied?()
     }
 
     // MARK: - Score HUD
@@ -311,8 +337,9 @@ final class BotController {
         sprite?.removeFromParent()
         sprite = nil
         score = 0
+        doomed = false
         pipesPassed.removeAll()
-        setup(skin: skin, difficulty: diff)
+        setup(skin: skin, difficulty: diff, deathScore: deathScore)
         updateScoreHUD()
     }
 }

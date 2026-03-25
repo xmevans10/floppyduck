@@ -8,7 +8,7 @@ struct GameContainerView: View {
 
     @State private var scene: GameScene?
     @State private var bridge: GameSceneBridge?
-    @State private var phase: GamePhase = .ready
+    @State private var phase: GamePhase = .ready  // overridden to .versusIntro for VS modes
     @State private var score: Int = 0
     @State private var botFinalScore: Int = 0
     @State private var showBotLadderCelebration: Bool = false
@@ -40,8 +40,10 @@ struct GameContainerView: View {
     private var headToHeadPending: Bool { isHeadToHead && !headToHeadOutcomeReady }
 
     private var ladderWon: Bool {
+        // The bot dies deterministically at its ceiling score — if the bot
+        // died (its score reached the target) the player wins by surviving.
         guard let target = config.targetScore else { return score > botFinalScore }
-        return score >= target
+        return botFinalScore >= target
     }
 
     private var isNewBest: Bool { score > previousBest && score > 0 }
@@ -81,6 +83,9 @@ struct GameContainerView: View {
             }
 
             switch phase {
+            case .versusIntro:
+                versusIntroOverlay
+                    .transition(.opacity)
             case .ready:
                 getReadyOverlay
             case .countdown:
@@ -97,7 +102,13 @@ struct GameContainerView: View {
             }
 
         }
-        .onAppear { setupScene() }
+        .onAppear {
+            // VS modes get the Mortal-Kombat-style intro first
+            if config.mode == .vsBot || config.mode == .headToHead {
+                phase = .versusIntro
+            }
+            setupScene()
+        }
         .onDisappear {
             countUpTimer?.invalidate()
             opponentPollTask?.cancel()
@@ -220,10 +231,11 @@ struct GameContainerView: View {
             return
         }
 
-        // Mark bot as beaten immediately if applicable (before recording)
+        // Mark bot as beaten if the bot died at its ceiling (before recording)
         if isBotLadder,
            let botId = config.botCharacterId,
-           score >= (config.targetScore ?? 0) {
+           let target = config.targetScore,
+           botFinalScore >= target {
             print("[BotLadder] Beat bot: \(botId)")
             manager.beatBot(botId)
             if let bot = BotCharacter.find(botId) {
@@ -446,6 +458,27 @@ struct GameContainerView: View {
 
     // MARK: - Get Ready Overlay
 
+    // MARK: - VS Intro (Mortal Kombat style)
+
+    @ViewBuilder
+    private var versusIntroOverlay: some View {
+        let playerSkin = SkinManager.shared.selectedSkin
+        let bot = config.botCharacterId.flatMap { BotCharacter.find($0) }
+
+        VersusIntroView(
+            playerSkin: playerSkin,
+            playerName: manager.playerName.isEmpty ? "YOU" : manager.playerName.uppercased(),
+            opponentSkin: bot?.skin,
+            opponentName: config.opponentName ?? "OPPONENT",
+            opponentAccent: bot?.accentColor ?? Color.red,
+            subtitle: bot.map { "DIES AT \($0.targetScore)" }
+        ) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                phase = .ready
+            }
+        }
+    }
+
     private var getReadyOverlay: some View {
         VStack(spacing: 16) {
             VStack(spacing: 12) {
@@ -464,8 +497,8 @@ struct GameContainerView: View {
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
                     }
-                    Text("SCORE \(bot.targetScore) TO WIN")
-                        .font(.custom(GK.pixelFontName, size: 8))
+                    Text("SURVIVE UNTIL \(bot.name) DIES AT \(bot.targetScore)")
+                        .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
                 } else if config.mode == .vsBot {
                     HStack(spacing: 8) {
@@ -653,10 +686,11 @@ struct GameContainerView: View {
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
             }
 
-            if isBotLadder, let target = config.targetScore {
+            if isBotLadder, let target = config.targetScore,
+               let botName = config.opponentName {
                 if playerWon {
                     HStack(spacing: 4) {
-                        Text("TARGET: \(target)")
+                        Text("\(botName) DIED AT \(target)")
                             .font(.custom(GK.pixelFontName, size: 8))
                             .foregroundColor(GK.Colors.scoreYellow.opacity(0.8))
                         Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
@@ -666,8 +700,8 @@ struct GameContainerView: View {
                             .frame(width: 10, height: 10)
                     }
                 } else {
-                    Text("NEED: \(target)")
-                        .font(.custom(GK.pixelFontName, size: 8))
+                    Text("SURVIVE UNTIL \(botName) DIES AT \(target)")
+                        .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(.white.opacity(0.6))
                 }
             }

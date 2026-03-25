@@ -4,6 +4,7 @@ import SwiftUI
 // MARK: - Game Phase
 
 enum GamePhase {
+    case versusIntro   // MK-style VS splash (bot/live matches only)
     case ready
     case countdown
     case playing
@@ -196,11 +197,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if mode == .vsBot || mode == .headToHead {
             let bc = BotController(worldNode: worldNode, hudLayer: hudLayer)
             if mode == .vsBot {
-                bc.setup(skin: playerSkin, difficulty: botDiff)
+                // In bot-ladder mode, pass targetScore as deathScore so the
+                // bot deterministically dies at its ceiling score.
+                bc.setup(skin: playerSkin, difficulty: botDiff, deathScore: targetScore)
             }
             bc.setupScoreHUD(mode: mode, opponentName: opponentName)
             bc.onScoreChanged = { [weak self] newScore in
                 self?.gameDelegate?.botDidScore(newScore)
+            }
+            bc.onBotDied = { [weak self] in
+                guard let self, self.mode == .vsBot, self.targetScore != nil else { return }
+                // Bot died at its ceiling — player wins!
+                self.celebrateBotLadderWin()
             }
             botController = bc
         }
@@ -791,13 +799,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
             gameDelegate?.gameDidScore(score)
 
-            // Check if bot ladder target score is reached — trigger win!
-            if mode == .vsBot,
-               let target = targetScore,
-               score >= target,
-               !botLadderWinTriggered {
-                celebrateBotLadderWin()
-            }
+            // NOTE: Bot-ladder win is now triggered by BotController.onBotDied
+            // when the bot reaches its deathScore (deterministic ceiling).
+            // The player wins by surviving until the bot dies.
 
             return
         }
