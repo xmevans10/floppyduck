@@ -404,24 +404,6 @@ struct HomeView: View {
 
     // MARK: - Helpers
 
-    private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
-        Image(uiImage: icons.image(for: icon))
-            .interpolation(.none)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: size, height: size)
-    }
 
-    private func shareApp() {
-        let text = "Check out Floppy Duck! Can you beat my high score of \(manager.stats.bestScore)?"
-        var items: [Any] = [text]
-        if let url = GK.appStoreURL {
-            items.append(url)
-        }
-        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(vc, animated: true)
-        }
-    }
+
 }

@@ -60,7 +60,7 @@ struct BotLadderView: View {
             .accessibilityLabel("Back")
             Spacer()
             VStack(spacing: 2) {
-                Text("⚔️ BOT LADDER")
+                Text("BOT LADDER")
                     .font(.custom(GK.pixelFontName, size: 16))
                     .foregroundColor(.white)
                 Text("Defeat each challenger to unlock their skin")
@@ -116,88 +116,7 @@ struct BotLadderView: View {
             }
         } label: {
             HStack(spacing: 16) {
-                // Duck portrait with accent ring
-                ZStack {
-                    // Glow ring for current challenge
-                    if isNext {
-                        Circle()
-                            .fill(bot.accentColor.opacity(0.2))
-                            .frame(width: 76, height: 76)
-
-                        Circle()
-                            .stroke(bot.accentColor, lineWidth: 2)
-                            .frame(width: 76, height: 76)
-                    }
-
-                    // Background circle
-                    Circle()
-                        .fill(
-                            locked ? Color.gray.opacity(0.15) :
-                            beaten ? bot.accentColor.opacity(0.15) :
-                            bot.accentColor.opacity(0.2)
-                        )
-                        .frame(width: 64, height: 64)
-
-                    Circle()
-                        .stroke(
-                            locked ? Color.gray.opacity(0.3) :
-                            beaten ? bot.accentColor.opacity(0.5) :
-                            bot.accentColor,
-                            lineWidth: 2
-                        )
-                        .frame(width: 64, height: 64)
-
-                    if beaten {
-                        // Show bot's duck sprite with a checkmark badge
-                        ZStack {
-                            Image(uiImage: factory.skinDuckUIImage(skin: bot.skin, pixelScale: 5.0))
-                                .interpolation(.none)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-
-                            // Victory checkmark badge
-                            VStack {
-                                Spacer()
-                                HStack {
-                                    Spacer()
-                                    Image(uiImage: icons.image(for: .checkmark))
-                                        .interpolation(.none)
-                                        .resizable()
-                                        .frame(width: 14, height: 14)
-                                        .background(
-                                            Circle()
-                                                .fill(GK.Colors.buttonGreen)
-                                                .frame(width: 18, height: 18)
-                                        )
-                                }
-                            }
-                            .frame(width: 50, height: 50)
-                        }
-                    } else if locked {
-                        // Silhouette — dark mystery duck
-                        Image(uiImage: factory.skinDuckUIImage(skin: bot.skin, pixelScale: 5.0))
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 40, height: 40)
-                            .colorMultiply(Color.black)
-                            .opacity(0.5)
-
-                        Image(uiImage: icons.image(for: .lock, pixelScale: 2.5))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 18, height: 18)
-                    } else {
-                        // Current challenge — show the bot's duck in full color
-                        Image(uiImage: factory.skinDuckUIImage(skin: bot.skin, pixelScale: 5.0))
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 40, height: 40)
-                    }
-                }
-                .shadow(color: isNext ? bot.accentColor.opacity(0.6) : .clear, radius: 10)
+                botPortrait(bot: bot, beaten: beaten, isNext: isNext, locked: locked)
 
                 // Info column
                 VStack(alignment: .leading, spacing: 4) {
@@ -233,18 +152,7 @@ struct BotLadderView: View {
                         }
                         .foregroundColor(locked ? .gray.opacity(0.4) : .white.opacity(0.5))
 
-                        if !locked {
-                            HStack(spacing: 3) {
-                                Image(uiImage: PixelIconFactory.shared.image(for: .skull))
-                                    .interpolation(.none)
-                                    .resizable()
-                                    .frame(width: 10, height: 10)
-                                    .opacity(0.5)
-                                Text("DIES AT \(bot.targetScore)")
-                                    .font(.custom(GK.pixelFontName, size: 6))
-                            }
-                            .foregroundColor(.white.opacity(0.4))
-                        }
+
                     }
 
                     // Taunt — always visible for unlocked bots
@@ -324,8 +232,79 @@ struct BotLadderView: View {
         .buttonStyle(.plain)
         .disabled(locked)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(bot.name), \(bot.title), dies at \(bot.targetScore)\(beaten ? ", beaten, \(bot.skin.displayName) skin unlocked" : isNext ? ", next challenge" : locked ? ", locked" : "")")
+        .accessibilityLabel("\(bot.name), \(bot.title)\(beaten ? ", beaten, \(bot.skin.displayName) skin unlocked" : isNext ? ", next challenge" : locked ? ", locked" : "")")
         .accessibilityHint(isNext ? "Double-tap to challenge" : locked ? "Beat previous bots to unlock" : beaten ? "Double-tap to replay" : "")
+    }
+
+    // MARK: - Bot Portrait
+
+    private func botPortrait(bot: BotCharacter, beaten: Bool, isNext: Bool, locked: Bool) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    locked ? Color.gray.opacity(0.15) :
+                    beaten ? bot.accentColor.opacity(0.15) :
+                    bot.accentColor.opacity(0.2)
+                )
+                .frame(width: 64, height: 64)
+                .overlay(
+                    Circle()
+                        .stroke(
+                            isNext ? bot.accentColor :
+                            locked ? Color.gray.opacity(0.3) :
+                            beaten ? bot.accentColor.opacity(0.5) :
+                            bot.accentColor,
+                            lineWidth: isNext ? 3 : 2
+                        )
+                )
+
+            if beaten {
+                ZStack {
+                    Image(uiImage: factory.skinDuckUIImage(skin: bot.skin, pixelScale: 5.0))
+                        .interpolation(.none)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 40, height: 40)
+
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Image(uiImage: icons.image(for: .checkmark))
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 14, height: 14)
+                                .background(
+                                    Circle()
+                                        .fill(GK.Colors.buttonGreen)
+                                        .frame(width: 18, height: 18)
+                                )
+                        }
+                    }
+                    .frame(width: 50, height: 50)
+                }
+            } else if locked {
+                Image(uiImage: factory.skinDuckUIImage(skin: bot.skin, pixelScale: 5.0))
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+                    .colorMultiply(Color.black)
+                    .opacity(0.5)
+
+                Image(uiImage: icons.image(for: .lock, pixelScale: 2.5))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 18, height: 18)
+            } else {
+                Image(uiImage: factory.skinDuckUIImage(skin: bot.skin, pixelScale: 5.0))
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+            }
+        }
+        .shadow(color: isNext ? bot.accentColor.opacity(0.6) : .clear, radius: 10)
     }
 
     // MARK: - Path Segment

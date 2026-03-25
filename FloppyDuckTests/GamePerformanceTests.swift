@@ -16,11 +16,11 @@ final class GamePerformanceTests: XCTestCase {
         let delta: TimeInterval = 1.0 / 60.0 // 60fps delta
         
         // Act & Assert: Measure the time it takes to run 1000 frames (~16 seconds of gameplay)
+        var absoluteTime: TimeInterval = 0
         measure {
-            var time: TimeInterval = 0
             for _ in 0..<1000 {
-                time += delta
-                scene.update(time)
+                absoluteTime += delta
+                scene.update(absoluteTime)
             }
         }
     }

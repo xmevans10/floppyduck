@@ -18,11 +18,15 @@ struct FloppyDuckApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView()
-                    .environmentObject(gameManager)
-                    .environmentObject(authManager)
-                    .preferredColorScheme(.light)
-                    .opacity(splashFinished ? 1 : 0)
+                Color.black.ignoresSafeArea()
+
+                if splashFinished {
+                    ContentView()
+                        .environmentObject(gameManager)
+                        .environmentObject(authManager)
+                        .preferredColorScheme(.light)
+                        .transition(.opacity)
+                }
 
                 if !splashFinished {
                     SplashView(isFinished: $splashFinished)

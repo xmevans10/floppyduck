@@ -26,35 +26,49 @@ struct VersusIntroView: View {
     let onComplete: () -> Void
 
     // Animation state
-    @State private var playerSlide: CGFloat = -400
-    @State private var opponentSlide: CGFloat = 400
-    @State private var vsScale: CGFloat = 0
-    @State private var vsRotation: Double = -30
+    @State private var playerSlide: CGFloat = -UIScreen.main.bounds.width
+    @State private var opponentSlide: CGFloat = UIScreen.main.bounds.width
+    @State private var vsScale: CGFloat = 0.001
+    @State private var vsRotation: Double = -75
     @State private var flashOpacity: Double = 0
-    @State private var bgGlow: Double = 0
+    @State private var bgOpacity: Double = 0
     @State private var subtitleOpacity: Double = 0
     @State private var dismissOpacity: Double = 1
+    @State private var bgOffset: CGFloat = 0
 
     private let factory = TextureFactory.shared
 
     var body: some View {
-        ZStack {
-            // Background — dramatic dark with colored glow
-            Rectangle()
-                .fill(Color.black)
+        GeometryReader { geo in
+            ZStack {
+                // Background — Dark Base
+                Color.black.ignoresSafeArea()
+
+                // Split diagonal backgrounds (animated scrolling)
+                ZStack {
+                    // Player side (left/top)
+                    PlayerBackgroundHalf(color: playerSkin.accentColor, offset: bgOffset)
+                        .clipShape(LightningSplit(isLeft: true))
+                        .shadow(color: playerSkin.accentColor.opacity(0.8), radius: 15, x: 5, y: 0)
+                    
+                    // Opponent side (right/bottom)
+                    PlayerBackgroundHalf(color: opponentAccent, offset: -bgOffset)
+                        .clipShape(LightningSplit(isLeft: false))
+                }
+                .opacity(bgOpacity)
                 .ignoresSafeArea()
 
-            // Split-color background glow
-            HStack(spacing: 0) {
-                playerSkin.accentColor.opacity(bgGlow * 0.25)
-                opponentAccent.opacity(bgGlow * 0.25)
-            }
-            .ignoresSafeArea()
+                // Pixel Grid Overlay / Scanlines
+                ScanlineOverlay()
+                    .opacity(bgOpacity * 0.4)
+                    .ignoresSafeArea()
 
-            // Diagonal slash through center
-            DiagonalSlash()
-                .fill(Color.white.opacity(bgGlow * 0.08))
-                .ignoresSafeArea()
+                // Middle Lightning Slash
+                LightningSplitPath()
+                    .stroke(Color.white, lineWidth: 6)
+                    .shadow(color: .white, radius: 10)
+                    .opacity(bgOpacity)
+                    .ignoresSafeArea()
 
             // Player portrait (left)
             HStack {
@@ -106,12 +120,21 @@ struct VersusIntroView: View {
                         .frame(width: 120, height: 120)
                         .scaleEffect(vsScale)
 
+                    // Flashy VS text
                     Text("VS")
-                        .font(.custom(GK.pixelFontName, size: 56))
-                        .foregroundColor(GK.Colors.scoreYellow)
-                        .shadow(color: .black, radius: 0, x: 4, y: 4)
-                        .shadow(color: GK.Colors.scoreYellow.opacity(0.8), radius: 16)
+                        .font(.custom(GK.pixelFontName, size: 64))
+                        .foregroundColor(.white)
+                        .shadow(color: GK.Colors.scoreYellow, radius: 2)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.8), radius: 15)
                         .shadow(color: GK.Colors.scoreYellow.opacity(0.4), radius: 30)
+                        .overlay(
+                            Text("VS")
+                                .font(.custom(GK.pixelFontName, size: 64))
+                                .foregroundColor(.clear)
+                                .shadow(color: .black, radius: 0, x: 4, y: 5)
+                                .offset(x: -2, y: -2)
+                                .blendMode(.destinationOut)
+                        )
                         .scaleEffect(vsScale)
                         .rotationEffect(.degrees(vsRotation))
                 }
@@ -151,27 +174,34 @@ struct VersusIntroView: View {
     private func runAnimation() {
         SoundManager.shared.play(.button)
 
-        // 1. Portraits slide in (0.0–0.4s)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-            playerSlide = 0
-            opponentSlide = 0
-            bgGlow = 1
+        // 1. Enter background + continuous scroll
+        withAnimation(.easeIn(duration: 0.2)) {
+            bgOpacity = 1
+        }
+        withAnimation(.linear(duration: 5.0).repeatForever(autoreverses: false)) {
+            bgOffset = 400
         }
 
-        // 2. VS slams down (0.35–0.65s)
+        // 2. Portraits slide in with massive spring
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.6, blendDuration: 0.1)) {
+            playerSlide = 0
+            opponentSlide = 0
+        }
+
+        // 3. VS slams down (0.35s)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            SoundManager.shared.play(.score) // Impact sound
+            SoundManager.shared.play(.score)
             Haptic.win()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+            withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.4, blendDuration: 0.1)) {
                 vsScale = 1.0
                 vsRotation = 0
             }
-            // Flash
-            withAnimation(.easeOut(duration: 0.1)) {
-                flashOpacity = 0.6
+            // Flash screen on slam
+            withAnimation(.easeOut(duration: 0.05)) {
+                flashOpacity = 0.8
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeOut(duration: 0.2)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                withAnimation(.easeOut(duration: 0.3)) {
                     flashOpacity = 0
                 }
             }
@@ -193,23 +223,123 @@ struct VersusIntroView: View {
                 onComplete()
             }
         }
+        }
     }
 }
 
-// MARK: - Diagonal Slash Shape
+// MARK: - Fancy Background Components
 
-/// Diagonal stripe through center for the dramatic VS background.
-private struct DiagonalSlash: Shape {
+/// Renders a scrolling checkered/striped pattern for the background halves
+private struct PlayerBackgroundHalf: View {
+    let color: Color
+    let offset: CGFloat
+    
+    // Create repeating diagonal stripes
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            
+            Path { p in
+                // Draw wide diagonal stripes
+                let stripeWidth: CGFloat = 60
+                let totalScroll = offset.truncatingRemainder(dividingBy: stripeWidth * 2)
+                
+                for i in -20...20 {
+                    let startX = CGFloat(i) * stripeWidth * 2 + totalScroll
+                    p.move(to: CGPoint(x: startX, y: -h))
+                    p.addLine(to: CGPoint(x: startX + stripeWidth, y: -h))
+                    p.addLine(to: CGPoint(x: startX + stripeWidth - h * 1.5, y: h * 1.5))
+                    p.addLine(to: CGPoint(x: startX - h * 1.5, y: h * 1.5))
+                    p.closeSubpath()
+                }
+            }
+            .fill(color.opacity(0.4))
+            .background(color.opacity(0.15))
+        }
+    }
+}
+
+/// Creates a jagged lightning-bolt split down the middle
+private struct LightningSplit: Shape {
+    let isLeft: Bool
+    
     func path(in rect: CGRect) -> Path {
         var p = Path()
         let w = rect.width
         let h = rect.height
-        let slashWidth = w * 0.15
-        p.move(to: CGPoint(x: w * 0.5 - slashWidth, y: 0))
-        p.addLine(to: CGPoint(x: w * 0.5 + slashWidth, y: 0))
-        p.addLine(to: CGPoint(x: w * 0.5, y: h))
-        p.addLine(to: CGPoint(x: w * 0.5 - slashWidth * 2, y: h))
+        let cx = w / 2
+        
+        let point1 = CGPoint(x: cx + w * 0.15, y: 0)
+        let point2 = CGPoint(x: cx + w * 0.05, y: h * 0.3)
+        let point3 = CGPoint(x: cx + w * 0.12, y: h * 0.3)
+        let point4 = CGPoint(x: cx - w * 0.08, y: h * 0.7)
+        let point5 = CGPoint(x: cx - w * 0.01, y: h * 0.7)
+        let point6 = CGPoint(x: cx - w * 0.18, y: h)
+        
+        if isLeft {
+            p.move(to: CGPoint(x: 0, y: 0))
+            p.addLine(to: point1)
+            p.addLine(to: point2)
+            p.addLine(to: point3)
+            p.addLine(to: point4)
+            p.addLine(to: point5)
+            p.addLine(to: point6)
+            p.addLine(to: CGPoint(x: 0, y: h))
+        } else {
+            p.move(to: CGPoint(x: w, y: 0))
+            p.addLine(to: point1)
+            p.addLine(to: point2)
+            p.addLine(to: point3)
+            p.addLine(to: point4)
+            p.addLine(to: point5)
+            p.addLine(to: point6)
+            p.addLine(to: CGPoint(x: w, y: h))
+        }
         p.closeSubpath()
         return p
+    }
+}
+
+/// Helper to render just the stroke of the lightning split
+private struct LightningSplitPath: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let w = rect.width
+        let h = rect.height
+        let cx = w / 2
+        
+        let point1 = CGPoint(x: cx + w * 0.15, y: 0)
+        let point2 = CGPoint(x: cx + w * 0.05, y: h * 0.3)
+        let point3 = CGPoint(x: cx + w * 0.12, y: h * 0.3)
+        let point4 = CGPoint(x: cx - w * 0.08, y: h * 0.7)
+        let point5 = CGPoint(x: cx - w * 0.01, y: h * 0.7)
+        let point6 = CGPoint(x: cx - w * 0.18, y: h)
+        
+        p.move(to: point1)
+        p.addLine(to: point2)
+        p.addLine(to: point3)
+        p.addLine(to: point4)
+        p.addLine(to: point5)
+        p.addLine(to: point6)
+        
+        return p
+    }
+}
+
+/// Horizontal scanlines overlay
+private struct ScanlineOverlay: View {
+    var body: some View {
+        GeometryReader { geo in
+            Path { p in
+                let h = geo.size.height
+                let spacing: CGFloat = 4
+                for y in stride(from: 0, to: h, by: spacing * 2) {
+                    p.move(to: CGPoint(x: 0, y: y))
+                    p.addLine(to: CGPoint(x: geo.size.width, y: y))
+                }
+            }
+            .stroke(Color.black.opacity(0.3), lineWidth: 4)
+        }
     }
 }

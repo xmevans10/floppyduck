@@ -297,13 +297,7 @@ struct SettingsView: View {
             )
     }
 
-    private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
-        Image(uiImage: icons.image(for: icon))
-            .interpolation(.none)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: size, height: size)
-    }
+
 
     private var backButton: some View {
         Button {

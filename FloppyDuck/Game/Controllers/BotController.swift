@@ -269,8 +269,9 @@ final class BotController {
                 }
             }
 
-            // Bot scoring — pipe passed behind the bot
-            if let pipeName = child.name, pipeX < GK.duckStartX - GK.pipeWidth / 2 {
+            // Bot scoring — pipe passed behind the bot (only count actual pipe nodes)
+            if let pipeName = child.name, pipeName.hasPrefix("pipe_"),
+               pipeX < GK.duckStartX - GK.pipeWidth / 2 {
                 if !pipesPassed.contains(pipeName) {
                     pipesPassed.insert(pipeName)
                     score += 1

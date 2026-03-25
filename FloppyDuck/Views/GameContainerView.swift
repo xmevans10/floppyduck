@@ -471,7 +471,7 @@ struct GameContainerView: View {
             opponentSkin: bot?.skin,
             opponentName: config.opponentName ?? "OPPONENT",
             opponentAccent: bot?.accentColor ?? Color.red,
-            subtitle: bot.map { "DIES AT \($0.targetScore)" }
+            subtitle: "Bot Ladder Match"
         ) {
             withAnimation(.easeOut(duration: 0.2)) {
                 phase = .ready
@@ -499,7 +499,7 @@ struct GameContainerView: View {
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
                     }
-                    Text("SURVIVE UNTIL \(bot.name) DIES AT \(bot.targetScore)")
+                    Text("Outlast \(bot.name) to win!")
                         .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
                 } else if config.mode == .vsBot {
@@ -688,11 +688,10 @@ struct GameContainerView: View {
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
             }
 
-            if isBotLadder, let target = config.targetScore,
-               let botName = config.opponentName {
+            if isBotLadder, let botName = config.opponentName {
                 if playerWon {
                     HStack(spacing: 4) {
-                        Text("\(botName) DIED AT \(target)")
+                        Text("\(botName) DEFEATED")
                             .font(.custom(GK.pixelFontName, size: 8))
                             .foregroundColor(GK.Colors.scoreYellow.opacity(0.8))
                         Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
@@ -702,7 +701,7 @@ struct GameContainerView: View {
                             .frame(width: 10, height: 10)
                     }
                 } else {
-                    Text("SURVIVE UNTIL \(botName) DIES AT \(target)")
+                    Text("Outlast \(botName) to win!")
                         .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(.white.opacity(0.6))
                 }
@@ -862,13 +861,7 @@ struct GameContainerView: View {
         .accessibilityLabel(label)
     }
 
-    private func pixelIcon(_ icon: PixelIcon, size: CGFloat) -> some View {
-        Image(uiImage: icons.image(for: icon))
-            .interpolation(.none)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: size, height: size)
-    }
+
 
     private func shareScore() {
         // Item 7: Generate pixel-art share card image

@@ -71,7 +71,8 @@ struct SplashView: View {
         }
         // Detect mid-spin to play coin sound at the right moment
         .onChange(of: coinAngle) { angle in
-            if angle >= 180 && !hasCoinSounded {
+            let threshold = angle > 360 ? 540.0 : 180.0
+            if angle >= threshold && !hasCoinSounded {
                 hasCoinSounded = true
                 SoundManager.shared.play(.coin)
                 Haptic.splashCoin()

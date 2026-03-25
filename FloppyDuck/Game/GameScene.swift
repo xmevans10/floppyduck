@@ -254,7 +254,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         sprite.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         sprite.zPosition = 40
 
-        sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
+        sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.55)
         sprite.physicsBody?.categoryBitMask = GK.duckCategory
         sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         // Only collide with ground — pipe contacts trigger game over via didBegin(_:)
@@ -416,40 +416,32 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Collision bodies
         if bottomH > 0 {
-            let bCollider = SKNode()
-            bCollider.position = CGPoint(x: 0, y: GK.groundHeight + bottomH / 2)
-            bCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth, height: bottomH))
-            bCollider.physicsBody?.isDynamic = false
-            bCollider.physicsBody?.categoryBitMask = GK.pipeCategory
-            bCollider.physicsBody?.contactTestBitMask = GK.duckCategory
-            pipeNode.addChild(bCollider)
+            bottomBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: bottomH),
+                                                   center: CGPoint(x: 0, y: bottomH / 2))
+            bottomBody.physicsBody?.isDynamic = false
+            bottomBody.physicsBody?.categoryBitMask = GK.pipeCategory
+            bottomBody.physicsBody?.contactTestBitMask = GK.duckCategory
 
-            let bCapCollider = SKNode()
-            bCapCollider.position = CGPoint(x: 0, y: GK.groundHeight + bottomH - 2)
-            bCapCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 10, height: 30))
-            bCapCollider.physicsBody?.isDynamic = false
-            bCapCollider.physicsBody?.categoryBitMask = GK.pipeCategory
-            bCapCollider.physicsBody?.contactTestBitMask = GK.duckCategory
-            pipeNode.addChild(bCapCollider)
+            bottomCap.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
+                                                  center: CGPoint(x: 0, y: 15))
+            bottomCap.physicsBody?.isDynamic = false
+            bottomCap.physicsBody?.categoryBitMask = GK.pipeCategory
+            bottomCap.physicsBody?.contactTestBitMask = GK.duckCategory
         }
 
         let topH2 = GK.worldHeight - topY
         if topH2 > 0 {
-            let tCollider = SKNode()
-            tCollider.position = CGPoint(x: 0, y: topY + topH2 / 2)
-            tCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth, height: topH2))
-            tCollider.physicsBody?.isDynamic = false
-            tCollider.physicsBody?.categoryBitMask = GK.pipeCategory
-            tCollider.physicsBody?.contactTestBitMask = GK.duckCategory
-            pipeNode.addChild(tCollider)
+            topBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: topH2),
+                                                center: CGPoint(x: 0, y: -topH2 / 2))
+            topBody.physicsBody?.isDynamic = false
+            topBody.physicsBody?.categoryBitMask = GK.pipeCategory
+            topBody.physicsBody?.contactTestBitMask = GK.duckCategory
 
-            let tCapCollider = SKNode()
-            tCapCollider.position = CGPoint(x: 0, y: topY + 2)
-            tCapCollider.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 10, height: 30))
-            tCapCollider.physicsBody?.isDynamic = false
-            tCapCollider.physicsBody?.categoryBitMask = GK.pipeCategory
-            tCapCollider.physicsBody?.contactTestBitMask = GK.duckCategory
-            pipeNode.addChild(tCapCollider)
+            topCap.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
+                                               center: CGPoint(x: 0, y: -15))
+            topCap.physicsBody?.isDynamic = false
+            topCap.physicsBody?.categoryBitMask = GK.pipeCategory
+            topCap.physicsBody?.contactTestBitMask = GK.duckCategory
         }
 
         // Score trigger
@@ -1142,7 +1134,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.setScale(1.0)
 
         // Restore base physics body
-        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.68)
+        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.55)
         body.categoryBitMask = GK.duckCategory
         body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         body.collisionBitMask = GK.groundCategory   // Ground only — no pipe collision (prevents drift)
@@ -1224,51 +1216,42 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func spawnFloatingScorePopup(isMilestone: Bool) {
         guard let duck else { return }
-
-        // All popups show "+1" (score increments by 1 per pipe).
-        // Milestones (every 5) get a gold, larger treatment.
-        // Regular points reuse the pre-allocated pool to avoid per-frame allocs.
-        let popup: SKLabelNode
-        if isMilestone {
-            let fresh = SKLabelNode(fontNamed: GK.pixelFontName)
-            fresh.text = "+1"
-            fresh.fontSize = 18
-            fresh.fontColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)
-            fresh.zPosition = 300
-            fresh.position = CGPoint(x: duck.position.x + 30, y: duck.position.y + 28)
-            worldNode.addChild(fresh)
-            let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
-            let fadeOut = SKAction.fadeOut(withDuration: 0.6)
-            let scaleUp = SKAction.scale(to: 1.4, duration: 0.15)
-            let scaleBack = SKAction.scale(to: 1.0, duration: 0.45)
-            fresh.run(SKAction.sequence([
-                SKAction.group([floatUp, fadeOut, SKAction.sequence([scaleUp, scaleBack])]),
-                SKAction.removeFromParent()
-            ]))
-            return
-        }
-
         guard !scorePopupPool.isEmpty else { return }
-        popup = scorePopupPool[scorePopupPoolIndex % scorePopupPool.count]
+
+        let popup = scorePopupPool[scorePopupPoolIndex % scorePopupPool.count]
         scorePopupPoolIndex += 1
 
         popup.removeAllActions()
         popup.text = "+1"
-        popup.fontSize = 14
-        popup.fontColor = .white
         popup.alpha = 1.0
         popup.setScale(1.0)
         popup.isHidden = false
         popup.position = CGPoint(x: duck.position.x + 30, y: duck.position.y + 28)
 
-        let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
-        let fadeOut = SKAction.fadeOut(withDuration: 0.6)
-        let scaleUp = SKAction.scale(to: 1.1, duration: 0.2)
-        let scaleBack = SKAction.scale(to: 1.0, duration: 0.4)
-        popup.run(SKAction.sequence([
-            SKAction.group([floatUp, fadeOut, SKAction.sequence([scaleUp, scaleBack])]),
-            SKAction.run { popup.isHidden = true }
-        ]))
+        if isMilestone {
+            popup.fontSize = 18
+            popup.fontColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)
+            let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
+            let fadeOut = SKAction.fadeOut(withDuration: 0.6)
+            let scaleUp = SKAction.scale(to: 1.4, duration: 0.15)
+            let scaleBack = SKAction.scale(to: 1.0, duration: 0.45)
+            popup.run(SKAction.sequence([
+                SKAction.group([floatUp, fadeOut, SKAction.sequence([scaleUp, scaleBack])]),
+                SKAction.run { popup.isHidden = true }
+            ]))
+        } else {
+            popup.fontSize = 14
+            popup.fontColor = .white
+
+            let floatUp = SKAction.moveBy(x: 0, y: 50, duration: 0.6)
+            let fadeOut = SKAction.fadeOut(withDuration: 0.6)
+            let scaleUp = SKAction.scale(to: 1.1, duration: 0.2)
+            let scaleBack = SKAction.scale(to: 1.0, duration: 0.4)
+            popup.run(SKAction.sequence([
+                SKAction.group([floatUp, fadeOut, SKAction.sequence([scaleUp, scaleBack])]),
+                SKAction.run { popup.isHidden = true }
+            ]))
+        }
     }
 
     // MARK: - First-Launch Tutorial (Item 8)

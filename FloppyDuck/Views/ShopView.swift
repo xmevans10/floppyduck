@@ -377,13 +377,14 @@ struct ShopView: View {
                             if theme.showStars {
                                 ZStack {
                                     ForEach(0..<8, id: \.self) { i in
+                                        let opacities: [Double] = [0.9, 0.5, 0.7, 0.4, 0.8, 0.6, 0.5, 0.7]
+                                        let sizes: [CGFloat] = [2.0, 1.5, 2.5, 1.5, 3.0, 2.0, 1.5, 2.5]
+                                        let xOffsets: [CGFloat] = [-30, 15, -10, 25, -20, 5, 30, -15]
+                                        let yOffsets: [CGFloat] = [-20, 10, -5, 20, -15, 25, -10, 5]
                                         Circle()
-                                            .fill(.white.opacity(Double.random(in: 0.4...0.9)))
-                                            .frame(width: CGFloat.random(in: 1.5...3), height: CGFloat.random(in: 1.5...3))
-                                            .offset(
-                                                x: CGFloat.random(in: -35...35),
-                                                y: CGFloat.random(in: -25...25)
-                                            )
+                                            .fill(.white.opacity(opacities[i]))
+                                            .frame(width: sizes[i], height: sizes[i])
+                                            .offset(x: xOffsets[i], y: yOffsets[i])
                                     }
                                 }
                             }
