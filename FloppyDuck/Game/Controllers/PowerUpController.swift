@@ -411,7 +411,7 @@ final class PowerUpController {
         collectible.run(SKAction.repeatForever(pulse))
 
         // Physics body
-        collectible.physicsBody = SKPhysicsBody(circleOfRadius: PowerUpKind.collectibleSize * 0.6)
+        collectible.physicsBody = SKPhysicsBody(circleOfRadius: PowerUpKind.collectibleSize * 0.85)
         collectible.physicsBody?.isDynamic = false
         collectible.physicsBody?.categoryBitMask = GK.powerUpCategory
         collectible.physicsBody?.contactTestBitMask = GK.duckCategory
