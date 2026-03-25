@@ -222,19 +222,28 @@ struct BotLadderView: View {
 
                     // Stats row
                     HStack(spacing: 8) {
-                        Label {
+                        HStack(spacing: 3) {
+                            Image(uiImage: PixelIconFactory.shared.image(for: .speedBurst))
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 10, height: 10)
+                                .opacity(locked ? 0.4 : 0.6)
                             Text("\(bot.elo)")
                                 .font(.custom(GK.pixelFontName, size: 6))
-                        } icon: {
-                            Text("⚡")
-                                .font(.system(size: 8))
                         }
                         .foregroundColor(locked ? .gray.opacity(0.4) : .white.opacity(0.5))
 
                         if !locked {
-                            Text("💀 DIES AT \(bot.targetScore)")
-                                .font(.custom(GK.pixelFontName, size: 6))
-                                .foregroundColor(.white.opacity(0.4))
+                            HStack(spacing: 3) {
+                                Image(uiImage: PixelIconFactory.shared.image(for: .skull))
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .frame(width: 10, height: 10)
+                                    .opacity(0.5)
+                                Text("DIES AT \(bot.targetScore)")
+                                    .font(.custom(GK.pixelFontName, size: 6))
+                            }
+                            .foregroundColor(.white.opacity(0.4))
                         }
                     }
 

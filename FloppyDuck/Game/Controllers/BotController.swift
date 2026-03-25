@@ -199,11 +199,16 @@ final class BotController {
         // regress the cap-clipping fix.
         let botR = GK.duckRadius
 
-        // Ground collision → die
+        // Ground collision → die (or bounce if plot-armored)
         if posY <= GK.groundHeight + botR {
             posY = GK.groundHeight + botR
-            die()
-            return
+            if deathScore != nil && !doomed {
+                // Plot armor: bounce the bot back up instead of dying
+                velocity = GK.flapImpulse * diff.flapStrength * 0.6
+            } else {
+                die()
+                return
+            }
         }
 
         // Ceiling clamp
@@ -244,8 +249,22 @@ final class BotController {
                     let gapTop = gapY + gap / 2 - 14
                     let gapBottom = gapY - gap / 2 + 14
                     if posY + botR > gapTop || posY - botR < gapBottom {
-                        die()
-                        return
+                        // When the bot has a deathScore ceiling and hasn't
+                        // reached it yet, nudge position into the safe zone
+                        // instead of dying — "plot armor" keeps the bot alive
+                        // so it always dies at exactly the target score.
+                        if deathScore != nil && !doomed {
+                            if posY + botR > gapTop {
+                                posY = gapTop - botR
+                            }
+                            if posY - botR < gapBottom {
+                                posY = gapBottom + botR
+                            }
+                            velocity = 0
+                        } else {
+                            die()
+                            return
+                        }
                     }
                 }
             }

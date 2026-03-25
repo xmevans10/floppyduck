@@ -467,7 +467,7 @@ struct GameContainerView: View {
 
         VersusIntroView(
             playerSkin: playerSkin,
-            playerName: manager.playerName.isEmpty ? "YOU" : manager.playerName.uppercased(),
+            playerName: (manager.playerName.isEmpty || manager.playerName == "Player") ? "YOU" : manager.playerName.uppercased(),
             opponentSkin: bot?.skin,
             opponentName: config.opponentName ?? "OPPONENT",
             opponentAccent: bot?.accentColor ?? Color.red,
@@ -490,9 +490,11 @@ struct GameContainerView: View {
                    let botId = config.botCharacterId,
                    let bot = BotCharacter.find(botId) {
                     HStack(spacing: 8) {
-                        Circle()
-                            .fill(bot.accentColor)
-                            .frame(width: 20, height: 20)
+                        Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: bot.skin, pixelScale: 4.0))
+                            .interpolation(.none)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 22, height: 22)
                         Text("VS \(bot.name)")
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
