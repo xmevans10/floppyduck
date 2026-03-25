@@ -382,6 +382,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             bottomBody.anchorPoint = CGPoint(x: 0.5, y: 0)
             bottomBody.position = CGPoint(x: 0, y: GK.groundHeight)
+            bottomBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: bottomH),
+                                                   center: CGPoint(x: 0, y: bottomH / 2))
+            bottomBody.physicsBody?.isDynamic = false
+            bottomBody.physicsBody?.categoryBitMask = GK.pipeCategory
+            bottomBody.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(bottomBody)
 
             let bottomCap = SKSpriteNode(
@@ -390,12 +395,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             bottomCap.anchorPoint = CGPoint(x: 0.5, y: 0)
             bottomCap.position = CGPoint(x: 0, y: GK.groundHeight + bottomH - 4)
+            bottomCap.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
+                                                  center: CGPoint(x: 0, y: 15))
+            bottomCap.physicsBody?.isDynamic = false
+            bottomCap.physicsBody?.categoryBitMask = GK.pipeCategory
+            bottomCap.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(bottomCap)
         }
 
         // Top pipe
         let topY = gapY + effectiveGap / 2
         let topH = GK.worldHeight - topY
+        let topH2 = topH
         if topH > 0 {
             let topBody = SKSpriteNode(
                 texture: factory.pipeTexture(height: topH),
@@ -403,6 +414,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             topBody.anchorPoint = CGPoint(x: 0.5, y: 1)
             topBody.position = CGPoint(x: 0, y: GK.worldHeight)
+            topBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: topH2),
+                                                center: CGPoint(x: 0, y: -topH2 / 2))
+            topBody.physicsBody?.isDynamic = false
+            topBody.physicsBody?.categoryBitMask = GK.pipeCategory
+            topBody.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(topBody)
 
             let topCap = SKSpriteNode(
@@ -411,37 +427,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             topCap.anchorPoint = CGPoint(x: 0.5, y: 1)
             topCap.position = CGPoint(x: 0, y: topY + 4)
-            pipeNode.addChild(topCap)
-        }
-
-        // Collision bodies
-        if bottomH > 0 {
-            bottomBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: bottomH),
-                                                   center: CGPoint(x: 0, y: bottomH / 2))
-            bottomBody.physicsBody?.isDynamic = false
-            bottomBody.physicsBody?.categoryBitMask = GK.pipeCategory
-            bottomBody.physicsBody?.contactTestBitMask = GK.duckCategory
-
-            bottomCap.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
-                                                  center: CGPoint(x: 0, y: 15))
-            bottomCap.physicsBody?.isDynamic = false
-            bottomCap.physicsBody?.categoryBitMask = GK.pipeCategory
-            bottomCap.physicsBody?.contactTestBitMask = GK.duckCategory
-        }
-
-        let topH2 = GK.worldHeight - topY
-        if topH2 > 0 {
-            topBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: topH2),
-                                                center: CGPoint(x: 0, y: -topH2 / 2))
-            topBody.physicsBody?.isDynamic = false
-            topBody.physicsBody?.categoryBitMask = GK.pipeCategory
-            topBody.physicsBody?.contactTestBitMask = GK.duckCategory
-
             topCap.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
                                                center: CGPoint(x: 0, y: -15))
             topCap.physicsBody?.isDynamic = false
             topCap.physicsBody?.categoryBitMask = GK.pipeCategory
             topCap.physicsBody?.contactTestBitMask = GK.duckCategory
+            pipeNode.addChild(topCap)
         }
 
         // Score trigger
