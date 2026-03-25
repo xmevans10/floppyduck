@@ -254,7 +254,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         sprite.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         sprite.zPosition = 40
 
-        sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.55)
+        sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.72)
         sprite.physicsBody?.categoryBitMask = GK.duckCategory
         sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         // Only collide with ground — pipe contacts trigger game over via didBegin(_:)
@@ -524,7 +524,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         collectible.run(SKAction.repeatForever(pulse))
 
         // Physics
-        collectible.physicsBody = SKPhysicsBody(circleOfRadius: PowerUpKind.collectibleSize * 0.6)
+        collectible.physicsBody = SKPhysicsBody(circleOfRadius: PowerUpKind.collectibleSize * 0.85)
         collectible.physicsBody?.isDynamic = false
         collectible.physicsBody?.categoryBitMask = GK.powerUpCategory
         collectible.physicsBody?.contactTestBitMask = GK.duckCategory
@@ -555,7 +555,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             breadNode.name = "bread"
 
             // Physics body for collection
-            breadNode.physicsBody = SKPhysicsBody(circleOfRadius: 10)
+            breadNode.physicsBody = SKPhysicsBody(circleOfRadius: 16)
             breadNode.physicsBody?.isDynamic = false
             breadNode.physicsBody?.categoryBitMask = GK.breadCategory
             breadNode.physicsBody?.contactTestBitMask = GK.duckCategory
@@ -1134,7 +1134,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.setScale(1.0)
 
         // Restore base physics body
-        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.55)
+        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.72)
         body.categoryBitMask = GK.duckCategory
         body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
         body.collisionBitMask = GK.groundCategory   // Ground only — no pipe collision (prevents drift)
