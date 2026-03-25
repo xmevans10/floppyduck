@@ -107,10 +107,11 @@ struct VersusIntroView: View {
                         .scaleEffect(vsScale)
 
                     Text("VS")
-                        .font(.custom(GK.pixelFontName, size: 40))
+                        .font(.custom(GK.pixelFontName, size: 56))
                         .foregroundColor(GK.Colors.scoreYellow)
-                        .shadow(color: .black, radius: 0, x: 3, y: 3)
-                        .shadow(color: GK.Colors.scoreYellow.opacity(0.6), radius: 12)
+                        .shadow(color: .black, radius: 0, x: 4, y: 4)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.8), radius: 16)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.4), radius: 30)
                         .scaleEffect(vsScale)
                         .rotationEffect(.degrees(vsRotation))
                 }
@@ -139,9 +140,10 @@ struct VersusIntroView: View {
             .interpolation(.none)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(width: 100, height: 100)
+            .frame(width: 140, height: 140)
             .scaleEffect(x: flipped ? -1 : 1, y: 1)
-            .shadow(color: (flipped ? opponentAccent : skin.accentColor).opacity(0.5), radius: 12)
+            .shadow(color: (flipped ? opponentAccent : skin.accentColor).opacity(0.7), radius: 20)
+            .shadow(color: (flipped ? opponentAccent : skin.accentColor).opacity(0.3), radius: 40)
     }
 
     // MARK: - Animation Sequence
@@ -182,8 +184,8 @@ struct VersusIntroView: View {
             }
         }
 
-        // 4. Hold for a beat, then dismiss (1.6s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+        // 4. Hold for a beat, then dismiss (2.2s — longer for drama)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
             withAnimation(.easeIn(duration: 0.3)) {
                 dismissOpacity = 0
             }
