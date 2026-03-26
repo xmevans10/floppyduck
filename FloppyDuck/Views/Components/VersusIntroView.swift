@@ -13,7 +13,6 @@ import SwiftUI
 ///         opponentSkin: .pirate,
 ///         opponentName: "PUDDLES",
 ///         opponentAccent: bot.accentColor,
-///         subtitle: "DIES AT 18"
 ///     ) {
 ///         // Start gameplay
 ///     }
@@ -24,7 +23,6 @@ struct VersusIntroView: View {
     let opponentSkin: DuckSkin?
     let opponentName: String
     let opponentAccent: Color
-    let subtitle: String?
     let onComplete: () -> Void
 
     // Animation state
@@ -34,7 +32,7 @@ struct VersusIntroView: View {
     @State private var vsRotation: Double = -75
     @State private var flashOpacity: Double = 0
     @State private var bgOpacity: Double = 0
-    @State private var subtitleOpacity: Double = 0
+
     @State private var dismissOpacity: Double = 1
     @State private var bgOffset: CGFloat = 0
 
@@ -141,12 +139,7 @@ struct VersusIntroView: View {
                         .rotationEffect(.degrees(vsRotation))
                 }
 
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.custom(GK.pixelFontName, size: 9))
-                        .foregroundColor(.white.opacity(0.7))
-                        .opacity(subtitleOpacity)
-                }
+
             }
 
             // Flash overlay (when VS slams in)
@@ -210,14 +203,7 @@ struct VersusIntroView: View {
             }
         }
 
-        // 3. Subtitle fades in (0.7s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            withAnimation(.easeIn(duration: 0.2)) {
-                subtitleOpacity = 1
-            }
-        }
-
-        // 4. Hold for a beat, then dismiss (3.2s — extra drama)
+        // 3. Hold for a beat, then dismiss (3.2s — extra drama)
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
             withAnimation(.easeIn(duration: 0.3)) {
                 dismissOpacity = 0
