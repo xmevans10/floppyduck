@@ -463,15 +463,27 @@ struct GameContainerView: View {
     @ViewBuilder
     private var versusIntroOverlay: some View {
         let playerSkin = SkinManager.shared.selectedSkin
+        let playerBanner = BannerManager.shared.selectedBanner
         let bot = config.botCharacterId.flatMap { BotCharacter.find($0) }
+
+        // Build a contextual subtitle:
+        //   Bot ladder → "DIES AT {score}" (shows the target)
+        //   Head-to-head → nil (no spoiler info)
+        let introSubtitle: String? = {
+            if let bot {
+                return "DIES AT \(bot.targetScore)"
+            }
+            return nil
+        }()
 
         VersusIntroView(
             playerSkin: playerSkin,
             playerName: (manager.playerName.isEmpty || manager.playerName == "Player") ? "YOU" : manager.playerName.uppercased(),
+            playerBanner: playerBanner,
             opponentSkin: bot?.skin,
             opponentName: config.opponentName ?? "OPPONENT",
             opponentAccent: bot?.accentColor ?? Color.red,
-            subtitle: "Bot Ladder Match"
+            subtitle: introSubtitle
         ) {
             withAnimation(.easeOut(duration: 0.2)) {
                 phase = .ready

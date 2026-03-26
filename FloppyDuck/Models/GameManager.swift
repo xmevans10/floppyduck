@@ -40,6 +40,9 @@ final class GameManager: ObservableObject {
         }
 
         AchievementManager.shared.register(gameManager: self)
+
+        // Sync battle banner unlocks with already-beaten bots
+        BannerManager.shared.syncWithBeatenBots(stats.beatenBots)
     }
 
     func navigate(to route: AppRoute) {
@@ -252,6 +255,8 @@ final class GameManager: ObservableObject {
     func beatBot(_ botId: String) {
         stats.beatBot(botId)
         saveStats()
+        // Auto-unlock any battle banner tied to this bot
+        BannerManager.shared.checkBotRewardUnlock(beatenBotId: botId)
     }
 
     /// Check if a bot has been beaten
