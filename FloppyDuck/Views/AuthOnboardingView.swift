@@ -43,7 +43,7 @@ struct AuthOnboardingView: View {
                     authButton(
                         icon: .classic,
                         title: "CONTINUE AS GUEST",
-                        subtitle: "Quick setup, local + device identity",
+                        subtitle: "Classic + Quick Play only",
                         action: .guest
                     ) {
                         busyAction = .guest
@@ -56,7 +56,7 @@ struct AuthOnboardingView: View {
                     authButton(
                         icon: .trophy,
                         title: "SIGN IN WITH APPLE",
-                        subtitle: "Required for ranked multiplayer",
+                        subtitle: "Unlock all modes + cloud sync",
                         action: .apple
                     ) {
                         busyAction = .apple
@@ -68,7 +68,7 @@ struct AuthOnboardingView: View {
                 }
                 .padding(.horizontal, 26)
 
-                Text("Ranked requires Sign in with Apple. Quick Play and Private Room work as guest.")
+                Text("Classic and Quick Play are free. Sign in to unlock all features.")
                     .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(.white.opacity(0.7))
                     .multilineTextAlignment(.center)

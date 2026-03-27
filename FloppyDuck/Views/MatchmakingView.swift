@@ -4,7 +4,10 @@ import UIKit
 struct MultiplayerModesView: View {
     @EnvironmentObject var manager: GameManager
     @EnvironmentObject var auth: AuthManager
+    @State private var showFeatureSignInPrompt: Bool = false
     private let icons = PixelIconFactory.shared
+
+    private var isGuest: Bool { auth.isGuest }
 
     var body: some View {
         ZStack {
@@ -39,14 +42,18 @@ struct MultiplayerModesView: View {
 
                     modeButton(icon: .trophy,
                                title: "RANKED",
-                               subtitle: auth.isAppleLinked ? "Competitive ELO" : "Sign in required") {
+                               subtitle: isGuest ? "Sign in to unlock" : "Competitive ELO") {
+                        if isGuest {
+                            showFeatureSignInPrompt = true
+                            return
+                        }
                         if manager.startMatchmaking(mode: .ranked) {
                             return
                         }
                         auth.showRankedSignInPrompt = true
                     }
                     .overlay(alignment: .topTrailing) {
-                        if !auth.isAppleLinked {
+                        if isGuest {
                             Text("LOCKED")
                                 .font(.custom(GK.pixelFontName, size: 6))
                                 .foregroundColor(.white)
@@ -56,12 +63,29 @@ struct MultiplayerModesView: View {
                                 .offset(x: -6, y: 6)
                         }
                     }
+                    .opacity(isGuest ? 0.5 : 1.0)
 
                     modeButton(icon: .lock,
                                title: "PRIVATE ROOM",
-                               subtitle: "Create or join by code") {
-                        manager.startMatchmaking(mode: .privateRoom)
+                               subtitle: isGuest ? "Sign in to unlock" : "Create or join by code") {
+                        if isGuest {
+                            showFeatureSignInPrompt = true
+                        } else {
+                            manager.startMatchmaking(mode: .privateRoom)
+                        }
                     }
+                    .overlay(alignment: .topTrailing) {
+                        if isGuest {
+                            Text("LOCKED")
+                                .font(.custom(GK.pixelFontName, size: 6))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(GK.Colors.buttonRed))
+                                .offset(x: -6, y: 6)
+                        }
+                    }
+                    .opacity(isGuest ? 0.5 : 1.0)
                 }
                 .padding(.horizontal, 28)
 
@@ -70,8 +94,8 @@ struct MultiplayerModesView: View {
                         .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(.white.opacity(0.65))
 
-                    Text(auth.isAppleLinked ? "\(manager.stats.elo)" : "SIGN IN FOR RANKED")
-                        .font(.custom(GK.pixelFontName, size: 16))
+                    Text(auth.isAppleLinked ? "\(manager.stats.elo)" : "SIGN IN TO UNLOCK ALL MODES")
+                        .font(.custom(GK.pixelFontName, size: isGuest ? 9 : 16))
                         .foregroundColor(GK.Colors.scoreYellow)
                 }
                 .padding(.top, 6)
@@ -80,6 +104,14 @@ struct MultiplayerModesView: View {
             }
         }
         .navigationBarHidden(true)
+        .alert("Sign In to Unlock", isPresented: $showFeatureSignInPrompt) {
+            Button("NOT NOW", role: .cancel) {}
+            Button("SIGN IN WITH APPLE") {
+                Task { await auth.signInWithApple() }
+            }
+        } message: {
+            Text("Sign in with Apple to access all game modes. Classic and Quick Play are always free to play.")
+        }
         .alert("Ranked Requires Sign In", isPresented: $auth.showRankedSignInPrompt) {
             Button("NOT NOW", role: .cancel) {}
             Button("SIGN IN WITH APPLE") {
@@ -88,7 +120,7 @@ struct MultiplayerModesView: View {
                 }
             }
         } message: {
-            Text("Ranked requires Sign in with Apple. Quick Play and Private Room work as guest.")
+            Text("Ranked requires Sign in with Apple.")
         }
     }
 
