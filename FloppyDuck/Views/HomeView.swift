@@ -8,6 +8,9 @@ struct HomeView: View {
     private let icons = PixelIconFactory.shared
 
     @State private var cloudOffset: CGFloat = 0
+    @State private var showSignInPrompt: Bool = false
+
+    private var isGuest: Bool { auth.isGuest }
 
     var body: some View {
         ZStack {
@@ -50,6 +53,14 @@ struct HomeView: View {
             }
         }
         .navigationBarHidden(true)
+        .alert("Sign In to Unlock", isPresented: $showSignInPrompt) {
+            Button("NOT NOW", role: .cancel) {}
+            Button("SIGN IN WITH APPLE") {
+                Task { await auth.signInWithApple() }
+            }
+        } message: {
+            Text("Sign in with Apple to access all game features. Classic and Quick Play are always free to play.")
+        }
     }
 
     // MARK: - Title
@@ -273,7 +284,7 @@ struct HomeView: View {
 
     private var playSection: some View {
         VStack(spacing: 10) {
-            // Classic — primary action
+            // Classic — always available
             subModeButton(
                 icon: .classic,
                 title: "CLASSIC",
@@ -284,18 +295,23 @@ struct HomeView: View {
                 manager.startGame(GameModeConfig(mode: .classic))
             }
 
-            // VS Bot ladder
+            // VS Bot ladder — sign in required
             subModeButton(
                 icon: .bot,
                 title: "VS BOT",
-                subtitle: "Bot Ladder",
-                color: GK.Colors.buttonBlue
+                subtitle: isGuest ? "Sign in to unlock" : "Bot Ladder",
+                color: GK.Colors.buttonBlue,
+                locked: isGuest
             ) {
-                SoundManager.shared.play(.button)
-                manager.navigate(to: .botLadder)
+                if isGuest {
+                    showSignInPrompt = true
+                } else {
+                    SoundManager.shared.play(.button)
+                    manager.navigate(to: .botLadder)
+                }
             }
 
-            // Head to Head
+            // Head to Head — always accessible (Quick Play available inside)
             subModeButton(
                 icon: .headToHead,
                 title: "HEAD TO HEAD",
@@ -308,7 +324,7 @@ struct HomeView: View {
         }
     }
 
-    private func subModeButton(icon: PixelIcon, title: String, subtitle: String, color: Color, action: @escaping () -> Void) -> some View {
+    private func subModeButton(icon: PixelIcon, title: String, subtitle: String, color: Color, locked: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 pixelIcon(icon, size: 22)
@@ -324,7 +340,7 @@ struct HomeView: View {
 
                 Spacer()
 
-                Image(uiImage: PixelIconFactory.shared.image(for: .play, pixelScale: 2.0))
+                Image(uiImage: PixelIconFactory.shared.image(for: locked ? .lock : .play, pixelScale: 2.0))
                     .interpolation(.none)
                     .resizable()
                     .frame(width: 14, height: 14)
@@ -342,29 +358,34 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(title), \(subtitle)")
+        .opacity(locked ? 0.5 : 1.0)
+        .accessibilityLabel(locked ? "\(title), sign in to unlock" : "\(title), \(subtitle)")
     }
 
     // MARK: - Bottom Buttons (5 buttons)
 
     private var bottomButtons: some View {
         HStack(spacing: 8) {
-            bottomButton(icon: .shop, label: "SHOP") {
+            bottomButton(icon: .shop, label: "SHOP", locked: isGuest) {
+                if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .shop)
             }
 
-            bottomButton(icon: .collection, label: "COLLECTION") {
+            bottomButton(icon: .collection, label: "COLLECTION", locked: isGuest) {
+                if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .collection)
             }
 
-            bottomButton(icon: .trophy, label: "ACHIEVE") {
+            bottomButton(icon: .trophy, label: "ACHIEVE", locked: isGuest) {
+                if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .achievements)
             }
 
-            bottomButton(icon: .stats, label: "STATS") {
+            bottomButton(icon: .stats, label: "STATS", locked: isGuest) {
+                if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .stats)
             }
@@ -376,7 +397,7 @@ struct HomeView: View {
         }
     }
 
-    private func bottomButton(icon: PixelIcon, label: String, action: @escaping () -> Void) -> some View {
+    private func bottomButton(icon: PixelIcon, label: String, locked: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 5) {
                 pixelIcon(icon, size: 24)
@@ -397,9 +418,19 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(GK.Colors.panelBorder, lineWidth: 2)
             )
+            .overlay(alignment: .topTrailing) {
+                if locked {
+                    Image(uiImage: PixelIconFactory.shared.image(for: .lock, pixelScale: 1.5))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 10, height: 10)
+                        .padding(4)
+                }
+            }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .opacity(locked ? 0.45 : 1.0)
+        .accessibilityLabel(locked ? "\(label), sign in to unlock" : label)
     }
 
     // MARK: - Helpers
