@@ -463,15 +463,16 @@ struct GameContainerView: View {
     @ViewBuilder
     private var versusIntroOverlay: some View {
         let playerSkin = SkinManager.shared.selectedSkin
+        let playerBanner = BannerManager.shared.selectedBanner
         let bot = config.botCharacterId.flatMap { BotCharacter.find($0) }
 
         VersusIntroView(
             playerSkin: playerSkin,
             playerName: (manager.playerName.isEmpty || manager.playerName == "Player") ? "YOU" : manager.playerName.uppercased(),
+            playerBanner: playerBanner,
             opponentSkin: bot?.skin,
             opponentName: config.opponentName ?? "OPPONENT",
-            opponentAccent: bot?.accentColor ?? Color.red,
-            subtitle: "Bot Ladder Match"
+            opponentAccent: bot?.accentColor ?? Color.red
         ) {
             withAnimation(.easeOut(duration: 0.2)) {
                 phase = .ready

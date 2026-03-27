@@ -4,6 +4,7 @@ struct ShopView: View {
     @EnvironmentObject var manager: GameManager
     @ObservedObject var skinManager = SkinManager.shared
     @ObservedObject var themeManager = ThemeManager.shared
+    @ObservedObject var bannerManager = BannerManager.shared
 
     @State private var selectedTab: ShopTab = .skins
     @State private var selectedSection: ShopSection = .normal
@@ -107,7 +108,7 @@ struct ShopView: View {
                         } else {
                             Spacer().frame(height: 24)
                         }
-                    } else {
+                    } else if selectedTab == .backgrounds {
                         // Background themes grid
                         LazyVGrid(columns: columns, spacing: 14) {
                             ForEach(BackgroundTheme.allCases) { theme in
@@ -121,6 +122,27 @@ struct ShopView: View {
                         if BackgroundTheme.allCases.contains(where: { $0.isPremium }) {
                             Button {
                                 Task { await themeManager.restorePurchases() }
+                            } label: {
+                                Text("RESTORE PREMIUM PURCHASES")
+                                    .font(.custom(GK.pixelFontName, size: 7))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .padding(.bottom, 40)
+                        }
+                    } else {
+                        // Battle banners grid
+                        LazyVGrid(columns: columns, spacing: 14) {
+                            ForEach(BattleBanner.allCases) { banner in
+                                bannerCard(banner)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 14)
+                        .padding(.bottom, 30)
+
+                        if BattleBanner.allCases.contains(where: { $0.isPremium }) {
+                            Button {
+                                Task { await bannerManager.restorePurchases() }
                             } label: {
                                 Text("RESTORE PREMIUM PURCHASES")
                                     .font(.custom(GK.pixelFontName, size: 7))
@@ -297,6 +319,7 @@ struct ShopView: View {
         HStack(spacing: 8) {
             shopTabButton(.skins)
             shopTabButton(.backgrounds)
+            shopTabButton(.banners)
         }
         .padding(6)
         .background(
@@ -477,6 +500,156 @@ struct ShopView: View {
         }
     }
 
+    // MARK: - Banner Card
+
+    private func bannerCard(_ banner: BattleBanner) -> some View {
+        let owned = bannerManager.ownedBanners.contains(banner)
+        let selected = bannerManager.selectedBanner == banner
+        let purchasing = bannerManager.purchasing == banner
+        let canAffordNormal = (banner.breadPrice ?? 0) <= manager.stats.bread
+
+        // Check if bot reward is unlocked
+        let botUnlocked: Bool = {
+            guard banner.isBotReward, let botId = banner.requiredBotId else { return false }
+            return manager.isBotBeaten(botId)
+        }()
+
+        return Button {
+            localErrorMessage = nil
+
+            if owned {
+                bannerManager.select(banner)
+                SoundManager.shared.play(.button)
+                return
+            }
+
+            switch banner.purchaseKind {
+            case .free:
+                bannerManager.select(banner)
+            case .normal:
+                let cost = banner.breadPrice ?? 0
+                guard manager.spendBread(cost) else {
+                    localErrorMessage = "Not enough bread. Play games to earn more."
+                    return
+                }
+                bannerManager.unlockNormal(banner)
+                bannerManager.select(banner)
+                SoundManager.shared.play(.button)
+            case .botReward:
+                // Bot reward banners are auto-unlocked when beating the bot
+                if owned {
+                    bannerManager.select(banner)
+                    SoundManager.shared.play(.button)
+                }
+            case .premium:
+                Task { await bannerManager.purchasePremium(banner) }
+            }
+        } label: {
+            VStack(spacing: 8) {
+                // Banner pattern preview
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(banner.secondaryColor)
+                    .frame(height: 70)
+                    .overlay(
+                        BannerPatternView(banner: banner, offset: 0)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(selected ? banner.primaryColor : Color.clear, lineWidth: 2)
+                    )
+                    .opacity(owned || banner.isFree ? 1 : 0.6)
+
+                Text(banner.displayName)
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(GK.Colors.panelBorder)
+
+                Text(banner.subtitle)
+                    .font(.custom(GK.pixelFontName, size: 6))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+
+                if selected {
+                    Text("EQUIPPED")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(banner.primaryColor))
+                } else if owned {
+                    Text("OWNED")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(GK.Colors.panelBorder)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(GK.Colors.panelCream))
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(GK.Colors.panelBorder, lineWidth: 1))
+                } else if purchasing {
+                    ProgressView()
+                        .frame(height: 22)
+                } else {
+                    bannerPriceBadge(for: banner)
+                        .opacity(banner.isNormal && !canAffordNormal ? 0.5 : 1)
+                }
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GK.Colors.panelCream)
+                    .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? banner.primaryColor : GK.Colors.panelBorder,
+                            lineWidth: selected ? 3 : 2)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(banner.isPremium && bannerManager.purchasing != nil)
+        .disabled(banner.isBotReward && !owned)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(banner.displayName) banner, \(banner.subtitle)\(selected ? ", equipped" : owned ? ", owned" : ", \(banner.priceDisplay)")")
+        .accessibilityHint(selected ? "Currently equipped" : owned ? "Double-tap to equip" : "Double-tap to purchase")
+    }
+
+    private func bannerPriceBadge(for banner: BattleBanner) -> some View {
+        Group {
+            if banner.isNormal {
+                HStack(spacing: 4) {
+                    Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 2.0))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 14, height: 11)
+                    Text("\(banner.breadPrice ?? 0)")
+                }
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(GK.Colors.buttonGreen))
+            } else if banner.isPremium {
+                Text(banner.priceDisplay)
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(GK.Colors.buttonOrange))
+            } else if banner.isBotReward {
+                Text("BOT REWARD")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.1)))
+            } else {
+                Text("FREE")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(GK.Colors.panelBorder)
+            }
+        }
+    }
+
     private var filteredSkins: [DuckSkin] {
         DuckSkin.allCases.filter { skin in
             // Bot reward skins are not shown in shop
@@ -491,18 +664,20 @@ struct ShopView: View {
     }
 
     private var activeErrorMessage: String? {
-        localErrorMessage ?? skinManager.errorMessage
+        localErrorMessage ?? skinManager.errorMessage ?? bannerManager.errorMessage
     }
 }
 
 private enum ShopTab: String {
     case skins = "DUCKS"
-    case backgrounds = "BACKGROUNDS"
+    case backgrounds = "BGs"
+    case banners = "BANNERS"
 
     var icon: String {
         switch self {
         case .skins:       return "bird"
         case .backgrounds: return "paintpalette"
+        case .banners:     return "flag.fill"
         }
     }
 
@@ -510,6 +685,7 @@ private enum ShopTab: String {
         switch self {
         case .skins:       return GK.Colors.buttonGreen
         case .backgrounds: return GK.Colors.buttonBlue
+        case .banners:     return Color(red: 0.85, green: 0.35, blue: 0.55)
         }
     }
 }

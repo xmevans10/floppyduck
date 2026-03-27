@@ -9,20 +9,20 @@ import SwiftUI
 ///     VersusIntroView(
 ///         playerSkin: .classic,
 ///         playerName: "YOU",
+///         playerBanner: .classic,
 ///         opponentSkin: .pirate,
 ///         opponentName: "PUDDLES",
 ///         opponentAccent: bot.accentColor,
-///         subtitle: "DIES AT 18"
 ///     ) {
 ///         // Start gameplay
 ///     }
 struct VersusIntroView: View {
     let playerSkin: DuckSkin
     let playerName: String
+    let playerBanner: BattleBanner
     let opponentSkin: DuckSkin?
     let opponentName: String
     let opponentAccent: Color
-    let subtitle: String?
     let onComplete: () -> Void
 
     // Animation state
@@ -32,7 +32,7 @@ struct VersusIntroView: View {
     @State private var vsRotation: Double = -75
     @State private var flashOpacity: Double = 0
     @State private var bgOpacity: Double = 0
-    @State private var subtitleOpacity: Double = 0
+
     @State private var dismissOpacity: Double = 1
     @State private var bgOffset: CGFloat = 0
 
@@ -44,14 +44,14 @@ struct VersusIntroView: View {
                 // Background — Dark Base
                 Color.black.ignoresSafeArea()
 
-                // Split diagonal backgrounds (animated scrolling)
+                // Split diagonal backgrounds (animated scrolling) — uses player's battle banner
                 ZStack {
                     // Player side (left/top)
-                    PlayerBackgroundHalf(color: playerSkin.accentColor, offset: bgOffset)
+                    BannerPatternView(banner: playerBanner, offset: bgOffset)
                         .clipShape(LightningSplit(isLeft: true))
-                        .shadow(color: playerSkin.accentColor.opacity(0.8), radius: 15, x: 5, y: 0)
-                    
-                    // Opponent side (right/bottom)
+                        .shadow(color: playerBanner.glowColor, radius: 15, x: 5, y: 0)
+
+                    // Opponent side (right/bottom) — uses opponent accent color as fallback
                     PlayerBackgroundHalf(color: opponentAccent, offset: -bgOffset)
                         .clipShape(LightningSplit(isLeft: false))
                 }
@@ -77,7 +77,7 @@ struct VersusIntroView: View {
                     Text(playerName)
                         .font(.custom(GK.pixelFontName, size: 14))
                         .foregroundColor(.white)
-                        .shadow(color: playerSkin.accentColor, radius: 6)
+                        .shadow(color: playerBanner.primaryColor, radius: 6)
                 }
                 .offset(x: playerSlide)
                 Spacer()
@@ -139,12 +139,7 @@ struct VersusIntroView: View {
                         .rotationEffect(.degrees(vsRotation))
                 }
 
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.custom(GK.pixelFontName, size: 9))
-                        .foregroundColor(.white.opacity(0.7))
-                        .opacity(subtitleOpacity)
-                }
+
             }
 
             // Flash overlay (when VS slams in)
@@ -166,8 +161,8 @@ struct VersusIntroView: View {
             .aspectRatio(contentMode: .fit)
             .frame(width: 140, height: 140)
             .scaleEffect(x: flipped ? -1 : 1, y: 1)
-            .shadow(color: (flipped ? opponentAccent : skin.accentColor).opacity(0.7), radius: 20)
-            .shadow(color: (flipped ? opponentAccent : skin.accentColor).opacity(0.3), radius: 40)
+            .shadow(color: (flipped ? opponentAccent : playerBanner.primaryColor).opacity(0.7), radius: 20)
+            .shadow(color: (flipped ? opponentAccent : playerBanner.primaryColor).opacity(0.3), radius: 40)
     }
 
     // MARK: - Animation Sequence
@@ -208,15 +203,8 @@ struct VersusIntroView: View {
             }
         }
 
-        // 3. Subtitle fades in (0.7s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            withAnimation(.easeIn(duration: 0.2)) {
-                subtitleOpacity = 1
-            }
-        }
-
-        // 4. Hold for a beat, then dismiss (2.2s — longer for drama)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+        // 3. Hold for a beat, then dismiss (3.2s — extra drama)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
             withAnimation(.easeIn(duration: 0.3)) {
                 dismissOpacity = 0
             }
@@ -227,23 +215,413 @@ struct VersusIntroView: View {
     }
 }
 
-// MARK: - Fancy Background Components
+// MARK: - Banner Pattern View
 
-/// Renders a scrolling checkered/striped pattern for the background halves
-private struct PlayerBackgroundHalf: View {
+/// Renders the player's selected battle banner pattern on their VS intro half.
+struct BannerPatternView: View {
+    let banner: BattleBanner
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                // Base color
+                banner.secondaryColor
+
+                // Pattern layer
+                switch banner.pattern {
+                case .diagonalStripes:
+                    DiagonalStripesPattern(color: banner.primaryColor, offset: offset)
+                case .chevrons:
+                    ChevronsPattern(color: banner.primaryColor, offset: offset)
+                case .diamonds:
+                    DiamondsPattern(color: banner.primaryColor, offset: offset)
+                case .zigzag:
+                    ZigzagPattern(color: banner.primaryColor, offset: offset)
+                case .crosshatch:
+                    CrosshatchPattern(color: banner.primaryColor, offset: offset)
+                case .hexGrid:
+                    HexGridPattern(color: banner.primaryColor, offset: offset)
+                case .flames:
+                    FlamesPattern(color: banner.primaryColor, offset: offset)
+                case .circuit:
+                    CircuitPattern(color: banner.primaryColor, offset: offset)
+                case .waves:
+                    WavesPattern(color: banner.primaryColor, offset: offset)
+                case .skulls:
+                    SkullsPattern(color: banner.primaryColor, offset: offset)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Pattern Implementations
+
+/// Original diagonal stripes (preserved from original PlayerBackgroundHalf).
+private struct DiagonalStripesPattern: View {
     let color: Color
     let offset: CGFloat
-    
+
+    var body: some View {
+        GeometryReader { geo in
+            let h = geo.size.height
+
+            Path { p in
+                let stripeWidth: CGFloat = 60
+                let totalScroll = offset.truncatingRemainder(dividingBy: stripeWidth * 2)
+
+                for i in -20...20 {
+                    let startX = CGFloat(i) * stripeWidth * 2 + totalScroll
+                    p.move(to: CGPoint(x: startX, y: -h))
+                    p.addLine(to: CGPoint(x: startX + stripeWidth, y: -h))
+                    p.addLine(to: CGPoint(x: startX + stripeWidth - h * 1.5, y: h * 1.5))
+                    p.addLine(to: CGPoint(x: startX - h * 1.5, y: h * 1.5))
+                    p.closeSubpath()
+                }
+            }
+            .fill(color.opacity(0.4))
+        }
+    }
+}
+
+/// Repeating chevron (V) shapes scrolling vertically.
+private struct ChevronsPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+
+            Path { p in
+                let rowHeight: CGFloat = 50
+                let totalScroll = offset.truncatingRemainder(dividingBy: rowHeight)
+
+                for row in -5...20 {
+                    let y = CGFloat(row) * rowHeight + totalScroll
+                    // Left arm of V
+                    p.move(to: CGPoint(x: 0, y: y))
+                    p.addLine(to: CGPoint(x: w / 2, y: y + rowHeight * 0.5))
+                    p.addLine(to: CGPoint(x: w / 2, y: y + rowHeight * 0.5 + 8))
+                    p.addLine(to: CGPoint(x: 0, y: y + 8))
+                    p.closeSubpath()
+                    // Right arm of V
+                    p.move(to: CGPoint(x: w, y: y))
+                    p.addLine(to: CGPoint(x: w / 2, y: y + rowHeight * 0.5))
+                    p.addLine(to: CGPoint(x: w / 2, y: y + rowHeight * 0.5 + 8))
+                    p.addLine(to: CGPoint(x: w, y: y + 8))
+                    p.closeSubpath()
+                }
+            }
+            .fill(color.opacity(0.35))
+        }
+    }
+}
+
+/// Diamond grid pattern.
+private struct DiamondsPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            Path { p in
+                let size: CGFloat = 40
+                let totalScroll = offset.truncatingRemainder(dividingBy: size * 2)
+
+                for row in -5...20 {
+                    for col in -5...15 {
+                        let cx = CGFloat(col) * size * 2 + (row % 2 == 0 ? 0 : size) + totalScroll
+                        let cy = CGFloat(row) * size + totalScroll * 0.5
+                        let half = size * 0.4
+                        p.move(to: CGPoint(x: cx, y: cy - half))
+                        p.addLine(to: CGPoint(x: cx + half, y: cy))
+                        p.addLine(to: CGPoint(x: cx, y: cy + half))
+                        p.addLine(to: CGPoint(x: cx - half, y: cy))
+                        p.closeSubpath()
+                    }
+                }
+            }
+            .fill(color.opacity(0.35))
+        }
+    }
+}
+
+/// Zigzag horizontal bands.
+private struct ZigzagPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+
+            Path { p in
+                let bandHeight: CGFloat = 35
+                let zigWidth: CGFloat = 30
+                let totalScroll = offset.truncatingRemainder(dividingBy: bandHeight * 2)
+
+                for band in -5...25 {
+                    let baseY = CGFloat(band) * bandHeight + totalScroll
+                    p.move(to: CGPoint(x: -zigWidth, y: baseY))
+                    var x: CGFloat = -zigWidth
+                    var up = true
+                    while x < w + zigWidth {
+                        x += zigWidth
+                        p.addLine(to: CGPoint(x: x, y: baseY + (up ? -12 : 12)))
+                        up.toggle()
+                    }
+                    // Close the band with thickness
+                    p.addLine(to: CGPoint(x: w + zigWidth, y: baseY + 8))
+                    x = w + zigWidth
+                    up.toggle()
+                    while x > -zigWidth {
+                        x -= zigWidth
+                        p.addLine(to: CGPoint(x: x, y: baseY + 8 + (up ? 12 : -12)))
+                        up.toggle()
+                    }
+                    p.closeSubpath()
+                }
+            }
+            .fill(color.opacity(0.35))
+        }
+    }
+}
+
+/// Cross-hatched lines.
+private struct CrosshatchPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            Path { p in
+                let spacing: CGFloat = 30
+                let totalScroll = offset.truncatingRemainder(dividingBy: spacing)
+
+                // Forward diagonals
+                for i in -30...30 {
+                    let startX = CGFloat(i) * spacing + totalScroll
+                    p.move(to: CGPoint(x: startX, y: 0))
+                    p.addLine(to: CGPoint(x: startX + h, y: h))
+                }
+                // Backward diagonals
+                for i in -30...30 {
+                    let startX = CGFloat(i) * spacing - totalScroll
+                    p.move(to: CGPoint(x: startX + h, y: 0))
+                    p.addLine(to: CGPoint(x: startX, y: h))
+                }
+            }
+            .stroke(color.opacity(0.3), lineWidth: 3)
+        }
+    }
+}
+
+/// Hexagonal grid (honeycomb).
+private struct HexGridPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            Path { p in
+                let hexSize: CGFloat = 25
+                let totalScroll = offset.truncatingRemainder(dividingBy: hexSize * 2)
+                let rowH = hexSize * 1.73
+                let colW = hexSize * 1.5
+
+                for row in -3...15 {
+                    for col in -3...12 {
+                        let cx = CGFloat(col) * colW + (row % 2 == 0 ? 0 : colW / 2) + totalScroll
+                        let cy = CGFloat(row) * rowH + totalScroll * 0.5
+
+                        p.move(to: CGPoint(x: cx + hexSize, y: cy))
+                        for angle in 1...6 {
+                            let a = CGFloat(angle) * .pi / 3
+                            p.addLine(to: CGPoint(
+                                x: cx + hexSize * cos(a),
+                                y: cy + hexSize * sin(a)
+                            ))
+                        }
+                        p.closeSubpath()
+                    }
+                }
+            }
+            .stroke(color.opacity(0.3), lineWidth: 2)
+        }
+    }
+}
+
+/// Rising flame shapes.
+private struct FlamesPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            Path { p in
+                let flameWidth: CGFloat = 40
+                let totalScroll = offset.truncatingRemainder(dividingBy: flameWidth * 2)
+
+                for i in -5...15 {
+                    let baseX = CGFloat(i) * flameWidth + totalScroll
+                    let tipY = h * 0.1 - abs(offset.truncatingRemainder(dividingBy: 80))
+                    let baseY = h + 20
+
+                    p.move(to: CGPoint(x: baseX, y: baseY))
+                    p.addQuadCurve(
+                        to: CGPoint(x: baseX + flameWidth * 0.5, y: tipY),
+                        control: CGPoint(x: baseX + flameWidth * 0.15, y: h * 0.4)
+                    )
+                    p.addQuadCurve(
+                        to: CGPoint(x: baseX + flameWidth, y: baseY),
+                        control: CGPoint(x: baseX + flameWidth * 0.85, y: h * 0.4)
+                    )
+                    p.closeSubpath()
+                }
+            }
+            .fill(color.opacity(0.3))
+        }
+    }
+}
+
+/// Circuit board trace pattern.
+private struct CircuitPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            Path { p in
+                let gridSize: CGFloat = 40
+                let totalScroll = offset.truncatingRemainder(dividingBy: gridSize)
+
+                // Horizontal traces
+                for row in -3...20 {
+                    let y = CGFloat(row) * gridSize + totalScroll
+                    p.move(to: CGPoint(x: 0, y: y))
+                    var x: CGFloat = 0
+                    while x < w {
+                        let segLen = CGFloat.random(in: 20...60)
+                        p.addLine(to: CGPoint(x: min(x + segLen, w), y: y))
+                        x += segLen
+                        // Small node circle
+                        if x < w {
+                            p.addEllipse(in: CGRect(x: x - 3, y: y - 3, width: 6, height: 6))
+                        }
+                        // Short vertical connector
+                        let down = CGFloat.random(in: -15...15)
+                        p.move(to: CGPoint(x: x, y: y))
+                        p.addLine(to: CGPoint(x: x, y: y + down))
+                        p.move(to: CGPoint(x: x, y: y))
+                        x += 10
+                    }
+                }
+            }
+            .stroke(color.opacity(0.3), lineWidth: 2)
+        }
+    }
+}
+
+/// Rolling wave lines.
+private struct WavesPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+
+            Path { p in
+                let waveHeight: CGFloat = 20
+                let spacing: CGFloat = 35
+                let totalScroll = offset.truncatingRemainder(dividingBy: spacing)
+
+                for row in -3...25 {
+                    let baseY = CGFloat(row) * spacing + totalScroll
+                    p.move(to: CGPoint(x: -20, y: baseY))
+
+                    var x: CGFloat = -20
+                    while x < w + 40 {
+                        p.addQuadCurve(
+                            to: CGPoint(x: x + 30, y: baseY),
+                            control: CGPoint(x: x + 15, y: baseY - waveHeight)
+                        )
+                        x += 30
+                        p.addQuadCurve(
+                            to: CGPoint(x: x + 30, y: baseY),
+                            control: CGPoint(x: x + 15, y: baseY + waveHeight)
+                        )
+                        x += 30
+                    }
+                }
+            }
+            .stroke(color.opacity(0.3), lineWidth: 3)
+        }
+    }
+}
+
+/// Repeating skull pixel art (simplified).
+private struct SkullsPattern: View {
+    let color: Color
+    let offset: CGFloat
+
+    var body: some View {
+        GeometryReader { geo in
+            Path { p in
+                let size: CGFloat = 50
+                let totalScroll = offset.truncatingRemainder(dividingBy: size * 2)
+
+                for row in -3...18 {
+                    for col in -3...10 {
+                        let cx = CGFloat(col) * size * 1.5 + (row % 2 == 0 ? 0 : size * 0.75) + totalScroll
+                        let cy = CGFloat(row) * size + totalScroll * 0.3
+
+                        // Skull circle
+                        let r = size * 0.3
+                        p.addEllipse(in: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 1.8))
+                        // Crossbones (X below)
+                        let boneLen = size * 0.25
+                        let boneY = cy + r * 0.9
+                        p.move(to: CGPoint(x: cx - boneLen, y: boneY - boneLen * 0.5))
+                        p.addLine(to: CGPoint(x: cx + boneLen, y: boneY + boneLen * 0.5))
+                        p.move(to: CGPoint(x: cx + boneLen, y: boneY - boneLen * 0.5))
+                        p.addLine(to: CGPoint(x: cx - boneLen, y: boneY + boneLen * 0.5))
+                    }
+                }
+            }
+            .stroke(color.opacity(0.25), lineWidth: 2)
+        }
+    }
+}
+
+// MARK: - Fancy Background Components (preserved for opponent side)
+
+/// Renders a scrolling checkered/striped pattern for the background halves
+struct PlayerBackgroundHalf: View {
+    let color: Color
+    let offset: CGFloat
+
     // Create repeating diagonal stripes
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
-            
+
             Path { p in
                 // Draw wide diagonal stripes
                 let stripeWidth: CGFloat = 60
                 let totalScroll = offset.truncatingRemainder(dividingBy: stripeWidth * 2)
-                
+
                 for i in -20...20 {
                     let startX = CGFloat(i) * stripeWidth * 2 + totalScroll
                     p.move(to: CGPoint(x: startX, y: -h))
@@ -262,20 +640,20 @@ private struct PlayerBackgroundHalf: View {
 /// Creates a jagged lightning-bolt split down the middle
 private struct LightningSplit: Shape {
     let isLeft: Bool
-    
+
     func path(in rect: CGRect) -> Path {
         var p = Path()
         let w = rect.width
         let h = rect.height
         let cx = w / 2
-        
+
         let point1 = CGPoint(x: cx + w * 0.15, y: 0)
         let point2 = CGPoint(x: cx + w * 0.05, y: h * 0.3)
         let point3 = CGPoint(x: cx + w * 0.12, y: h * 0.3)
         let point4 = CGPoint(x: cx - w * 0.08, y: h * 0.7)
         let point5 = CGPoint(x: cx - w * 0.01, y: h * 0.7)
         let point6 = CGPoint(x: cx - w * 0.18, y: h)
-        
+
         if isLeft {
             p.move(to: CGPoint(x: 0, y: 0))
             p.addLine(to: point1)
@@ -307,21 +685,21 @@ private struct LightningSplitPath: Shape {
         let w = rect.width
         let h = rect.height
         let cx = w / 2
-        
+
         let point1 = CGPoint(x: cx + w * 0.15, y: 0)
         let point2 = CGPoint(x: cx + w * 0.05, y: h * 0.3)
         let point3 = CGPoint(x: cx + w * 0.12, y: h * 0.3)
         let point4 = CGPoint(x: cx - w * 0.08, y: h * 0.7)
         let point5 = CGPoint(x: cx - w * 0.01, y: h * 0.7)
         let point6 = CGPoint(x: cx - w * 0.18, y: h)
-        
+
         p.move(to: point1)
         p.addLine(to: point2)
         p.addLine(to: point3)
         p.addLine(to: point4)
         p.addLine(to: point5)
         p.addLine(to: point6)
-        
+
         return p
     }
 }
