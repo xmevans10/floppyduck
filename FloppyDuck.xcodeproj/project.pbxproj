@@ -14,10 +14,12 @@
 		198EBFE8E30E445C4F77AAA3 /* GameModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5705907ABD8FDB16D7CA92 /* GameModelTests.swift */; };
 		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };
 		20823673A32711E924366C3E /* PowerUpTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8AC2575D86DB5D5D7AA15BC /* PowerUpTests.swift */; };
+		2514E0B97AF4CE474E62C8E4 /* BannerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E8274143C4B7D0D42878511 /* BannerManager.swift */; };
 		2EEEE91902883C94188AF143 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93CCF6581206AE4460510C5F /* Achievement.swift */; };
 		426F8821C9831D68A5B27147 /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5631A2E41C3ECFE3139D9B36 /* AchievementsView.swift */; };
 		488CD340D85ACEFFDE3580E9 /* GamePerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A39FF82D49B79DC5EE276C /* GamePerformanceTests.swift */; };
 		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
+		52928A5D99AFDD8C805F878A /* BattleBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04256D4EFAB614B2184DDDCE /* BattleBanner.swift */; };
 		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
 		5A036B38A42A68B2A8E40347 /* MedalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0494021C7FBFABF4BD6618 /* MedalTests.swift */; };
 		722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */; };
@@ -97,7 +99,9 @@
 		0096DDB5D5C93DB7732319BF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		01256F5F2501C40E0B8C7A2F /* BotController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotController.swift; sourceTree = "<group>"; };
 		01FBB5328EEB7721AC2BC6C4 /* BotCharacterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacterTests.swift; sourceTree = "<group>"; };
+		04256D4EFAB614B2184DDDCE /* BattleBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BattleBanner.swift; sourceTree = "<group>"; };
 		0F70986D2FC6C1758722D0D5 /* GameConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConstants.swift; sourceTree = "<group>"; };
+		1E8274143C4B7D0D42878511 /* BannerManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BannerManager.swift; sourceTree = "<group>"; };
 		20080901053DC37D1D533489 /* DifficultyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DifficultyManager.swift; sourceTree = "<group>"; };
 		288CEF83A709F6415BE70A30 /* GameUIPerformanceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameUIPerformanceTests.swift; sourceTree = "<group>"; };
 		2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -355,6 +359,8 @@
 				4E04DFC7B500170F528318BC /* SkinManager.swift */,
 				7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */,
 				5AF25026FF4DAD8B84CD3AF5 /* ThemeManager.swift */,
+				1E8274143C4B7D0D42878511 /* BannerManager.swift */,
+				04256D4EFAB614B2184DDDCE /* BattleBanner.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -560,6 +566,8 @@
 				D30000000000000000000005 /* PixelTextField.swift in Sources */,
 				EBC51E41AE8456EB802ACFE8 /* VersusIntroView.swift in Sources */,
 				C9B05AB5C283EC66F1F57155 /* PixelIconView.swift in Sources */,
+				2514E0B97AF4CE474E62C8E4 /* BannerManager.swift in Sources */,
+				52928A5D99AFDD8C805F878A /* BattleBanner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
