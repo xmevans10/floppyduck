@@ -4,6 +4,7 @@ struct CollectionView: View {
     @EnvironmentObject var manager: GameManager
     @ObservedObject var skinManager = SkinManager.shared
     @ObservedObject var themeManager = ThemeManager.shared
+    @ObservedObject var bannerManager = BannerManager.shared
 
     @State private var selectedTab: CollectionTab = .skins
 
@@ -52,10 +53,13 @@ struct CollectionView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 14)
 
-                if selectedTab == .skins {
+                switch selectedTab {
+                case .skins:
                     skinsContent
-                } else {
+                case .backgrounds:
                     backgroundsContent
+                case .banners:
+                    bannersContent
                 }
 
                 // Bottom shop link
@@ -67,9 +71,7 @@ struct CollectionView: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Text(selectedTab == .skins
-                             ? "Get more skins in the Shop"
-                             : "Get more backgrounds in the Shop")
+                        Text(shopLinkText)
                             .font(.custom(GK.pixelFontName, size: 7))
                             .foregroundColor(.white.opacity(0.8))
                         Image(uiImage: PixelIconFactory.shared.image(for: .arrowRight))
@@ -102,6 +104,7 @@ struct CollectionView: View {
         HStack(spacing: 8) {
             collectionTabButton(.skins)
             collectionTabButton(.backgrounds)
+            collectionTabButton(.banners)
         }
         .padding(6)
         .background(
@@ -197,6 +200,49 @@ struct CollectionView: View {
                 .padding(.top, 14)
                 .padding(.bottom, 16)
             }
+        }
+    }
+
+    // MARK: - Banners Content
+
+    @ViewBuilder
+    private var bannersContent: some View {
+        let owned = BattleBanner.allCases.filter { bannerManager.ownedBanners.contains($0) }
+
+        if owned.isEmpty {
+            Spacer()
+            VStack(spacing: 16) {
+                Text("NO BANNERS YET!")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(.white)
+                Text("Beat bots or visit the shop\nto unlock battle banners.")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(30)
+            Spacer()
+        } else {
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 14) {
+                    ForEach(owned) { banner in
+                        bannerCollectionCard(banner)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+                .padding(.bottom, 16)
+            }
+        }
+    }
+
+    // MARK: - Shop Link Text
+
+    private var shopLinkText: String {
+        switch selectedTab {
+        case .skins:       return "Get more skins in the Shop"
+        case .backgrounds: return "Get more backgrounds in the Shop"
+        case .banners:     return "Get more banners in the Shop"
         }
     }
 
@@ -361,6 +407,92 @@ struct CollectionView: View {
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: - Banner Card
+
+    private func bannerCollectionCard(_ banner: BattleBanner) -> some View {
+        let selected = bannerManager.selectedBanner == banner
+
+        return Button {
+            SoundManager.shared.play(.button)
+            bannerManager.selectBanner(banner)
+        } label: {
+            VStack(spacing: 10) {
+                // Banner preview — small pattern swatch
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(banner.secondaryColor)
+                        .frame(height: 60)
+
+                    // Simplified pattern preview stripe
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(
+                            LinearGradient(
+                                colors: [banner.primaryColor.opacity(0.6), banner.secondaryColor],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(height: 60)
+
+                    if selected {
+                        Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 16, height: 16)
+                            .shadow(color: .white, radius: 4)
+                    }
+                }
+
+                Text(banner.displayName)
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(GK.Colors.panelBorder)
+                    .lineLimit(1)
+
+                Text(banner.subtitle.uppercased())
+                    .font(.custom(GK.pixelFontName, size: 5))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                    .lineLimit(1)
+
+                if selected {
+                    Text("EQUIPPED")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(banner.primaryColor))
+                } else {
+                    Text("TAP TO EQUIP")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(GK.Colors.panelCream)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                }
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GK.Colors.panelCream)
+                    .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? banner.primaryColor : GK.Colors.panelBorder,
+                            lineWidth: selected ? 3 : 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 // MARK: - Tab Enum
@@ -368,11 +500,13 @@ struct CollectionView: View {
 private enum CollectionTab: String {
     case skins = "SKINS"
     case backgrounds = "BACKGROUNDS"
+    case banners = "BANNERS"
 
     var icon: String {
         switch self {
         case .skins:       return "bird"
         case .backgrounds: return "paintpalette"
+        case .banners:     return "flag.fill"
         }
     }
 
@@ -380,6 +514,7 @@ private enum CollectionTab: String {
         switch self {
         case .skins:       return GK.Colors.buttonGreen
         case .backgrounds: return GK.Colors.buttonBlue
+        case .banners:     return Color(red: 0.85, green: 0.35, blue: 0.55)
         }
     }
 }

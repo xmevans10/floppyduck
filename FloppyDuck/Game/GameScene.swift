@@ -44,6 +44,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let factory = TextureFactory.shared
     private let mode: GameMode
     private let playerSkin: DuckSkin
+    private let botSkin: DuckSkin?
     private let botDiff: BotDifficulty?
     private let opponentName: String?
     private let targetScore: Int?
@@ -119,12 +120,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     init(seed: Int = Int.random(in: 1...999999),
          mode: GameMode = .classic,
          skin: DuckSkin = .classic,
+         botSkin: DuckSkin? = nil,
          botDifficulty: BotDifficulty? = nil,
          opponentName: String? = nil,
          targetScore: Int? = nil) {
         self.prng = SeededRandom(seed: seed)
         self.mode = mode
         self.playerSkin = skin
+        self.botSkin = botSkin
         self.botDiff = botDifficulty
         self.opponentName = opponentName
         self.targetScore = targetScore
@@ -199,7 +202,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             if mode == .vsBot {
                 // In bot-ladder mode, pass targetScore as deathScore so the
                 // bot deterministically dies at its ceiling score.
-                bc.setup(skin: playerSkin, difficulty: botDiff, deathScore: targetScore)
+                // Use the bot's own skin if provided, otherwise fall back to player skin.
+                let effectiveBotSkin = botSkin ?? playerSkin
+                bc.setup(skin: effectiveBotSkin, difficulty: botDiff, deathScore: targetScore)
             }
             bc.setupScoreHUD(mode: mode, opponentName: opponentName)
             bc.onScoreChanged = { [weak self] newScore in
@@ -1160,7 +1165,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Reset bot controller
         if mode == .vsBot {
-            botController?.reset(skin: playerSkin)
+            botController?.reset(skin: botSkin ?? playerSkin)
         } else if mode == .headToHead {
             botController?.setScore(0)
         }
