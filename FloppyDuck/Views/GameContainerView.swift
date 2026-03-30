@@ -124,6 +124,7 @@ struct GameContainerView: View {
             seed: config.seed,
             mode: config.mode,
             skin: skin,
+            botSkin: config.botSkin,
             botDifficulty: config.botDifficulty,
             opponentName: config.opponentName,
             targetScore: config.targetScore
@@ -590,10 +591,23 @@ struct GameContainerView: View {
                         }
                     }
 
-                    actionButton(icon: .home, label: "HOME", color: GK.Colors.buttonOrange) {
-                        SoundManager.shared.play(.button)
-                        resetGameOverState()
-                        manager.dismissGame()
+                    if isBotLadder && ladderWon {
+                        // After beating a bot, go straight back to the ladder
+                        actionButton(icon: .ladder, label: "LADDER", color: GK.Colors.buttonOrange) {
+                            SoundManager.shared.play(.button)
+                            resetGameOverState()
+                            manager.dismissGame()
+                            // Navigate back to bot ladder screen
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                manager.navigate(to: .botLadder)
+                            }
+                        }
+                    } else {
+                        actionButton(icon: .home, label: "HOME", color: GK.Colors.buttonOrange) {
+                            SoundManager.shared.play(.button)
+                            resetGameOverState()
+                            manager.dismissGame()
+                        }
                     }
                 }
                 .padding(.horizontal, 40)

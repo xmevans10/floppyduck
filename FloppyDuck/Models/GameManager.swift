@@ -280,6 +280,7 @@ final class GameManager: ObservableObject {
             opponentName: bot.name,
             botDifficulty: bot.difficulty,
             botCharacterId: bot.id,
+            botSkin: bot.skin,
             targetScore: bot.targetScore
         )
         startGame(config)

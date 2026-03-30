@@ -109,11 +109,13 @@ final class BotController {
         self.diff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
         self.deathScore = deathScore
 
-        textures = (0...2).map { factory.skinBotDuckTexture(skin: skin, wingPhase: $0) }
+        // Use the bot's own skin at full fidelity (not a ghost tint)
+        textures = (0...2).map { factory.skinDuckTexture(skin: skin, wingPhase: $0) }
 
         let bot = SKSpriteNode(texture: textures[1], size: skin.spriteSize)
         bot.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         bot.zPosition = 35
+        bot.alpha = 0.85 // Slightly transparent so player duck is clearly "theirs"
 
         // Wing flap loop
         let wingAction = SKAction.animate(with: textures, timePerFrame: 0.10)

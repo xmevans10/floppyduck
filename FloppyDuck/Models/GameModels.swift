@@ -22,6 +22,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let opponentName: String?
     let botDifficulty: BotDifficulty?
     let botCharacterId: String?
+    let botSkin: DuckSkin?
     let targetScore: Int?
 
     // Multiplayer metadata
@@ -35,6 +36,7 @@ struct GameModeConfig: Identifiable, Hashable {
          opponentName: String? = nil,
          botDifficulty: BotDifficulty? = nil,
          botCharacterId: String? = nil,
+         botSkin: DuckSkin? = nil,
          targetScore: Int? = nil,
          matchId: String? = nil,
          matchmakingMode: MatchmakingMode? = nil,
@@ -46,6 +48,7 @@ struct GameModeConfig: Identifiable, Hashable {
         self.opponentName = opponentName
         self.botDifficulty = botDifficulty
         self.botCharacterId = botCharacterId
+        self.botSkin = botSkin
         self.targetScore = targetScore
         self.matchId = matchId
         self.matchmakingMode = matchmakingMode
