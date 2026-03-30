@@ -118,9 +118,10 @@ actor ConvexClient: MultiplayerBackendClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if let token = authContext.sessionToken, !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        // XAN-10: Session token is passed via mergedArgsWithIdentity() in the
+        // function args body — NOT as an HTTP Authorization header.
+        // Convex REST API interprets Bearer tokens as native Convex auth
+        // tokens, which causes 401 for custom session UUIDs.
 
         let payloadArgs = mergedArgsWithIdentity(args)
         let body: [String: Any] = [
