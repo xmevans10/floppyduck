@@ -251,12 +251,24 @@ final class GameManager: ObservableObject {
         )
     }
 
-    /// Mark a bot ladder bot as beaten
+    /// Mark a bot ladder bot as beaten and sync to backend immediately (XAN-9)
     func beatBot(_ botId: String) {
         stats.beatBot(botId)
         saveStats()
         // Auto-unlock any battle banner tied to this bot
         BannerManager.shared.checkBotRewardUnlock(beatenBotId: botId)
+
+        // Sync to backend immediately so progress persists even if the
+        // player replays the level without returning home. (XAN-9)
+        Task {
+            do {
+                try await ConvexClient.shared.syncBeatenBots(stats.beatenBots)
+            } catch {
+                // Best-effort — local save already succeeded.
+                // Will re-sync on next bootstrapGuest.
+                print("[GameManager] Bot sync failed (will retry on next bootstrap): \(error)")
+            }
+        }
     }
 
     /// Check if a bot has been beaten
