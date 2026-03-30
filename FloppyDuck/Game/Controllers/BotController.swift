@@ -109,13 +109,25 @@ final class BotController {
         self.diff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
         self.deathScore = deathScore
 
-        // Use the bot's own skin at full fidelity (not a ghost tint)
+        // Ghost-duck sprite: desaturated, translucent, with soft glow (XAN-6)
         textures = (0...2).map { factory.skinDuckTexture(skin: skin, wingPhase: $0) }
 
         let bot = SKSpriteNode(texture: textures[1], size: skin.spriteSize)
         bot.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
         bot.zPosition = 35
-        bot.alpha = 0.85 // Slightly transparent so player duck is clearly "theirs"
+        bot.alpha = 0.45
+        bot.colorBlendFactor = 0.35
+        bot.color = .white
+
+        // Soft outer glow to reinforce the ghost look (XAN-6)
+        let glow = SKSpriteNode(texture: textures[1], size: skin.spriteSize)
+        glow.alpha = 0.18
+        glow.colorBlendFactor = 1.0
+        glow.color = SKColor(white: 1.0, alpha: 1.0)
+        glow.setScale(1.25)
+        glow.zPosition = -1
+        glow.blendMode = .add
+        bot.addChild(glow)
 
         // Wing flap loop
         let wingAction = SKAction.animate(with: textures, timePerFrame: 0.10)
@@ -197,9 +209,9 @@ final class BotController {
         velocity += GK.gravity / 60 * CGFloat(dt) * 60
         posY += velocity * CGFloat(dt)
 
-        // Match GameScene's collision envelope so controller wiring doesn't
-        // regress the cap-clipping fix.
-        let botR = GK.duckRadius
+        // Use same collision radius as player duck (GK.duckRadius * 0.72)
+        // so bots and player have identical hitboxes. (XAN-5)
+        let botR = GK.duckRadius * 0.72  // Match player hitbox (XAN-5)
 
         // Ground collision → die (or bounce if plot-armored)
         if posY <= GK.groundHeight + botR {
