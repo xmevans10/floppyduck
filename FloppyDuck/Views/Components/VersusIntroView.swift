@@ -2,8 +2,8 @@ import SwiftUI
 
 /// A Mortal Kombat-inspired "VS" intro shown before bot ladder, head-to-head,
 /// and quick-play matches.  Two duck portraits slide in from opposite sides,
-/// a "VS" emblem slams down in the center, then the whole thing fades out
-/// to start gameplay.
+/// a "VS" emblem slams down in the center, then a "READY? FIGHT!" sequence
+/// plays before the whole thing fades out to start gameplay.
 ///
 /// Usage:
 ///     VersusIntroView(
@@ -33,10 +33,22 @@ struct VersusIntroView: View {
     @State private var flashOpacity: Double = 0
     @State private var bgOpacity: Double = 0
 
+    // "Ready? Fight!" animation state
+    @State private var fightPhase: FightTextPhase = .hidden
+    @State private var fightTextScale: CGFloat = 0.001
+    @State private var fightFlashOpacity: Double = 0
+
     @State private var dismissOpacity: Double = 1
     @State private var bgOffset: CGFloat = 0
 
     private let factory = TextureFactory.shared
+
+    /// Phases for the "Ready? Fight!" text sequence.
+    private enum FightTextPhase {
+        case hidden
+        case ready
+        case fight
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -70,85 +82,129 @@ struct VersusIntroView: View {
                     .opacity(bgOpacity)
                     .ignoresSafeArea()
 
-            // Player portrait (left)
-            HStack {
-                VStack(spacing: 8) {
-                    duckPortrait(skin: playerSkin, flipped: false)
-                    Text(playerName)
-                        .font(.custom(GK.pixelFontName, size: 14))
-                        .foregroundColor(.white)
-                        .shadow(color: playerBanner.primaryColor, radius: 6)
-                }
-                .offset(x: playerSlide)
-                Spacer()
-            }
-            .padding(.leading, 40)
+                // ── Portraits + Names + VS ─────────────────────────────
+                // Laid out as a single HStack so nothing overlaps.
+                HStack(alignment: .center, spacing: 0) {
 
-            // Opponent portrait (right)
-            HStack {
-                Spacer()
-                VStack(spacing: 8) {
-                    if let opSkin = opponentSkin {
-                        duckPortrait(skin: opSkin, flipped: true)
-                    } else {
-                        // Ghost silhouette for head-to-head
-                        duckPortrait(skin: playerSkin, flipped: true)
-                            .opacity(0.5)
+                    // Player portrait (left)
+                    VStack(spacing: 8) {
+                        duckPortrait(skin: playerSkin, flipped: false)
+                        Text(playerName)
+                            .font(.custom(GK.pixelFontName, size: 14))
+                            .foregroundColor(.white)
+                            .shadow(color: playerBanner.primaryColor, radius: 6)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                     }
-                    Text(opponentName)
-                        .font(.custom(GK.pixelFontName, size: 14))
-                        .foregroundColor(.white)
-                        .shadow(color: opponentAccent, radius: 6)
-                }
-                .offset(x: opponentSlide)
-            }
-            .padding(.trailing, 40)
+                    .frame(maxWidth: .infinity)
+                    .offset(x: playerSlide)
 
-            // Center VS emblem
-            VStack(spacing: 6) {
-                ZStack {
-                    // Glow ring behind VS
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [Color.white.opacity(0.3), Color.clear],
-                                center: .center,
-                                startRadius: 10,
-                                endRadius: 60
+                    // Center VS emblem — fixed width keeps it from pushing names
+                    ZStack {
+                        // Glow ring behind VS
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [Color.white.opacity(0.3), Color.clear],
+                                    center: .center,
+                                    startRadius: 10,
+                                    endRadius: 60
+                                )
                             )
-                        )
-                        .frame(width: 120, height: 120)
-                        .scaleEffect(vsScale)
+                            .frame(width: 120, height: 120)
+                            .scaleEffect(vsScale)
 
-                    // Flashy VS text
-                    Text("VS")
-                        .font(.custom(GK.pixelFontName, size: 64))
-                        .foregroundColor(.white)
-                        .shadow(color: GK.Colors.scoreYellow, radius: 2)
-                        .shadow(color: GK.Colors.scoreYellow.opacity(0.8), radius: 15)
-                        .shadow(color: GK.Colors.scoreYellow.opacity(0.4), radius: 30)
-                        .overlay(
-                            Text("VS")
-                                .font(.custom(GK.pixelFontName, size: 64))
-                                .foregroundColor(.clear)
-                                .shadow(color: .black, radius: 0, x: 4, y: 5)
-                                .offset(x: -2, y: -2)
-                                .blendMode(.destinationOut)
-                        )
-                        .scaleEffect(vsScale)
-                        .rotationEffect(.degrees(vsRotation))
+                        // Flashy VS text
+                        Text("VS")
+                            .font(.custom(GK.pixelFontName, size: 64))
+                            .foregroundColor(.white)
+                            .shadow(color: GK.Colors.scoreYellow, radius: 2)
+                            .shadow(color: GK.Colors.scoreYellow.opacity(0.8), radius: 15)
+                            .shadow(color: GK.Colors.scoreYellow.opacity(0.4), radius: 30)
+                            .overlay(
+                                Text("VS")
+                                    .font(.custom(GK.pixelFontName, size: 64))
+                                    .foregroundColor(.clear)
+                                    .shadow(color: .black, radius: 0, x: 4, y: 5)
+                                    .offset(x: -2, y: -2)
+                                    .blendMode(.destinationOut)
+                            )
+                            .scaleEffect(vsScale)
+                            .rotationEffect(.degrees(vsRotation))
+                    }
+                    .frame(width: 100)
+
+                    // Opponent portrait (right)
+                    VStack(spacing: 8) {
+                        if let opSkin = opponentSkin {
+                            duckPortrait(skin: opSkin, flipped: true)
+                        } else {
+                            // Ghost silhouette for head-to-head
+                            duckPortrait(skin: playerSkin, flipped: true)
+                                .opacity(0.5)
+                        }
+                        Text(opponentName)
+                            .font(.custom(GK.pixelFontName, size: 14))
+                            .foregroundColor(.white)
+                            .shadow(color: opponentAccent, radius: 6)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .offset(x: opponentSlide)
+                }
+                .padding(.horizontal, 16)
+
+                // ── "READY? FIGHT!" overlay ─────────────────────────────
+                if fightPhase != .hidden {
+                    ZStack {
+                        // Screen-wide dark stripe behind the text
+                        Rectangle()
+                            .fill(Color.black.opacity(0.55))
+                            .frame(height: 80)
+
+                        fightText
+                            .scaleEffect(fightTextScale)
+                    }
+                    .transition(.identity) // managed manually via scale
                 }
 
+                // Flash overlay (when VS slams in)
+                Color.white.opacity(flashOpacity)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
 
+                // Secondary flash for FIGHT!
+                Color.white.opacity(fightFlashOpacity)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
             }
-
-            // Flash overlay (when VS slams in)
-            Color.white.opacity(flashOpacity)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+            .opacity(dismissOpacity)
+            .onAppear { runAnimation() }
         }
-        .opacity(dismissOpacity)
-        .onAppear { runAnimation() }
+    }
+
+    // MARK: - "Ready? Fight!" Text
+
+    @ViewBuilder
+    private var fightText: some View {
+        switch fightPhase {
+        case .hidden:
+            EmptyView()
+        case .ready:
+            Text("READY?")
+                .font(.custom(GK.pixelFontName, size: 40))
+                .foregroundColor(.white)
+                .shadow(color: GK.Colors.scoreYellow, radius: 4)
+                .shadow(color: GK.Colors.scoreYellow.opacity(0.6), radius: 12)
+                .shadow(color: .black, radius: 0, x: 3, y: 3)
+        case .fight:
+            Text("FIGHT!")
+                .font(.custom(GK.pixelFontName, size: 48))
+                .foregroundColor(GK.Colors.scoreYellow)
+                .shadow(color: Color.red, radius: 6)
+                .shadow(color: Color.red.opacity(0.6), radius: 18)
+                .shadow(color: .black, radius: 0, x: 3, y: 3)
         }
     }
 
@@ -203,7 +259,40 @@ struct VersusIntroView: View {
             }
         }
 
-        // 3. Hold for a beat, then dismiss (3.2s — extra drama)
+        // 4. "READY?" appears (1.3s after start)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
+            fightPhase = .ready
+            fightTextScale = 0.001
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.05)) {
+                fightTextScale = 1.0
+            }
+            SoundManager.shared.play(.button)
+        }
+
+        // 5. Transition to "FIGHT!" (2.1s after start)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.1) {
+            fightTextScale = 0.001
+            fightPhase = .fight
+
+            withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.4, blendDuration: 0.05)) {
+                fightTextScale = 1.0
+            }
+
+            // Flash on FIGHT!
+            withAnimation(.easeOut(duration: 0.04)) {
+                fightFlashOpacity = 0.6
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    fightFlashOpacity = 0
+                }
+            }
+
+            SoundManager.shared.play(.score)
+            Haptic.win()
+        }
+
+        // 6. Hold for a beat, then dismiss (3.2s — extra drama)
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
             withAnimation(.easeIn(duration: 0.3)) {
                 dismissOpacity = 0
