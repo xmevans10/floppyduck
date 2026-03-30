@@ -35,6 +35,9 @@ protocol MultiplayerBackendClient: Sendable {
                      opponentName: String?) async throws -> MultiplayerMatchResult
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry]
+
+    /// Sync beaten bot IDs to the backend immediately (XAN-9).
+    func syncBeatenBots(_ botIds: [String]) async throws
 }
 
 struct ConvexAuthContext: Sendable {
@@ -478,7 +481,16 @@ actor ConvexClient: MultiplayerBackendClient {
         }
     }
 
-    // MARK: - Parsing Helpers
+    // MARK: - Bot Sync (XAN-9)
+
+    func syncBeatenBots(_ botIds: [String]) async throws {
+        guard !botIds.isEmpty else { return }
+        _ = try await mutationRaw("auth:syncBeatenBots", args: [
+            "beatenBots": botIds
+        ])
+    }
+
+        // MARK: - Parsing Helpers
 
     private func parseProfile(_ value: Any?) -> RemotePlayerProfile? {
         guard let source = dictionary(from: value) else { return nil }
