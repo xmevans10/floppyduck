@@ -1,4 +1,5 @@
 import SwiftUI
+import Sentry
 
 @main
 struct FloppyDuckApp: App {
@@ -7,6 +8,21 @@ struct FloppyDuckApp: App {
     @State private var splashFinished = false
 
     init() {
+
+        SentrySDK.start { options in
+            options.dsn = "https://e7671e36f866d70b8620cf0d6ba9d847@o4510732962037760.ingest.us.sentry.io/4511135319719936"
+            options.tracesSampleRate = 1.0
+            options.enableAutoSessionTracking = true
+            options.attachScreenshot = true
+            options.enableUserInteractionTracing = true
+            #if DEBUG
+            options.debug = true
+            options.environment = "development"
+            #else
+            options.environment = "production"
+            #endif
+        }
+
         let manager = GameManager()
         let auth = AuthManager(gameManager: manager)
         manager.authManager = auth

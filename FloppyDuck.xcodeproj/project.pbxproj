@@ -76,6 +76,7 @@
 		F2000000000000000000000A /* CREDITS.txt in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* CREDITS.txt */; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 		FF1E7DCB9494C2D8DE5E22BC /* ParallaxManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */; };
+		SE0000000000000000000003 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = SE0000000000000000000002 /* Sentry */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -192,6 +193,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				SE0000000000000000000003 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -435,6 +437,9 @@
 			name = FloppyDuck;
 			productName = FloppyDuck;
 			productReference = 45E49708FF03202FD286092D /* FloppyDuck.app */;
+			packageProductDependencies = (
+				SE0000000000000000000002 /* Sentry */,
+			);
 			productType = "com.apple.product-type.application";
 		};
 		E60000000000000000000001 /* FloppyDuckUITests */ = {
@@ -474,6 +479,9 @@
 			productRefGroup = 869F6DB7D2C008CCC31F4B39 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				SE0000000000000000000001 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+			);
 			targets = (
 				CC26CC21560A6F6D89098BBE /* FloppyDuck */,
 				A60000000000000000000001 /* FloppyDuckTests */,
@@ -891,6 +899,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		SE0000000000000000000001 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		SE0000000000000000000002 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = SE0000000000000000000001 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E74DADFE3AC5262D28E19680 /* Project object */;
 }
