@@ -240,6 +240,34 @@ export const linkAppleWrite = internalMutation({
   },
 });
 
+
+export const syncBeatenBots = mutation({
+  args: {
+    beatenBots: v.array(v.string()),
+    ...sessionTokenArg,
+    deviceId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    const now = Date.now();
+
+    // Merge: keep any server-side bots the client doesn't know about,
+    // then add the client's new entries. Cap at 32 for safety.
+    const merged = Array.from(
+      new Set([...user.beatenBots, ...args.beatenBots]),
+    ).slice(0, 32);
+
+    if (merged.length !== user.beatenBots.length) {
+      await ctx.db.patch(user._id, {
+        beatenBots: merged,
+        updatedAt: now,
+      });
+    }
+
+    return { beatenBots: merged };
+  },
+});
+
 export const getProfile = query({
   args: {
     ...identityArgs,
