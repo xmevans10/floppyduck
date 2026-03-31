@@ -291,7 +291,6 @@ final class GameManager: ObservableObject {
             mode: .vsBot,
             opponentName: bot.name,
             botDifficulty: bot.difficulty,
-            botProfile: bot.profile,
             botCharacterId: bot.id,
             botSkin: bot.skin,
             targetScore: bot.targetScore

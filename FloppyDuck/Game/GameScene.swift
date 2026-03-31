@@ -46,7 +46,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let playerSkin: DuckSkin
     private let botSkin: DuckSkin?
     private let botDiff: BotDifficulty?
-    private let botProfile: HumanBotProfile?
     private let opponentName: String?
     private let targetScore: Int?
 
@@ -123,7 +122,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
          skin: DuckSkin = .classic,
          botSkin: DuckSkin? = nil,
          botDifficulty: BotDifficulty? = nil,
-         botProfile: HumanBotProfile? = nil,
          opponentName: String? = nil,
          targetScore: Int? = nil) {
         self.prng = SeededRandom(seed: seed)
@@ -131,7 +129,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         self.playerSkin = skin
         self.botSkin = botSkin
         self.botDiff = botDifficulty
-        self.botProfile = botProfile
         self.opponentName = opponentName
         self.targetScore = targetScore
         // Use player's selected background theme (purchased in shop)
@@ -207,10 +204,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 // bot deterministically dies at its ceiling score.
                 // Use the bot's own skin if provided, otherwise fall back to player skin.
                 let effectiveBotSkin = botSkin ?? playerSkin
-                bc.setup(skin: effectiveBotSkin,
-                        difficulty: botDiff,
-                        profile: botProfile,
-                        deathScore: targetScore)
+                bc.setup(skin: effectiveBotSkin, difficulty: botDiff, deathScore: targetScore)
             }
             bc.setupScoreHUD(mode: mode, opponentName: opponentName)
             bc.onScoreChanged = { [weak self] newScore in

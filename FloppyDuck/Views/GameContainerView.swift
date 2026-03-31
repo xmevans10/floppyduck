@@ -126,7 +126,6 @@ struct GameContainerView: View {
             skin: skin,
             botSkin: config.botSkin,
             botDifficulty: config.botDifficulty,
-            botProfile: config.botProfile,
             opponentName: config.opponentName,
             targetScore: config.targetScore
         )
