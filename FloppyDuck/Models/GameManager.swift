@@ -285,10 +285,12 @@ final class GameManager: ObservableObject {
         return BotCharacter.all.count // all beaten
     }
 
-    /// Start a bot ladder match
+    /// Start a bot ladder match — uses the bot's fixed seed so the same
+    /// pipe course is generated every attempt against this bot.
     func startBotLadderMatch(_ bot: BotCharacter) {
         let config = GameModeConfig(
             mode: .vsBot,
+            seed: bot.seed,
             opponentName: bot.name,
             botDifficulty: bot.difficulty,
             botCharacterId: bot.id,

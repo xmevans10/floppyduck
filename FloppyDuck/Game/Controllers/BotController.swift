@@ -194,6 +194,10 @@ final class BotController {
     /// Runs the bot's AI for one frame: gravity, movement, pipe collision,
     /// scoring, and flap decisions.
     ///
+    /// The bot aims at the exact center of each pipe gap for the first
+    /// `deathScore` pipes, then stops flapping and naturally clips the next one.
+    /// No noise, no error rate, no plot armor — deterministic and clean.
+    ///
     /// - Parameters:
     ///   - dt: Delta-time since last frame (seconds).
     ///   - pipeNodes: All current pipe nodes from the pipe layer.
@@ -211,18 +215,13 @@ final class BotController {
 
         // Use same collision radius as player duck (GK.duckRadius * 0.72)
         // so bots and player have identical hitboxes. (XAN-5)
-        let botR = GK.duckRadius * 0.72  // Match player hitbox (XAN-5)
+        let botR = GK.duckRadius * 0.72
 
-        // Ground collision → die (or bounce if plot-armored)
+        // Ground collision → die
         if posY <= GK.groundHeight + botR {
             posY = GK.groundHeight + botR
-            if deathScore != nil && !doomed {
-                // Plot armor: bounce the bot back up instead of dying
-                velocity = GK.flapImpulse * diff.flapStrength * 0.6
-            } else {
-                die()
-                return
-            }
+            die()
+            return
         }
 
         // Ceiling clamp
@@ -256,34 +255,20 @@ final class BotController {
                 }
             }
 
-            // Pipe collision (only check pipes near the bot's X)
+            // Pipe collision — no plot armor, bot dies if it clips a pipe
             if abs(dist) < GK.pipeWidth / 2 + botR * 0.6 {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     let gapY = trigger.position.y
                     let gapTop = gapY + gap / 2 - 14
                     let gapBottom = gapY - gap / 2 + 14
                     if posY + botR > gapTop || posY - botR < gapBottom {
-                        // When the bot has a deathScore ceiling and hasn't
-                        // reached it yet, nudge position into the safe zone
-                        // instead of dying — "plot armor" keeps the bot alive
-                        // so it always dies at exactly the target score.
-                        if deathScore != nil && !doomed {
-                            if posY + botR > gapTop {
-                                posY = gapTop - botR
-                            }
-                            if posY - botR < gapBottom {
-                                posY = gapBottom + botR
-                            }
-                            velocity = 0
-                        } else {
-                            die()
-                            return
-                        }
+                        die()
+                        return
                     }
                 }
             }
 
-            // Bot scoring — pipe passed behind the bot (only count actual pipe nodes)
+            // Bot scoring — pipe passed behind the bot
             if let pipeName = child.name, pipeName.hasPrefix("pipe_"),
                pipeX < GK.duckStartX - GK.pipeWidth / 2 {
                 if !pipesPassed.contains(pipeName) {
@@ -292,8 +277,8 @@ final class BotController {
                     updateScoreHUD()
                     onScoreChanged?(score)
 
-                    // Deterministic death: once the bot hits its ceiling score,
-                    // disable its AI so it naturally falls into the next pipe.
+                    // Once the bot reaches its ceiling score, stop flapping.
+                    // Gravity will pull it into the next pipe for a natural death.
                     if let cap = deathScore, score >= cap {
                         doomed = true
                     }
@@ -301,17 +286,12 @@ final class BotController {
             }
         }
 
-        // --- AI decision: noise + error + flap ---
+        // --- AI decision: aim at exact gap center ---
         // When doomed the bot simply stops flapping and gravity takes over —
         // it will naturally collide with the next pipe or hit the ground.
         if !doomed {
-            let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
-            let adjustedTarget = targetGapY + noise
-
-            let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
-
-            if !shouldError && posY < adjustedTarget - 8 && velocity < GK.flapImpulse * 0.5 {
-                velocity = GK.flapImpulse * diff.flapStrength
+            if posY < targetGapY - 8 && velocity < GK.flapImpulse * 0.5 {
+                velocity = GK.flapImpulse
             }
         }
 
