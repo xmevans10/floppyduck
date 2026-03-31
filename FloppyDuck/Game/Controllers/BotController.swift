@@ -287,11 +287,14 @@ final class BotController {
         }
 
         // --- AI decision: aim at exact gap center ---
+        // Uses 65% of flapImpulse for controlled hops (rise ≈ 38px) instead
+        // of full jumps (rise ≈ 91px which overshoots the ±63px safe zone).
         // When doomed the bot simply stops flapping and gravity takes over —
         // it will naturally collide with the next pipe or hit the ground.
         if !doomed {
-            if posY < targetGapY - 8 && velocity < GK.flapImpulse * 0.5 {
-                velocity = GK.flapImpulse
+            let botImpulse = GK.flapImpulse * 0.65
+            if posY < targetGapY - 15 && velocity < botImpulse * 0.4 {
+                velocity = botImpulse
             }
         }
 
