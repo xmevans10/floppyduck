@@ -5,6 +5,10 @@ import SpriteKit
 /// Encapsulates all bot (AI opponent) logic: sprite creation, per-frame AI
 /// update loop, collision / death handling, and score tracking.
 ///
+/// v2: Uses `HumanBotAI` for human-like behavioral decisions, or
+///     `ReplayBotAI` for replaying recorded human runs. Both provide
+///     more authentic play than the original noise+error model.
+///
 /// Extracted from `GameScene` to keep the scene file focused on player + world
 /// logic.  Follows the same pattern as `ParallaxManager`.
 ///
@@ -15,8 +19,9 @@ import SpriteKit
 ///      ```
 ///   2. Setup in `didMove(to:)`:
 ///      ```
-///      botController.setup(skin: playerSkin, difficulty: botDiff)
-///      botController.setupScoreHUD(mode: .vsBot, opponentName: name)
+///      botController.setup(skin: playerSkin,
+///                          profile: botProfile,
+///                          targetScore: score)
 ///      ```
 ///   3. When gameplay begins:
 ///      ```
@@ -40,7 +45,7 @@ final class BotController {
     /// Fired every time the bot scores a point. Parameter is the new total.
     var onScoreChanged: ((Int) -> Void)?
 
-    /// Fired when the bot dies (hit ground, pipe, or reached deathScore).
+    /// Fired when the bot dies (hit ground, pipe, or natural death from skill collapse).
     var onBotDied: (() -> Void)?
 
     // MARK: - Public Read-Only State
@@ -68,16 +73,24 @@ final class BotController {
     private var alive: Bool = false
     private var pipesPassed: Set<String> = []
 
-    /// Active difficulty parameters; set during `setup`.
-    private var diff = BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
+    /// Human-like AI engine (behavioral or replay).
+    private var ai: BotAIMode?
 
-    /// If set, the bot will deterministically die upon reaching this score.
-    /// Used in bot-ladder mode so each bot has a fixed score ceiling.
-    private var deathScore: Int?
+    /// Legacy difficulty — kept for backwards compatibility with existing setup calls.
+    private var legacyDiff = BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
 
-    /// When true the bot's AI is disabled — it stops flapping and naturally
-    /// falls into the next pipe or the ground.  Set when `score >= deathScore`.
-    private var doomed: Bool = false
+    /// Human-like profile for behavioral AI.
+    private var profile: HumanBotProfile?
+
+    /// If set, the bot gets plot armor until this score (only in behavioral mode
+    /// as a safety net — should rarely trigger with well-tuned profiles).
+    private var plotArmorUntil: Int?
+
+    /// Elapsed game time since `startPlaying()`.
+    private var gameTime: TimeInterval = 0
+
+    /// Whether gameplay has started (for timing purposes).
+    private var isPlaying: Bool = false
 
     // MARK: - Score HUD
 
@@ -97,17 +110,48 @@ final class BotController {
 
     // MARK: - Setup
 
-    /// Creates the bot ghost-duck sprite with wing animation and idle float.
+    /// Creates the bot ghost-duck sprite with human-like AI.
     ///
     /// - Parameters:
     ///   - skin: Duck skin used for the ghost textures.
-    ///   - difficulty: AI tuning parameters (noise, flap strength, error rate).
-    ///                 Defaults to a mid-tier difficulty if `nil`.
-    ///   - deathScore: If set, the bot will die deterministically when it
-    ///                 reaches this score. Used in bot-ladder mode.
-    func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil, deathScore: Int? = nil) {
-        self.diff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
-        self.deathScore = deathScore
+    ///   - difficulty: Legacy AI parameters (used as fallback if profile is nil).
+    ///   - profile: Human-like AI profile. If provided, uses the new behavioral model.
+    ///   - deathScore: Target score for plot armor safety net.
+    ///   - replay: If provided, uses replay mode instead of behavioral AI.
+    func setup(skin: DuckSkin,
+               difficulty: BotDifficulty? = nil,
+               profile: HumanBotProfile? = nil,
+               deathScore: Int? = nil,
+               replay: ReplayBotAI.ReplayData? = nil) {
+
+        self.legacyDiff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
+        self.profile = profile
+        self.plotArmorUntil = deathScore.map { max(0, $0 - 5) }  // Plot armor until 5 below target
+
+        // Choose AI mode
+        if let replay = replay {
+            ai = .replay(ReplayBotAI(replay: replay))
+        } else if let profile = profile {
+            ai = .behavioral(HumanBotAI(profile: profile))
+        } else {
+            // Fallback: create a basic profile from legacy difficulty
+            let fallbackProfile = HumanBotProfile(
+                reactionBase: 0.25,
+                reactionσ: 0.04,
+                motorσ: 0.035,
+                perceptionRange: 280,
+                aimBiasσ: legacyDiff.noiseRange * 0.3,
+                panicDistance: 80,
+                panicMisalignment: 30,
+                panicFlapChance: 0.15,
+                fatigueRate: 0.004,
+                scoreRecovery: 0.05,
+                attentionFloor: 0.55,
+                targetScore: deathScore ?? 30,
+                deathPressureRate: 0.22
+            )
+            ai = .behavioral(HumanBotAI(profile: fallbackProfile))
+        }
 
         // Ghost-duck sprite: desaturated, translucent, with soft glow (XAN-6)
         textures = (0...2).map { factory.skinDuckTexture(skin: skin, wingPhase: $0) }
@@ -145,6 +189,8 @@ final class BotController {
         posY = GK.duckStartY
         velocity = 0
         alive = true
+        gameTime = 0
+        isPlaying = false
     }
 
     /// Creates the bot-score HUD labels (used in both vsBot and headToHead modes).
@@ -187,6 +233,7 @@ final class BotController {
     /// Call when gameplay begins — stops the idle float animation.
     func startPlaying() {
         sprite?.removeAction(forKey: "botFloat")
+        isPlaying = true
     }
 
     // MARK: - Per-Frame Update (AI)
@@ -205,20 +252,24 @@ final class BotController {
                 effectivePipeGap: CGFloat) {
         guard alive, let bot = sprite else { return }
 
+        if isPlaying {
+            gameTime += dt
+        }
+
         // --- Gravity & position ---
         velocity += GK.gravity / 60 * CGFloat(dt) * 60
         posY += velocity * CGFloat(dt)
 
         // Use same collision radius as player duck (GK.duckRadius * 0.72)
         // so bots and player have identical hitboxes. (XAN-5)
-        let botR = GK.duckRadius * 0.72  // Match player hitbox (XAN-5)
+        let botR = GK.duckRadius * 0.72
 
         // Ground collision → die (or bounce if plot-armored)
         if posY <= GK.groundHeight + botR {
             posY = GK.groundHeight + botR
-            if deathScore != nil && !doomed {
-                // Plot armor: bounce the bot back up instead of dying
-                velocity = GK.flapImpulse * diff.flapStrength * 0.6
+            if hasPlotArmor {
+                // Plot armor: bounce the bot back up
+                velocity = GK.flapImpulse * 0.6
             } else {
                 die()
                 return
@@ -263,11 +314,8 @@ final class BotController {
                     let gapTop = gapY + gap / 2 - 14
                     let gapBottom = gapY - gap / 2 + 14
                     if posY + botR > gapTop || posY - botR < gapBottom {
-                        // When the bot has a deathScore ceiling and hasn't
-                        // reached it yet, nudge position into the safe zone
-                        // instead of dying — "plot armor" keeps the bot alive
-                        // so it always dies at exactly the target score.
-                        if deathScore != nil && !doomed {
+                        if hasPlotArmor {
+                            // Safety net: nudge into gap
                             if posY + botR > gapTop {
                                 posY = gapTop - botR
                             }
@@ -283,7 +331,7 @@ final class BotController {
                 }
             }
 
-            // Bot scoring — pipe passed behind the bot (only count actual pipe nodes)
+            // Bot scoring — pipe passed behind the bot
             if let pipeName = child.name, pipeName.hasPrefix("pipe_"),
                pipeX < GK.duckStartX - GK.pipeWidth / 2 {
                 if !pipesPassed.contains(pipeName) {
@@ -292,26 +340,26 @@ final class BotController {
                     updateScoreHUD()
                     onScoreChanged?(score)
 
-                    // Deterministic death: once the bot hits its ceiling score,
-                    // disable its AI so it naturally falls into the next pipe.
-                    if let cap = deathScore, score >= cap {
-                        doomed = true
-                    }
+                    // Notify AI of scoring (for fatigue recovery & death pressure)
+                    ai?.onScored()
                 }
             }
         }
 
-        // --- AI decision: noise + error + flap ---
-        // When doomed the bot simply stops flapping and gravity takes over —
-        // it will naturally collide with the next pipe or hit the ground.
-        if !doomed {
-            let noise = CGFloat.random(in: -diff.noiseRange...diff.noiseRange)
-            let adjustedTarget = targetGapY + noise
+        // --- AI decision ---
+        if let ai = ai {
+            let shouldFlap = ai.shouldFlap(
+                currentTime: gameTime,
+                dt: dt,
+                birdY: posY,
+                velocity: velocity,
+                nextGapY: targetGapY,
+                nextGapDist: nearestDist,
+                pipeGap: gap
+            )
 
-            let shouldError = CGFloat.random(in: 0...1) < diff.errorRate
-
-            if !shouldError && posY < adjustedTarget - 8 && velocity < GK.flapImpulse * 0.5 {
-                velocity = GK.flapImpulse * diff.flapStrength
+            if shouldFlap {
+                velocity = GK.flapImpulse
             }
         }
 
@@ -322,6 +370,17 @@ final class BotController {
             ? min(velocity / GK.flapImpulse * 0.4, 0.4)
             : max(velocity / 400, -CGFloat.pi / 2)
         bot.zRotation += (rotTarget - bot.zRotation) * 0.10
+    }
+
+    // MARK: - Plot Armor
+
+    /// Plot armor is active only when the bot is below a safe score threshold
+    /// and hasn't entered its death spiral yet. This is a safety net for the
+    /// behavioral model — well-tuned profiles should rarely trigger it.
+    private var hasPlotArmor: Bool {
+        guard let threshold = plotArmorUntil else { return false }
+        if ai?.isInDeathSpiral == true { return false }
+        return score < threshold
     }
 
     // MARK: - Death
@@ -371,9 +430,9 @@ final class BotController {
         sprite?.removeFromParent()
         sprite = nil
         score = 0
-        doomed = false
         pipesPassed.removeAll()
-        setup(skin: skin, difficulty: diff, deathScore: deathScore)
+        ai?.reset()
+        setup(skin: skin, difficulty: legacyDiff, profile: profile, deathScore: plotArmorUntil.map { $0 + 5 })
         updateScoreHUD()
     }
 }

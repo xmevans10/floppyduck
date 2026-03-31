@@ -21,6 +21,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let seed: Int
     let opponentName: String?
     let botDifficulty: BotDifficulty?
+    let botProfile: HumanBotProfile?
     let botCharacterId: String?
     let botSkin: DuckSkin?
     let targetScore: Int?
@@ -35,6 +36,7 @@ struct GameModeConfig: Identifiable, Hashable {
          seed: Int = Int.random(in: 1...999999),
          opponentName: String? = nil,
          botDifficulty: BotDifficulty? = nil,
+         botProfile: HumanBotProfile? = nil,
          botCharacterId: String? = nil,
          botSkin: DuckSkin? = nil,
          targetScore: Int? = nil,
@@ -47,6 +49,7 @@ struct GameModeConfig: Identifiable, Hashable {
         self.seed = seed
         self.opponentName = opponentName
         self.botDifficulty = botDifficulty
+        self.botProfile = botProfile
         self.botCharacterId = botCharacterId
         self.botSkin = botSkin
         self.targetScore = targetScore

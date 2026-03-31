@@ -89,4 +89,19 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_rating", ["rating"]),
+
+  // Bot replay storage — recorded human play sessions that can be replayed
+  // as bot opponents. Each replay is a compact set of flap timestamps tied
+  // to a specific pipe seed, so the game can reproduce exact pipe layouts.
+  botReplays: defineTable({
+    botId: v.string(),                    // e.g. "the_duck", "goose"
+    pipeSeed: v.number(),                 // seed used for pipe generation
+    flapTimestamps: v.array(v.float64()), // seconds since game start
+    finalScore: v.number(),               // score achieved in this run
+    recordedBy: v.optional(v.id("users")), // who recorded it (null = curated)
+    createdAt: v.number(),
+    isActive: v.boolean(),                // whether this replay is in rotation
+  })
+    .index("by_botId", ["botId"])
+    .index("by_botId_active", ["botId", "isActive"]),
 });

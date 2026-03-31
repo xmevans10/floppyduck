@@ -24,6 +24,7 @@
 		5A036B38A42A68B2A8E40347 /* MedalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0494021C7FBFABF4BD6618 /* MedalTests.swift */; };
 		722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */; };
 		74C7BB1EBED11D4C50F70D9C /* BotController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01256F5F2501C40E0B8C7A2F /* BotController.swift */; };
+		FB40D6BD57526846903BB13E /* HumanBotAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D79B1A37F31801CD11A6706 /* HumanBotAI.swift */; };
 		7F9B6B1E213D138387FC9463 /* PowerUpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BFA94D06C0765AAE762441 /* PowerUpController.swift */; };
 		802DB17F036507568468C6F4 /* BackgroundTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */; };
 		83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6536C0571E3D58450DECC837 /* GameContainerView.swift */; };
@@ -99,6 +100,7 @@
 /* Begin PBXFileReference section */
 		0096DDB5D5C93DB7732319BF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		01256F5F2501C40E0B8C7A2F /* BotController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotController.swift; sourceTree = "<group>"; };
+		9D79B1A37F31801CD11A6706 /* HumanBotAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HumanBotAI.swift; sourceTree = "<group>"; };
 		01FBB5328EEB7721AC2BC6C4 /* BotCharacterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacterTests.swift; sourceTree = "<group>"; };
 		04256D4EFAB614B2184DDDCE /* BattleBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BattleBanner.swift; sourceTree = "<group>"; };
 		0F70986D2FC6C1758722D0D5 /* GameConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConstants.swift; sourceTree = "<group>"; };
@@ -345,6 +347,7 @@
 			children = (
 				ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */,
 				01256F5F2501C40E0B8C7A2F /* BotController.swift */,
+				9D79B1A37F31801CD11A6706 /* HumanBotAI.swift */,
 				81BFA94D06C0765AAE762441 /* PowerUpController.swift */,
 			);
 			path = Controllers;
@@ -538,6 +541,7 @@
 				1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */,
 				FF1E7DCB9494C2D8DE5E22BC /* ParallaxManager.swift in Sources */,
 				74C7BB1EBED11D4C50F70D9C /* BotController.swift in Sources */,
+				FB40D6BD57526846903BB13E /* HumanBotAI.swift in Sources */,
 				7F9B6B1E213D138387FC9463 /* PowerUpController.swift in Sources */,
 				0FD673CC8B4188A4D5B14A68 /* DifficultyManager.swift in Sources */,
 				BCA7AC277DEBF717137BC891 /* PowerUp.swift in Sources */,
