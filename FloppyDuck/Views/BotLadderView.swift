@@ -3,26 +3,102 @@ import SwiftUI
 // MARK: - Bot Ladder View
 //
 // Presents the 8-bot ladder as a vertical card list with a connecting path.
-// Redesigned to match the sky-blue aesthetic used throughout the app (shop,
-// achievements, collection, etc.) while keeping the climb-the-ladder feel.
+// Styled to match HomeView's 8-bit aesthetic — scrolling pixel clouds,
+// distant hills, and layered ground — while keeping the climb-the-ladder feel.
 
 struct BotLadderView: View {
     @EnvironmentObject var manager: GameManager
     @State private var playerBounce = false
+    @State private var cloudOffset: CGFloat = 0
 
     private let bots = BotCharacter.all
     private let icons = PixelIconFactory.shared
     private let factory = TextureFactory.shared
 
+    // MARK: - 8-bit Background (matches HomeView)
+
+    private var eightBitBackground: some View {
+        GeometryReader { geo in
+            ZStack {
+                // Rich sky gradient (same stops as HomeView)
+                LinearGradient(
+                    stops: [
+                        .init(color: Color(red: 0.22, green: 0.50, blue: 0.85), location: 0.0),
+                        .init(color: Color(red: 0.38, green: 0.65, blue: 0.90), location: 0.3),
+                        .init(color: Color(red: 0.58, green: 0.80, blue: 0.94), location: 0.6),
+                        .init(color: Color(red: 0.78, green: 0.92, blue: 0.97), location: 0.85),
+                        .init(color: Color(red: 0.90, green: 0.95, blue: 0.98), location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                // Scrolling pixel clouds
+                HStack(spacing: 60) {
+                    ForEach(0..<6, id: \.self) { i in
+                        Image(uiImage: TextureFactory.shared.cloudUIImage())
+                            .interpolation(.none)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: [70, 90, 55, 80, 65, 95][i],
+                                   height: [28, 36, 22, 32, 26, 38][i])
+                            .opacity([0.7, 0.85, 0.6, 0.75, 0.65, 0.8][i])
+                            .offset(y: [0, -20, 15, -35, 5, -15][i])
+                    }
+                }
+                .offset(x: cloudOffset)
+                .onAppear {
+                    guard !UIAccessibility.isReduceMotionEnabled else { return }
+                    withAnimation(.linear(duration: 30).repeatForever(autoreverses: false)) {
+                        cloudOffset = -300
+                    }
+                }
+                .frame(maxHeight: geo.size.height * 0.4, alignment: .top)
+                .padding(.top, 40)
+
+                // Distant pixel hills
+                VStack {
+                    Spacer()
+                    Image(uiImage: TextureFactory.shared.hillsUIImage())
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(height: 80)
+                        .opacity(0.5)
+                        .offset(y: -50)
+                }
+
+                // Ground at bottom — layered grass + dirt
+                VStack(spacing: 0) {
+                    Spacer()
+
+                    // Dark grass edge
+                    Rectangle()
+                        .fill(Color(red: 0.28, green: 0.52, blue: 0.16))
+                        .frame(height: 3)
+
+                    // Grass
+                    Rectangle()
+                        .fill(Color(red: 0.40, green: 0.72, blue: 0.22))
+                        .frame(height: 14)
+
+                    // Dirt
+                    ZStack {
+                        Rectangle()
+                            .fill(Color(red: 0.78, green: 0.70, blue: 0.50))
+                        Rectangle()
+                            .fill(Color(red: 0.72, green: 0.64, blue: 0.44).opacity(0.4))
+                    }
+                    .frame(height: 45)
+                }
+            }
+        }
+    }
+
     var body: some View {
         ZStack {
-            // Standard sky background (matches Shop, Achievements, Collection, etc.)
-            LinearGradient(
-                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            // 8-bit background matching HomeView (XAN-7)
+            eightBitBackground
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 header
