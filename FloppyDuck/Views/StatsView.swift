@@ -41,6 +41,21 @@ struct StatsView: View {
                             statCard(title: "ELO", value: "\(manager.stats.elo)", icon: .classic)
                         }
 
+                        // --- NEW: W/L Record & Peak Elo ---
+                        HStack(spacing: 12) {
+                            wlRecordPanel
+                            peakEloPanel
+                        }
+
+                        // --- NEW: Win Streak ---
+                        winStreakPanel
+
+                        // --- NEW: Bot Ladder Progress ---
+                        botLadderProgressPanel
+
+                        // --- NEW: Total Pipes Cleared ---
+                        totalPipesPanel
+
                         // Bread
                         HStack(spacing: 10) {
                             Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
@@ -166,6 +181,184 @@ struct StatsView: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title): \(value)")
+    }
+
+    // MARK: - W/L Record
+
+    private var wlRecordPanel: some View {
+        VStack(spacing: 6) {
+            Text("RECORD")
+                .font(.custom(GK.pixelFontName, size: 7))
+                .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+
+            HStack(spacing: 4) {
+                Text("\(manager.stats.wins)W")
+                    .font(.custom(GK.pixelFontName, size: 16))
+                    .foregroundColor(GK.Colors.buttonGreen)
+                Text("-")
+                    .font(.custom(GK.pixelFontName, size: 16))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
+                Text("\(manager.stats.losses)L")
+                    .font(.custom(GK.pixelFontName, size: 16))
+                    .foregroundColor(Color(red: 0.85, green: 0.25, blue: 0.25))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(GK.Colors.panelCream)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Record: \(manager.stats.wins) wins, \(manager.stats.losses) losses")
+    }
+
+    // MARK: - Peak Elo
+
+    private var peakEloPanel: some View {
+        VStack(spacing: 6) {
+            Text("PEAK ELO")
+                .font(.custom(GK.pixelFontName, size: 7))
+                .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+
+            Text("\(manager.stats.peakElo)")
+                .font(.custom(GK.pixelFontName, size: 18))
+                .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(GK.Colors.panelCream)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Peak Elo: \(manager.stats.peakElo)")
+    }
+
+    // MARK: - Win Streak
+
+    private var winStreakPanel: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("WIN STREAK")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                HStack(spacing: 6) {
+                    Text("🔥")
+                        .font(.system(size: 16))
+                    Text("\(manager.stats.winStreak)")
+                        .font(.custom(GK.pixelFontName, size: 20))
+                        .foregroundColor(manager.stats.winStreak > 0
+                            ? Color(red: 0.95, green: 0.55, blue: 0.10)
+                            : GK.Colors.panelBorder)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("BEST")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                Text("\(manager.stats.bestWinStreak)")
+                    .font(.custom(GK.pixelFontName, size: 20))
+                    .foregroundColor(GK.Colors.panelBorder)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(GK.Colors.panelCream)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Win streak: \(manager.stats.winStreak), best: \(manager.stats.bestWinStreak)")
+    }
+
+    // MARK: - Bot Ladder Progress
+
+    private var botLadderProgressPanel: some View {
+        let beaten = manager.stats.beatenBots.count
+        let total = BotCharacter.all.count
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("BOT LADDER")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                Spacer()
+                Text("\(beaten)/\(total) BEATEN")
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(beaten == total
+                        ? Color(red: 1.0, green: 0.84, blue: 0.0)
+                        : GK.Colors.panelBorder)
+            }
+
+            // Pixel-style progress bar
+            HStack(spacing: 3) {
+                ForEach(0..<total, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(i < beaten
+                            ? GK.Colors.buttonGreen
+                            : GK.Colors.panelBorder.opacity(0.15))
+                        .frame(height: 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(i < beaten
+                                    ? GK.Colors.buttonGreen.opacity(0.6)
+                                    : GK.Colors.panelBorder.opacity(0.08),
+                                    lineWidth: 1)
+                        )
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(GK.Colors.panelCream)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Bot ladder: \(beaten) of \(total) bots beaten")
+    }
+
+    // MARK: - Total Pipes Cleared
+
+    private var totalPipesPanel: some View {
+        HStack {
+            Text("TOTAL PIPES")
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+            Spacer()
+            Text("\(manager.stats.totalScore)")
+                .font(.custom(GK.pixelFontName, size: 16))
+                .foregroundColor(GK.Colors.panelBorder)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(GK.Colors.panelCream)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Total pipes cleared: \(manager.stats.totalScore)")
     }
 
     // MARK: - Recent Scores
