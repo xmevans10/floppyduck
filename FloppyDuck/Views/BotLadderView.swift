@@ -344,22 +344,7 @@ struct BotLadderView: View {
                             .offset(y: -(isBoss ? 34 : 30))
                     }
 
-                    // Bouncing player duck marker
-                    if isNext {
-                        Image(uiImage: factory.skinDuckUIImage(
-                            skin: SkinManager.shared.selectedSkin, pixelScale: 3.5))
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 22, height: 22)
-                            .shadow(color: .white.opacity(0.6), radius: 3)
-                            .offset(x: -42, y: playerBounce ? -2 : 2)
-                            .animation(
-                                .easeInOut(duration: 0.5).repeatForever(autoreverses: true),
-                                value: playerBounce
-                            )
-                            .onAppear { playerBounce = true }
-                    }
+                    // (player duck marker moved to card overlay so it stays inside the bounded box)
                 }
                 .frame(width: 72)
 
@@ -467,6 +452,24 @@ struct BotLadderView: View {
                     )
             )
             .opacity(locked ? 0.55 : 1.0)
+            // Bouncing player duck marker — pinned inside the card's leading edge
+            .overlay(alignment: .leading) {
+                if isNext {
+                    Image(uiImage: factory.skinDuckUIImage(
+                        skin: SkinManager.shared.selectedSkin, pixelScale: 3.5))
+                        .interpolation(.none)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 22, height: 22)
+                        .shadow(color: .white.opacity(0.6), radius: 3)
+                        .offset(x: 6, y: playerBounce ? -2 : 2)
+                        .animation(
+                            .easeInOut(duration: 0.5).repeatForever(autoreverses: true),
+                            value: playerBounce
+                        )
+                        .onAppear { playerBounce = true }
+                }
+            }
         }
         .buttonStyle(.plain)
         .disabled(locked)
