@@ -141,6 +141,9 @@ struct LocalStatsSnapshot: Hashable, Codable {
     let totalBreadCollected: Int
     let recentScores: [Int]
     let beatenBots: [String]
+    let peakElo: Int
+    let winStreak: Int
+    let bestWinStreak: Int
 
     init(username: String, stats: PlayerStats) {
         self.username = username
@@ -154,6 +157,9 @@ struct LocalStatsSnapshot: Hashable, Codable {
         self.totalBreadCollected = stats.totalBreadCollected
         self.recentScores = stats.recentScores
         self.beatenBots = stats.beatenBots
+        self.peakElo = stats.peakElo
+        self.winStreak = stats.winStreak
+        self.bestWinStreak = stats.bestWinStreak
     }
 
     var asPlayerStats: PlayerStats {
@@ -167,7 +173,10 @@ struct LocalStatsSnapshot: Hashable, Codable {
             bread: bread,
             totalBreadCollected: totalBreadCollected,
             recentScores: recentScores,
-            beatenBots: beatenBots
+            beatenBots: beatenBots,
+            peakElo: peakElo,
+            winStreak: winStreak,
+            bestWinStreak: bestWinStreak
         )
     }
 }
@@ -348,6 +357,9 @@ struct PlayerStats: Codable, Hashable {
     var totalBreadCollected: Int = 0  // lifetime total (never decremented)
     var recentScores: [Int] = []  // last 20
     var beatenBots: [String] = [] // ids of beaten bot ladder bots
+    var peakElo: Int = 1200       // all-time highest elo
+    var winStreak: Int = 0        // current consecutive wins
+    var bestWinStreak: Int = 0    // best ever win streak
 
     var winRate: Double {
         guard gamesPlayed > 0 else { return 0 }
@@ -370,9 +382,12 @@ struct PlayerStats: Codable, Hashable {
         if let won {
             if won {
                 wins += 1
+                winStreak += 1
+                if winStreak > bestWinStreak { bestWinStreak = winStreak }
                 bread += max(3, score)
             } else {
                 losses += 1
+                winStreak = 0
                 bread += max(1, score / 2)
             }
         } else {
@@ -400,6 +415,7 @@ struct PlayerStats: Codable, Hashable {
             } else if let delta = result.ratingDelta {
                 elo += delta
             }
+            if elo > peakElo { peakElo = elo }
         }
     }
 
