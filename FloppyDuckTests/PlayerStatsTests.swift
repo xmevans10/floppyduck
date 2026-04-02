@@ -5,6 +5,125 @@ final class PlayerStatsTests: XCTestCase {
 
     // MARK: - Existing Tests
 
+    func testLegacyPlayerStatsDecodeDefaultsPeakAndStreakFields() throws {
+        let stats = try decodePlayerStats("""
+        {
+          "gamesPlayed": 8,
+          "wins": 5,
+          "losses": 3,
+          "bestScore": 27,
+          "totalScore": 90,
+          "elo": 1342,
+          "bread": 44,
+          "totalBreadCollected": 61,
+          "recentScores": [12, 9],
+          "beatenBots": ["quackers"]
+        }
+        """)
+
+        XCTAssertEqual(stats.gamesPlayed, 8)
+        XCTAssertEqual(stats.peakElo, 1342)
+        XCTAssertEqual(stats.winStreak, 0)
+        XCTAssertEqual(stats.bestWinStreak, 0)
+    }
+
+    func testLegacyPlayerStatsDecodeKeepsCurrentWinStreakAsBestWhenMissing() throws {
+        let stats = try decodePlayerStats("""
+        {
+          "gamesPlayed": 4,
+          "wins": 3,
+          "losses": 1,
+          "bestScore": 14,
+          "totalScore": 39,
+          "elo": 1280,
+          "bread": 20,
+          "totalBreadCollected": 20,
+          "recentScores": [14, 11, 8, 6],
+          "beatenBots": [],
+          "winStreak": 3
+        }
+        """)
+
+        XCTAssertEqual(stats.winStreak, 3)
+        XCTAssertEqual(stats.bestWinStreak, 3)
+        XCTAssertEqual(stats.peakElo, 1280)
+    }
+
+    func testLegacyLocalStatsSnapshotDecodeDefaultsNewFields() throws {
+        let snapshot = try decodeLocalStatsSnapshot("""
+        {
+          "username": "Legacy Duck",
+          "gamesPlayed": 6,
+          "wins": 4,
+          "losses": 2,
+          "bestScore": 19,
+          "totalScore": 56,
+          "elo": 1391,
+          "bread": 18,
+          "totalBreadCollected": 25,
+          "recentScores": [7, 9, 11],
+          "beatenBots": ["quackers", "waddles"]
+        }
+        """)
+
+        XCTAssertEqual(snapshot.username, "Legacy Duck")
+        XCTAssertEqual(snapshot.peakElo, 1391)
+        XCTAssertEqual(snapshot.winStreak, 0)
+        XCTAssertEqual(snapshot.bestWinStreak, 0)
+        XCTAssertEqual(snapshot.asPlayerStats.peakElo, 1391)
+    }
+
+    func testLocalStatsSnapshotDictionaryIncludesPeakAndStreakFields() {
+        let snapshot = LocalStatsSnapshot(
+            username: "CloudDuck",
+            stats: PlayerStats(elo: 1320, peakElo: 1455, winStreak: 2, bestWinStreak: 4)
+        )
+
+        XCTAssertEqual(snapshot.asDictionary["peakElo"] as? Int, 1455)
+        XCTAssertEqual(snapshot.asDictionary["winStreak"] as? Int, 2)
+        XCTAssertEqual(snapshot.asDictionary["bestWinStreak"] as? Int, 4)
+    }
+
+    func testRemoteStatsParserReadsNewFields() {
+        let stats = ConvexClient.parsePlayerStats(from: [
+            "games_played": 11,
+            "wins": 7,
+            "losses": 4,
+            "best_score": 33,
+            "total_score": 123,
+            "rating": 1410,
+            "bread": 28,
+            "total_bread_collected": 74,
+            "recent_scores": [6, 8, 12],
+            "beaten_bots": ["quackers", "waddles"],
+            "peak_elo": 1502,
+            "win_streak": 3,
+            "best_win_streak": 7
+        ])
+
+        XCTAssertEqual(stats.elo, 1410)
+        XCTAssertEqual(stats.peakElo, 1502)
+        XCTAssertEqual(stats.winStreak, 3)
+        XCTAssertEqual(stats.bestWinStreak, 7)
+        XCTAssertEqual(stats.beatenBots, ["quackers", "waddles"])
+    }
+
+    func testRemoteStatsParserDefaultsMissingNewFieldsSafely() {
+        let stats = ConvexClient.parsePlayerStats(from: [
+            "gamesPlayed": 5,
+            "wins": 3,
+            "losses": 2,
+            "bestScore": 18,
+            "totalScore": 50,
+            "elo": 1333,
+            "winStreak": 2
+        ])
+
+        XCTAssertEqual(stats.peakElo, 1333)
+        XCTAssertEqual(stats.winStreak, 2)
+        XCTAssertEqual(stats.bestWinStreak, 2)
+    }
+
     func testApplyRankedResultPrefersNewRatingOverDelta() {
         var stats = PlayerStats()
         stats.elo = 1200
@@ -28,6 +147,9 @@ final class PlayerStatsTests: XCTestCase {
         XCTAssertEqual(stats.wins, 1)
         XCTAssertEqual(stats.losses, 0)
         XCTAssertEqual(stats.gamesPlayed, 1)
+        XCTAssertEqual(stats.peakElo, 1242)
+        XCTAssertEqual(stats.winStreak, 1)
+        XCTAssertEqual(stats.bestWinStreak, 1)
     }
 
     func testApplyDrawDoesNotAffectWinsOrLosses() {
@@ -235,6 +357,7 @@ final class PlayerStatsTests: XCTestCase {
         stats.applyMatchResult(result)
 
         XCTAssertEqual(stats.elo, 1225, "Should apply ratingDelta when newRating is nil")
+        XCTAssertEqual(stats.peakElo, 1225)
     }
 
     func testApplyUnrankedResultDoesNotChangeELO() {
@@ -258,4 +381,79 @@ final class PlayerStatsTests: XCTestCase {
 
         XCTAssertEqual(stats.elo, 1200, "ELO should not change for unranked matches")
     }
+
+    func testWinStreakAndBestWinStreakAcrossMatchFlows() {
+        var stats = PlayerStats()
+
+        stats.recordGame(score: 5, won: true)
+        XCTAssertEqual(stats.winStreak, 1)
+        XCTAssertEqual(stats.bestWinStreak, 1)
+
+        let draw = MultiplayerMatchResult(
+            matchId: "draw",
+            mode: .quickPlay,
+            opponentName: "Opponent",
+            localScore: 9,
+            opponentScore: 9,
+            didWin: false,
+            didDraw: true,
+            ratingDelta: nil,
+            newRating: nil,
+            isRanked: false
+        )
+        stats.applyMatchResult(draw)
+        XCTAssertEqual(stats.winStreak, 1)
+        XCTAssertEqual(stats.bestWinStreak, 1)
+
+        let rankedWin = MultiplayerMatchResult(
+            matchId: "ranked-win",
+            mode: .ranked,
+            opponentName: "Opponent",
+            localScore: 12,
+            opponentScore: 8,
+            didWin: true,
+            didDraw: false,
+            ratingDelta: 24,
+            newRating: 1244,
+            isRanked: true
+        )
+        stats.applyMatchResult(rankedWin)
+        XCTAssertEqual(stats.winStreak, 2)
+        XCTAssertEqual(stats.bestWinStreak, 2)
+        XCTAssertEqual(stats.peakElo, 1244)
+
+        let rankedLoss = MultiplayerMatchResult(
+            matchId: "ranked-loss",
+            mode: .ranked,
+            opponentName: "Opponent",
+            localScore: 7,
+            opponentScore: 10,
+            didWin: false,
+            didDraw: false,
+            ratingDelta: -30,
+            newRating: 1214,
+            isRanked: true
+        )
+        stats.applyMatchResult(rankedLoss)
+        XCTAssertEqual(stats.winStreak, 0)
+        XCTAssertEqual(stats.bestWinStreak, 2)
+        XCTAssertEqual(stats.peakElo, 1244)
+
+        stats.recordGame(score: 6, won: true)
+        stats.recordGame(score: 8, won: true)
+        XCTAssertEqual(stats.winStreak, 2)
+        XCTAssertEqual(stats.bestWinStreak, 2)
+
+        stats.recordGame(score: 10, won: true)
+        XCTAssertEqual(stats.winStreak, 3)
+        XCTAssertEqual(stats.bestWinStreak, 3)
+    }
+}
+
+private func decodePlayerStats(_ json: String) throws -> PlayerStats {
+    try JSONDecoder().decode(PlayerStats.self, from: Data(json.utf8))
+}
+
+private func decodeLocalStatsSnapshot(_ json: String) throws -> LocalStatsSnapshot {
+    try JSONDecoder().decode(LocalStatsSnapshot.self, from: Data(json.utf8))
 }

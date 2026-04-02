@@ -1,6 +1,6 @@
 # Floppy Duck — Quality Roadmap
 
-> Current repo truth as of March 20, 2026.
+> Current repo truth as of April 2, 2026.
 
 ## ✅ Done
 
@@ -22,15 +22,17 @@
 - `GK.appStoreURL` refactored to `URL?` via `makeAppStoreURL(appID:)` — returns `nil` for placeholder `"000000000"`. Callers (`HomeView`, `GameContainerView`) handle nil safely.
 - Test coverage: `testPlaceholderAppStoreIDDoesNotProduceShareURL` and `testRealAppStoreIDProducesShareURL`.
 - `Info.plist` `CONVEX_BASE_URL` already set to production (`first-setter-743`). No dev URL present.
+- Backward-compatible stats decoding now preserves older local saves and inbound cloud stats after the addition of `peakElo`, `winStreak`, and `bestWinStreak`.
 - App Store metadata drafted in `docs/APPSTORE_METADATA.md`. Privacy policy and support pages live in `docs/`.
 
 ### Test Baseline
-- `xcodebuild test -project FloppyDuck.xcodeproj -scheme FloppyDuck -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:FloppyDuckTests -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY='' CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`
-- Current result: 106 tests passing.
+- `xcodebuild test -project FloppyDuck.xcodeproj -scheme FloppyDuck -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:FloppyDuckTests/PlayerStatsTests -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY='' CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`
+- Current result: 22 `PlayerStatsTests` passing after the stats migration fix.
 
 ## 🟡 Partial / Needs Verification
 
 ### Launch Hardening
+- Canonical launch runbook is now `testflight.md`.
 - App Store metadata docs exist, but final screenshots, StoreKit sandbox validation, and TestFlight/submission checks still need verification.
 - Head-to-head auth + multiplayer flows are implemented, but two-device smoke validation is still outstanding.
 - `GK.appStoreID` is still the placeholder `"000000000"` — needs the real ID once the app is registered in App Store Connect.
@@ -53,7 +55,7 @@
 - Verify screenshot CI output across all required sizes (run on device/simulator).
 - Run StoreKit sandbox validation plus two-device auth/multiplayer smoke tests.
 - Finalize TestFlight / App Store metadata and disclosure checks.
-- Complete release checklist items (see `RELEASE_CHECKLIST.md` audit annotations).
+- Complete the remaining manual launch items in `testflight.md`.
 
 ### 2. Multiplayer Resilience
 - Reconnect cleanly when a head-to-head match backgrounds and returns.

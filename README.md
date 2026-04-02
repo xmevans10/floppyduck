@@ -2,12 +2,18 @@
 
 A retro iOS flappy-style game built with SpriteKit + SwiftUI.
 
-## Current Status (March 20, 2026)
+## Current Status (April 2, 2026)
 
 - `Shipped`: Classic solo mode, VS Bot ladder, shop, stats, settings, controller-wired gameplay, leaderboard polish, accessibility labels, haptics/audio polish.
 - `Implemented`: Head-to-head multiplayer contracts (queue/room/matches/ratings), guest + Apple identity flows, and authoritative result polling.
-- `In Hardening`: Two-device smoke validation, launch-screen artwork hookup, real App Store URL, screenshot verification, and final metadata/compliance checks.
+- `In Hardening`: Two-device smoke validation, real App Store URL, screenshot verification, StoreKit/App Store Connect reconciliation, and final metadata/compliance checks.
 - `Already In Repo`: App icon set and privacy manifest.
+
+## Source Of Truth
+
+- Launch readiness: [testflight.md](/Users/xanderevans/Documents/floppyduck/testflight.md)
+- App Store copy and IAP inventory: [docs/APPSTORE_METADATA.md](/Users/xanderevans/Documents/floppyduck/docs/APPSTORE_METADATA.md)
+- Business/operator playbooks: [marketing.md](/Users/xanderevans/Documents/floppyduck/marketing.md), [product.md](/Users/xanderevans/Documents/floppyduck/product.md), [research.md](/Users/xanderevans/Documents/floppyduck/research.md), [tracking.md](/Users/xanderevans/Documents/floppyduck/tracking.md), [growth.md](/Users/xanderevans/Documents/floppyduck/growth.md), [support.md](/Users/xanderevans/Documents/floppyduck/support.md), [monetization.md](/Users/xanderevans/Documents/floppyduck/monetization.md)
 
 ## Requirements
 
@@ -36,7 +42,7 @@ A retro iOS flappy-style game built with SpriteKit + SwiftUI.
 - `Shipped` `Classic` - Solo endless run.
 - `Shipped` `VS Bot` - Bot ladder progression.
 - `Implemented` `Head to Head` - Quick Play / Ranked / Private Room UI + Convex contract wiring.
-- `In Hardening` `Launch readiness` - Smoke validation, launch-screen completion, screenshot verification, and release checklist completion.
+- `In Hardening` `Launch readiness` - Smoke validation, screenshot verification, and TestFlight/App Store completion.
 
 ## Project Structure
 
@@ -67,12 +73,12 @@ FloppyDuck/
 ### What remains to ship
 
 - End-to-end release smoke tests (auth + multiplayer) across two real devices.
-- Launch-screen artwork wiring plus screenshot verification.
+- Screenshot verification across required sizes.
 - Metadata, StoreKit, and compliance completion for TestFlight/App Store submission.
 
 ## Roadmap
 
-- Launch hardening checklist: real App Store URL, launch-screen artwork wiring, screenshot verification, StoreKit sandbox pass.
+- Launch hardening: real App Store URL, screenshot verification, StoreKit sandbox pass, and TestFlight/App Store Connect completion.
 - Multiplayer resilience: reconnect handling, abandoned-match timeout UX, leaderboard pagination.
 - Gameplay/performance: deterministic dynamic gaps, draw-call batching, on-device profiling.
 

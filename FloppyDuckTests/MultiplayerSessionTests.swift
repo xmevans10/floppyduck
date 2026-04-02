@@ -275,4 +275,8 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] {
         []
     }
+
+    func syncBeatenBots(_ botIds: [String]) async throws {
+        // Not needed for these tests.
+    }
 }

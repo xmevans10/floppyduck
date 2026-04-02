@@ -255,12 +255,16 @@ final class BotController {
                 }
             }
 
-            // Pipe collision — no plot armor, bot dies if it clips a pipe
-            if abs(dist) < GK.pipeWidth / 2 + botR * 0.6 {
+            // Match GameScene's cap-aware pipe collider geometry:
+            // top/bottom caps use a 26pt-high body that intrudes 24pt into the gap,
+            // and caps are slightly wider than the pipe body.
+            let horizontalEnvelope = (GK.pipeWidth + 4) / 2 + botR
+            if abs(dist) < horizontalEnvelope {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     let gapY = trigger.position.y
-                    let gapTop = gapY + gap / 2 - 14
-                    let gapBottom = gapY - gap / 2 + 14
+                    let capInset: CGFloat = 24
+                    let gapTop = gapY + gap / 2 - capInset
+                    let gapBottom = gapY - gap / 2 + capInset
                     if posY + botR > gapTop || posY - botR < gapBottom {
                         die()
                         return

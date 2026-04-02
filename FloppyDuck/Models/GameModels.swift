@@ -145,6 +145,23 @@ struct LocalStatsSnapshot: Hashable, Codable {
     let winStreak: Int
     let bestWinStreak: Int
 
+    enum CodingKeys: String, CodingKey {
+        case username
+        case gamesPlayed
+        case wins
+        case losses
+        case bestScore
+        case totalScore
+        case elo
+        case bread
+        case totalBreadCollected
+        case recentScores
+        case beatenBots
+        case peakElo
+        case winStreak
+        case bestWinStreak
+    }
+
     init(username: String, stats: PlayerStats) {
         self.username = username
         self.gamesPlayed = stats.gamesPlayed
@@ -160,6 +177,66 @@ struct LocalStatsSnapshot: Hashable, Codable {
         self.peakElo = stats.peakElo
         self.winStreak = stats.winStreak
         self.bestWinStreak = stats.bestWinStreak
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let username = try container.decode(String.self, forKey: .username)
+        let gamesPlayed = try container.decodeIfPresent(Int.self, forKey: .gamesPlayed) ?? 0
+        let wins = try container.decodeIfPresent(Int.self, forKey: .wins) ?? 0
+        let losses = try container.decodeIfPresent(Int.self, forKey: .losses) ?? 0
+        let bestScore = try container.decodeIfPresent(Int.self, forKey: .bestScore) ?? 0
+        let totalScore = try container.decodeIfPresent(Int.self, forKey: .totalScore) ?? 0
+        let elo = try container.decodeIfPresent(Int.self, forKey: .elo) ?? 1200
+        let bread = try container.decodeIfPresent(Int.self, forKey: .bread) ?? 0
+        let totalBreadCollected = try container.decodeIfPresent(Int.self, forKey: .totalBreadCollected) ?? 0
+        let recentScores = try container.decodeIfPresent([Int].self, forKey: .recentScores) ?? []
+        let beatenBots = try container.decodeIfPresent([String].self, forKey: .beatenBots) ?? []
+        let winStreak = try container.decodeIfPresent(Int.self, forKey: .winStreak) ?? 0
+        let bestWinStreak = PlayerStats.normalizedBestWinStreak(
+            winStreak: winStreak,
+            bestWinStreak: try container.decodeIfPresent(Int.self, forKey: .bestWinStreak)
+        )
+
+        self.init(
+            username: username,
+            stats: PlayerStats(
+                gamesPlayed: gamesPlayed,
+                wins: wins,
+                losses: losses,
+                bestScore: bestScore,
+                totalScore: totalScore,
+                elo: elo,
+                bread: bread,
+                totalBreadCollected: totalBreadCollected,
+                recentScores: recentScores,
+                beatenBots: beatenBots,
+                peakElo: PlayerStats.normalizedPeakElo(
+                    elo: elo,
+                    peakElo: try container.decodeIfPresent(Int.self, forKey: .peakElo)
+                ),
+                winStreak: winStreak,
+                bestWinStreak: bestWinStreak
+            )
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(username, forKey: .username)
+        try container.encode(gamesPlayed, forKey: .gamesPlayed)
+        try container.encode(wins, forKey: .wins)
+        try container.encode(losses, forKey: .losses)
+        try container.encode(bestScore, forKey: .bestScore)
+        try container.encode(totalScore, forKey: .totalScore)
+        try container.encode(elo, forKey: .elo)
+        try container.encode(bread, forKey: .bread)
+        try container.encode(totalBreadCollected, forKey: .totalBreadCollected)
+        try container.encode(recentScores, forKey: .recentScores)
+        try container.encode(beatenBots, forKey: .beatenBots)
+        try container.encode(peakElo, forKey: .peakElo)
+        try container.encode(winStreak, forKey: .winStreak)
+        try container.encode(bestWinStreak, forKey: .bestWinStreak)
     }
 
     var asPlayerStats: PlayerStats {
@@ -360,6 +437,115 @@ struct PlayerStats: Codable, Hashable {
     var peakElo: Int = 1200       // all-time highest elo
     var winStreak: Int = 0        // current consecutive wins
     var bestWinStreak: Int = 0    // best ever win streak
+
+    enum CodingKeys: String, CodingKey {
+        case gamesPlayed
+        case wins
+        case losses
+        case bestScore
+        case totalScore
+        case elo
+        case bread
+        case totalBreadCollected
+        case recentScores
+        case beatenBots
+        case peakElo
+        case winStreak
+        case bestWinStreak
+    }
+
+    init(gamesPlayed: Int = 0,
+         wins: Int = 0,
+         losses: Int = 0,
+         bestScore: Int = 0,
+         totalScore: Int = 0,
+         elo: Int = 1200,
+         bread: Int = 0,
+         totalBreadCollected: Int = 0,
+         recentScores: [Int] = [],
+         beatenBots: [String] = [],
+         peakElo: Int = 1200,
+         winStreak: Int = 0,
+         bestWinStreak: Int = 0) {
+        self.gamesPlayed = gamesPlayed
+        self.wins = wins
+        self.losses = losses
+        self.bestScore = bestScore
+        self.totalScore = totalScore
+        self.elo = elo
+        self.bread = bread
+        self.totalBreadCollected = totalBreadCollected
+        self.recentScores = recentScores
+        self.beatenBots = beatenBots
+        self.peakElo = Self.normalizedPeakElo(elo: elo, peakElo: peakElo)
+        self.winStreak = winStreak
+        self.bestWinStreak = Self.normalizedBestWinStreak(
+            winStreak: winStreak,
+            bestWinStreak: bestWinStreak
+        )
+    }
+
+    static func normalizedPeakElo(elo: Int, peakElo: Int?) -> Int {
+        max(elo, peakElo ?? elo)
+    }
+
+    static func normalizedBestWinStreak(winStreak: Int, bestWinStreak: Int?) -> Int {
+        max(winStreak, bestWinStreak ?? winStreak)
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let gamesPlayed = try container.decodeIfPresent(Int.self, forKey: .gamesPlayed) ?? 0
+        let wins = try container.decodeIfPresent(Int.self, forKey: .wins) ?? 0
+        let losses = try container.decodeIfPresent(Int.self, forKey: .losses) ?? 0
+        let bestScore = try container.decodeIfPresent(Int.self, forKey: .bestScore) ?? 0
+        let totalScore = try container.decodeIfPresent(Int.self, forKey: .totalScore) ?? 0
+        let elo = try container.decodeIfPresent(Int.self, forKey: .elo) ?? 1200
+        let bread = try container.decodeIfPresent(Int.self, forKey: .bread) ?? 0
+        let totalBreadCollected = try container.decodeIfPresent(Int.self, forKey: .totalBreadCollected) ?? 0
+        let recentScores = try container.decodeIfPresent([Int].self, forKey: .recentScores) ?? []
+        let beatenBots = try container.decodeIfPresent([String].self, forKey: .beatenBots) ?? []
+        let winStreak = try container.decodeIfPresent(Int.self, forKey: .winStreak) ?? 0
+
+        self.init(
+            gamesPlayed: gamesPlayed,
+            wins: wins,
+            losses: losses,
+            bestScore: bestScore,
+            totalScore: totalScore,
+            elo: elo,
+            bread: bread,
+            totalBreadCollected: totalBreadCollected,
+            recentScores: recentScores,
+            beatenBots: beatenBots,
+            peakElo: Self.normalizedPeakElo(
+                elo: elo,
+                peakElo: try container.decodeIfPresent(Int.self, forKey: .peakElo)
+            ),
+            winStreak: winStreak,
+            bestWinStreak: Self.normalizedBestWinStreak(
+                winStreak: winStreak,
+                bestWinStreak: try container.decodeIfPresent(Int.self, forKey: .bestWinStreak)
+            )
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(gamesPlayed, forKey: .gamesPlayed)
+        try container.encode(wins, forKey: .wins)
+        try container.encode(losses, forKey: .losses)
+        try container.encode(bestScore, forKey: .bestScore)
+        try container.encode(totalScore, forKey: .totalScore)
+        try container.encode(elo, forKey: .elo)
+        try container.encode(bread, forKey: .bread)
+        try container.encode(totalBreadCollected, forKey: .totalBreadCollected)
+        try container.encode(recentScores, forKey: .recentScores)
+        try container.encode(beatenBots, forKey: .beatenBots)
+        try container.encode(peakElo, forKey: .peakElo)
+        try container.encode(winStreak, forKey: .winStreak)
+        try container.encode(bestWinStreak, forKey: .bestWinStreak)
+    }
 
     var winRate: Double {
         guard gamesPlayed > 0 else { return 0 }

@@ -445,6 +445,8 @@ private actor TwoPlayerMock: MultiplayerBackendClient {
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] {
         Array(leaderboardEntries.prefix(limit))
     }
+
+    func syncBeatenBots(_ botIds: [String]) async throws {}
 }
 
 private actor PendingFinalizationBackend: MultiplayerBackendClient {
@@ -521,6 +523,8 @@ private actor PendingFinalizationBackend: MultiplayerBackendClient {
     }
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] { [] }
+
+    func syncBeatenBots(_ botIds: [String]) async throws {}
 }
 
 private actor RetryingBootstrapBackend: MultiplayerBackendClient {
@@ -597,6 +601,8 @@ private actor RetryingBootstrapBackend: MultiplayerBackendClient {
     }
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] { [] }
+
+    func syncBeatenBots(_ botIds: [String]) async throws {}
 }
 
 private final class MockIdentityStore: IdentityStoring {

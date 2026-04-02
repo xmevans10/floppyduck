@@ -503,7 +503,7 @@ actor ConvexClient: MultiplayerBackendClient {
         let username = string(in: source, keys: ["username", "name", "displayName", "display_name"]) ?? "Player"
 
         let statsSource = dictionary(in: source, keys: ["stats", "playerStats", "player_stats"]) ?? source
-        let stats = parseStats(from: statsSource)
+        let stats = Self.parsePlayerStats(from: statsSource)
 
         return RemotePlayerProfile(
             userId: userId,
@@ -513,18 +513,82 @@ actor ConvexClient: MultiplayerBackendClient {
         )
     }
 
-    private func parseStats(from source: [String: Any]) -> PlayerStats {
-        PlayerStats(
-            gamesPlayed: int(in: source, keys: ["gamesPlayed", "games_played"]) ?? 0,
-            wins: int(in: source, keys: ["wins"]) ?? 0,
-            losses: int(in: source, keys: ["losses"]) ?? 0,
-            bestScore: int(in: source, keys: ["bestScore", "best_score"]) ?? 0,
-            totalScore: int(in: source, keys: ["totalScore", "total_score"]) ?? 0,
-            elo: int(in: source, keys: ["elo", "rating"]) ?? 1200,
-            bread: int(in: source, keys: ["bread"]) ?? 0,
-            totalBreadCollected: int(in: source, keys: ["totalBreadCollected", "total_bread_collected"]) ?? 0,
-            recentScores: intArray(in: source, keys: ["recentScores", "recent_scores"]),
-            beatenBots: stringArray(in: source, keys: ["beatenBots", "beaten_bots"])
+    static func parsePlayerStats(from source: [String: Any]) -> PlayerStats {
+        func intValue(_ keys: [String]) -> Int? {
+            for key in keys {
+                if let value = source[key] as? Int {
+                    return value
+                }
+                if let value = source[key] as? Double {
+                    return Int(value)
+                }
+                if let value = source[key] as? NSNumber {
+                    return value.intValue
+                }
+                if let value = source[key] as? String, let int = Int(value) {
+                    return int
+                }
+            }
+            return nil
+        }
+
+        func intArrayValue(_ keys: [String]) -> [Int] {
+            for key in keys {
+                if let values = source[key] as? [Int] {
+                    return values
+                }
+                if let values = source[key] as? [Any] {
+                    return values.compactMap {
+                        if let int = $0 as? Int { return int }
+                        if let double = $0 as? Double { return Int(double) }
+                        if let number = $0 as? NSNumber { return number.intValue }
+                        if let string = $0 as? String { return Int(string) }
+                        return nil
+                    }
+                }
+            }
+            return []
+        }
+
+        func stringArrayValue(_ keys: [String]) -> [String] {
+            for key in keys {
+                if let values = source[key] as? [String] {
+                    return values
+                }
+                if let values = source[key] as? [Any] {
+                    return values.compactMap {
+                        if let string = $0 as? String { return string }
+                        if let number = $0 as? NSNumber { return number.stringValue }
+                        return nil
+                    }
+                }
+            }
+            return []
+        }
+
+        let elo = intValue(["elo", "rating"]) ?? 1200
+        let winStreak = intValue(["winStreak", "win_streak"]) ?? 0
+
+        return PlayerStats(
+            gamesPlayed: intValue(["gamesPlayed", "games_played"]) ?? 0,
+            wins: intValue(["wins"]) ?? 0,
+            losses: intValue(["losses"]) ?? 0,
+            bestScore: intValue(["bestScore", "best_score"]) ?? 0,
+            totalScore: intValue(["totalScore", "total_score"]) ?? 0,
+            elo: elo,
+            bread: intValue(["bread"]) ?? 0,
+            totalBreadCollected: intValue(["totalBreadCollected", "total_bread_collected"]) ?? 0,
+            recentScores: intArrayValue(["recentScores", "recent_scores"]),
+            beatenBots: stringArrayValue(["beatenBots", "beaten_bots"]),
+            peakElo: PlayerStats.normalizedPeakElo(
+                elo: elo,
+                peakElo: intValue(["peakElo", "peak_elo"])
+            ),
+            winStreak: winStreak,
+            bestWinStreak: PlayerStats.normalizedBestWinStreak(
+                winStreak: winStreak,
+                bestWinStreak: intValue(["bestWinStreak", "best_win_streak"])
+            )
         )
     }
 
@@ -735,7 +799,7 @@ actor ConvexClient: MultiplayerBackendClient {
     }
 }
 
-private extension LocalStatsSnapshot {
+extension LocalStatsSnapshot {
     var asDictionary: [String: Any] {
         [
             "username": username,
@@ -749,6 +813,9 @@ private extension LocalStatsSnapshot {
             "totalBreadCollected": totalBreadCollected,
             "recentScores": recentScores,
             "beatenBots": beatenBots,
+            "peakElo": peakElo,
+            "winStreak": winStreak,
+            "bestWinStreak": bestWinStreak,
         ]
     }
 }
