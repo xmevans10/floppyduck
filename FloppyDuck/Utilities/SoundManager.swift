@@ -51,8 +51,16 @@ final class SoundManager {
     }
 
     private init() {
-        setupSession()
-        buildSounds()
+        // Dispatch heavy audio setup to the dedicated serial queue so the
+        // main thread isn't blocked during lazy singleton init (fixes
+        // APPLE-IOS-1 / APPLE-IOS-2 App Hang: buildSounds + prepareToPlay
+        // was running synchronously on whatever thread first accessed .shared).
+        // All public methods already dispatch to audioQueue, so they naturally
+        // serialize behind this work.
+        audioQueue.async { [self] in
+            self.setupSession()
+            self.buildSounds()
+        }
     }
 
     /// Warm up the audio engine (call at app launch).
