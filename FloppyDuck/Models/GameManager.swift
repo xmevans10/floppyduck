@@ -47,6 +47,16 @@ final class GameManager: ObservableObject {
 
     func navigate(to route: AppRoute) {
         path.append(route)
+
+        // Analytics: track navigation-based events
+        switch route {
+        case .shop: AnalyticsManager.shared.trackShopViewed()
+        case .stats: AnalyticsManager.shared.trackStatsViewed()
+        case .leaderboard: AnalyticsManager.shared.trackLeaderboardViewed()
+        case .botLadder: AnalyticsManager.shared.trackModeSelected(mode: "botLadder")
+        case .multiplayerModes: AnalyticsManager.shared.trackModeSelected(mode: "multiplayer")
+        default: break
+        }
     }
 
     func goHome() {
@@ -56,6 +66,11 @@ final class GameManager: ObservableObject {
     /// Launch a game via fullScreenCover
     func startGame(_ config: GameModeConfig) {
         activeGameConfig = config
+        AnalyticsManager.shared.trackGameStarted(
+            mode: config.mode.rawValue,
+            seed: config.seed,
+            isRanked: config.isRanked
+        )
     }
 
     /// Dismiss the game overlay and return home
@@ -71,10 +86,12 @@ final class GameManager: ObservableObject {
             return false
         }
         path.append(AppRoute.matchmaking(mode))
+        AnalyticsManager.shared.trackMultiplayerQueueStarted(mode: mode.rawValue)
         return true
     }
 
     func startHeadToHead(matchAssignment: MultiplayerMatchAssignment) {
+        AnalyticsManager.shared.trackMultiplayerMatchFound(mode: matchAssignment.mode?.rawValue ?? "unknown")
         let config = GameModeConfig(
             mode: .headToHead,
             seed: matchAssignment.seed,
@@ -164,6 +181,12 @@ final class GameManager: ObservableObject {
         guard result.isFinalized else { return }
         stats.applyMatchResult(result)
         saveStats()
+        AnalyticsManager.shared.trackMultiplayerMatchFinished(
+            mode: result.mode?.rawValue ?? "headToHead",
+            won: result.didWin,
+            score: result.localScore,
+            opponentScore: result.opponentScore
+        )
     }
 
     func applyRemoteProfile(_ profile: RemotePlayerProfile) {
@@ -213,6 +236,8 @@ final class GameManager: ObservableObject {
         stats.recordGame(score: score, won: won)
         checkDailyStreak()
         saveStats()
+        let mode = activeGameConfig?.mode.rawValue ?? "classic"
+        AnalyticsManager.shared.trackGameCompleted(mode: mode, score: score, won: won)
     }
 
     func checkDailyStreak() {
@@ -255,6 +280,7 @@ final class GameManager: ObservableObject {
     func beatBot(_ botId: String) {
         stats.beatBot(botId)
         saveStats()
+        AnalyticsManager.shared.trackBotMatchCompleted(botId: botId, won: true, score: 0)
         // Auto-unlock any battle banner tied to this bot
         BannerManager.shared.checkBotRewardUnlock(beatenBotId: botId)
 
@@ -288,6 +314,7 @@ final class GameManager: ObservableObject {
     /// Start a bot ladder match — uses the bot's fixed seed so the same
     /// pipe course is generated every attempt against this bot.
     func startBotLadderMatch(_ bot: BotCharacter) {
+        AnalyticsManager.shared.trackBotMatchStarted(botId: bot.id, botName: bot.name, targetScore: bot.targetScore)
         let config = GameModeConfig(
             mode: .vsBot,
             seed: bot.seed,

@@ -58,6 +58,7 @@ final class BannerManager: ObservableObject {
         guard ownedBanners.contains(banner) else { return }
         selectedBanner = banner
         saveState()
+        AnalyticsManager.shared.trackBannerEquipped(bannerId: banner.rawValue)
     }
 
     // MARK: - Bot reward unlock
@@ -120,6 +121,8 @@ final class BannerManager: ObservableObject {
             #endif
         }
 
+        AnalyticsManager.shared.trackIAPPurchaseStarted(productId: productID, itemType: "banner")
+
         do {
             let result = try await product.purchase()
             switch result {
@@ -127,6 +130,7 @@ final class BannerManager: ObservableObject {
                 let transaction = try checkVerified(verification)
                 grantBanner(banner)
                 await transaction.finish()
+                AnalyticsManager.shared.trackIAPPurchaseCompleted(productId: productID, itemType: "banner")
             case .userCancelled:
                 break
             case .pending:
@@ -142,13 +146,16 @@ final class BannerManager: ObservableObject {
     }
 
     func restorePurchases() async {
+        var restoredCount = 0
         for await result in Transaction.currentEntitlements {
             if let transaction = try? checkVerified(result) {
                 if let banner = BattleBanner.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantBanner(banner)
+                    restoredCount += 1
                 }
             }
         }
+        AnalyticsManager.shared.trackIAPRestoreCompleted(itemType: "banner", count: restoredCount)
     }
 
     // MARK: - Helpers

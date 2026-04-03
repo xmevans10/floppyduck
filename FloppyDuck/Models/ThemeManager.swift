@@ -58,6 +58,7 @@ final class ThemeManager: ObservableObject {
         guard ownedThemes.contains(theme) else { return }
         selectedTheme = theme
         saveState()
+        AnalyticsManager.shared.trackThemeEquipped(themeId: theme.rawValue)
     }
 
     // MARK: - StoreKit 2
@@ -95,6 +96,8 @@ final class ThemeManager: ObservableObject {
             #endif
         }
 
+        AnalyticsManager.shared.trackIAPPurchaseStarted(productId: productID, itemType: "theme")
+
         do {
             let result = try await product.purchase()
             switch result {
@@ -102,6 +105,7 @@ final class ThemeManager: ObservableObject {
                 let transaction = try checkVerified(verification)
                 grantTheme(theme)
                 await transaction.finish()
+                AnalyticsManager.shared.trackIAPPurchaseCompleted(productId: productID, itemType: "theme")
             case .userCancelled:
                 break
             case .pending:
@@ -117,13 +121,16 @@ final class ThemeManager: ObservableObject {
     }
 
     func restorePurchases() async {
+        var restoredCount = 0
         for await result in Transaction.currentEntitlements {
             if let transaction = try? checkVerified(result) {
                 if let theme = BackgroundTheme.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantTheme(theme)
+                    restoredCount += 1
                 }
             }
         }
+        AnalyticsManager.shared.trackIAPRestoreCompleted(itemType: "theme", count: restoredCount)
     }
 
     // MARK: - Helpers

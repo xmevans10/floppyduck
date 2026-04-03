@@ -130,12 +130,19 @@ final class AuthManager: ObservableObject {
     }
 
     func continueAsGuest() async {
+        let isFirstOnboarding = !identityStore.didCompleteAuthOnboarding
         await continueAsGuest(markOnboardingComplete: true, silentFailure: false)
+        if isFirstOnboarding {
+            AnalyticsManager.shared.trackOnboardingCompleted(method: "guest")
+        }
+        AnalyticsManager.shared.trackGuestBootstrapSucceeded()
     }
 
     func signInWithApple() async {
         isBusy = true
         defer { isBusy = false }
+
+        AnalyticsManager.shared.trackAppleSignInStarted()
 
         // Pre-flight: if we have a previous Apple User ID, check if the
         // credential is still valid (user may have revoked in Settings).
@@ -173,10 +180,15 @@ final class AuthManager: ObservableObject {
 
             identityStore.sessionToken = linkResponse.sessionToken
             identityStore.appleUserId = linkResponse.appleUserId ?? applePayload.appleUserId
+            if !identityStore.didCompleteAuthOnboarding {
+                AnalyticsManager.shared.trackOnboardingCompleted(method: "apple")
+            }
             identityStore.didCompleteAuthOnboarding = true
             if !identityStore.didMergeLocalStats || linkResponse.didMergeStats {
                 identityStore.didMergeLocalStats = true
             }
+            AnalyticsManager.shared.trackAppleSignInSucceeded()
+            AnalyticsManager.identify(userId: linkResponse.profile.userId, properties: ["provider": "apple"])
 
             // Verify the session token was actually persisted to Keychain.
             let readBack = identityStore.sessionToken

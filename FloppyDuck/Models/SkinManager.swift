@@ -57,6 +57,7 @@ final class SkinManager: ObservableObject {
         guard ownedSkins.contains(skin) else { return }
         selectedSkin = skin
         saveState()
+        AnalyticsManager.shared.trackSkinEquipped(skinId: skin.rawValue)
     }
 
     // MARK: - StoreKit 2
@@ -93,6 +94,8 @@ final class SkinManager: ObservableObject {
             #endif
         }
 
+        AnalyticsManager.shared.trackIAPPurchaseStarted(productId: productID, itemType: "skin")
+
         do {
             let result = try await product.purchase()
             switch result {
@@ -100,6 +103,7 @@ final class SkinManager: ObservableObject {
                 let transaction = try checkVerified(verification)
                 grantSkin(skin)
                 await transaction.finish()
+                AnalyticsManager.shared.trackIAPPurchaseCompleted(productId: productID, itemType: "skin")
             case .userCancelled:
                 break
             case .pending:
@@ -115,13 +119,16 @@ final class SkinManager: ObservableObject {
     }
 
     func restorePurchases() async {
+        var restoredCount = 0
         for await result in Transaction.currentEntitlements {
             if let transaction = try? checkVerified(result) {
                 if let skin = DuckSkin.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantSkin(skin)
+                    restoredCount += 1
                 }
             }
         }
+        AnalyticsManager.shared.trackIAPRestoreCompleted(itemType: "skin", count: restoredCount)
     }
 
     // MARK: - Helpers

@@ -1,4 +1,5 @@
 import SwiftUI
+import PostHog
 import Sentry
 
 @main
@@ -22,6 +23,9 @@ struct FloppyDuckApp: App {
             options.environment = "production"
             #endif
         }
+
+        AnalyticsManager.configure()
+        AnalyticsManager.shared.trackAppOpen()
 
         let manager = GameManager()
         let auth = AuthManager(gameManager: manager)
