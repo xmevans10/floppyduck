@@ -65,6 +65,7 @@ final class PixelIconFactory {
     private init() {}
 
     private var cache: [String: UIImage] = [:]
+    private let cacheLock = NSLock()
 
     /// Pre-renders commonly used icons on a background thread.
     func preWarm() {
@@ -84,9 +85,13 @@ final class PixelIconFactory {
     /// Get a pixel icon as UIImage
     func image(for icon: PixelIcon, pixelScale: CGFloat = 3.0) -> UIImage {
         let key = "\(icon.rawValue)_\(Int(pixelScale))"
-        if let cached = cache[key] { return cached }
+        cacheLock.lock()
+        if let cached = cache[key] { cacheLock.unlock(); return cached }
+        cacheLock.unlock()
         let img = renderIcon(icon, pixelSize: pixelScale)
+        cacheLock.lock()
         cache[key] = img
+        cacheLock.unlock()
         return img
     }
 

@@ -283,7 +283,7 @@ export const deleteAccount = mutation({
     ...identityArgs,
   },
   handler: async (ctx, args) => {
-    const user = await resolveUser(ctx, args, { requireLinked: true });
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
     const userId = user._id;
 
     // Delete all sessions for this user

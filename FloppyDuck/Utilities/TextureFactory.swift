@@ -23,15 +23,30 @@ final class TextureFactory {
 
     private var cache: [String: SKTexture] = [:]
     private var cacheOrder: [String] = []   // LRU eviction order
+    private let cacheLock = NSLock()
+
+    /// Thread-safe cache read.
+    private func cachedTexture(forKey key: String) -> SKTexture? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return cache[key]
+    }
 
     /// Removes all cached textures. Called automatically on memory warning.
     func clearCache() {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
         cache.removeAll()
         cacheOrder.removeAll()
     }
 
     /// Whether pre-warming has completed.
-    private(set) var isPreWarmed: Bool = false
+    private var _isPreWarmed: Bool = false
+    private let preWarmLock = NSLock()
+    private(set) var isPreWarmed: Bool {
+        get { preWarmLock.lock(); defer { preWarmLock.unlock() }; return _isPreWarmed }
+        set { preWarmLock.lock(); defer { preWarmLock.unlock() }; _isPreWarmed = newValue }
+    }
 
     /// Pre-generates the most commonly used textures on a background thread.
     /// Call early (e.g. during SplashView) to avoid hitches on first game start.
@@ -76,6 +91,8 @@ final class TextureFactory {
 
     /// Store a texture in cache with LRU eviction when over capacity.
     private func cacheStore(_ key: String, _ tex: SKTexture) {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
         cache[key] = tex
         cacheOrder.append(key)
         // Evict oldest entries when over capacity
@@ -90,7 +107,7 @@ final class TextureFactory {
     /// Pixel-art mallard duck (wing up, mid, down)
     func duckTexture(wingPhase: Int) -> SKTexture {
         let key = "duck_\(wingPhase)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderMallardDuck(wingPhase: wingPhase))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -100,7 +117,7 @@ final class TextureFactory {
     /// Bot ghost duck (tinted, semi-transparent)
     func botDuckTexture(wingPhase: Int) -> SKTexture {
         let key = "botduck_\(wingPhase)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderMallardDuck(wingPhase: wingPhase, ghost: true))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -112,7 +129,7 @@ final class TextureFactory {
     func pipeTexture(height: CGFloat) -> SKTexture {
         let masterKey = "pipe_master"
         let masterTex: SKTexture
-        if let cached = cache[masterKey] {
+        if let cached = cachedTexture(forKey: masterKey) {
             masterTex = cached
         } else {
             let tex = SKTexture(image: renderPipe(width: GK.pipeWidth, height: GK.worldHeight))
@@ -130,7 +147,7 @@ final class TextureFactory {
     /// Pipe cap with lip
     func pipeCapTexture() -> SKTexture {
         let key = "pipecap"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderPipeCap())
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -140,7 +157,7 @@ final class TextureFactory {
     /// Scrolling ground tile — park grass with flowers (pixel art)
     func groundTexture() -> SKTexture {
         let key = "ground"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderGround())
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -150,7 +167,7 @@ final class TextureFactory {
     /// Sky gradient background
     func skyTexture() -> SKTexture {
         let key = "sky"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderSky())
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -160,7 +177,7 @@ final class TextureFactory {
     /// Pixel-art cloud
     func cloudTexture() -> SKTexture {
         let key = "cloud"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderPixelCloud())
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -170,7 +187,7 @@ final class TextureFactory {
     /// Pixel-art park trees for parallax background
     func treesTexture() -> SKTexture {
         let key = "trees"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderPixelTrees())
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -180,7 +197,7 @@ final class TextureFactory {
     /// Pixel-art distant hills
     func hillsTexture() -> SKTexture {
         let key = "hills"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderPixelHills())
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -203,7 +220,7 @@ final class TextureFactory {
     /// individual SKShapeNodes per tile with a single SKSpriteNode.
     func groundDetailTexture(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int = 0) -> SKTexture {
         let key = "groundDetail_\(Int(tileWidth))_\(seed)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -214,7 +231,7 @@ final class TextureFactory {
     /// single SKSpriteNode.
     func starFieldTexture(width: CGFloat, height: CGFloat, count: Int = 40, seed: Int = 42) -> SKTexture {
         let key = "starField_\(Int(width))_\(Int(height))_\(count)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderStarField(width: width, height: height, count: count, seed: seed))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -226,7 +243,7 @@ final class TextureFactory {
     func glowCircleTexture(radius: CGFloat, color: UIColor) -> SKTexture {
         let r = Int(radius)
         let key = "glow_\(r)_\(color.description.hashValue)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderGlowCircle(radius: radius, color: color))
         tex.filteringMode = .linear
         cacheStore(key, tex)
@@ -334,7 +351,7 @@ final class TextureFactory {
     /// with palette shifts; paid themes get unique silhouettes.
     func themedHillsTexture(theme: BackgroundTheme) -> SKTexture {
         let key = "hills_\(theme.rawValue)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderThemedHills(theme: theme))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -344,7 +361,7 @@ final class TextureFactory {
     /// Theme-aware trees / midground texture.
     func themedTreesTexture(theme: BackgroundTheme) -> SKTexture {
         let key = "trees_\(theme.rawValue)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderThemedTrees(theme: theme))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -354,7 +371,7 @@ final class TextureFactory {
     /// Theme-aware foreground bush / element strip.
     func themedBushTexture(theme: BackgroundTheme) -> SKTexture {
         let key = "bushes_\(theme.rawValue)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderThemedBushes(theme: theme))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -366,7 +383,7 @@ final class TextureFactory {
     /// Duck texture for any skin (SpriteKit).
     func skinDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
         let key = "skin_\(skin.rawValue)_\(wingPhase)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -376,7 +393,7 @@ final class TextureFactory {
     /// Ghost/bot version of any skin.
     func skinBotDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
         let key = "skinbot_\(skin.rawValue)_\(wingPhase)"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -406,7 +423,7 @@ final class TextureFactory {
     /// Bread currency texture for SpriteKit
     func breadTexture() -> SKTexture {
         let key = "bread"
-        if let cached = cache[key] { return cached }
+        if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderBread())
         tex.filteringMode = .nearest
         cacheStore(key, tex)

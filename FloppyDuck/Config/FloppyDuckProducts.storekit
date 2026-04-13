@@ -78,6 +78,36 @@
       "productID" : "com.floppyduck.theme.pixelTokyo",
       "referenceName" : "Tokyo Background",
       "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "banner_neonTokyo",
+      "localizations" : [
+        {
+          "description" : "A neon-soaked Tokyo skyline battle banner.",
+          "displayName" : "Neon Tokyo Banner",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.floppyduck.banner.neonTokyo",
+      "referenceName" : "Neon Tokyo Banner",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "banner_cosmicRift",
+      "localizations" : [
+        {
+          "description" : "A deep-space cosmic rift battle banner.",
+          "displayName" : "Cosmic Rift Banner",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.floppyduck.banner.cosmicRift",
+      "referenceName" : "Cosmic Rift Banner",
+      "type" : "NonConsumable"
     }
   ],
   "settings" : {

@@ -4,7 +4,7 @@
 Floppy Duck
 
 ## Subtitle (30 chars max)
-Pixel Flap. Retro Quack.
+Tap to Flap. Beat 8 Bosses.
 
 ## Category
 Primary: Games → Casual
@@ -12,9 +12,9 @@ Secondary: Games → Action
 
 ## Description (4000 chars max)
 
-🦆 FLAP YOUR WAY TO GLORY!
+🦆 A flappy game with 8 boss ducks, real-time multiplayer, and collectible skins.
 
-Floppy Duck is a pixel-art flappy game with personality. Simple to learn, impossible to master — just tap to flap and dodge the pipes. But don't let the retro looks fool you: under the hood is a deep game with multiplayer, an 8-bot gauntlet, collectible skins, and a fiercely competitive leaderboard.
+Simple to learn, impossible to master. Beat the bots. Challenge your friends. Collect them all. Every pixel, every sound, every animation is generated from code — no stock assets, no borrowed sprites.
 
 🎮 GAME MODES
 
@@ -26,7 +26,7 @@ Floppy Duck is a pixel-art flappy game with personality. Simple to learn, imposs
 
 🦆 COLLECT & CUSTOMIZE
 
-9 pixel-art duck skins, each with unique accessories hand-crafted in code. Cowboys, wizards, pirates, aliens, and more. Buy skins with bread (earned by playing) or unlock the rarest ones by conquering the bot ladder.
+A growing collection of pixel-art duck skins, each with unique accessories hand-crafted in code. Cowboys, wizards, pirates, aliens, and more. Buy skins with bread (earned by playing) or unlock the rarest ones by conquering the bot ladder.
 
 Your CLOSET keeps all your skins organized. Equip your favorite before each flight.
 
@@ -36,14 +36,12 @@ Track your best score, average, win rate, ELO rating, and more. Compare your ski
 
 🎵 PURE RETRO
 
-Every pixel, every sound, every animation is generated from code. No stock assets. No borrowed sprites. The entire visual and audio experience is programmatically crafted — from 8-bit synthesized quacks to hand-drawn pixel ducks.
+The entire visual and audio experience is programmatically crafted — from 8-bit synthesized quacks to hand-drawn pixel ducks. Every asset made from code.
 
-Built with SpriteKit, SwiftUI, and love.
-
-Download now. It's free. 🍞
+Think you can beat THE DUCK? Prove it. Download now. It's free. 🍞
 
 ## Keywords (100 chars max)
-flappy,duck,pixel,retro,8-bit,multiplayer,casual,arcade,skins,bird,game,quack,bot,ladder,pvp
+flappy,bird,8-bit,multiplayer,skins,arcade,pvp,tap,endless,boss,collect,unlock,ranked,streak,1v1,fly
 
 ## Promotional Text (170 chars, can be updated without review)
 New update: 8 bots with unique personalities & skins! Beat them to unlock exclusive pixel-art ducks. Plus: skin closet, leaderboard, daily streaks & more. 🦆

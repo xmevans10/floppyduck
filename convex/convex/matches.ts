@@ -11,6 +11,9 @@ const identityArgs = {
 
 const K_FACTOR = 32;
 
+// Server-side score cap — expert tier starts at 30, 500 is absurdly generous.
+const MAX_SCORE = 500;
+
 export const reportScore = mutation({
   args: {
     matchId: v.id("matches"),
@@ -29,7 +32,7 @@ export const reportScore = mutation({
     const side = userSide(match, user._id);
 
     await ctx.db.patch(match._id, {
-      [side === "p1" ? "p1Score" : "p2Score"]: Math.max(0, Math.floor(args.score)),
+      [side === "p1" ? "p1Score" : "p2Score"]: Math.min(MAX_SCORE, Math.max(0, Math.floor(args.score))),
       updatedAt: Date.now(),
     });
 
@@ -89,8 +92,8 @@ export const finishMatch = mutation({
     const now = Date.now();
 
     const patch = side === "p1"
-      ? { p1Score: Math.max(0, Math.floor(args.score)), p1Finished: true, updatedAt: now }
-      : { p2Score: Math.max(0, Math.floor(args.score)), p2Finished: true, updatedAt: now };
+      ? { p1Score: Math.min(MAX_SCORE, Math.max(0, Math.floor(args.score))), p1Finished: true, updatedAt: now }
+      : { p2Score: Math.min(MAX_SCORE, Math.max(0, Math.floor(args.score))), p2Finished: true, updatedAt: now };
 
     await ctx.db.patch(match._id, patch);
 
