@@ -4,21 +4,23 @@ struct AuthOnboardingView: View {
     @EnvironmentObject var manager: GameManager
     @EnvironmentObject var auth: AuthManager
 
-    /// Tracks which auth button is actively loading (fix: dual-spinner bug)
     @State private var busyAction: AuthAction?
+    @State private var username: String = ""
 
     private let icons = PixelIconFactory.shared
 
-    private enum AuthAction {
-        case guest, apple
+    private enum AuthAction { case guest, apple }
+
+    private var isUsernameValid: Bool {
+        let trimmed = username.trimmingCharacters(in: .whitespaces)
+        return trimmed.count >= 2 && trimmed.count <= 16
     }
 
     var body: some View {
         ZStack {
             LinearGradient(
                 colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
-                startPoint: .top,
-                endPoint: .bottom
+                startPoint: .top, endPoint: .bottom
             )
             .ignoresSafeArea()
 
@@ -35,10 +37,34 @@ struct AuthOnboardingView: View {
                     .foregroundColor(.white)
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
 
-                Text("Choose how to play.")
-                    .font(.custom(GK.pixelFontName, size: 8))
-                    .foregroundColor(.white.opacity(0.85))
+                // Username input
+                VStack(spacing: 6) {
+                    Text("CHOOSE YOUR NAME")
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(.white.opacity(0.85))
 
+                    PixelTextField(text: $username, pixelFontName: GK.pixelFontName,
+                                   fontSize: 14, maxLength: 16)
+                        .frame(height: 44)
+                        .padding(.horizontal, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(GK.Colors.panelBorder.opacity(0.2), lineWidth: 2)
+                                )
+                        )
+
+                    if !username.isEmpty && !isUsernameValid {
+                        Text("2–16 characters")
+                            .font(.custom(GK.pixelFontName, size: 6))
+                            .foregroundColor(GK.Colors.buttonRed.opacity(0.8))
+                    }
+                }
+                .padding(.horizontal, 26)
+
+                // Auth buttons
                 VStack(spacing: 10) {
                     authButton(
                         icon: .classic,
@@ -46,6 +72,7 @@ struct AuthOnboardingView: View {
                         subtitle: "Classic + Quick Play only",
                         action: .guest
                     ) {
+                        commitUsername()
                         busyAction = .guest
                         Task {
                             await auth.continueAsGuest()
@@ -59,6 +86,7 @@ struct AuthOnboardingView: View {
                         subtitle: "Unlock all modes + cloud sync",
                         action: .apple
                     ) {
+                        commitUsername()
                         busyAction = .apple
                         Task {
                             await auth.signInWithApple()
@@ -67,8 +95,9 @@ struct AuthOnboardingView: View {
                     }
                 }
                 .padding(.horizontal, 26)
+                .opacity(isUsernameValid ? 1 : 0.45)
 
-                Text("Classic and Quick Play are free. Sign in to unlock all features.")
+                Text("Classic and Quick Play are free.\nSign in to unlock all features.")
                     .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(.white.opacity(0.7))
                     .multilineTextAlignment(.center)
@@ -87,11 +116,17 @@ struct AuthOnboardingView: View {
         }
     }
 
-    private func authButton(icon: PixelIcon,
-                            title: String,
-                            subtitle: String,
-                            action: AuthAction,
-                            onTap: @escaping () -> Void) -> some View {
+    // MARK: - Helpers
+
+    private func commitUsername() {
+        let trimmed = username.trimmingCharacters(in: .whitespaces)
+        if trimmed.count >= 2 {
+            manager.playerName = trimmed
+        }
+    }
+
+    private func authButton(icon: PixelIcon, title: String, subtitle: String,
+                            action: AuthAction, onTap: @escaping () -> Void) -> some View {
         let isThisBusy = busyAction == action
         let anyBusy = busyAction != nil
 
@@ -115,8 +150,7 @@ struct AuthOnboardingView: View {
                 Spacer()
 
                 if isThisBusy {
-                    ProgressView()
-                        .tint(.white)
+                    ProgressView().tint(.white)
                 } else {
                     Image(uiImage: icons.image(for: .play))
                         .interpolation(.none)
@@ -137,7 +171,7 @@ struct AuthOnboardingView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(anyBusy)
+        .disabled(anyBusy || !isUsernameValid)
         .opacity(anyBusy && !isThisBusy ? 0.5 : (anyBusy ? 0.8 : 1))
         .accessibilityLabel(title)
     }
