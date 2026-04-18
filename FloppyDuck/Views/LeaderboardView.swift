@@ -114,7 +114,7 @@ struct LeaderboardView: View {
                         .refreshable {
                             await loadLeaderboard()
                         }
-                        .onChange(of: entries) { _ in
+                        .onChange(of: entries) { _, _ in
                             scrollToCurrentPlayer(proxy: proxy)
                         }
                     }

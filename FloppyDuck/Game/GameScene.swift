@@ -157,9 +157,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.gravity = CGVector(dx: 0, dy: GK.gravity / 60)
         physicsWorld.contactDelegate = self
 
-        // Pre-warm haptics + audio so first trigger has zero latency
+        // Pre-warm haptics. Audio is prepared once at app launch.
         Haptic.warmUp()
-        SoundManager.shared.prepare()
         // Item 11: Set active skin for per-skin sound variants
         SoundManager.shared.setActiveSkin(playerSkin)
 

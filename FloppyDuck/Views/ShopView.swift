@@ -508,12 +508,6 @@ struct ShopView: View {
         let purchasing = bannerManager.purchasing == banner
         let canAffordNormal = (banner.breadPrice ?? 0) <= manager.stats.bread
 
-        // Check if bot reward is unlocked
-        let botUnlocked: Bool = {
-            guard banner.isBotReward, let botId = banner.requiredBotId else { return false }
-            return manager.isBotBeaten(botId)
-        }()
-
         return Button {
             localErrorMessage = nil
 

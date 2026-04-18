@@ -1,3 +1,4 @@
+import Foundation
 import PostHog
 
 /// Lightweight PostHog wrapper — typed event methods for every tracked event.
@@ -9,10 +10,13 @@ final class AnalyticsManager {
 
     /// Call once from FloppyDuckApp.init() after Sentry setup.
     static func configure() {
-        let config = PostHogConfig(apiKey: "phc_DSZGupxsSlreIJxdSzEHhGjnQbRLVtvrSEE2TahVoad")
-        config.host = "https://us.i.posthog.com"
+        let config = PostHogConfig(
+            apiKey: "phc_DSZGupxsSlreIJxdSzEHhGjnQbRLVtvrSEE2TahVoad",
+            host: "https://us.i.posthog.com"
+        )
         #if DEBUG
-        config.debug = true
+        // Opt-in only — verbose logging adds main-thread overhead during gameplay.
+        config.debug = ProcessInfo.processInfo.environment["POSTHOG_VERBOSE"] != nil
         #endif
         PostHogSDK.shared.setup(config)
     }

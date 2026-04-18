@@ -10,22 +10,34 @@ struct FloppyDuckApp: App {
 
     init() {
 
+        // Verbose Sentry logs flood os_log on the main thread — only opt in
+        // when the SENTRY_VERBOSE env var is set (e.g. in the scheme), not for
+        // every debug run. Debug logging itself can cause slow frames during
+        // gameplay.
+        let sentryVerbose = ProcessInfo.processInfo.environment["SENTRY_VERBOSE"] != nil
+
         SentrySDK.start { options in
             options.dsn = "https://e7671e36f866d70b8620cf0d6ba9d847@o4510732962037760.ingest.us.sentry.io/4511135319719936"
-            options.tracesSampleRate = 1.0
             options.enableAutoSessionTracking = true
-            options.attachScreenshot = true
-            options.enableUserInteractionTracing = true
+
             #if DEBUG
-            options.debug = true
             options.environment = "development"
+            options.debug = sentryVerbose
+            options.tracesSampleRate = 0.2
+            options.attachScreenshot = false
+            options.enableUserInteractionTracing = false
             #else
             options.environment = "production"
+            options.debug = false
+            options.tracesSampleRate = 0.1
+            options.attachScreenshot = true
+            options.enableUserInteractionTracing = true
             #endif
         }
 
         AnalyticsManager.configure()
         AnalyticsManager.shared.trackAppOpen()
+        SoundManager.shared.prepare()
 
         let manager = GameManager()
         let auth = AuthManager(gameManager: manager)

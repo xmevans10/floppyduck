@@ -415,7 +415,7 @@ struct CollectionView: View {
 
         return Button {
             SoundManager.shared.play(.button)
-            bannerManager.selectBanner(banner)
+            bannerManager.select(banner)
         } label: {
             VStack(spacing: 10) {
                 // Banner preview — small pattern swatch

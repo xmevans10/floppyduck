@@ -195,7 +195,6 @@ struct GameContainerView: View {
         // Mark bot as beaten IMMEDIATELY — before recording or animation
         if let botId = config.botCharacterId,
            let bot = BotCharacter.find(botId) {
-            print("[BotLadder] Beat bot: \(botId)")
             manager.beatBot(botId)
             SkinManager.shared.unlockBotReward(bot.skin)
         }
@@ -237,7 +236,6 @@ struct GameContainerView: View {
            let botId = config.botCharacterId,
            let target = config.targetScore,
            botFinalScore >= target {
-            print("[BotLadder] Beat bot: \(botId)")
             manager.beatBot(botId)
             if let bot = BotCharacter.find(botId) {
                 SkinManager.shared.unlockBotReward(bot.skin)

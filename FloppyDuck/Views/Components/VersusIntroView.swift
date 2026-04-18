@@ -485,7 +485,6 @@ private struct CrosshatchPattern: View {
 
     var body: some View {
         GeometryReader { geo in
-            let w = geo.size.width
             let h = geo.size.height
 
             Path { p in
@@ -552,7 +551,6 @@ private struct FlamesPattern: View {
 
     var body: some View {
         GeometryReader { geo in
-            let w = geo.size.width
             let h = geo.size.height
 
             Path { p in
@@ -589,7 +587,6 @@ private struct CircuitPattern: View {
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let h = geo.size.height
 
             Path { p in
                 let gridSize: CGFloat = 40

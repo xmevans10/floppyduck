@@ -785,8 +785,6 @@ final class TextureFactory {
         let ps: CGFloat = 4  // pixel size
 
         let gridW = Int(w / ps)
-        let gridH = Int(h / ps)
-
         // Generate stepped hill silhouette using overlapping bumps
         var heightMap = [Int](repeating: 1, count: gridW)
 
@@ -2045,7 +2043,6 @@ final class TextureFactory {
 
         let tD = UIColor(red: 0.12, green: 0.08, blue: 0.06, alpha: 0.80)
         let tM = UIColor(red: 0.18, green: 0.12, blue: 0.08, alpha: 0.75)
-        let tT = UIColor(red: 0.15, green: 0.10, blue: 0.07, alpha: 0.75)
         let eG = UIColor(red: 0.95, green: 0.40, blue: 0.10, alpha: 0.45) // ember glow
 
         // Dead tree silhouette (7 wide × 14 tall)
@@ -2185,8 +2182,6 @@ final class TextureFactory {
         let sD = UIColor(red: 0.18, green: 0.20, blue: 0.25, alpha: 0.70) // dark frame
         let sL = UIColor(red: 0.45, green: 0.48, blue: 0.55, alpha: 0.55) // light panel
         let gR = UIColor(red: 0.20, green: 0.80, blue: 0.30, alpha: 0.70) // green status light
-        let rL = UIColor(red: 1.0, green: 0.25, blue: 0.25, alpha: 0.70)  // red light
-
         // Satellite dish (9 wide × 10 tall)
         let dish: [[UIColor]] = [
             [C,C,C,C,sD,C,C,C,C],

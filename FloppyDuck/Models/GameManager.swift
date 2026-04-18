@@ -91,7 +91,7 @@ final class GameManager: ObservableObject {
     }
 
     func startHeadToHead(matchAssignment: MultiplayerMatchAssignment) {
-        AnalyticsManager.shared.trackMultiplayerMatchFound(mode: matchAssignment.mode?.rawValue ?? "unknown")
+        AnalyticsManager.shared.trackMultiplayerMatchFound(mode: matchAssignment.mode.rawValue)
         let config = GameModeConfig(
             mode: .headToHead,
             seed: matchAssignment.seed,
@@ -182,7 +182,7 @@ final class GameManager: ObservableObject {
         stats.applyMatchResult(result)
         saveStats()
         AnalyticsManager.shared.trackMultiplayerMatchFinished(
-            mode: result.mode?.rawValue ?? "headToHead",
+            mode: result.mode.rawValue,
             won: result.didWin,
             score: result.localScore,
             opponentScore: result.opponentScore

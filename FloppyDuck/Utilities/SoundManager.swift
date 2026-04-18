@@ -45,49 +45,38 @@ final class SoundManager {
 
     /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
     private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
+    private var didPrepareAudio = false
+    private var didSetupSession = false
 
     private var isEnabled: Bool {
         UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
     }
 
-    private init() {
-        // Dispatch heavy audio setup to the dedicated serial queue so the
-        // main thread isn't blocked during lazy singleton init (fixes
-        // APPLE-IOS-1 / APPLE-IOS-2 App Hang: buildSounds + prepareToPlay
-        // was running synchronously on whatever thread first accessed .shared).
-        // All public methods already dispatch to audioQueue, so they naturally
-        // serialize behind this work.
-        audioQueue.async { [self] in
-            self.setupSession()
-            self.buildSounds()
-        }
-    }
+    private init() {}
 
     /// Warm up the audio engine (call at app launch).
     func prepare() {
-        // Singleton init already built all sounds.
-        // Calling this from AppDelegate ensures sounds are ready before first play.
-        // Pre-warm all players on the audio queue so first play has zero latency.
         audioQueue.async { [weak self] in
             guard let self else { return }
-            self.players.values.forEach { $0.prepareToPlay() }
-            self.menuTracks.forEach { $0.prepareToPlay() }
-            self.playTracks.forEach { $0.prepareToPlay() }
+            self.prepareIfNeeded()
         }
     }
 
     /// Set active skin for per-skin sound variants (flap + death).
     func setActiveSkin(_ skin: DuckSkin) {
         audioQueue.async { [weak self] in
-            self?.activeSkin = skin
+            guard let self else { return }
+            self.prepareIfNeeded()
+            self.activeSkin = skin
+            self.buildSkinVariants(for: skin)
         }
-        buildSkinVariants(for: skin)
     }
 
     func play(_ sound: GameSound) {
         guard isEnabled else { return }
         audioQueue.async { [weak self] in
             guard let self else { return }
+            self.prepareIfNeeded()
 
             // Per-skin variant for flap and death
             if (sound == .flap || sound == .death) && self.activeSkin != .classic {
@@ -110,6 +99,7 @@ final class SoundManager {
     func startMenuMusic() {
         audioQueue.async { [weak self] in
             guard let self else { return }
+            self.prepareIfNeeded()
             guard self.isEnabled else { return }
             guard !self.menuTracks.isEmpty else { return }
             // Stop any currently playing menu music
@@ -133,6 +123,7 @@ final class SoundManager {
     func startPlayMusic() {
         audioQueue.async { [weak self] in
             guard let self else { return }
+            self.prepareIfNeeded()
             guard self.isEnabled else { return }
             // Stop menu BGM before starting gameplay BGM to prevent overlap
             self.bgmPlayer?.stop()
@@ -159,6 +150,7 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             if self.isEnabled {
+                self.prepareIfNeeded()
                 // Sound was just re-enabled — restart whichever BGM track
                 // is contextually appropriate. The caller's screen will also
                 // trigger startMenuMusic/startPlayMusic on next transition,
@@ -182,9 +174,20 @@ final class SoundManager {
 
     // MARK: - Setup
 
+    private func prepareIfNeeded() {
+        guard !didPrepareAudio else { return }
+        didPrepareAudio = true
+        setupSession()
+        buildSounds()
+        players.values.forEach { $0.prepareToPlay() }
+        menuTracks.forEach { $0.prepareToPlay() }
+        playTracks.forEach { $0.prepareToPlay() }
+    }
+
     private func setupSession() {
+        guard !didSetupSession else { return }
+        didSetupSession = true
         try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-        try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     private func buildSounds() {
@@ -458,22 +461,18 @@ final class SoundManager {
         // Skip if already built
         if skinPlayers[key_flap] != nil { return }
 
-        audioQueue.async { [weak self] in
-            guard let self else { return }
+        let (flapData, flapVol) = self.skinFlapWav(skin: skin)
+        let (deathData, deathVol) = self.skinDeathWav(skin: skin)
 
-            let (flapData, flapVol) = self.skinFlapWav(skin: skin)
-            let (deathData, deathVol) = self.skinDeathWav(skin: skin)
-
-            if let p = try? AVAudioPlayer(data: flapData) {
-                p.volume = flapVol
-                p.prepareToPlay()
-                self.skinPlayers[key_flap] = p
-            }
-            if let p = try? AVAudioPlayer(data: deathData) {
-                p.volume = deathVol
-                p.prepareToPlay()
-                self.skinPlayers[key_death] = p
-            }
+        if let p = try? AVAudioPlayer(data: flapData) {
+            p.volume = flapVol
+            p.prepareToPlay()
+            self.skinPlayers[key_flap] = p
+        }
+        if let p = try? AVAudioPlayer(data: deathData) {
+            p.volume = deathVol
+            p.prepareToPlay()
+            self.skinPlayers[key_death] = p
         }
     }
 
