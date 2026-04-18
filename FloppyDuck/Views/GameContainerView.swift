@@ -590,15 +590,13 @@ struct GameContainerView: View {
                     }
 
                     if isBotLadder && ladderWon {
-                        // After beating a bot, go straight back to the ladder
+                        // After beating a bot, dismiss the fullScreenCover — the
+                        // BotLadderView is already underneath in the nav stack,
+                        // so no extra navigate() needed (was causing a double-push).
                         actionButton(icon: .ladder, label: "LADDER", color: GK.Colors.buttonOrange) {
                             SoundManager.shared.play(.button)
                             resetGameOverState()
                             manager.dismissGame()
-                            // Navigate back to bot ladder screen
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                manager.navigate(to: .botLadder)
-                            }
                         }
                     } else {
                         actionButton(icon: .home, label: "HOME", color: GK.Colors.buttonOrange) {

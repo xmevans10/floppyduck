@@ -121,6 +121,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // PERF: Running time for bread sine-bob (replaces per-node SKActions)
     private var breadBobTime: TimeInterval = 0
 
+    // Track which pipes the player has scored from (dedup — triggers persist for bot too)
+    private var playerPipesPassed: Set<String> = Set()
+
     // PERF: Pre-allocated flutter animation — reused every tap instead of
     // creating 7 new SKAction objects per flap (eliminates ~7 allocs/tap).
     private lazy var cachedFlutterAction: SKAction = {
@@ -260,7 +263,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         groundBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.worldWidth * 2, height: 2))
         groundBody.physicsBody?.isDynamic = false
         groundBody.physicsBody?.categoryBitMask = GK.groundCategory
-        groundBody.physicsBody?.contactTestBitMask = GK.duckCategory
+        groundBody.physicsBody?.contactTestBitMask = GK.duckCategory | GK.botCategory
         worldNode.addChild(groundBody)
 
         // Ceiling
@@ -429,7 +432,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let bottomCompound = SKPhysicsBody(bodies: [shaftBody, capBody])
             bottomCompound.isDynamic = false
             bottomCompound.categoryBitMask = GK.pipeCategory
-            bottomCompound.contactTestBitMask = GK.duckCategory
+            bottomCompound.contactTestBitMask = GK.duckCategory | GK.botCategory
             pipeNode.physicsBody = bottomCompound
         }
 
@@ -463,14 +466,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let topCompound = SKPhysicsBody(bodies: [tShaftBody, tCapBody])
             topCompound.isDynamic = false
             topCompound.categoryBitMask = GK.pipeCategory
-            topCompound.contactTestBitMask = GK.duckCategory
+            topCompound.contactTestBitMask = GK.duckCategory | GK.botCategory
 
             // Merge top + bottom into one compound on the pipeNode
             if let existing = pipeNode.physicsBody {
                 let merged = SKPhysicsBody(bodies: [existing, topCompound])
                 merged.isDynamic = false
                 merged.categoryBitMask = GK.pipeCategory
-                merged.contactTestBitMask = GK.duckCategory
+                merged.contactTestBitMask = GK.duckCategory | GK.botCategory
                 pipeNode.physicsBody = merged
             } else {
                 pipeNode.physicsBody = topCompound
@@ -478,12 +481,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         // Score trigger
+        // Score trigger — detected by both player and bot via physics contacts.
+        // Not removed on contact; dedup is handled via playerPipesPassed / BotController.pipesPassed sets.
         let scoreTrigger = SKNode()
         scoreTrigger.position = CGPoint(x: GK.pipeWidth / 2 + 10, y: gapY)
         scoreTrigger.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 2, height: effectiveGap))
         scoreTrigger.physicsBody?.isDynamic = false
         scoreTrigger.physicsBody?.categoryBitMask = GK.scoreCategory
-        scoreTrigger.physicsBody?.contactTestBitMask = GK.duckCategory
+        scoreTrigger.physicsBody?.contactTestBitMask = GK.duckCategory | GK.botCategory
         scoreTrigger.name = "scoreTrigger"
         pipeNode.addChild(scoreTrigger)
 
@@ -645,8 +650,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             flap()
         case .dead:
             // Quick retry — tap during death animation to skip game-over and restart instantly.
-            // Disabled for head-to-head (match finalization required).
+            // Disabled for head-to-head (match finalization required) and bot-ladder wins
+            // (player is still tapping to stay alive when bot dies — grace period prevents
+            // accidental restart before the win modal loads).
             guard mode != .headToHead else { break }
+            guard !botLadderWinTriggered else { break }
             self.removeAllActions()
             duck?.removeAllActions()
             deathVignette?.removeFromParent()
@@ -792,13 +800,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
+        // Bot AI — only makes flap decisions; physics/collision/scoring
+        // are handled by the same SpriteKit infrastructure as the player.
         if mode == .vsBot {
-            botController?.update(
-                dt: dt,
-                pipeNodes: pipeLayer.children,
-                activePowerUps: powerUpCtrl.activePowerUps,
-                effectivePipeGap: difficulty.effectivePipeGap
-            )
+            botController?.update(pipeNodes: pipeLayer.children)
         }
     }
 
@@ -810,9 +815,23 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // NOTE: Bread collection is handled via distance checks in update() — no physics body needed.
 
-        // --- Score trigger contact ---
+        // --- Bot score trigger contact ---
+        // Bot uses the same score triggers as the player (shared physics infrastructure).
+        if masks.contains(GK.scoreCategory) && masks.contains(GK.botCategory) {
+            if let pipeName = bodies.first(where: { $0.categoryBitMask == GK.scoreCategory })?.node?.parent?.name {
+                botController?.scoreFromPipe(pipeName)
+            }
+            return
+        }
+
+        // --- Player score trigger contact ---
         if masks.contains(GK.scoreCategory) && masks.contains(GK.duckCategory) {
-            bodies.first { $0.categoryBitMask == GK.scoreCategory }?.node?.removeFromParent()
+            // Dedup via pipe name — triggers persist so the bot can also score from them.
+            if let pipeName = bodies.first(where: { $0.categoryBitMask == GK.scoreCategory })?.node?.parent?.name {
+                guard !playerPipesPassed.contains(pipeName) else { return }
+                playerPipesPassed.insert(pipeName)
+            }
+
             score += 1
             updateScore()
             Haptic.score()
@@ -838,11 +857,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
 
             gameDelegate?.gameDidScore(score)
-
-            // NOTE: Bot-ladder win is now triggered by BotController.onBotDied
-            // when the bot reaches its deathScore (deterministic ceiling).
-            // The player wins by surviving until the bot dies.
-
             return
         }
 
@@ -854,8 +868,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return
         }
 
-        // --- Pipe / ground collision ---
-        if phase == .playing {
+        // --- Bot pipe / ground collision → bot dies ---
+        if masks.contains(GK.botCategory) && (masks.contains(GK.pipeCategory) || masks.contains(GK.groundCategory)) {
+            botController?.handleCollision()
+            return
+        }
+
+        // --- Player pipe / ground collision ---
+        if phase == .playing && masks.contains(GK.duckCategory) {
             // GhostDuck: ignore pipe collisions entirely
             let isPipeHit = masks.contains(GK.pipeCategory)
             if isPipeHit && powerUpCtrl.isGhostActive {
@@ -1143,6 +1163,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         pipeTimer = 0
         lastUpdate = 0
         score = 0
+        playerPipesPassed.removeAll()
         currentPipeSpeed = GK.pipeSpeed
         phase = .ready
 

@@ -9,7 +9,6 @@ import SwiftUI
 struct BotLadderView: View {
     @EnvironmentObject var manager: GameManager
     @State private var cloudOffset: CGFloat = 0
-    @State private var playerBounce = false
 
     private let bots = BotCharacter.all
     private let icons = PixelIconFactory.shared
@@ -247,9 +246,6 @@ struct BotLadderView: View {
         .buttonStyle(.plain)
         .disabled(locked)
         .opacity(locked ? 0.5 : 1.0)
-        .overlay(alignment: .leading) {
-            if isNext { playerMarker }
-        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "\(bot.name), \(bot.title)" +
@@ -293,23 +289,6 @@ struct BotLadderView: View {
                 .frame(width: 40, height: 40)
             }
         }
-    }
-
-    // MARK: - Player Marker
-
-    private var playerMarker: some View {
-        Image(uiImage: factory.skinDuckUIImage(
-            skin: SkinManager.shared.selectedSkin, pixelScale: 3.5))
-            .interpolation(.none)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 22, height: 22)
-            .shadow(color: .white.opacity(0.6), radius: 3)
-            .offset(x: 6, y: playerBounce ? -2 : 2)
-            .animation(
-                .easeInOut(duration: 0.5).repeatForever(autoreverses: true),
-                value: playerBounce)
-            .onAppear { playerBounce = true }
     }
 
     // MARK: - 8-Bit Background (matches HomeView)

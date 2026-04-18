@@ -499,7 +499,7 @@ struct CollectionView: View {
 
 private enum CollectionTab: String {
     case skins = "SKINS"
-    case backgrounds = "BACKGROUNDS"
+    case backgrounds = "BGs"
     case banners = "BANNERS"
 
     var icon: String {

@@ -2,11 +2,17 @@ import SpriteKit
 
 // MARK: - BotController
 
-/// Encapsulates all bot (AI opponent) logic: sprite creation, per-frame AI
-/// update loop, collision / death handling, and score tracking.
+/// Encapsulates all bot (AI opponent) logic: sprite creation, AI flap
+/// decisions, death handling, and score tracking.
 ///
-/// Extracted from `GameScene` to keep the scene file focused on player + world
-/// logic.  Follows the same pattern as `ParallaxManager`.
+/// Physics, collision, and scoring are handled by the same SpriteKit
+/// infrastructure as the player duck — the bot has a real SKPhysicsBody
+/// with `botCategory` and shares the same pipe/ground/scoreTrigger contact
+/// detection in `GameScene.didBegin(_:)`.
+///
+/// This eliminates the separate manual physics loop that previously ran
+/// every frame (gravity, position, per-pipe collision iteration) and caused
+/// lag in bot mode vs classic mode.
 ///
 /// Usage:
 ///   1. Create after the world node exists:
@@ -24,10 +30,7 @@ import SpriteKit
 ///      ```
 ///   4. Every frame while `.playing`:
 ///      ```
-///      botController.update(dt: dt,
-///                           pipeNodes: pipeLayer.children,
-///                           activePowerUps: activePowerUps,
-///                           effectivePipeGap: difficulty.effectivePipeGap)
+///      botController.update(pipeNodes: pipeLayer.children)
 ///      ```
 ///   5. On game reset:
 ///      ```
@@ -63,8 +66,6 @@ final class BotController {
 
     private let factory = TextureFactory.shared
     private var textures: [SKTexture] = []
-    private var posY: CGFloat = GK.duckStartY
-    private var velocity: CGFloat = 0
     private var alive: Bool = false
     private var pipesPassed: Set<String> = []
 
@@ -75,9 +76,12 @@ final class BotController {
     /// Used in bot-ladder mode so each bot has a fixed score ceiling.
     private var deathScore: Int?
 
-    /// When true the bot's AI is disabled — it stops flapping and naturally
-    /// falls into the next pipe or the ground.  Set when `score >= deathScore`.
+    /// When true the bot's AI is disabled — it stops flapping and gravity
+    /// naturally pulls it into the next pipe or the ground.
     private var doomed: Bool = false
+
+    /// Skin used for the current bot sprite (needed for reset).
+    private var currentSkin: DuckSkin?
 
     // MARK: - Score HUD
 
@@ -97,7 +101,8 @@ final class BotController {
 
     // MARK: - Setup
 
-    /// Creates the bot ghost-duck sprite with wing animation and idle float.
+    /// Creates the bot ghost-duck sprite with wing animation, idle float,
+    /// and a real SKPhysicsBody (same collision infrastructure as the player).
     ///
     /// - Parameters:
     ///   - skin: Duck skin used for the ghost textures.
@@ -108,6 +113,7 @@ final class BotController {
     func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil, deathScore: Int? = nil) {
         self.diff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
         self.deathScore = deathScore
+        self.currentSkin = skin
 
         // Ghost-duck sprite: desaturated, translucent, with soft glow (XAN-6)
         textures = (0...2).map { factory.skinDuckTexture(skin: skin, wingPhase: $0) }
@@ -129,6 +135,20 @@ final class BotController {
         glow.blendMode = .add
         bot.addChild(glow)
 
+        // SKPhysicsBody — same collision infrastructure as the player duck.
+        // Uses contactTest for pipe/ground/score detection but collisionBitMask = 0
+        // so the ghost visually passes through everything.
+        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.72)
+        body.categoryBitMask = GK.botCategory
+        body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.scoreCategory
+        body.collisionBitMask = 0          // Ghost — no physical collisions
+        body.allowsRotation = false
+        body.restitution = 0
+        body.linearDamping = 0
+        body.isDynamic = false             // Disabled until gameplay starts
+        body.velocity = .zero
+        bot.physicsBody = body
+
         // Wing flap loop
         let wingAction = SKAction.animate(with: textures, timePerFrame: 0.10)
         bot.run(SKAction.repeatForever(wingAction), withKey: "botWings")
@@ -142,16 +162,10 @@ final class BotController {
 
         worldNode.addChild(bot)
         sprite = bot
-        posY = GK.duckStartY
-        velocity = 0
         alive = true
     }
 
     /// Creates the bot-score HUD labels (used in both vsBot and headToHead modes).
-    ///
-    /// - Parameters:
-    ///   - mode: Current game mode (affects label text).
-    ///   - opponentName: Optional custom name; defaults to "BOT" / "OPPONENT".
     func setupScoreHUD(mode: GameMode, opponentName: String? = nil) {
         if mode == .headToHead {
             displayName = opponentName ?? "OPPONENT"
@@ -184,131 +198,89 @@ final class BotController {
 
     // MARK: - Gameplay Transitions
 
-    /// Call when gameplay begins — stops the idle float animation.
+    /// Call when gameplay begins — enables physics (gravity) and stops the idle float.
     func startPlaying() {
         sprite?.removeAction(forKey: "botFloat")
+        sprite?.physicsBody?.isDynamic = true   // Enable gravity + physics
     }
 
-    // MARK: - Per-Frame Update (AI)
+    // MARK: - Per-Frame Update (AI only)
 
-    /// Runs the bot's AI for one frame: gravity, movement, pipe collision,
-    /// scoring, and flap decisions.
+    /// Runs the bot's AI flap decision for one frame.
     ///
-    /// The bot aims at the exact center of each pipe gap for the first
-    /// `deathScore` pipes, then stops flapping and naturally clips the next one.
-    /// No noise, no error rate, no plot armor — deterministic and clean.
+    /// All physics (gravity, movement), collision detection, and scoring are
+    /// handled by SpriteKit's physics engine — same as the player duck.
+    /// This method only decides *when* to flap.
     ///
-    /// - Parameters:
-    ///   - dt: Delta-time since last frame (seconds).
-    ///   - pipeNodes: All current pipe nodes from the pipe layer.
-    ///   - activePowerUps: Currently active power-ups (for gap-size modifiers).
-    ///   - effectivePipeGap: Base effective gap from the `DifficultyManager`.
-    func update(dt: TimeInterval,
-                pipeNodes: [SKNode],
-                activePowerUps: [ActivePowerUp],
-                effectivePipeGap: CGFloat) {
+    /// - Parameter pipeNodes: All current pipe nodes from the pipe layer
+    ///   (used only to find the nearest gap center for targeting).
+    func update(pipeNodes: [SKNode]) {
         guard alive, let bot = sprite else { return }
 
-        // --- Gravity & position ---
-        velocity += GK.gravity / 60 * CGFloat(dt) * 60
-        posY += velocity * CGFloat(dt)
-
-        // Use same collision radius as player duck (GK.duckRadius * 0.72)
-        // so bots and player have identical hitboxes. (XAN-5)
-        let botR = GK.duckRadius * 0.72
-
-        // Ground collision → die
-        if posY <= GK.groundHeight + botR {
-            posY = GK.groundHeight + botR
-            die()
-            return
-        }
-
-        // Ceiling clamp
-        if posY >= GK.worldHeight - botR {
-            posY = GK.worldHeight - botR
-            velocity = 0
-        }
-
-        // --- Effective gap (including power-up modifiers) ---
-        var gap = effectivePipeGap
-        if activePowerUps.contains(where: { $0.kind == .pipeExpander && ($0.remainingPipes ?? 0) > 0 }) {
-            gap *= 1.3
-        }
-        if activePowerUps.contains(where: { $0.kind == .pipeSqueeze && ($0.remainingPipes ?? 0) > 0 }) {
-            gap *= 0.8
-        }
-
-        // --- Single-pass pipe iteration: target tracking, collision, scoring ---
+        // --- Find nearest pipe gap center for AI targeting ---
         var targetGapY: CGFloat = GK.duckStartY
         var nearestDist: CGFloat = .greatestFiniteMagnitude
 
         for child in pipeNodes {
-            let pipeX = child.position.x
-            let dist = pipeX - GK.duckStartX
-
-            // Find nearest pipe ahead of the bot
+            let dist = child.position.x - GK.duckStartX
+            // Only consider pipes ahead of (or at) the bot
             if dist > -(GK.pipeWidth / 2) && dist < nearestDist {
                 if let trigger = child.childNode(withName: "scoreTrigger") {
                     targetGapY = trigger.position.y
                     nearestDist = dist
                 }
             }
-
-            // Match GameScene's cap-aware pipe collider geometry:
-            // top/bottom caps use a 26pt-high body that intrudes 24pt into the gap,
-            // and caps are slightly wider than the pipe body.
-            let horizontalEnvelope = (GK.pipeWidth + 4) / 2 + botR
-            if abs(dist) < horizontalEnvelope {
-                if let trigger = child.childNode(withName: "scoreTrigger") {
-                    let gapY = trigger.position.y
-                    let capInset: CGFloat = 24
-                    let gapTop = gapY + gap / 2 - capInset
-                    let gapBottom = gapY - gap / 2 + capInset
-                    if posY + botR > gapTop || posY - botR < gapBottom {
-                        die()
-                        return
-                    }
-                }
-            }
-
-            // Bot scoring — pipe passed behind the bot
-            if let pipeName = child.name, pipeName.hasPrefix("pipe_"),
-               pipeX < GK.duckStartX - GK.pipeWidth / 2 {
-                if !pipesPassed.contains(pipeName) {
-                    pipesPassed.insert(pipeName)
-                    score += 1
-                    updateScoreHUD()
-                    onScoreChanged?(score)
-
-                    // Once the bot reaches its ceiling score, stop flapping.
-                    // Gravity will pull it into the next pipe for a natural death.
-                    if let cap = deathScore, score >= cap {
-                        doomed = true
-                    }
-                }
-            }
         }
 
         // --- AI decision: aim at exact gap center ---
-        // Uses 65% of flapImpulse for controlled hops (rise ≈ 38px) instead
-        // of full jumps (rise ≈ 91px which overshoots the ±63px safe zone).
-        // When doomed the bot simply stops flapping and gravity takes over —
-        // it will naturally collide with the next pipe or hit the ground.
+        // When doomed the bot simply stops flapping and gravity takes over.
         if !doomed {
+            let botY = bot.position.y
+            let currentVelocity = bot.physicsBody?.velocity.dy ?? 0
             let botImpulse = GK.flapImpulse * 0.65
-            if posY < targetGapY - 15 && velocity < botImpulse * 0.4 {
-                velocity = botImpulse
+            if botY < targetGapY - 15 && currentVelocity < botImpulse * 0.4 {
+                bot.physicsBody?.velocity = CGVector(dx: 0, dy: botImpulse)
             }
         }
 
-        // --- Apply position & rotation ---
-        bot.position.y = posY
-
-        let rotTarget = velocity > 0
-            ? min(velocity / GK.flapImpulse * 0.4, 0.4)
-            : max(velocity / 400, -CGFloat.pi / 2)
+        // --- Rotation (visual only — same logic as player duck) ---
+        let vy = bot.physicsBody?.velocity.dy ?? 0
+        let rotTarget = vy > 0
+            ? min(vy / GK.flapImpulse * 0.4, 0.4)
+            : max(vy / 400, -CGFloat.pi / 2)
         bot.zRotation += (rotTarget - bot.zRotation) * 0.10
+
+        // Pin horizontal position (physics contacts can nudge the bot)
+        if bot.position.x != GK.duckStartX {
+            bot.position.x = GK.duckStartX
+            bot.physicsBody?.velocity.dx = 0
+        }
+    }
+
+    // MARK: - Scoring (called by GameScene.didBegin)
+
+    /// Called when the bot's physics body contacts a score trigger.
+    /// Deduplicates via pipe name and fires `onScoreChanged`.
+    func scoreFromPipe(_ pipeName: String) {
+        guard alive, !pipesPassed.contains(pipeName) else { return }
+        pipesPassed.insert(pipeName)
+        score += 1
+        updateScoreHUD()
+        onScoreChanged?(score)
+
+        // Once the bot reaches its ceiling score, stop flapping.
+        // Gravity will pull it into the next pipe for a natural death.
+        if let cap = deathScore, score >= cap {
+            doomed = true
+        }
+    }
+
+    // MARK: - Collision (called by GameScene.didBegin)
+
+    /// Called when the bot's physics body contacts a pipe or ground.
+    func handleCollision() {
+        guard alive else { return }
+        die()
     }
 
     // MARK: - Death
@@ -317,6 +289,9 @@ final class BotController {
     private func die() {
         alive = false
         guard let bot = sprite else { return }
+
+        // Disable physics so the death animation isn't affected by gravity
+        bot.physicsBody?.isDynamic = false
 
         bot.removeAction(forKey: "botWings")
         bot.run(SKAction.sequence([
@@ -352,8 +327,6 @@ final class BotController {
     // MARK: - Reset
 
     /// Tears down the current bot sprite and re-creates it for a new round.
-    ///
-    /// - Parameter skin: Duck skin for the new bot sprite textures.
     func reset(skin: DuckSkin) {
         sprite?.removeFromParent()
         sprite = nil
