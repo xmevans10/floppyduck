@@ -115,6 +115,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var breadPopupPool: [SKLabelNode] = []
     private var breadPopupPoolIndex: Int = 0
 
+    // PERF: Cached gravity to avoid setting physicsWorld.gravity every frame
+    private var lastAppliedGravity: CGFloat = 0
+
+    // PERF: Running time for bread sine-bob (replaces per-node SKActions)
+    private var breadBobTime: TimeInterval = 0
+
     // MARK: - Init
 
     init(seed: Int = Int.random(in: 1...999999),
@@ -261,14 +267,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         sprite.physicsBody = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.72)
         sprite.physicsBody?.categoryBitMask = GK.duckCategory
-        sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
+        sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory
         // Only collide with ground — pipe contacts trigger game over via didBegin(_:)
         // but must NOT physically push the duck (causes progressive leftward drift).
         sprite.physicsBody?.collisionBitMask = GK.groundCategory
         sprite.physicsBody?.allowsRotation = false
         sprite.physicsBody?.restitution = 0
         sprite.physicsBody?.linearDamping = 0
-        sprite.physicsBody?.usesPreciseCollisionDetection = true
+        // PERF: Standard collision detection is sufficient with the 72% hitbox radius.
+        // usesPreciseCollisionDetection = true was triggering expensive swept tests every frame.
 
         worldNode.addChild(sprite)
         duck = sprite
@@ -550,21 +557,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             breadNode.zPosition = 25
             breadNode.name = "bread"
 
-            // Physics body for collection
-            breadNode.physicsBody = SKPhysicsBody(circleOfRadius: 16)
-            breadNode.physicsBody?.isDynamic = false
-            breadNode.physicsBody?.categoryBitMask = GK.breadCategory
-            breadNode.physicsBody?.contactTestBitMask = GK.duckCategory
-            breadNode.physicsBody?.collisionBitMask = 0
+            // PERF: No physics body on bread — collection uses distance checks in
+            // update() (eliminates ~6 physics bodies from the simulation per frame).
+            // Bob animation is also driven from update() via sine wave instead of
+            // per-node SKActions (eliminates ~6 action evaluations per frame).
 
-            // Gentle bob animation (Y-axis only — horizontal movement driven by update())
-            let bob = SKAction.sequence([
-                SKAction.moveBy(x: 0, y: 5, duration: 0.4),
-                SKAction.moveBy(x: 0, y: -5, duration: 0.4),
-            ])
-            breadNode.run(SKAction.repeatForever(bob))
-
-            // Horizontal movement handled by update() loop — no SKAction.moveBy.
             pipeLayer.addChild(breadNode)
         }
     }
@@ -683,8 +680,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // --- Power-up tick: expire finished effects, update speed modifier ---
         powerUpCtrl.update(dt: dt, currentTime: currentTime)
 
-        // --- Difficulty-driven gravity (with power-up modifiers) ---
-        physicsWorld.gravity = CGVector(dx: 0, dy: powerUpCtrl.effectiveGravity / 60)
+        // --- Difficulty-driven gravity (only set when value changes) ---
+        let newGravity = powerUpCtrl.effectiveGravity
+        if newGravity != lastAppliedGravity {
+            physicsWorld.gravity = CGVector(dx: 0, dy: newGravity / 60)
+            lastAppliedGravity = newGravity
+        }
 
         // --- Pipe speed (grace period handled by PowerUpController) ---
         currentPipeSpeed = powerUpCtrl.effectivePipeSpeed
@@ -707,9 +708,33 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Move all pipe-layer children (pipes + bread) at the current speed.
         // This replaces per-node SKAction.moveBy so speed changes from difficulty
         // ramp and power-ups apply instantly to EVERY node on screen.
+        //
+        // PERF: Bread collection uses distance checks here instead of physics bodies
+        // (eliminates ~6 physics bodies + contact evaluations from the simulation).
+        // Bread bob uses a shared sine wave instead of per-node SKActions.
         let dx = currentPipeSpeed * CGFloat(dt)
+        breadBobTime += dt
+        let bobOffset = CGFloat(sin(breadBobTime * 7.5)) * 5  // ~1.2 Hz, ±5 pt amplitude
+        let duckPos = duck?.position ?? .zero
+        let breadCollectRadius: CGFloat = 22  // slightly generous for feel
+
         for child in pipeLayer.children {
             child.position.x -= dx
+
+            // PERF: Distance-based bread collection (no physics body needed)
+            if child.name == "bread" {
+                // Apply shared sine bob (cheaper than per-node SKAction)
+                child.position.y += bobOffset * CGFloat(dt) * 12
+
+                // Check collection distance to duck
+                let bx = child.position.x - duckPos.x
+                let by = child.position.y - duckPos.y
+                if bx * bx + by * by < breadCollectRadius * breadCollectRadius {
+                    collectBread(node: child)
+                    continue
+                }
+            }
+
             if child.position.x < -(GK.pipeWidth * 2) {
                 child.removeFromParent()
             }
@@ -750,13 +775,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let bodies = [contact.bodyA, contact.bodyB]
         let masks = bodies.map { $0.categoryBitMask }
 
-        // --- Bread collectible contact ---
-        if masks.contains(GK.breadCategory) && masks.contains(GK.duckCategory) {
-            if let breadNode = bodies.first(where: { $0.categoryBitMask == GK.breadCategory })?.node {
-                collectBread(node: breadNode)
-            }
-            return
-        }
+        // NOTE: Bread collection is handled via distance checks in update() — no physics body needed.
 
         // --- Score trigger contact ---
         if masks.contains(GK.scoreCategory) && masks.contains(GK.duckCategory) {
@@ -1104,6 +1123,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Clear power-up state (also resets speed modifier)
         powerUpCtrl.reset()
 
+        // Reset cached physics / animation state
+        lastAppliedGravity = 0
+        breadBobTime = 0
+
         // Reset bread collectibles & per-game achievement counters
         breadCollected = 0
         shieldsUsed = 0
@@ -1129,15 +1152,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.zPosition = 40  // restore original z after death bump
         duck.setScale(1.0)
 
-        // Restore base physics body
+        // Restore base physics body (bread uses distance checks — no physics needed)
         let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.72)
         body.categoryBitMask = GK.duckCategory
-        body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory | GK.breadCategory
+        body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory
         body.collisionBitMask = GK.groundCategory   // Ground only — no pipe collision (prevents drift)
         body.allowsRotation = false
         body.restitution = 0
         body.linearDamping = 0
-        body.usesPreciseCollisionDetection = true
         body.isDynamic = false
         body.velocity = .zero
         duck.physicsBody = body

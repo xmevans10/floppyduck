@@ -61,35 +61,35 @@ final class DifficultyManager {
     private let flapRange:    (lo: CGFloat, hi: CGFloat) = (1.0,  1.20)
     private let gravityRange: (lo: CGFloat, hi: CGFloat) = (1.0,  1.14)
 
-    // MARK: - Logarithmic Curve
+    // MARK: - Cached Difficulty Curve
 
-    /// Normalised difficulty in `[0, 1]`.
-    private var t: CGFloat {
-        guard currentScore > 0 else { return 0 }
+    /// Cached normalised difficulty `[0, 1]` — recomputed only when score changes
+    /// (avoids 2× `log()` calls per property access, i.e. 8–10× per frame).
+    private var cachedT: CGFloat = 0
+
+    private func recomputeT() {
+        guard currentScore > 0 else { cachedT = 0; return }
         let s = CGFloat(currentScore)
-        return min(log(1 + s * k) / log(1 + refScore * k), 1.0)
+        cachedT = min(log(1 + s * k) / log(1 + refScore * k), 1.0)
     }
 
     private func lerp(_ lo: CGFloat, _ hi: CGFloat) -> CGFloat {
-        lo + (hi - lo) * t
+        lo + (hi - lo) * cachedT
     }
 
-    // MARK: - Effective Parameters
+    // MARK: - Effective Parameters (cached per score change)
 
-    var effectivePipeSpeed: CGFloat {
-        GK.pipeSpeed * lerp(speedRange.lo, speedRange.hi)
-    }
+    /// Cached effective values — updated on score change to avoid per-frame recomputation.
+    private(set) var effectivePipeSpeed: CGFloat = GK.pipeSpeed
+    private(set) var effectivePipeGap: CGFloat = GK.pipeGap
+    private(set) var effectiveFlapImpulse: CGFloat = GK.flapImpulse
+    private(set) var effectiveGravity: CGFloat = GK.gravity
 
-    var effectivePipeGap: CGFloat {
-        GK.pipeGap * lerp(gapRange.lo, gapRange.hi)
-    }
-
-    var effectiveFlapImpulse: CGFloat {
-        GK.flapImpulse * lerp(flapRange.lo, flapRange.hi)
-    }
-
-    var effectiveGravity: CGFloat {
-        GK.gravity * lerp(gravityRange.lo, gravityRange.hi)
+    private func recomputeEffectives() {
+        effectivePipeSpeed   = GK.pipeSpeed   * lerp(speedRange.lo, speedRange.hi)
+        effectivePipeGap     = GK.pipeGap     * lerp(gapRange.lo, gapRange.hi)
+        effectiveFlapImpulse = GK.flapImpulse * lerp(flapRange.lo, flapRange.hi)
+        effectiveGravity     = GK.gravity     * lerp(gravityRange.lo, gravityRange.hi)
     }
 
     // MARK: - Update
@@ -99,6 +99,8 @@ final class DifficultyManager {
     @discardableResult
     func update(score: Int) -> Bool {
         currentScore = score
+        recomputeT()
+        recomputeEffectives()
         let newTier = DifficultyTier.forScore(score)
         if newTier != currentTier {
             currentTier = newTier
@@ -111,5 +113,7 @@ final class DifficultyManager {
     func reset() {
         currentTier = .easy
         currentScore = 0
+        cachedT = 0
+        recomputeEffectives()
     }
 }
