@@ -121,6 +121,22 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // PERF: Running time for bread sine-bob (replaces per-node SKActions)
     private var breadBobTime: TimeInterval = 0
 
+    // PERF: Pre-allocated flutter animation — reused every tap instead of
+    // creating 7 new SKAction objects per flap (eliminates ~7 allocs/tap).
+    private lazy var cachedFlutterAction: SKAction = {
+        let flutter = SKAction.sequence([
+            SKAction.setTexture(duckTextures[2]),
+            SKAction.wait(forDuration: 0.05),
+            SKAction.setTexture(duckTextures[0]),
+            SKAction.wait(forDuration: 0.05),
+            SKAction.setTexture(duckTextures[1]),
+        ])
+        let restartWings = SKAction.run { [weak self] in
+            self?.startWingAnimation()
+        }
+        return SKAction.sequence([flutter, restartWings])
+    }()
+
     // MARK: - Init
 
     init(seed: Int = Int.random(in: 1...999999),
@@ -385,6 +401,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         pipeNode.name = "pipe_\(currentPipeIndex)"
 
         // Bottom pipe
+        // PERF: Merged pipe body + cap into a single compound physics body per side
+        // (2 bodies per pipe pair instead of 4 — halves physics contact evaluations).
         let bottomH = gapY - effectiveGap / 2 - GK.groundHeight
         if bottomH > 0 {
             let bottomBody = SKSpriteNode(
@@ -393,11 +411,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             bottomBody.anchorPoint = CGPoint(x: 0.5, y: 0)
             bottomBody.position = CGPoint(x: 0, y: GK.groundHeight)
-            bottomBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: bottomH),
-                                                   center: CGPoint(x: 0, y: bottomH / 2))
-            bottomBody.physicsBody?.isDynamic = false
-            bottomBody.physicsBody?.categoryBitMask = GK.pipeCategory
-            bottomBody.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(bottomBody)
 
             let bottomCap = SKSpriteNode(
@@ -406,18 +419,23 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             bottomCap.anchorPoint = CGPoint(x: 0.5, y: 0)
             bottomCap.position = CGPoint(x: 0, y: GK.groundHeight + bottomH - 4)
-            bottomCap.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
-                                                  center: CGPoint(x: 0, y: 15))
-            bottomCap.physicsBody?.isDynamic = false
-            bottomCap.physicsBody?.categoryBitMask = GK.pipeCategory
-            bottomCap.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(bottomCap)
+
+            // Single compound physics body covering pipe shaft + cap
+            let shaftBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: bottomH),
+                                          center: CGPoint(x: 0, y: GK.groundHeight + bottomH / 2))
+            let capBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
+                                        center: CGPoint(x: 0, y: GK.groundHeight + bottomH - 4 + 15))
+            let bottomCompound = SKPhysicsBody(bodies: [shaftBody, capBody])
+            bottomCompound.isDynamic = false
+            bottomCompound.categoryBitMask = GK.pipeCategory
+            bottomCompound.contactTestBitMask = GK.duckCategory
+            pipeNode.physicsBody = bottomCompound
         }
 
         // Top pipe
         let topY = gapY + effectiveGap / 2
         let topH = GK.worldHeight - topY
-        let topH2 = topH
         if topH > 0 {
             let topBody = SKSpriteNode(
                 texture: factory.pipeTexture(height: topH),
@@ -425,11 +443,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             topBody.anchorPoint = CGPoint(x: 0.5, y: 1)
             topBody.position = CGPoint(x: 0, y: GK.worldHeight)
-            topBody.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: topH2),
-                                                center: CGPoint(x: 0, y: -topH2 / 2))
-            topBody.physicsBody?.isDynamic = false
-            topBody.physicsBody?.categoryBitMask = GK.pipeCategory
-            topBody.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(topBody)
 
             let topCap = SKSpriteNode(
@@ -438,12 +451,30 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             )
             topCap.anchorPoint = CGPoint(x: 0.5, y: 1)
             topCap.position = CGPoint(x: 0, y: topY + 4)
-            topCap.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
-                                               center: CGPoint(x: 0, y: -15))
-            topCap.physicsBody?.isDynamic = false
-            topCap.physicsBody?.categoryBitMask = GK.pipeCategory
-            topCap.physicsBody?.contactTestBitMask = GK.duckCategory
             pipeNode.addChild(topCap)
+
+            // Single compound physics body covering pipe shaft + cap.
+            // Only assign if pipeNode doesn't already have one from bottom;
+            // otherwise merge into a second compound on a child node.
+            let tShaftBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth - 4, height: topH),
+                                           center: CGPoint(x: 0, y: GK.worldHeight - topH / 2))
+            let tCapBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.pipeWidth + 4, height: 26),
+                                         center: CGPoint(x: 0, y: topY + 4 - 15))
+            let topCompound = SKPhysicsBody(bodies: [tShaftBody, tCapBody])
+            topCompound.isDynamic = false
+            topCompound.categoryBitMask = GK.pipeCategory
+            topCompound.contactTestBitMask = GK.duckCategory
+
+            // Merge top + bottom into one compound on the pipeNode
+            if let existing = pipeNode.physicsBody {
+                let merged = SKPhysicsBody(bodies: [existing, topCompound])
+                merged.isDynamic = false
+                merged.categoryBitMask = GK.pipeCategory
+                merged.contactTestBitMask = GK.duckCategory
+                pipeNode.physicsBody = merged
+            } else {
+                pipeNode.physicsBody = topCompound
+            }
         }
 
         // Score trigger
@@ -556,6 +587,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             breadNode.zPosition = 25
             breadNode.name = "bread"
 
+            // Store base Y for absolute sine-bob in update() — no drift over time.
+            breadNode.userData = breadNode.userData ?? NSMutableDictionary()
+            breadNode.userData?["baseY"] = breadY
+
             // PERF: No physics body on bread — collection uses distance checks in
             // update() (eliminates ~6 physics bodies from the simulation per frame).
             // Bob animation is also driven from update() via sine wave instead of
@@ -624,6 +659,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     // Item 2: Safe optional chaining for duck
+    // PERF: Uses cachedFlutterAction — zero allocations per tap.
     func flap() {
         guard phase == .playing, let duck else { return }
 
@@ -634,16 +670,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         SoundManager.shared.play(.flap)
 
         duck.removeAction(forKey: "wings")
-        let flutter = SKAction.sequence([
-            SKAction.setTexture(duckTextures[2]),
-            SKAction.wait(forDuration: 0.05),
-            SKAction.setTexture(duckTextures[0]),
-            SKAction.wait(forDuration: 0.05),
-            SKAction.setTexture(duckTextures[1]),
-        ])
-        duck.run(SKAction.sequence([flutter, SKAction.run { [weak self] in
-            self?.startWingAnimation()
-        }]), withKey: "wings")
+        duck.run(cachedFlutterAction, withKey: "wings")
     }
 
     private func startPlaying() {
@@ -713,17 +740,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Bread bob uses a shared sine wave instead of per-node SKActions.
         let dx = currentPipeSpeed * CGFloat(dt)
         breadBobTime += dt
-        let bobOffset = CGFloat(sin(breadBobTime * 7.5)) * 5  // ~1.2 Hz, ±5 pt amplitude
+        // PERF: Absolute sine bob — no drift, no multiplication by dt.
+        // Each bread node stores its base Y in userData["baseY"].
+        let bobPhase = CGFloat(sin(breadBobTime * 7.5)) * 5  // ~1.2 Hz, ±5 pt amplitude
         let duckPos = duck?.position ?? .zero
         let breadCollectRadius: CGFloat = 22  // slightly generous for feel
 
+        // PERF: Tighter off-screen cleanup (pipeWidth + 20 instead of pipeWidth * 2)
+        // and absolute sine-bob for bread (no drift, no dt multiplication).
+        let cleanupX = -(GK.pipeWidth + 20)
         for child in pipeLayer.children {
             child.position.x -= dx
 
             // PERF: Distance-based bread collection (no physics body needed)
             if child.name == "bread" {
-                // Apply shared sine bob (cheaper than per-node SKAction)
-                child.position.y += bobOffset * CGFloat(dt) * 12
+                // Absolute sine bob using stored base Y — no drift over time
+                if let baseY = child.userData?["baseY"] as? CGFloat {
+                    child.position.y = baseY + bobPhase
+                }
 
                 // Check collection distance to duck
                 let bx = child.position.x - duckPos.x
@@ -734,7 +768,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 }
             }
 
-            if child.position.x < -(GK.pipeWidth * 2) {
+            if child.position.x < cleanupX {
                 child.removeFromParent()
             }
         }

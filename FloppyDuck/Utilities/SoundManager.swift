@@ -48,11 +48,15 @@ final class SoundManager {
     private var didPrepareAudio = false
     private var didSetupSession = false
 
-    private var isEnabled: Bool {
-        UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
-    }
+    /// Cached preference — avoids UserDefaults dictionary lookup on every play() call.
+    private var _isEnabled: Bool = true
 
-    private init() {}
+    private var isEnabled: Bool { _isEnabled }
+
+    private init() {
+        // Cache the preference at init time (avoids UserDefaults lookup on every play() call)
+        _isEnabled = UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
+    }
 
     /// Warm up the audio engine (call at app launch).
     func prepare() {
@@ -147,6 +151,8 @@ final class SoundManager {
     }
 
     func refreshAudioPreference() {
+        // Sync cached preference from UserDefaults (main thread safe)
+        _isEnabled = UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
         audioQueue.async { [weak self] in
             guard let self else { return }
             if self.isEnabled {

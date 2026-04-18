@@ -2,15 +2,23 @@ import UIKit
 
 /// Lightweight haptic feedback helper.
 /// Checks the hapticsEnabled UserDefaults key before firing.
+/// Preference is cached to avoid UserDefaults dictionary lookup on every tap/frame.
 enum Haptic {
     private static let impactLight = UIImpactFeedbackGenerator(style: .light)
     private static let impactMedium = UIImpactFeedbackGenerator(style: .medium)
     private static let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
     private static let notification = UINotificationFeedbackGenerator()
 
-    private static var isEnabled: Bool {
-        // Default true if key hasn't been set yet
+    /// Cached preference — avoids UserDefaults lookup on every haptic call.
+    private static var _isEnabled: Bool = {
         UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool ?? true
+    }()
+
+    private static var isEnabled: Bool { _isEnabled }
+
+    /// Call when the user toggles the haptics setting to update the cached value.
+    static func refreshPreference() {
+        _isEnabled = UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool ?? true
     }
 
     /// Pre-warm all generators to eliminate first-call latency (~20ms saved).

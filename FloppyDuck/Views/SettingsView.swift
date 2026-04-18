@@ -272,6 +272,9 @@ struct SettingsView: View {
         .onChange(of: manager.soundEnabled) { _, _ in
             SoundManager.shared.refreshAudioPreference()
         }
+        .onChange(of: manager.hapticsEnabled) { _, _ in
+            Haptic.refreshPreference()
+        }
     }
 
     // MARK: - Version
