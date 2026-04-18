@@ -1,67 +1,49 @@
 import SwiftUI
 
-/// Splash screen — sky background, duck pops in, title appears, auto-transitions.
-/// Matches HomeView's bright retro pixel aesthetic.
+/// Splash screen — black background, title slides in, quack SFX, "tap to flap" subtitle, then transitions.
 struct SplashView: View {
     @Binding var isFinished: Bool
 
     // MARK: - Animation State
 
-    @State private var duckScale: CGFloat = 0.1
-    @State private var duckOpacity: Double = 0
+    @State private var titleOffset: CGFloat = -300
     @State private var titleOpacity: Double = 0
     @State private var subtitleOpacity: Double = 0
+    @State private var subtitleScale: CGFloat = 0.6
+    @State private var fadeOut: Double = 1.0
 
     // MARK: - Body
 
     var body: some View {
         ZStack {
-            // Sky gradient matching HomeView
-            LinearGradient(
-                stops: [
-                    .init(color: Color(red: 0.22, green: 0.50, blue: 0.85), location: 0.0),
-                    .init(color: Color(red: 0.38, green: 0.65, blue: 0.90), location: 0.3),
-                    .init(color: Color(red: 0.58, green: 0.80, blue: 0.94), location: 0.6),
-                    .init(color: Color(red: 0.78, green: 0.92, blue: 0.97), location: 0.85),
-                    .init(color: Color(red: 0.90, green: 0.95, blue: 0.98), location: 1.0),
-                ],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            Color.black.ignoresSafeArea()
 
-            VStack(spacing: 28) {
-                // Duck sprite
-                Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 8.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 120, height: 90)
-                    .scaleEffect(duckScale)
-                    .opacity(duckOpacity)
-                    .shadow(color: GK.Colors.pipeBorder.opacity(0.3), radius: 0, x: 3, y: 3)
-
+            VStack(spacing: 20) {
                 // Title
                 VStack(spacing: 4) {
                     Text("FLOPPY")
                         .font(.custom(GK.pixelFontName, size: 30))
                         .foregroundColor(.white)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: 4)
-                        .shadow(color: Color.black.opacity(0.35), radius: 0, x: 0, y: 2)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.6), radius: 8, x: 0, y: 0)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.3), radius: 16, x: 0, y: 0)
                     Text("DUCK")
                         .font(.custom(GK.pixelFontName, size: 30))
                         .foregroundColor(GK.Colors.scoreYellow)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: 4)
-                        .shadow(color: Color.black.opacity(0.35), radius: 0, x: 0, y: 2)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.6), radius: 8, x: 0, y: 0)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.3), radius: 16, x: 0, y: 0)
                 }
+                .offset(y: titleOffset)
                 .opacity(titleOpacity)
 
                 // Subtitle
                 Text("TAP TO FLAP")
                     .font(.custom(GK.pixelFontName, size: 10))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.45))
+                    .scaleEffect(subtitleScale)
                     .opacity(subtitleOpacity)
             }
         }
+        .opacity(fadeOut)
         .onAppear {
             TextureFactory.shared.preWarm()
             PixelIconFactory.shared.preWarm()
@@ -71,48 +53,40 @@ struct SplashView: View {
         .accessibilityAction(named: "Skip") { finish() }
     }
 
-    // MARK: - Animation Sequence (~5 s)
+    // MARK: - Animation Sequence
 
     private func runSequence() {
-        // 0.0 s — Duck pops in with spring
-        withAnimation(.spring(response: 0.50, dampingFraction: 0.60)) {
-            duckScale = 1.0
-            duckOpacity = 1
-        }
-
-        // 0.8 s — Coin SFX + haptic
-        after(0.80) {
-            SoundManager.shared.play(.coin)
-            Haptic.splashCoin()
-        }
-
-        // 1.2 s — Title fades in
-        after(1.20) {
-            withAnimation(.easeOut(duration: 0.30)) { titleOpacity = 1 }
-        }
-
-        // 1.8 s — Second coin SFX + haptic
-        after(1.80) {
-            SoundManager.shared.play(.coin)
-            Haptic.splashCoin()
-        }
-
-        // 2.2 s — Subtitle fades in
-        after(2.20) {
-            withAnimation(.easeIn(duration: 0.30)) { subtitleOpacity = 1 }
-        }
-
-        // 4.2 s — Fade everything out
-        after(4.20) {
-            withAnimation(.easeOut(duration: 0.40)) {
-                duckOpacity = 0
-                titleOpacity = 0
-                subtitleOpacity = 0
+        // 0.3 s — Title slides down from above with spring
+        after(0.30) {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.65)) {
+                titleOffset = 0
+                titleOpacity = 1
             }
         }
 
-        // 4.8 s — Transition
-        after(4.80) { finish() }
+        // 0.9 s — Quack SFX + haptic when title lands
+        after(0.90) {
+            SoundManager.shared.play(.quack)
+            Haptic.splashCoin()
+        }
+
+        // 1.6 s — Subtitle pops in
+        after(1.60) {
+            withAnimation(.spring(response: 0.40, dampingFraction: 0.55)) {
+                subtitleOpacity = 1
+                subtitleScale = 1.0
+            }
+        }
+
+        // 3.8 s — Fade everything out
+        after(3.80) {
+            withAnimation(.easeOut(duration: 0.35)) {
+                fadeOut = 0
+            }
+        }
+
+        // 4.3 s — Transition
+        after(4.30) { finish() }
     }
 
     // MARK: - Helpers
