@@ -76,7 +76,7 @@ export function applyMatchStatsToUser(user: Doc<"users">,
     bestScore: Math.max(user.bestScore, score),
     totalScore: user.totalScore + score,
     bread: user.bread + breadGain,
-    totalBreadCollected: user.totalBreadCollected + breadGain,
+    totalBreadCollected: (user.totalBreadCollected ?? 0) + breadGain,
     recentScores,
     rating: typeof newRating === "number" ? newRating : user.rating,
   };

@@ -164,6 +164,7 @@ struct SettingsView: View {
                                     Task {
                                         await SkinManager.shared.restorePurchases()
                                         await ThemeManager.shared.restorePurchases()
+                                        await BannerManager.shared.restorePurchases()
                                     }
                                 } label: {
                                     Text("RESTORE PURCHASES")
