@@ -903,6 +903,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         SoundManager.shared.play(.death)
         SoundManager.shared.stopPlayMusic()
 
+        // Disable bot physics immediately so gravity can't pull it into a
+        // pipe/ground during the death animation — prevents the late
+        // onBotDied callback from firing a false win celebration.
+        botController?.sprite?.physicsBody?.isDynamic = false
+
         guard let duck else { return }
 
         // Bump duck above ground layers so it doesn't clip behind them
@@ -1055,6 +1060,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func celebrateBotLadderWin() {
         guard !botLadderWinTriggered else { return }
+        // Only celebrate if the player is still alive — if they already died,
+        // the bot dying afterwards doesn't count as a win.
+        guard phase == .playing else { return }
         botLadderWinTriggered = true
 
         phase = .dead  // Stop gameplay

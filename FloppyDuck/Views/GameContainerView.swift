@@ -40,10 +40,16 @@ struct GameContainerView: View {
     private var headToHeadPending: Bool { isHeadToHead && !headToHeadOutcomeReady }
 
     private var ladderWon: Bool {
-        // The bot dies deterministically at its ceiling score — if the bot
-        // died (its score reached the target) the player wins by surviving.
-        guard let target = config.targetScore else { return score > botFinalScore }
-        return botFinalScore >= target
+        // The player wins a bot-ladder match only when the bot died FIRST
+        // (while the player was still alive).  showBotLadderCelebration is
+        // set exclusively in handleBotLadderWin, which only fires via the
+        // celebrateBotLadderWin → gameDidWinBotLadder path — i.e. when the
+        // bot's physics contact triggered its death before the player died.
+        //
+        // Checking botFinalScore >= target alone is wrong because the bot
+        // may have reached its ceiling (became doomed / stopped flapping)
+        // before the player died — that's still a player loss.
+        return showBotLadderCelebration
     }
 
     private var isNewBest: Bool { score > previousBest && score > 0 }
@@ -231,21 +237,20 @@ struct GameContainerView: View {
             return
         }
 
-        // Mark bot as beaten if the bot died at its ceiling (before recording)
-        if isBotLadder,
-           let botId = config.botCharacterId,
-           let target = config.targetScore,
-           botFinalScore >= target {
-            manager.beatBot(botId)
-            if let bot = BotCharacter.find(botId) {
-                SkinManager.shared.unlockBotReward(bot.skin)
-            }
-        }
+        // NOTE: In bot-ladder mode, handleGameEnd only fires when the PLAYER
+        // dies.  If the bot died first the scene routes through
+        // handleBotLadderWin instead.  So we never award a bot-ladder win
+        // here — the player died, that's a loss.
+        //
+        // (Previously this checked `ladderWon` which only looked at the
+        // bot's score, not whether the player was still alive — causing
+        // false "YOU WIN" results when the bot had reached its ceiling
+        // score before the player died.)
 
         let won: Bool?
         if config.mode == .vsBot {
             if isBotLadder {
-                won = ladderWon
+                won = false  // Player died → always a loss
             } else {
                 won = finalScore > scene.botScore
             }
