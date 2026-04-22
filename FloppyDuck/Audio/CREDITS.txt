@@ -4,10 +4,10 @@ Audio Credits
 Sound Effects
 -------------
 
-"Duck Quack" — Mixkit
-  Source: https://mixkit.co/free-sound-effects/
-  License: Mixkit Sound Effects Free License (royalty-free, commercial use)
-  File: quack.wav (trimmed to single quack, converted to mono)
+"Duck Quack" — iedurodrigues (via Pixabay)
+  Source: https://pixabay.com/sound-effects/nature-duck-quack-112941/
+  License: Pixabay Content License (royalty-free, commercial use, no attribution required)
+  File: quack.wav (trimmed to single quack, resampled to 44.1 kHz mono)
 
 Music
 -----
