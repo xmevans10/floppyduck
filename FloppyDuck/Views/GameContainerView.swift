@@ -214,8 +214,9 @@ struct GameContainerView: View {
         // Fire achievement events
         processAchievements(score: finalScore, scene: scene)
 
-        SoundManager.shared.play(.win)
-        Haptic.win()
+        // NOTE: Win sound + haptic already fired in GameScene's
+        // celebrateBotLadderWin() when the bot died.  Don't play them
+        // again here — that caused a double-play 1.5 s apart.
 
         withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
             phase = .gameOver
@@ -456,6 +457,8 @@ struct GameContainerView: View {
         showMedal = false
         showNewBest = false
         showBread = false
+        showBotLadderCelebration = false
+        celebrationPulse = false
         matchResult = nil
         finishingMatch = false
     }
