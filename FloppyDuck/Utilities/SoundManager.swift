@@ -421,9 +421,11 @@ final class SoundManager {
     private func loadBundledQuack() -> Data {
         if let url = Bundle.main.url(forResource: "quack", withExtension: "wav"),
            let data = try? Data(contentsOf: url) {
+            print("[SoundManager] ✅ Loaded quack.wav from bundle (\(data.count) bytes)")
             return data
         }
         // Fallback: synthesized square-wave honk if the asset is missing
+        print("[SoundManager] ⚠️ quack.wav not found in bundle — using synthesized fallback")
         return wav(square(freq: 600, dur: 0.12, decay: 0.15) +
                    silence(0.02) +
                    square(freq: 520, dur: 0.15, decay: 0.18))
