@@ -80,7 +80,11 @@ final class ParallaxManager {
         setupHills()
         setupTrees()
         setupGroundTiles()
-        setupGroundDetails()
+
+        // Skip ground details (grass blades, pebbles) in reduced quality
+        if PerformanceManager.shared.showGroundDetails {
+            setupGroundDetails()
+        }
 
         if theme.showStars {
             setupStars()
@@ -105,7 +109,8 @@ final class ParallaxManager {
         scrollGroundDetails(dtF)
 
         // Decorative layers respect Reduce Motion preference (cached at setup)
-        if !reduceMotionEnabled {
+        // and PerformanceManager quality (skip entirely on minimal quality)
+        if !reduceMotionEnabled && PerformanceManager.shared.showDecorativeParallax {
             scrollClouds(dtF)
             scrollHills(dtF)
             scrollTrees(dtF)
@@ -148,8 +153,9 @@ final class ParallaxManager {
     private func setupClouds() {
         let cloudTex = factory.cloudTexture()
         let tint = theme.cloudTint
+        let cloudCount = PerformanceManager.shared.cloudCount
 
-        for _ in 0..<5 {
+        for _ in 0..<cloudCount {
             let scale = CGFloat.random(in: 0.6...1.2)
             let cloud = SKSpriteNode(texture: cloudTex,
                                       size: CGSize(width: 80 * scale, height: 35 * scale))
@@ -260,11 +266,14 @@ final class ParallaxManager {
         sprite.zPosition = -95
 
         // Single gentle twinkle on the whole star field (replaces 40 individual actions)
-        let twinkle = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.65, duration: 2.0),
-            SKAction.fadeAlpha(to: 1.0, duration: 2.0),
-        ])
-        sprite.run(SKAction.repeatForever(twinkle))
+        // Skip twinkle animation in reduced quality to save GPU overhead
+        if PerformanceManager.shared.showStarTwinkle {
+            let twinkle = SKAction.sequence([
+                SKAction.fadeAlpha(to: 0.65, duration: 2.0),
+                SKAction.fadeAlpha(to: 1.0, duration: 2.0),
+            ])
+            sprite.run(SKAction.repeatForever(twinkle))
+        }
 
         backgroundLayer.addChild(sprite)
         starSprite = sprite

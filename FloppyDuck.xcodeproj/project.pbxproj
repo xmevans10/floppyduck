@@ -19,6 +19,7 @@
 		426F8821C9831D68A5B27147 /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5631A2E41C3ECFE3139D9B36 /* AchievementsView.swift */; };
 		488CD340D85ACEFFDE3580E9 /* GamePerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A39FF82D49B79DC5EE276C /* GamePerformanceTests.swift */; };
 		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
+		PERF000100020003AAAABBBB /* PerformanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PERF000100020003CCCCDDDD /* PerformanceManager.swift */; };
 		52928A5D99AFDD8C805F878A /* BattleBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04256D4EFAB614B2184DDDCE /* BattleBanner.swift */; };
 		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
 		5A036B38A42A68B2A8E40347 /* MedalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0494021C7FBFABF4BD6618 /* MedalTests.swift */; };
@@ -174,6 +175,7 @@
 		F1000000000000000000000A /* CREDITS.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CREDITS.txt; sourceTree = "<group>"; };
 		F1000000000000000000000B /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = quack.wav; sourceTree = "<group>"; };
 		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		PERF000100020003CCCCDDDD /* PerformanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceManager.swift; sourceTree = "<group>"; };
 		FE0494021C7FBFABF4BD6618 /* MedalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedalTests.swift; sourceTree = "<group>"; };
 		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
 		PH0000000000000000000005 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
@@ -278,6 +280,7 @@
 			children = (
 				F0703F9981111218E6869673 /* PRNG.swift */,
 				FBCE68166C3B433188B01FDE /* HapticManager.swift */,
+				PERF000100020003CCCCDDDD /* PerformanceManager.swift */,
 				EF6223E9869786181FDBDB97 /* TextureFactory.swift */,
 				DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */,
 				A1B2C3D4E5F6071829304050 /* SoundManager.swift */,
@@ -561,6 +564,7 @@
 				C10000000000000000000003 /* AppleSignInCoordinator.swift in Sources */,
 				D27603A65E3A06C3CB359FED /* ConvexClient.swift in Sources */,
 				49818A54D2311A8C429F104E /* HapticManager.swift in Sources */,
+				PERF000100020003AAAABBBB /* PerformanceManager.swift in Sources */,
 				89B61228B4E653AA90467704 /* PRNG.swift in Sources */,
 				CAFA74F0B0D4535CFB00FF8C /* TextureFactory.swift in Sources */,
 				83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */,

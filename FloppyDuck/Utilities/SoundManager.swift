@@ -37,6 +37,13 @@ final class SoundManager {
     /// Loaded gameplay music tracks (Junkala Action pack — CC0)
     private var playTracks: [AVAudioPlayer] = []
 
+    /// Per-theme synthesized gameplay music (keyed by theme rawValue).
+    private var themePlayTracks: [String: AVAudioPlayer] = [:]
+    /// Per-theme synthesized menu music (keyed by theme rawValue).
+    private var themeMenuTracks: [String: AVAudioPlayer] = [:]
+    /// Currently active background theme for music selection.
+    private var activeTheme: BackgroundTheme = .day
+
     /// Per-skin sound variant players (keyed by "\(skin.rawValue)_\(sound.rawValue)")
     private var skinPlayers: [String: AVAudioPlayer] = [:]
 
@@ -63,6 +70,16 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             self.prepareIfNeeded()
+        }
+    }
+
+    /// Set active background theme — determines which music track plays.
+    func setActiveTheme(_ theme: BackgroundTheme) {
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            self.prepareIfNeeded()
+            self.activeTheme = theme
+            self.ensureThemeMusic(for: theme)
         }
     }
 
@@ -105,10 +122,36 @@ final class SoundManager {
             guard let self else { return }
             self.prepareIfNeeded()
             guard self.isEnabled else { return }
-            guard !self.menuTracks.isEmpty else { return }
             // Stop any currently playing menu music
             self.bgmPlayer?.stop()
-            // Pick a random track from the Adventure pack
+
+            let theme = self.activeTheme
+
+            // Try theme-specific bundled menu track first
+            if let fileName = theme.menuMusicFile,
+               let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
+               let player = try? AVAudioPlayer(contentsOf: url) {
+                player.numberOfLoops = -1
+                player.volume = 0.18
+                player.prepareToPlay()
+                player.play()
+                self.bgmPlayer = player
+                return
+            }
+
+            // Try per-theme synthesized menu track
+            self.ensureThemeMusic(for: theme)
+            if let themeTrack = self.themeMenuTracks[theme.themeID] {
+                themeTrack.numberOfLoops = -1
+                themeTrack.volume = 0.14
+                themeTrack.currentTime = 0
+                themeTrack.play()
+                self.bgmPlayer = themeTrack
+                return
+            }
+
+            // Fallback: random from Adventure pack
+            guard !self.menuTracks.isEmpty else { return }
             let track = self.menuTracks.randomElement()!
             track.numberOfLoops = -1
             track.volume = 0.18
@@ -131,10 +174,36 @@ final class SoundManager {
             guard self.isEnabled else { return }
             // Stop menu BGM before starting gameplay BGM to prevent overlap
             self.bgmPlayer?.stop()
-            guard !self.playTracks.isEmpty else { return }
             // Stop any currently playing gameplay music
             self.playBgmPlayer?.stop()
-            // Pick a random track from the Action pack
+
+            let theme = self.activeTheme
+
+            // Try theme-specific bundled gameplay track first
+            if let fileName = theme.gameplayMusicFile,
+               let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
+               let player = try? AVAudioPlayer(contentsOf: url) {
+                player.numberOfLoops = -1
+                player.volume = 0.15
+                player.prepareToPlay()
+                player.play()
+                self.playBgmPlayer = player
+                return
+            }
+
+            // Try per-theme synthesized gameplay track
+            self.ensureThemeMusic(for: theme)
+            if let themeTrack = self.themePlayTracks[theme.themeID] {
+                themeTrack.numberOfLoops = -1
+                themeTrack.volume = 0.12
+                themeTrack.currentTime = 0
+                themeTrack.play()
+                self.playBgmPlayer = themeTrack
+                return
+            }
+
+            // Fallback: random from Action pack
+            guard !self.playTracks.isEmpty else { return }
             let track = self.playTracks.randomElement()!
             track.numberOfLoops = -1
             track.volume = 0.15
@@ -175,6 +244,8 @@ final class SoundManager {
             self.playBgmPlayer?.stop()
             self.menuTracks.forEach { $0.stop() }
             self.playTracks.forEach { $0.stop() }
+            self.themePlayTracks.values.forEach { $0.stop() }
+            self.themeMenuTracks.values.forEach { $0.stop() }
         }
     }
 
@@ -751,5 +822,615 @@ final class SoundManager {
         var full = sectionA + sectionB
         full += silence(0.04)
         return wav(full)
+    }
+
+    // MARK: - Per-Theme Synthesized Music
+
+    /// Lazily generates and caches synthesized music for the given theme.
+    /// Called on the audio queue — never blocks the main thread.
+    private func ensureThemeMusic(for theme: BackgroundTheme) {
+        let id = theme.themeID
+        // Skip themes that use bundled files
+        if theme.gameplayMusicFile != nil && theme.menuMusicFile != nil { return }
+        guard themePlayTracks[id] == nil else { return }
+
+        let (playData, menuData) = synthesizeThemeMusic(for: theme)
+
+        if let p = try? AVAudioPlayer(data: playData) {
+            p.volume = 0.12
+            p.numberOfLoops = -1
+            p.prepareToPlay()
+            themePlayTracks[id] = p
+        }
+        if let m = try? AVAudioPlayer(data: menuData) {
+            m.volume = 0.14
+            m.numberOfLoops = -1
+            m.prepareToPlay()
+            themeMenuTracks[id] = m
+        }
+    }
+
+    /// Returns (gameplayWav, menuWav) tailored to the theme's mood.
+    private func synthesizeThemeMusic(for theme: BackgroundTheme) -> (Data, Data) {
+        switch theme {
+        case .western:     return (westernPlayWav(),    westernMenuWav())
+        case .jungle:      return (junglePlayWav(),     jungleMenuWav())
+        case .egypt:       return (egyptPlayWav(),      egyptMenuWav())
+        case .cave:        return (cavePlayWav(),       caveMenuWav())
+        case .mountain:    return (mountainPlayWav(),   mountainMenuWav())
+        case .neonCity:    return (neonCityPlayWav(),   neonCityMenuWav())
+        case .underwater:  return (underwaterPlayWav(), underwaterMenuWav())
+        case .volcano:     return (volcanoPlayWav(),    volcanoMenuWav())
+        case .arctic:      return (arcticPlayWav(),     arcticMenuWav())
+        case .space:       return (spacePlayWav(),      spaceMenuWav())
+        case .pixelTokyo:  return (tokyoPlayWav(),      tokyoMenuWav())
+        default:           return (playBgmWav(),        menuBgmWav())
+        }
+    }
+
+    // ────────────────────────────────────────────────────
+    // WESTERN — twangy, bouncy country feel (G major)
+    // ────────────────────────────────────────────────────
+
+    private func westernPlayWav() -> Data {
+        let bpm: Float = 140
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        let melody: [(Float, Float)] = [
+            (392.00, eighth), (440.00, eighth), (493.88, eighth), (587.33, eighth),
+            (659.25, eighth), (587.33, eighth), (493.88, eighth), (440.00, eighth),
+            (392.00, eighth), (493.88, eighth), (587.33, eighth), (659.25, eighth),
+            (783.99, eighth), (659.25, eighth), (587.33, eighth), (493.88, eighth),
+            (440.00, beat), (392.00, beat),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (98.00, beat), (110.00, beat), (123.47, beat), (146.83, beat),
+            (164.81, beat), (146.83, beat), (123.47, beat), (110.00, beat),
+            (98.00, beat), (98.00, beat),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.22, bassVol: 0.18))
+    }
+
+    private func westernMenuWav() -> Data {
+        let bpm: Float = 110
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (392.00, beat), (440.00, beat), (493.88, beat), (587.33, beat),
+            (493.88, beat), (440.00, beat), (392.00, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (98.00, beat * 2), (110.00, beat * 2), (123.47, beat * 2), (98.00, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.20, bassVol: 0.16))
+    }
+
+    // ────────────────────────────────────────────────────
+    // JUNGLE — percussive tribal beat with pentatonic melody
+    // ────────────────────────────────────────────────────
+
+    private func junglePlayWav() -> Data {
+        let bpm: Float = 135
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+        let sixteenth = beat / 4
+
+        let melody: [(Float, Float)] = [
+            (523.25, sixteenth), (587.33, sixteenth), (659.25, sixteenth), (783.99, sixteenth),
+            (880.00, eighth), (783.99, eighth),
+            (659.25, sixteenth), (587.33, sixteenth), (523.25, sixteenth), (0, sixteenth),
+            (523.25, eighth), (659.25, eighth),
+            (783.99, eighth), (880.00, sixteenth), (783.99, sixteenth),
+            (659.25, eighth), (523.25, beat),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (146.83, eighth), (0, sixteenth), (146.83, sixteenth),
+            (164.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (130.81, eighth), (0, eighth),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.20, bassVol: 0.20))
+    }
+
+    private func jungleMenuWav() -> Data {
+        let bpm: Float = 100
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (523.25, beat), (659.25, beat), (783.99, beat), (880.00, beat),
+            (783.99, beat), (659.25, beat), (523.25, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (130.81, beat * 2), (164.81, beat * 2), (146.83, beat * 2), (130.81, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.18, bassVol: 0.16))
+    }
+
+    // ────────────────────────────────────────────────────
+    // EGYPT — mysterious Phrygian mode with ornamental runs
+    // ────────────────────────────────────────────────────
+
+    private func egyptPlayWav() -> Data {
+        let bpm: Float = 128
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+        let sixteenth = beat / 4
+
+        // E Phrygian / Arabic scale: E F G# A B C D
+        let melody: [(Float, Float)] = [
+            (329.63, eighth), (349.23, sixteenth), (415.30, sixteenth),
+            (440.00, eighth), (493.88, eighth),
+            (523.25, eighth), (493.88, sixteenth), (440.00, sixteenth),
+            (415.30, eighth), (349.23, eighth),
+            (329.63, eighth), (349.23, sixteenth), (415.30, sixteenth),
+            (440.00, eighth), (523.25, eighth),
+            (493.88, beat), (329.63, beat),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (82.41, eighth), (0, sixteenth), (82.41, sixteenth),
+            (87.31, eighth), (0, sixteenth), (82.41, sixteenth),
+            (82.41, eighth), (0, sixteenth), (82.41, sixteenth),
+            (87.31, eighth), (0, sixteenth), (82.41, sixteenth),
+            (82.41, beat), (82.41, beat),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.22, bassVol: 0.18))
+    }
+
+    private func egyptMenuWav() -> Data {
+        let bpm: Float = 95
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (329.63, beat), (349.23, beat), (415.30, beat), (440.00, beat),
+            (415.30, beat), (349.23, beat), (329.63, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (82.41, beat * 2), (87.31, beat * 2), (82.41, beat * 2), (82.41, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.20, bassVol: 0.16))
+    }
+
+    // ────────────────────────────────────────────────────
+    // CAVE — dark, echoing, sparse with low tones
+    // ────────────────────────────────────────────────────
+
+    private func cavePlayWav() -> Data {
+        let bpm: Float = 110
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        // Minor key, sparse — lots of space
+        let melody: [(Float, Float)] = [
+            (261.63, beat), (0, eighth), (293.66, eighth),
+            (311.13, beat), (0, eighth), (261.63, eighth),
+            (246.94, beat), (0, eighth), (233.08, eighth),
+            (261.63, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (65.41, beat * 2), (0, beat),
+            (61.74, beat * 2), (0, beat),
+            (65.41, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.16, bassVol: 0.20))
+    }
+
+    private func caveMenuWav() -> Data {
+        let bpm: Float = 80
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (261.63, beat * 2), (293.66, beat * 2),
+            (311.13, beat * 2), (261.63, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (65.41, beat * 4), (61.74, beat * 4),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.14, bassVol: 0.18))
+    }
+
+    // ────────────────────────────────────────────────────
+    // MOUNTAIN — airy, bright, ascending motifs (D major)
+    // ────────────────────────────────────────────────────
+
+    private func mountainPlayWav() -> Data {
+        let bpm: Float = 130
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        let melody: [(Float, Float)] = [
+            (587.33, eighth), (659.25, eighth), (739.99, eighth), (880.00, eighth),
+            (987.77, eighth), (880.00, eighth), (739.99, eighth), (659.25, eighth),
+            (587.33, eighth), (739.99, eighth), (880.00, eighth), (987.77, eighth),
+            (1174.66, eighth), (987.77, eighth), (880.00, eighth), (739.99, eighth),
+            (659.25, beat), (587.33, beat),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (146.83, beat), (164.81, beat), (185.00, beat), (220.00, beat),
+            (246.94, beat), (220.00, beat), (185.00, beat), (164.81, beat),
+            (146.83, beat), (146.83, beat),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.20, bassVol: 0.16))
+    }
+
+    private func mountainMenuWav() -> Data {
+        let bpm: Float = 100
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (587.33, beat), (659.25, beat), (739.99, beat), (880.00, beat),
+            (739.99, beat), (659.25, beat), (587.33, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (146.83, beat * 2), (164.81, beat * 2), (185.00, beat * 2), (146.83, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.18, bassVol: 0.14))
+    }
+
+    // ────────────────────────────────────────────────────
+    // NEON CITY — driving synth-wave arpeggios (A minor)
+    // ────────────────────────────────────────────────────
+
+    private func neonCityPlayWav() -> Data {
+        let bpm: Float = 145
+        let beat = 60.0 / bpm
+        let sixteenth = beat / 4
+
+        let melody: [(Float, Float)] = [
+            (440.00, sixteenth), (523.25, sixteenth), (659.25, sixteenth), (523.25, sixteenth),
+            (440.00, sixteenth), (523.25, sixteenth), (659.25, sixteenth), (783.99, sixteenth),
+            (880.00, sixteenth), (783.99, sixteenth), (659.25, sixteenth), (523.25, sixteenth),
+            (440.00, sixteenth), (523.25, sixteenth), (659.25, sixteenth), (523.25, sixteenth),
+            (392.00, sixteenth), (440.00, sixteenth), (523.25, sixteenth), (440.00, sixteenth),
+            (392.00, sixteenth), (440.00, sixteenth), (523.25, sixteenth), (659.25, sixteenth),
+            (523.25, beat), (0, beat / 2), (440.00, beat / 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (110.00, beat), (0, sixteenth), (110.00, sixteenth), (0, beat / 2),
+            (130.81, beat), (0, sixteenth), (130.81, sixteenth), (0, beat / 2),
+            (110.00, beat), (0, sixteenth), (110.00, sixteenth), (0, beat / 2),
+            (98.00, beat), (0, beat / 2), (110.00, beat / 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.18, bassVol: 0.20))
+    }
+
+    private func neonCityMenuWav() -> Data {
+        let bpm: Float = 115
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        let melody: [(Float, Float)] = [
+            (440.00, eighth), (523.25, eighth), (659.25, eighth), (783.99, eighth),
+            (659.25, eighth), (523.25, eighth), (440.00, beat), (0, beat),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (110.00, beat * 2), (130.81, beat * 2), (98.00, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.16, bassVol: 0.18))
+    }
+
+    // ────────────────────────────────────────────────────
+    // UNDERWATER — dreamy, flowing, lots of sustained notes
+    // ────────────────────────────────────────────────────
+
+    private func underwaterPlayWav() -> Data {
+        let bpm: Float = 105
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        let melody: [(Float, Float)] = [
+            (523.25, beat), (622.25, eighth), (698.46, eighth),
+            (783.99, beat), (698.46, eighth), (622.25, eighth),
+            (523.25, beat), (466.16, eighth), (523.25, eighth),
+            (622.25, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (130.81, beat * 2), (155.56, beat * 2),
+            (130.81, beat * 2), (116.54, beat * 2),
+        ]
+
+        return wav(mixThemeLayersSine(melody: melody, bass: bass, melVol: 0.18, bassVol: 0.16))
+    }
+
+    private func underwaterMenuWav() -> Data {
+        let bpm: Float = 80
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (523.25, beat * 2), (622.25, beat * 2),
+            (698.46, beat * 2), (523.25, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (130.81, beat * 4), (116.54, beat * 4),
+        ]
+
+        return wav(mixThemeLayersSine(melody: melody, bass: bass, melVol: 0.16, bassVol: 0.14))
+    }
+
+    // ────────────────────────────────────────────────────
+    // VOLCANO — aggressive, driving minor key (E minor)
+    // ────────────────────────────────────────────────────
+
+    private func volcanoPlayWav() -> Data {
+        let bpm: Float = 155
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+        let sixteenth = beat / 4
+
+        let melody: [(Float, Float)] = [
+            (329.63, sixteenth), (392.00, sixteenth), (440.00, sixteenth), (493.88, sixteenth),
+            (523.25, eighth), (493.88, eighth),
+            (440.00, sixteenth), (392.00, sixteenth), (329.63, sixteenth), (392.00, sixteenth),
+            (440.00, eighth), (523.25, eighth),
+            (659.25, eighth), (587.33, sixteenth), (523.25, sixteenth),
+            (493.88, eighth), (440.00, eighth),
+            (329.63, beat), (0, beat / 2), (329.63, beat / 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (82.41, eighth), (0, sixteenth), (82.41, sixteenth),
+            (82.41, eighth), (0, sixteenth), (82.41, sixteenth),
+            (98.00, eighth), (0, sixteenth), (98.00, sixteenth),
+            (82.41, eighth), (0, sixteenth), (82.41, sixteenth),
+            (82.41, beat), (0, beat / 2), (82.41, beat / 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.22, bassVol: 0.22))
+    }
+
+    private func volcanoMenuWav() -> Data {
+        let bpm: Float = 120
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (329.63, beat), (392.00, beat), (440.00, beat), (493.88, beat),
+            (440.00, beat), (392.00, beat), (329.63, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (82.41, beat * 2), (98.00, beat * 2), (82.41, beat * 2), (82.41, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.20, bassVol: 0.18))
+    }
+
+    // ────────────────────────────────────────────────────
+    // ARCTIC — crystalline, high-register, gentle (F major)
+    // ────────────────────────────────────────────────────
+
+    private func arcticPlayWav() -> Data {
+        let bpm: Float = 120
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        let melody: [(Float, Float)] = [
+            (698.46, eighth), (783.99, eighth), (880.00, eighth), (1046.50, eighth),
+            (880.00, eighth), (783.99, eighth), (698.46, eighth), (659.25, eighth),
+            (698.46, eighth), (880.00, eighth), (1046.50, eighth), (1174.66, eighth),
+            (1046.50, beat), (880.00, beat),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (174.61, beat), (196.00, beat), (220.00, beat), (261.63, beat),
+            (174.61, beat), (220.00, beat), (261.63, beat), (220.00, beat),
+        ]
+
+        return wav(mixThemeLayersSine(melody: melody, bass: bass, melVol: 0.18, bassVol: 0.14))
+    }
+
+    private func arcticMenuWav() -> Data {
+        let bpm: Float = 90
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (698.46, beat), (880.00, beat), (1046.50, beat), (880.00, beat),
+            (698.46, beat * 2), (0, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (174.61, beat * 4), (220.00, beat * 4),
+        ]
+
+        return wav(mixThemeLayersSine(melody: melody, bass: bass, melVol: 0.16, bassVol: 0.12))
+    }
+
+    // ────────────────────────────────────────────────────
+    // SPACE — ambient, slow, ethereal (whole-tone feel)
+    // ────────────────────────────────────────────────────
+
+    private func spacePlayWav() -> Data {
+        let bpm: Float = 95
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        let melody: [(Float, Float)] = [
+            (523.25, beat), (587.33, eighth), (659.25, eighth),
+            (739.99, beat), (0, eighth), (659.25, eighth),
+            (587.33, beat), (523.25, eighth), (466.16, eighth),
+            (523.25, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (130.81, beat * 2), (146.83, beat * 2),
+            (130.81, beat * 2), (116.54, beat * 2),
+        ]
+
+        return wav(mixThemeLayersSine(melody: melody, bass: bass, melVol: 0.14, bassVol: 0.16))
+    }
+
+    private func spaceMenuWav() -> Data {
+        let bpm: Float = 70
+        let beat = 60.0 / bpm
+
+        let melody: [(Float, Float)] = [
+            (523.25, beat * 2), (587.33, beat * 2),
+            (659.25, beat * 2), (523.25, beat * 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (130.81, beat * 4), (116.54, beat * 4),
+        ]
+
+        return wav(mixThemeLayersSine(melody: melody, bass: bass, melVol: 0.12, bassVol: 0.14))
+    }
+
+    // ────────────────────────────────────────────────────
+    // PIXEL TOKYO — fast, poppy chiptune (Bb major)
+    // ────────────────────────────────────────────────────
+
+    private func tokyoPlayWav() -> Data {
+        let bpm: Float = 160
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+        let sixteenth = beat / 4
+
+        let melody: [(Float, Float)] = [
+            (466.16, sixteenth), (523.25, sixteenth), (587.33, sixteenth), (698.46, sixteenth),
+            (783.99, eighth), (698.46, eighth),
+            (587.33, sixteenth), (523.25, sixteenth), (466.16, sixteenth), (523.25, sixteenth),
+            (587.33, eighth), (698.46, eighth),
+            (783.99, sixteenth), (932.33, sixteenth), (783.99, sixteenth), (698.46, sixteenth),
+            (587.33, eighth), (466.16, eighth),
+            (523.25, beat), (0, beat / 2), (466.16, beat / 2),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (116.54, eighth), (0, sixteenth), (116.54, sixteenth),
+            (130.81, eighth), (0, sixteenth), (130.81, sixteenth),
+            (116.54, eighth), (0, sixteenth), (116.54, sixteenth),
+            (110.00, eighth), (0, sixteenth), (116.54, sixteenth),
+            (116.54, beat), (0, beat / 2), (116.54, beat / 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.20, bassVol: 0.18))
+    }
+
+    private func tokyoMenuWav() -> Data {
+        let bpm: Float = 125
+        let beat = 60.0 / bpm
+        let eighth = beat / 2
+
+        let melody: [(Float, Float)] = [
+            (466.16, eighth), (523.25, eighth), (587.33, eighth), (698.46, eighth),
+            (587.33, eighth), (523.25, eighth), (466.16, beat), (0, beat),
+        ]
+
+        let bass: [(Float, Float)] = [
+            (116.54, beat * 2), (130.81, beat * 2), (110.00, beat * 2),
+        ]
+
+        return wav(mixThemeLayers(melody: melody, bass: bass, melVol: 0.18, bassVol: 0.16))
+    }
+
+    // MARK: - Theme Music Mixing Helpers
+
+    /// Mix square-wave melody + triangle bass into one sample array (standard chiptune).
+    private func mixThemeLayers(melody: [(Float, Float)], bass: [(Float, Float)],
+                                melVol: Float, bassVol: Float) -> [Float] {
+        func renderMelody(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += square(freq: freq, dur: dur * 0.85, decay: dur * 0.9).map { $0 * melVol }
+                    s += silence(dur * 0.15)
+                }
+            }
+            return s
+        }
+
+        func renderBass(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += triangle(freq: freq, dur: dur * 0.9, decay: dur).map { $0 * bassVol }
+                    s += silence(dur * 0.1)
+                }
+            }
+            return s
+        }
+
+        let melSamples = renderMelody(melody)
+        let bassSamples = renderBass(bass)
+        let len = max(melSamples.count, bassSamples.count)
+        var result = (0..<len).map { i in
+            let a = i < melSamples.count ? melSamples[i] : 0
+            let b = i < bassSamples.count ? bassSamples[i] : 0
+            return a + b
+        }
+        result += silence(0.04)
+        return result
+    }
+
+    /// Mix sine-wave melody + triangle bass (softer, dreamier themes like underwater/space).
+    private func mixThemeLayersSine(melody: [(Float, Float)], bass: [(Float, Float)],
+                                    melVol: Float, bassVol: Float) -> [Float] {
+        func renderMelody(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += sine(freq: freq, dur: dur * 0.9, decay: dur * 1.1).map { $0 * melVol }
+                    s += silence(dur * 0.1)
+                }
+            }
+            return s
+        }
+
+        func renderBass(_ notes: [(Float, Float)]) -> [Float] {
+            var s: [Float] = []
+            for (freq, dur) in notes {
+                if freq == 0 {
+                    s += silence(dur)
+                } else {
+                    s += triangle(freq: freq, dur: dur * 0.9, decay: dur).map { $0 * bassVol }
+                    s += silence(dur * 0.1)
+                }
+            }
+            return s
+        }
+
+        let melSamples = renderMelody(melody)
+        let bassSamples = renderBass(bass)
+        let len = max(melSamples.count, bassSamples.count)
+        var result = (0..<len).map { i in
+            let a = i < melSamples.count ? melSamples[i] : 0
+            let b = i < bassSamples.count ? bassSamples[i] : 0
+            return a + b
+        }
+        result += silence(0.04)
+        return result
     }
 }

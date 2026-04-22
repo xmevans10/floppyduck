@@ -23,10 +23,15 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     case underwater
     case volcano
     case arctic
+    case western
+    case jungle
+    case cave
+    case mountain
 
     // Premium (IAP)
     case space
     case pixelTokyo
+    case egypt
 
     var id: String { rawValue }
 
@@ -41,8 +46,13 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .underwater:  return "DEEP SEA"
         case .volcano:     return "VOLCANO"
         case .arctic:      return "ARCTIC"
+        case .western:     return "WESTERN"
+        case .jungle:      return "JUNGLE"
+        case .cave:        return "CAVE"
+        case .mountain:    return "MOUNTAIN"
         case .space:       return "SPACE"
         case .pixelTokyo:  return "TOKYO"
+        case .egypt:       return "EGYPT"
         }
     }
 
@@ -55,8 +65,13 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .underwater:  return "Bubble Time"
         case .volcano:     return "Hot Wings"
         case .arctic:      return "Chill Out"
+        case .western:     return "High Noon"
+        case .jungle:      return "Canopy Run"
+        case .cave:        return "Deep Below"
+        case .mountain:    return "Summit Rush"
         case .space:       return "To The Moon"
         case .pixelTokyo:  return "Neon Nights"
+        case .egypt:       return "Pharaoh's Flight"
         }
     }
 
@@ -66,9 +81,10 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .day, .sunset, .night:
             return .free
-        case .neonCity, .underwater, .volcano, .arctic:
+        case .neonCity, .underwater, .volcano, .arctic,
+             .western, .jungle, .cave, .mountain:
             return .normal
-        case .space, .pixelTokyo:
+        case .space, .pixelTokyo, .egypt:
             return .premium
         }
     }
@@ -83,6 +99,10 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .underwater:  return 200
         case .volcano:     return 250
         case .arctic:      return 200
+        case .western:     return 175
+        case .jungle:      return 200
+        case .cave:        return 225
+        case .mountain:    return 175
         default:           return nil
         }
     }
@@ -152,6 +172,34 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.82, green: 0.90, blue: 0.95),
                 Color(red: 0.92, green: 0.96, blue: 0.98),
             ]
+        case .western:
+            return [
+                Color(red: 0.85, green: 0.60, blue: 0.30),
+                Color(red: 0.92, green: 0.72, blue: 0.42),
+                Color(red: 0.70, green: 0.48, blue: 0.28),
+                Color(red: 0.55, green: 0.35, blue: 0.18),
+            ]
+        case .jungle:
+            return [
+                Color(red: 0.10, green: 0.28, blue: 0.12),
+                Color(red: 0.18, green: 0.42, blue: 0.15),
+                Color(red: 0.30, green: 0.58, blue: 0.22),
+                Color(red: 0.50, green: 0.72, blue: 0.35),
+            ]
+        case .cave:
+            return [
+                Color(red: 0.04, green: 0.03, blue: 0.06),
+                Color(red: 0.10, green: 0.08, blue: 0.14),
+                Color(red: 0.18, green: 0.14, blue: 0.22),
+                Color(red: 0.28, green: 0.22, blue: 0.30),
+            ]
+        case .mountain:
+            return [
+                Color(red: 0.30, green: 0.45, blue: 0.65),
+                Color(red: 0.50, green: 0.65, blue: 0.82),
+                Color(red: 0.70, green: 0.80, blue: 0.90),
+                Color(red: 0.85, green: 0.90, blue: 0.95),
+            ]
         case .space:
             return [
                 Color(red: 0.0, green: 0.0, blue: 0.02),
@@ -164,6 +212,13 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.20, green: 0.08, blue: 0.35),
                 Color(red: 0.50, green: 0.15, blue: 0.45),
                 Color(red: 0.85, green: 0.30, blue: 0.50),
+            ]
+        case .egypt:
+            return [
+                Color(red: 0.92, green: 0.78, blue: 0.45),
+                Color(red: 0.85, green: 0.65, blue: 0.30),
+                Color(red: 0.75, green: 0.50, blue: 0.20),
+                Color(red: 0.60, green: 0.38, blue: 0.15),
             ]
         }
     }
@@ -178,8 +233,13 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .underwater:  return UIColor(red: 0.03, green: 0.12, blue: 0.35, alpha: 1)
         case .volcano:     return UIColor(red: 0.50, green: 0.12, blue: 0.05, alpha: 1)
         case .arctic:      return UIColor(red: 0.55, green: 0.70, blue: 0.85, alpha: 1)
+        case .western:     return UIColor(red: 0.78, green: 0.56, blue: 0.30, alpha: 1)
+        case .jungle:      return UIColor(red: 0.15, green: 0.35, blue: 0.14, alpha: 1)
+        case .cave:        return UIColor(red: 0.08, green: 0.06, blue: 0.12, alpha: 1)
+        case .mountain:    return UIColor(red: 0.40, green: 0.55, blue: 0.72, alpha: 1)
         case .space:       return UIColor(red: 0.01, green: 0.01, blue: 0.05, alpha: 1)
         case .pixelTokyo:  return UIColor(red: 0.14, green: 0.06, blue: 0.26, alpha: 1)
+        case .egypt:       return UIColor(red: 0.82, green: 0.65, blue: 0.32, alpha: 1)
         }
     }
 
@@ -193,15 +253,20 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .underwater:  return UIColor(red: 0.30, green: 0.60, blue: 0.80, alpha: 0.3)
         case .volcano:     return UIColor(red: 0.50, green: 0.25, blue: 0.15, alpha: 0.6)
         case .arctic:      return UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.9)
+        case .western:     return UIColor(red: 0.90, green: 0.80, blue: 0.60, alpha: 0.5)
+        case .jungle:      return UIColor(red: 0.50, green: 0.70, blue: 0.40, alpha: 0.4)
+        case .cave:        return UIColor(red: 0.20, green: 0.18, blue: 0.25, alpha: 0.3)
+        case .mountain:    return UIColor(red: 0.85, green: 0.88, blue: 0.95, alpha: 0.7)
         case .space:       return UIColor(red: 0.15, green: 0.10, blue: 0.30, alpha: 0.3)
         case .pixelTokyo:  return UIColor(red: 0.70, green: 0.25, blue: 0.50, alpha: 0.4)
+        case .egypt:       return UIColor(red: 0.90, green: 0.75, blue: 0.50, alpha: 0.4)
         }
     }
 
     /// Whether to show star particles (night/space themes).
     var showStars: Bool {
         switch self {
-        case .night, .space, .neonCity, .pixelTokyo:
+        case .night, .space, .neonCity, .pixelTokyo, .cave:
             return true
         default:
             return false
@@ -218,9 +283,49 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .underwater:  return Color(red: 0.10, green: 0.45, blue: 0.65)
         case .volcano:     return Color(red: 0.85, green: 0.30, blue: 0.10)
         case .arctic:      return Color(red: 0.55, green: 0.75, blue: 0.90)
+        case .western:     return Color(red: 0.75, green: 0.50, blue: 0.22)
+        case .jungle:      return Color(red: 0.22, green: 0.55, blue: 0.18)
+        case .cave:        return Color(red: 0.35, green: 0.28, blue: 0.45)
+        case .mountain:    return Color(red: 0.45, green: 0.60, blue: 0.80)
         case .space:       return Color(red: 0.20, green: 0.15, blue: 0.40)
         case .pixelTokyo:  return Color(red: 0.70, green: 0.20, blue: 0.45)
+        case .egypt:       return Color(red: 0.85, green: 0.65, blue: 0.25)
         }
     }
 
+    // MARK: - Per-Theme Music
+
+    /// Preferred bundled gameplay music file name (without extension).
+    /// `SoundManager` loads this instead of picking a random Action track.
+    var gameplayMusicFile: String? {
+        switch self {
+        case .day:         return "action_level_1"
+        case .sunset:      return "action_level_2"
+        case .night:       return "action_level_3"
+        case .neonCity:    return nil // synthesized — neon synth
+        case .underwater:  return nil // synthesized — deep ocean
+        case .volcano:     return nil // synthesized — fire rush
+        case .arctic:      return nil // synthesized — ice crystal
+        case .western:     return nil // synthesized — western twang
+        case .jungle:      return nil // synthesized — tribal beat
+        case .cave:        return nil // synthesized — echo drip
+        case .mountain:    return nil // synthesized — wind chime
+        case .space:       return nil // synthesized — cosmic drift
+        case .pixelTokyo:  return nil // synthesized — neon pop
+        case .egypt:       return nil // synthesized — pharaoh march
+        }
+    }
+
+    /// Preferred bundled menu music file name (without extension).
+    var menuMusicFile: String? {
+        switch self {
+        case .day:         return "adventure_stage_select"
+        case .sunset:      return "adventure_stage_1"
+        case .night:       return "adventure_stage_2"
+        default:           return nil // use synthesized per-theme menu music
+        }
+    }
+
+    /// Identifier for synthesized per-theme music (used by SoundManager).
+    var themeID: String { rawValue }
 }
