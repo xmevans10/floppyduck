@@ -208,7 +208,7 @@ final class SoundManager {
             (.countTick, countTickWav(), 0.15),
             (.newBest,   newBestWav(),   0.50),
             (.milestone, milestoneWav(), 0.30),
-            (.quack,     quackWav(),     0.55),
+            (.quack,     loadBundledQuack(),  0.60),
             (.coin,      coinWav(),      0.40),
             (.powerUp,   powerUpWav(),   0.35),
             (.debuff,    debuffWav(),    0.35),
@@ -416,30 +416,17 @@ final class SoundManager {
             sine(freq: 990, dur: 0.08, decay: 0.10))
     }
 
-    /// Splash-screen quack — punchy, nasal duck quack (square-wave chirps
-    /// for an 8-bit honk that's unmistakably duck-like).
-    private func quackWav() -> Data {
-        // First quack: short honk with fast attack
-        let q1 = squareChirp(f0: 680, f1: 320, dur: 0.09)
-        // Second quack: slightly longer, lower — the classic "quack-QUACK"
-        let q2 = squareChirp(f0: 620, f1: 280, dur: 0.14)
-        return wav(q1 + silence(0.03) + q2)
-    }
-
-    /// Square-wave frequency sweep with decay envelope — nasal/honky timbre.
-    private func squareChirp(f0: Float, f1: Float, dur: Float) -> [Float] {
-        let count = Int(Float(sr) * dur)
-        return (0..<count).map { i in
-            let t = Float(i) / Float(sr)
-            let p = t / dur
-            let freq = f0 + (f1 - f0) * p
-            let phase = fmod(freq * t, 1.0)
-            let sq: Float = phase < 0.5 ? 0.5 : -0.5
-            // Quick attack (2 ms), then linear decay for a natural quack envelope
-            let attack: Float = min(t / 0.002, 1.0)
-            let decay: Float = 1.0 - p * 0.7
-            return sq * attack * decay * 0.55
+    /// Splash-screen quack — real duck quack loaded from bundled WAV asset.
+    /// Source: Mixkit (royalty-free), trimmed to a single 0.26 s quack.
+    private func loadBundledQuack() -> Data {
+        if let url = Bundle.main.url(forResource: "quack", withExtension: "wav"),
+           let data = try? Data(contentsOf: url) {
+            return data
         }
+        // Fallback: synthesized square-wave honk if the asset is missing
+        return wav(square(freq: 600, dur: 0.12, decay: 0.15) +
+                   silence(0.02) +
+                   square(freq: 520, dur: 0.15, decay: 0.18))
     }
 
     /// Classic retro coin-collect sound — two quick ascending sine tones (B5 → E6).

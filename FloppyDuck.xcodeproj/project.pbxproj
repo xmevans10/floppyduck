@@ -74,6 +74,7 @@
 		F20000000000000000000008 /* adventure_stage_2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* adventure_stage_2.m4a */; };
 		F20000000000000000000009 /* adventure_stage_select.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* adventure_stage_select.m4a */; };
 		F2000000000000000000000A /* CREDITS.txt in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* CREDITS.txt */; };
+		F2000000000000000000000B /* quack.wav in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* quack.wav */; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 		FF1E7DCB9494C2D8DE5E22BC /* ParallaxManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */; };
 		SE0000000000000000000003 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = SE0000000000000000000002 /* Sentry */; };
@@ -171,6 +172,7 @@
 		F10000000000000000000008 /* adventure_stage_2.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = adventure_stage_2.m4a; sourceTree = "<group>"; };
 		F10000000000000000000009 /* adventure_stage_select.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = adventure_stage_select.m4a; sourceTree = "<group>"; };
 		F1000000000000000000000A /* CREDITS.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CREDITS.txt; sourceTree = "<group>"; };
+		F1000000000000000000000B /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = quack.wav; sourceTree = "<group>"; };
 		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		FE0494021C7FBFABF4BD6618 /* MedalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedalTests.swift; sourceTree = "<group>"; };
 		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
@@ -385,6 +387,7 @@
 			isa = PBXGroup;
 			children = (
 				F30000000000000000000002 /* Music */,
+				F1000000000000000000000B /* quack.wav */,
 				F1000000000000000000000A /* CREDITS.txt */,
 			);
 			path = Audio;
@@ -515,6 +518,7 @@
 				F20000000000000000000008 /* adventure_stage_2.m4a in Resources */,
 				F20000000000000000000009 /* adventure_stage_select.m4a in Resources */,
 				F2000000000000000000000A /* CREDITS.txt in Resources */,
+				F2000000000000000000000B /* quack.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
