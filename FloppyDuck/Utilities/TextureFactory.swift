@@ -1242,6 +1242,8 @@ final class TextureFactory {
         case .volcano:                      return renderVolcanoHills()
         case .arctic:                       return renderArcticHills()
         case .space:                        return renderSpaceTerrainHills()
+        case .western, .jungle, .cave, .mountain, .egypt:
+            return renderPixelHills() // Fallback for new themes
         }
     }
 
@@ -1693,6 +1695,8 @@ final class TextureFactory {
         case .volcano:                      return renderCharredTrees()
         case .arctic:                       return renderSnowyPines()
         case .space:                        return renderSpaceStructures()
+        case .western, .jungle, .cave, .mountain, .egypt:
+            return renderPixelTrees() // Fallback for new themes
         }
     }
 
@@ -2313,6 +2317,8 @@ final class TextureFactory {
         case .volcano:                      return renderLavaPoolStrip()
         case .arctic:                       return renderIceCrystalStrip()
         case .space:                        return renderSpaceDebrisStrip()
+        case .western, .jungle, .cave, .mountain, .egypt:
+            return renderDayBushStrip() // Fallback for new themes
         }
     }
 
