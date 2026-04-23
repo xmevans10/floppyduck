@@ -41,7 +41,7 @@ final class ThemeManager: ObservableObject {
             ownedThemes = Set(ids.compactMap { BackgroundTheme(rawValue: $0) })
         }
         // Free themes are always owned
-        ownedThemes.formUnion([.day, .sunset, .night])
+        ownedThemes.formUnion(BackgroundTheme.allCases.filter { $0.isFree })
     }
 
     private func saveState() {

@@ -180,6 +180,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         Haptic.warmUp()
         // Item 11: Set active skin for per-skin sound variants
         SoundManager.shared.setActiveSkin(playerSkin)
+        // Set active theme so music matches the selected background
+        SoundManager.shared.setActiveTheme(backgroundTheme)
 
         addChild(worldNode)
         worldNode.addChild(backgroundLayer)
@@ -1098,14 +1100,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         duck.run(victoryFlight)
 
         // Celebratory pixel particles — burst of stars/sparkles
-        // PERF: Uses pre-rendered glow textures instead of 20 SKShapeNodes
+        // PERF: Uses pre-rendered glow textures instead of SKShapeNodes
+        let celebCount = 20
         let celebColors: [UIColor] = [
             UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1),   // gold
             UIColor.white,
             UIColor(red: 1.0, green: 0.60, blue: 0.0, alpha: 1),   // orange
             UIColor(red: 0.42, green: 0.73, blue: 0.20, alpha: 1), // green
         ]
-        for i in 0..<20 {
+        for i in 0..<celebCount {
             let color = celebColors[i % celebColors.count]
             let radius = CGFloat.random(in: 2...5)
             let tex = TextureFactory.shared.glowCircleTexture(radius: radius, color: color)

@@ -121,6 +121,8 @@ final class ParallaxManager {
         skyNode.zPosition = -100
 
         skyNode.texture = createSkyGradientTexture()
+        // PERF: Sky is fully opaque — skip alpha blending to save GPU fill-rate.
+        skyNode.blendMode = .replace
         backgroundLayer.addChild(skyNode)
     }
 
@@ -148,7 +150,6 @@ final class ParallaxManager {
     private func setupClouds() {
         let cloudTex = factory.cloudTexture()
         let tint = theme.cloudTint
-
         for _ in 0..<5 {
             let scale = CGFloat.random(in: 0.6...1.2)
             let cloud = SKSpriteNode(texture: cloudTex,
@@ -209,6 +210,8 @@ final class ParallaxManager {
             tile.anchorPoint = CGPoint(x: 0, y: 0)
             tile.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
             tile.zPosition = 50
+            // PERF: Ground tiles are fully opaque — skip alpha blending.
+            tile.blendMode = .replace
             groundLayer.addChild(tile)
             groundTiles.append(tile)
         }
