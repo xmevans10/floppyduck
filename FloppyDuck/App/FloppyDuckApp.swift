@@ -66,6 +66,11 @@ struct FloppyDuckApp: App {
                 }
             }
             .animation(.easeOut(duration: 0.2), value: splashFinished)
+            .onAppear {
+                // PERF: Prevent auto-lock during gameplay — keeps the screen on
+                // and avoids the system transitioning to background mid-session.
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
         }
     }
 }

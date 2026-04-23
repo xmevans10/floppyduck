@@ -80,11 +80,7 @@ final class ParallaxManager {
         setupHills()
         setupTrees()
         setupGroundTiles()
-
-        // Skip ground details (grass blades, pebbles) in reduced quality
-        if PerformanceManager.shared.showGroundDetails {
-            setupGroundDetails()
-        }
+        setupGroundDetails()
 
         if theme.showStars {
             setupStars()
@@ -109,8 +105,7 @@ final class ParallaxManager {
         scrollGroundDetails(dtF)
 
         // Decorative layers respect Reduce Motion preference (cached at setup)
-        // and PerformanceManager quality (skip entirely on minimal quality)
-        if !reduceMotionEnabled && PerformanceManager.shared.showDecorativeParallax {
+        if !reduceMotionEnabled {
             scrollClouds(dtF)
             scrollHills(dtF)
             scrollTrees(dtF)
@@ -126,6 +121,8 @@ final class ParallaxManager {
         skyNode.zPosition = -100
 
         skyNode.texture = createSkyGradientTexture()
+        // PERF: Sky is fully opaque — skip alpha blending to save GPU fill-rate.
+        skyNode.blendMode = .replace
         backgroundLayer.addChild(skyNode)
     }
 
@@ -153,9 +150,7 @@ final class ParallaxManager {
     private func setupClouds() {
         let cloudTex = factory.cloudTexture()
         let tint = theme.cloudTint
-        let cloudCount = PerformanceManager.shared.cloudCount
-
-        for _ in 0..<cloudCount {
+        for _ in 0..<5 {
             let scale = CGFloat.random(in: 0.6...1.2)
             let cloud = SKSpriteNode(texture: cloudTex,
                                       size: CGSize(width: 80 * scale, height: 35 * scale))
@@ -215,6 +210,8 @@ final class ParallaxManager {
             tile.anchorPoint = CGPoint(x: 0, y: 0)
             tile.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
             tile.zPosition = 50
+            // PERF: Ground tiles are fully opaque — skip alpha blending.
+            tile.blendMode = .replace
             groundLayer.addChild(tile)
             groundTiles.append(tile)
         }
@@ -266,14 +263,11 @@ final class ParallaxManager {
         sprite.zPosition = -95
 
         // Single gentle twinkle on the whole star field (replaces 40 individual actions)
-        // Skip twinkle animation in reduced quality to save GPU overhead
-        if PerformanceManager.shared.showStarTwinkle {
-            let twinkle = SKAction.sequence([
-                SKAction.fadeAlpha(to: 0.65, duration: 2.0),
-                SKAction.fadeAlpha(to: 1.0, duration: 2.0),
-            ])
-            sprite.run(SKAction.repeatForever(twinkle))
-        }
+        let twinkle = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.65, duration: 2.0),
+            SKAction.fadeAlpha(to: 1.0, duration: 2.0),
+        ])
+        sprite.run(SKAction.repeatForever(twinkle))
 
         backgroundLayer.addChild(sprite)
         starSprite = sprite

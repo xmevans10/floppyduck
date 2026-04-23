@@ -930,12 +930,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             self?.isPaused = false
         }
 
-        // Item 6: Camera zoom-in (skip on minimal quality to save GPU)
-        if PerformanceManager.shared.showDeathZoom {
-            let zoomIn = SKAction.scale(to: GK.Animation.zoomInScale, duration: GK.Animation.zoomInDuration)
-            let zoomOut = SKAction.scale(to: 1.0, duration: GK.Animation.zoomOutDuration)
-            worldNode.run(SKAction.sequence([zoomIn, zoomOut]))
-        }
+        // Item 6: Camera zoom-in
+        let zoomIn = SKAction.scale(to: GK.Animation.zoomInScale, duration: GK.Animation.zoomInDuration)
+        let zoomOut = SKAction.scale(to: 1.0, duration: GK.Animation.zoomOutDuration)
+        worldNode.run(SKAction.sequence([zoomIn, zoomOut]))
 
         let flash = SKSpriteNode(color: .white, size: self.size)
         flash.position = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -961,19 +959,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.removeFromParent()
         ]))
 
-        // Item 6: Stronger/longer screen shake (skip on minimal quality)
-        if PerformanceManager.shared.showScreenShake {
-            worldNode.run(SKAction.sequence([
-                SKAction.moveBy(x: 8, y: 5, duration: 0.025),
-                SKAction.moveBy(x: -16, y: -10, duration: 0.025),
-                SKAction.moveBy(x: 12, y: 7, duration: 0.025),
-                SKAction.moveBy(x: -8, y: -4, duration: 0.025),
-                SKAction.moveBy(x: 6, y: 3, duration: 0.025),
-                SKAction.moveBy(x: -4, y: -2, duration: 0.025),
-                SKAction.moveBy(x: 2, y: 1, duration: 0.025),
-                SKAction.move(to: .zero, duration: 0.03),
-            ]))
-        }
+        // Item 6: Stronger/longer screen shake
+        worldNode.run(SKAction.sequence([
+            SKAction.moveBy(x: 8, y: 5, duration: 0.025),
+            SKAction.moveBy(x: -16, y: -10, duration: 0.025),
+            SKAction.moveBy(x: 12, y: 7, duration: 0.025),
+            SKAction.moveBy(x: -8, y: -4, duration: 0.025),
+            SKAction.moveBy(x: 6, y: 3, duration: 0.025),
+            SKAction.moveBy(x: -4, y: -2, duration: 0.025),
+            SKAction.moveBy(x: 2, y: 1, duration: 0.025),
+            SKAction.move(to: .zero, duration: 0.03),
+        ]))
 
         // --- Death particle burst: 12–15 pixel-art particles radiating outward ---
         spawnDeathParticles(at: duck.position)
@@ -1027,8 +1023,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     /// duck's position. Uses duck palette colors (green, brown, gray) to match
     /// the existing 8-bit visual style.
     private func spawnDeathParticles(at position: CGPoint) {
-        let particleCount = PerformanceManager.shared.deathParticleCount
-        guard particleCount > 0 else { return }
+        let particleCount = Int.random(in: 12...15)
 
         let colors: [UIColor] = [
             UIColor(GK.Colors.duckGreen),
@@ -1106,7 +1101,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Celebratory pixel particles — burst of stars/sparkles
         // PERF: Uses pre-rendered glow textures instead of SKShapeNodes
-        let celebCount = PerformanceManager.shared.celebrationParticleCount
+        let celebCount = 20
         let celebColors: [UIColor] = [
             UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1),   // gold
             UIColor.white,
