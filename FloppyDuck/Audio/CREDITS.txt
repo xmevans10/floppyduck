@@ -9,15 +9,35 @@ Sound Effects
   License: Pixabay Content License (royalty-free, commercial use, no attribution required)
   File: quack.wav (trimmed to single quack, resampled to 44.1 kHz mono)
 
+Duck Quack Variants (Gameplay — every 10 pipes)
+--------------------------------------------------
+
+All quack variants are licensed under CC0 (Public Domain), no attribution required.
+
+"quack_1" — Breviceps (via Freesound, #445960)
+"quack_2" — Reitanna (via Freesound, #242664)
+"quack_3" — Mikes-MultiMedia (via Freesound, #418509)
+"quack_4" — martian (via Freesound, #547601)
+"quack_5" — DigPro120 (via Freesound, #558858)
+
 Music
 -----
 
-All music tracks are licensed under CC0 (Public Domain).
-
-"5 Chiptunes (Action)" — Juhani Junkala
+"5 Chiptunes (Action)" — Juhani Junkala (CC0)
   Source: https://opengameart.org/content/5-chiptunes-action
   Tracks: action_level_1, action_level_2, action_level_3, action_title_screen, action_ending
 
-"4 Chiptunes (Adventure)" — Juhani Junkala
+"4 Chiptunes (Adventure)" — Juhani Junkala (CC0)
   Source: https://opengameart.org/content/4-chiptunes-adventure
   Tracks: adventure_stage_1, adventure_stage_2, adventure_boss_fight, adventure_stage_select
+
+Theme Music — Kevin MacLeod (incompetech.com)
+  License: Creative Commons: By Attribution 4.0 (http://creativecommons.org/licenses/by/4.0/)
+  "Neo Western" → theme_western.m4a
+  "Expeditionary" → theme_jungle.m4a
+  "Desert City" → theme_egypt.m4a
+  "Long Road Ahead" → theme_mountain.m4a
+
+"Crystal Cave (song18)" — cynicmusic / pixelsphere.org (CC0)
+  Source: https://opengameart.org/content/crystal-cave-song18
+  Track: theme_cave.m4a

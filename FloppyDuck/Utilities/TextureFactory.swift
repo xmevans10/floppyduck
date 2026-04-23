@@ -1241,6 +1241,11 @@ final class TextureFactory {
         case .underwater:                   return renderCoralReefHills()
         case .volcano:                      return renderVolcanoHills()
         case .arctic:                       return renderArcticHills()
+        case .western:                      return renderWesternMesaHills()
+        case .jungle:                       return renderJungleCanopyHills()
+        case .egypt:                        return renderEgyptPyramidHills()
+        case .cave:                         return renderCaveFormationHills()
+        case .mountain:                     return renderMountainPeakHills()
         case .space:                        return renderSpaceTerrainHills()
         }
     }
@@ -1692,6 +1697,11 @@ final class TextureFactory {
         case .underwater:                   return renderKelpForest()
         case .volcano:                      return renderCharredTrees()
         case .arctic:                       return renderSnowyPines()
+        case .western:                      return renderWesternCactiMidground()
+        case .jungle:                       return renderJungleTropicalTrees()
+        case .egypt:                        return renderEgyptPalmObelisks()
+        case .cave:                         return renderCaveCrystalPillars()
+        case .mountain:                     return renderMountainPineForest()
         case .space:                        return renderSpaceStructures()
         }
     }
@@ -2312,6 +2322,11 @@ final class TextureFactory {
         case .underwater:                   return renderBubbleFishStrip()
         case .volcano:                      return renderLavaPoolStrip()
         case .arctic:                       return renderIceCrystalStrip()
+        case .western:                      return renderWesternScrubStrip()
+        case .jungle:                       return renderJungleFernStrip()
+        case .egypt:                        return renderEgyptDesertStrip()
+        case .cave:                         return renderCaveMossStrip()
+        case .mountain:                     return renderMountainMeadowStrip()
         case .space:                        return renderSpaceDebrisStrip()
         }
     }
@@ -2642,6 +2657,1154 @@ final class TextureFactory {
                 }
 
                 x += gap
+            }
+        }
+    }
+
+    // MARK: - Western Theme
+
+    // MARK: Western Mesa Hills — flat-topped buttes and mesa formations
+
+    private func renderWesternMesaHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        var heightMap = [Int](repeating: 0, count: gridW)
+
+        // Mesa formations: flat-topped with steep sides
+        let mesas: [(center: Int, halfWidth: Int, peak: Int)] = [
+            (gridW / 10, 8, 14),       // narrow butte
+            (gridW / 4, 16, 10),       // wide mesa
+            (gridW * 3 / 8, 6, 18),    // tall narrow butte
+            (gridW / 2, 12, 8),        // medium mesa
+            (gridW * 5 / 8, 5, 16),    // narrow butte
+            (gridW * 3 / 4, 18, 12),   // wide mesa
+            (gridW * 9 / 10, 7, 15),   // medium butte
+        ]
+        for mesa in mesas {
+            for x in max(0, mesa.center - mesa.halfWidth)..<min(gridW, mesa.center + mesa.halfWidth) {
+                let dist = abs(x - mesa.center)
+                let edgeDist = mesa.halfWidth - dist
+                // Steep edges (2px ramp) with flat top
+                let bh = edgeDist <= 2 ? Int(CGFloat(mesa.peak) * CGFloat(edgeDist) / 3.0) : mesa.peak
+                heightMap[x] = max(heightMap[x], bh)
+            }
+        }
+        // Low rolling sand between mesas
+        let dunes: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW * 3 / 16, 12, 3), (gridW * 7 / 16, 10, 2),
+            (gridW * 11 / 16, 14, 3), (gridW * 15 / 16, 10, 2),
+        ]
+        for dune in dunes {
+            for x in max(0, dune.center - dune.radius)..<min(gridW, dune.center + dune.radius) {
+                let dist = abs(x - dune.center)
+                let nd = CGFloat(dist) / CGFloat(dune.radius)
+                let bh = Int(CGFloat(dune.peak) * (1.0 - nd * nd))
+                heightMap[x] = max(heightMap[x], bh)
+            }
+        }
+
+        let mesaBase   = UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 0.60)
+        let mesaMid    = UIColor(red: 0.54, green: 0.33, blue: 0.16, alpha: 0.55)
+        let mesaTop    = UIColor(red: 0.23, green: 0.13, blue: 0.06, alpha: 0.65)
+        let mesaLight  = UIColor(red: 0.77, green: 0.57, blue: 0.29, alpha: 0.45)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mH = heightMap[x]
+                guard mH > 0 else { continue }
+                for y in 0..<mH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let color: UIColor
+                    if y == mH - 1 { color = mesaTop }
+                    else if ratio > 0.7 { color = mesaMid }
+                    else if ratio > 0.3 { color = mesaBase }
+                    else { color = mesaLight }
+                    // Sun highlight on left edge
+                    if x > 0 && heightMap[x - 1] < y && ratio > 0.5 {
+                        c.setFillColor(mesaLight.cgColor)
+                    } else {
+                        c.setFillColor(color.cgColor)
+                    }
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Western Cacti Midground — saguaros, barrel cacti, and saloon silhouette
+
+    private func renderWesternCactiMidground() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let cD = UIColor(red: 0.18, green: 0.35, blue: 0.18, alpha: 0.70) // cactus dark
+        let cM = UIColor(red: 0.29, green: 0.48, blue: 0.23, alpha: 0.65) // cactus mid
+        let cL = UIColor(red: 0.42, green: 0.61, blue: 0.33, alpha: 0.55) // cactus light
+        let sB = UIColor(red: 0.29, green: 0.19, blue: 0.13, alpha: 0.70) // saloon wood
+        let sD = UIColor(red: 0.20, green: 0.12, blue: 0.08, alpha: 0.75) // saloon dark
+
+        // Tall Saguaro (7w × 14h)
+        let saguaro: [[UIColor]] = [
+            [C,C,C,cM,C,C,C],
+            [C,cM,C,cM,C,cM,C],
+            [C,cM,C,cM,C,cM,C],
+            [cD,cM,C,cM,C,cM,cD],
+            [C,cL,cM,cM,cM,cL,C],
+            [C,C,cM,cM,cM,C,C],
+            [C,C,C,cM,C,C,C],
+            [C,C,C,cM,C,C,C],
+            [C,C,C,cM,C,C,C],
+            [C,C,C,cL,C,C,C],
+            [C,C,C,cM,C,C,C],
+            [C,C,C,cM,C,C,C],
+            [C,C,C,cM,C,C,C],
+            [C,C,C,cM,C,C,C],
+        ]
+
+        // Barrel Cactus (5w × 5h)
+        let barrel: [[UIColor]] = [
+            [C,cD,cM,cD,C],
+            [cD,cL,cM,cL,cD],
+            [cM,cM,cL,cM,cM],
+            [C,cD,cM,cD,C],
+            [C,C,cD,C,C],
+        ]
+
+        // Saloon (11w × 10h)
+        let saloon: [[UIColor]] = [
+            [C,C,sB,sB,sB,sB,sB,sB,sB,C,C],
+            [C,C,sB,sD,sD,sD,sD,sD,sB,C,C],
+            [C,sB,sB,sB,sB,sB,sB,sB,sB,sB,C],
+            [C,sB,sD,sB,sD,sD,sD,sB,sD,sB,C],
+            [C,sB,sD,sB,sD,sD,sD,sB,sD,sB,C],
+            [sB,sB,sB,sB,sB,sB,sB,sB,sB,sB,sB],
+            [sB,sD,sB,sD,sB,sD,sB,sD,sB,sD,sB],
+            [sB,sD,sB,sD,sB,sD,sB,sD,sB,sD,sB],
+            [sB,sB,sB,sB,sB,sB,sB,sB,sB,sB,sB],
+            [sB,sB,sB,sB,sB,sB,sB,sB,sB,sB,sB],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (20, 0), (90, 1), (140, 0), (210, 1), (280, 2),
+            (370, 0), (440, 1), (510, 0), (570, 1), (640, 0),
+            (700, 2), (760, 0),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = saguaro
+                case 1: template = barrel
+                default: template = saloon
+                }
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Western Scrub Strip — tumbleweeds, dry grass, rocks
+
+    private func renderWesternScrubStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let straw  = UIColor(red: 0.63, green: 0.50, blue: 0.31, alpha: 0.60)
+            let dryGrn = UIColor(red: 0.45, green: 0.40, blue: 0.25, alpha: 0.55)
+            let rock   = UIColor(red: 0.50, green: 0.38, blue: 0.25, alpha: 0.65)
+
+            var x = 0
+            while x < w {
+                let kind = Int.random(in: 0...2)
+                let gap = Int.random(in: 20...40)
+
+                if kind == 0 {
+                    // Tumbleweed — circular blob
+                    let sz = Int.random(in: 3...5)
+                    let by = h - sz * ps
+                    for row in 0..<sz {
+                        for col in 0..<sz {
+                            let dx = col - sz / 2
+                            let dy = row - sz / 2
+                            if dx * dx + dy * dy <= (sz / 2 + 1) * (sz / 2 + 1) {
+                                c.setFillColor(straw.cgColor)
+                                c.fill(CGRect(x: x + col * ps, y: by + row * ps, width: ps, height: ps))
+                            }
+                        }
+                    }
+                } else if kind == 1 {
+                    // Dry scrub — small bush
+                    let bw = Int.random(in: 4...6)
+                    let bh = Int.random(in: 2...3)
+                    let by = h - bh * ps
+                    for row in 0..<bh {
+                        for col in 0..<bw {
+                            if row == 0 && (col == 0 || col == bw - 1) { continue }
+                            c.setFillColor(dryGrn.cgColor)
+                            c.fill(CGRect(x: x + col * ps, y: by + row * ps, width: ps, height: ps))
+                        }
+                    }
+                } else {
+                    // Small rock
+                    let rw = Int.random(in: 3...4)
+                    let rh = 2
+                    let by = h - rh * ps
+                    for row in 0..<rh {
+                        for col in 0..<rw {
+                            if row == 0 && col == 0 { continue }
+                            c.setFillColor(rock.cgColor)
+                            c.fill(CGRect(x: x + col * ps, y: by + row * ps, width: ps, height: ps))
+                        }
+                    }
+                }
+                x += ps * 6 + gap
+            }
+        }
+    }
+
+    // MARK: - Jungle Theme
+
+    // MARK: Jungle Canopy Hills — dense rolling treetop silhouette
+
+    private func renderJungleCanopyHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Continuous overlapping bumps for dense canopy
+        var heightMap = [Int](repeating: 1, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 12, 14, 12), (gridW / 6, 16, 15), (gridW / 4, 12, 10),
+            (gridW / 3, 18, 16), (gridW * 5 / 12, 14, 13), (gridW / 2, 16, 17),
+            (gridW * 7 / 12, 12, 11), (gridW * 2 / 3, 20, 18), (gridW * 3 / 4, 14, 14),
+            (gridW * 5 / 6, 16, 15), (gridW * 11 / 12, 12, 12),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let deepCanopy  = UIColor(red: 0.06, green: 0.24, blue: 0.10, alpha: 0.55)
+        let midCanopy   = UIColor(red: 0.12, green: 0.42, blue: 0.16, alpha: 0.50)
+        let topCanopy   = UIColor(red: 0.04, green: 0.18, blue: 0.07, alpha: 0.60)
+        let sunDapple   = UIColor(red: 0.24, green: 0.63, blue: 0.27, alpha: 0.40)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mH = heightMap[x]
+                for y in 0..<mH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let color: UIColor
+                    if y == mH - 1 { color = topCanopy }
+                    else if ratio > 0.6 {
+                        // Sun dapple at peaks (1 in 5 chance)
+                        color = (x % 5 == 0 && y == mH - 2) ? sunDapple : midCanopy
+                    } else { color = deepCanopy }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Jungle Tropical Trees — thick trees with vines and flowers
+
+    private func renderJungleTropicalTrees() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let gD = UIColor(red: 0.12, green: 0.42, blue: 0.16, alpha: 0.65) // canopy dark
+        let gM = UIColor(red: 0.24, green: 0.63, blue: 0.27, alpha: 0.60) // canopy mid
+        let gL = UIColor(red: 0.42, green: 0.75, blue: 0.33, alpha: 0.50) // canopy light
+        let tK = UIColor(red: 0.16, green: 0.10, blue: 0.06, alpha: 0.70) // trunk
+        let vN = UIColor(red: 0.10, green: 0.30, blue: 0.10, alpha: 0.55) // vine
+        let fP = UIColor(red: 0.91, green: 0.25, blue: 0.50, alpha: 0.60) // flower pink
+        let fO = UIColor(red: 1.00, green: 0.53, blue: 0.19, alpha: 0.60) // flower orange
+
+        // Wide Tropical Tree (11w × 16h)
+        let tropTree: [[UIColor]] = [
+            [C,C,C,C,gD,gD,gD,C,C,C,C],
+            [C,C,C,gD,gM,gM,gM,gD,C,C,C],
+            [C,C,gD,gM,gL,gM,gM,gM,gD,C,C],
+            [C,gD,gM,gM,gL,gL,gM,gM,gM,gD,C],
+            [gD,gM,gM,gL,gL,gM,gM,gM,gM,gM,gD],
+            [gD,gM,gM,gM,gM,gM,gM,gM,gM,gM,gD],
+            [C,gD,gM,gM,gM,gM,gM,gM,gM,gD,C],
+            [C,C,gD,gM,gM,gM,gM,gM,gD,C,C],
+            [C,C,C,gD,gD,gM,gD,gD,C,C,C],
+            [C,C,C,C,C,tK,C,C,C,C,C],
+            [C,C,C,C,C,tK,C,C,C,C,C],
+            [C,vN,C,C,C,tK,C,C,C,vN,C],
+            [C,vN,C,C,C,tK,C,C,C,vN,C],
+            [C,vN,C,C,C,tK,C,C,C,C,C],
+            [C,C,C,C,C,tK,C,C,C,C,C],
+            [C,C,C,C,C,tK,C,C,C,C,C],
+        ]
+
+        // Flower Bush (7w × 5h)
+        let flowerBush: [[UIColor]] = [
+            [C,C,fP,gM,fO,C,C],
+            [C,gM,gM,gM,gM,gM,C],
+            [gM,gM,gL,gM,gL,gM,gM],
+            [C,gM,gM,gM,gM,gM,C],
+            [C,C,gM,gM,gM,C,C],
+        ]
+
+        // Vine Cluster (3w × 10h)
+        let vineCluster: [[UIColor]] = [
+            [vN,C,C], [vN,C,vN], [vN,C,vN], [C,vN,vN],
+            [C,vN,C], [C,vN,C], [vN,vN,C], [vN,C,C],
+            [vN,C,vN], [C,C,vN],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (15, 0), (75, 2), (120, 1), (180, 0), (250, 2), (300, 1),
+            (360, 0), (420, 2), (470, 1), (530, 0), (590, 2), (640, 1),
+            (700, 0), (760, 2),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = tropTree
+                case 1: template = flowerBush
+                default: template = vineCluster
+                }
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Jungle Fern Strip — ferns, small flowers, moss
+
+    private func renderJungleFernStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let fern  = UIColor(red: 0.18, green: 0.45, blue: 0.15, alpha: 0.65)
+            let bloom = UIColor(red: 0.91, green: 0.25, blue: 0.50, alpha: 0.55)
+            let moss  = UIColor(red: 0.23, green: 0.35, blue: 0.16, alpha: 0.60)
+
+            var x = 0
+            while x < w {
+                let kind = Int.random(in: 0...2)
+                let gap = Int.random(in: 14...24)
+
+                if kind == 0 {
+                    // Fern frond — fan shape
+                    let fw = 6; let fh = 4
+                    let by = h - fh * ps
+                    for row in 0..<fh {
+                        let cols = fw - row
+                        let offset = row / 2
+                        for col in offset..<(offset + cols) {
+                            c.setFillColor(fern.cgColor)
+                            c.fill(CGRect(x: x + col * ps, y: by + row * ps, width: ps, height: ps))
+                        }
+                    }
+                } else if kind == 1 {
+                    // Small tropical flower
+                    let by = h - 3 * ps
+                    c.setFillColor(fern.cgColor)
+                    c.fill(CGRect(x: x + ps, y: by + 2 * ps, width: ps, height: ps)) // stem
+                    c.fill(CGRect(x: x + ps, y: by + ps, width: ps, height: ps))
+                    c.setFillColor(bloom.cgColor)
+                    c.fill(CGRect(x: x, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + 2 * ps, y: by, width: ps, height: ps))
+                } else {
+                    // Moss patch
+                    let mw = Int.random(in: 4...6)
+                    let by = h - ps
+                    for col in 0..<mw {
+                        c.setFillColor(moss.cgColor)
+                        c.fill(CGRect(x: x + col * ps, y: by, width: ps, height: ps))
+                        if col % 2 == 0 {
+                            c.fill(CGRect(x: x + col * ps, y: by - ps, width: ps, height: ps))
+                        }
+                    }
+                }
+                x += ps * 5 + gap
+            }
+        }
+    }
+
+    // MARK: - Egypt Theme
+
+    // MARK: Egypt Pyramid Hills — sand dunes with pyramid silhouettes
+
+    private func renderEgyptPyramidHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        var heightMap = [Int](repeating: 0, count: gridW)
+
+        // Sand dunes (gentle rolling)
+        let dunes: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8, 18, 4), (gridW * 3 / 8, 14, 3),
+            (gridW * 5 / 8, 20, 5), (gridW * 7 / 8, 16, 3),
+        ]
+        for dune in dunes {
+            for x in max(0, dune.center - dune.radius)..<min(gridW, dune.center + dune.radius) {
+                let dist = abs(x - dune.center)
+                let nd = CGFloat(dist) / CGFloat(dune.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(dune.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        // Pyramids — triangular (straight linear edges)
+        let pyramids: [(center: Int, halfBase: Int, peak: Int)] = [
+            (gridW / 5, 14, 22),       // large pyramid
+            (gridW / 5 + 18, 8, 14),   // medium pyramid (offset right)
+            (gridW * 3 / 4, 10, 16),   // medium pyramid (right side)
+        ]
+
+        // Track pyramid pixels for coloring
+        var isPyramid = [Bool](repeating: false, count: gridW)
+        for pyr in pyramids {
+            for x in max(0, pyr.center - pyr.halfBase)..<min(gridW, pyr.center + pyr.halfBase) {
+                let dist = abs(x - pyr.center)
+                let pH = Int(CGFloat(pyr.peak) * (1.0 - CGFloat(dist) / CGFloat(pyr.halfBase)))
+                if pH > heightMap[x] {
+                    heightMap[x] = pH
+                    isPyramid[x] = true
+                }
+            }
+        }
+
+        let sandBase  = UIColor(red: 0.72, green: 0.56, blue: 0.38, alpha: 0.55)
+        let sandLight = UIColor(red: 0.83, green: 0.72, blue: 0.50, alpha: 0.50)
+        let pyrShadow = UIColor(red: 0.42, green: 0.30, blue: 0.13, alpha: 0.60)
+        let pyrLit    = UIColor(red: 0.77, green: 0.63, blue: 0.31, alpha: 0.55)
+        let pyrCap    = UIColor(red: 0.91, green: 0.78, blue: 0.25, alpha: 0.65)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mH = heightMap[x]
+                guard mH > 0 else { continue }
+                for y in 0..<mH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let color: UIColor
+                    if isPyramid[x] {
+                        if y == mH - 1 { color = pyrCap }
+                        else {
+                            // Shade by side: left = lit, right = shadow
+                            var isLeftSide = true
+                            for pyr in pyramids {
+                                if x >= pyr.center - pyr.halfBase && x < pyr.center + pyr.halfBase {
+                                    isLeftSide = x < pyr.center
+                                    break
+                                }
+                            }
+                            color = isLeftSide ? pyrLit : pyrShadow
+                        }
+                    } else {
+                        let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                        color = ratio > 0.5 ? sandLight : sandBase
+                    }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Egypt Palm Obelisks — palm trees, obelisks, sphinx hint
+
+    private func renderEgyptPalmObelisks() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let fD = UIColor(red: 0.29, green: 0.48, blue: 0.19, alpha: 0.65) // frond dark
+        let fL = UIColor(red: 0.42, green: 0.61, blue: 0.27, alpha: 0.55) // frond light
+        let tK = UIColor(red: 0.35, green: 0.23, blue: 0.10, alpha: 0.70) // trunk
+        let oS = UIColor(red: 0.48, green: 0.35, blue: 0.19, alpha: 0.70) // obelisk stone
+        let oA = UIColor(red: 0.16, green: 0.54, blue: 0.48, alpha: 0.60) // hieroglyph teal
+
+        // Desert Palm (9w × 14h)
+        let palm: [[UIColor]] = [
+            [C,C,fD,fD,fD,fD,fD,C,C],
+            [C,fD,fD,fL,fD,fL,fD,fD,C],
+            [fD,fD,fL,C,C,C,fL,fD,fD],
+            [C,fD,C,C,C,C,C,fD,C],
+            [C,C,C,C,tK,C,C,C,C],
+            [C,C,C,C,tK,C,C,C,C],
+            [C,C,C,tK,C,C,C,C,C],
+            [C,C,C,tK,C,C,C,C,C],
+            [C,C,tK,C,C,C,C,C,C],
+            [C,C,tK,C,C,C,C,C,C],
+            [C,C,tK,C,C,C,C,C,C],
+            [C,C,C,tK,C,C,C,C,C],
+            [C,C,C,tK,C,C,C,C,C],
+            [C,C,C,tK,C,C,C,C,C],
+        ]
+
+        // Obelisk (5w × 12h)
+        let obelisk: [[UIColor]] = [
+            [C,C,oS,C,C],
+            [C,C,oS,C,C],
+            [C,oS,oS,oS,C],
+            [C,oS,oA,oS,C],
+            [C,oS,oA,oS,C],
+            [oS,oS,oA,oS,oS],
+            [oS,oS,oA,oS,oS],
+            [oS,oS,oA,oS,oS],
+            [oS,oS,oS,oS,oS],
+            [oS,oS,oS,oS,oS],
+            [oS,oS,oS,oS,oS],
+            [oS,oS,oS,oS,oS],
+        ]
+
+        // Sphinx silhouette (12w × 6h)
+        let sphinx: [[UIColor]] = [
+            [C,C,C,oS,oS,oS,oS,C,C,C,C,C],
+            [C,C,oS,oS,oS,oS,oS,oS,C,C,C,C],
+            [C,oS,oS,oS,oS,oS,oS,oS,oS,C,C,C],
+            [oS,oS,oS,oS,oS,oS,oS,oS,oS,oS,oS,C],
+            [oS,oS,oS,oS,oS,oS,oS,oS,oS,oS,oS,oS],
+            [oS,oS,oS,oS,oS,oS,oS,oS,oS,oS,oS,oS],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (30, 0), (110, 1), (200, 0), (280, 2), (370, 0),
+            (460, 1), (540, 0), (630, 0), (710, 1), (770, 0),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = palm
+                case 1: template = obelisk
+                default: template = sphinx
+                }
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Egypt Desert Strip — papyrus reeds, pottery, sand ripples
+
+    private func renderEgyptDesertStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let reed  = UIColor(red: 0.29, green: 0.48, blue: 0.19, alpha: 0.55)
+            let pot   = UIColor(red: 0.65, green: 0.40, blue: 0.20, alpha: 0.60)
+            let sand  = UIColor(red: 0.72, green: 0.56, blue: 0.31, alpha: 0.45)
+
+            var x = 0
+            while x < w {
+                let kind = Int.random(in: 0...2)
+                let gap = Int.random(in: 30...50)
+
+                if kind == 0 {
+                    // Papyrus reed — thin stem with fan top
+                    let rh = Int.random(in: 4...6)
+                    let by = h - rh * ps
+                    c.setFillColor(reed.cgColor)
+                    for row in 1..<rh {
+                        c.fill(CGRect(x: x + ps, y: by + row * ps, width: ps, height: ps))
+                    }
+                    c.fill(CGRect(x: x, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + 2 * ps, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps * 3, y: by, width: ps, height: ps))
+                } else if kind == 1 {
+                    // Clay pot
+                    let by = h - 4 * ps
+                    c.setFillColor(pot.cgColor)
+                    c.fill(CGRect(x: x + ps, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + 2 * ps, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x, y: by + ps, width: ps * 4, height: ps))
+                    c.fill(CGRect(x: x, y: by + 2 * ps, width: ps * 4, height: ps))
+                    c.fill(CGRect(x: x + ps, y: by + 3 * ps, width: ps * 2, height: ps))
+                } else {
+                    // Sand ripple
+                    let rw = Int.random(in: 6...10)
+                    let by = h - ps
+                    for col in 0..<rw {
+                        let yOff = (col % 3 == 1) ? -ps : 0
+                        c.setFillColor(sand.cgColor)
+                        c.fill(CGRect(x: x + col * ps, y: by + yOff, width: ps, height: ps))
+                    }
+                }
+                x += ps * 6 + gap
+            }
+        }
+    }
+
+    // MARK: - Cave Theme
+
+    // MARK: Cave Formation Hills — stalactites from top, stalagmites from bottom
+
+    private func renderCaveFormationHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Stalagmites rising from bottom
+        var bottomMap = [Int](repeating: 0, count: gridW)
+        let stalagmites: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 8, 5, 12), (gridW / 4, 8, 16), (gridW * 3 / 8, 4, 10),
+            (gridW / 2, 6, 14), (gridW * 5 / 8, 3, 8), (gridW * 3 / 4, 7, 18),
+            (gridW * 7 / 8, 5, 12),
+        ]
+        for bump in stalagmites {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                bottomMap[x] = max(bottomMap[x], Int(CGFloat(bump.peak) * max(0, 1.0 - nd * nd * nd)))
+            }
+        }
+
+        // Stalactites hanging from top
+        var topMap = [Int](repeating: 0, count: gridW)
+        let stalactites: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 6, 4, 8), (gridW / 3, 6, 12), (gridW * 5 / 12, 3, 6),
+            (gridW * 7 / 12, 5, 10), (gridW * 5 / 6, 4, 9),
+        ]
+        for bump in stalactites {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                topMap[x] = max(topMap[x], Int(CGFloat(bump.peak) * max(0, 1.0 - nd * nd * nd)))
+            }
+        }
+
+        let rockDark    = UIColor(red: 0.10, green: 0.08, blue: 0.13, alpha: 0.70)
+        let rockMid     = UIColor(red: 0.18, green: 0.16, blue: 0.22, alpha: 0.65)
+        let rockLight   = UIColor(red: 0.29, green: 0.25, blue: 0.35, alpha: 0.55)
+        let crystalCyan = UIColor(red: 0.25, green: 0.82, blue: 0.88, alpha: 0.75)
+        let crystalPink = UIColor(red: 0.88, green: 0.25, blue: 0.75, alpha: 0.75)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Draw stalagmites (from bottom)
+            for x in 0..<gridW {
+                let mH = bottomMap[x]
+                for y in 0..<mH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let color: UIColor
+                    if y == mH - 1 && (x % 7 == 0) {
+                        color = x % 14 == 0 ? crystalCyan : crystalPink
+                    } else if ratio > 0.6 { color = rockLight }
+                    else if ratio > 0.3 { color = rockMid }
+                    else { color = rockDark }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Draw stalactites (from top)
+            for x in 0..<gridW {
+                let mH = topMap[x]
+                for y in 0..<mH {
+                    let yPos = CGFloat(y) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let color: UIColor
+                    if y == mH - 1 && (x % 9 == 0) {
+                        color = x % 18 == 0 ? crystalPink : crystalCyan
+                    } else if ratio > 0.6 { color = rockLight }
+                    else if ratio > 0.3 { color = rockMid }
+                    else { color = rockDark }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Cave Crystal Pillars — crystal formations with glowing accents
+
+    private func renderCaveCrystalPillars() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let rD = UIColor(red: 0.10, green: 0.08, blue: 0.13, alpha: 0.65) // rock dark
+        let rM = UIColor(red: 0.18, green: 0.16, blue: 0.22, alpha: 0.60) // rock mid
+        let rL = UIColor(red: 0.29, green: 0.25, blue: 0.35, alpha: 0.50) // rock light
+        let cC = UIColor(red: 0.25, green: 0.82, blue: 0.88, alpha: 0.75) // crystal cyan
+        let cP = UIColor(red: 0.88, green: 0.25, blue: 0.75, alpha: 0.75) // crystal pink
+        let cA = UIColor(red: 0.88, green: 0.63, blue: 0.13, alpha: 0.75) // crystal amber
+        let bT = UIColor(red: 0.08, green: 0.06, blue: 0.10, alpha: 0.70) // bat
+
+        // Crystal Pillar (5w × 14h)
+        let pillar: [[UIColor]] = [
+            [C,rD,rM,rD,C],
+            [rD,rM,rL,rM,rD],
+            [rD,rL,cC,rL,rD],
+            [rD,rM,cC,rM,rD],
+            [rD,rL,rL,rL,rD],
+            [C,rD,rM,rD,C],
+            [C,rD,rM,rD,C],
+            [C,rD,rM,rD,C],
+            [C,rD,rL,rD,C],
+            [C,rD,cP,rD,C],
+            [C,rD,rM,rD,C],
+            [C,rD,rM,rD,C],
+            [C,rD,rM,rD,C],
+            [C,rD,rM,rD,C],
+        ]
+
+        // Crystal Cluster (5w × 5h)
+        let cluster: [[UIColor]] = [
+            [C,C,cA,C,C],
+            [C,cA,cC,cA,C],
+            [cC,cA,C,cC,cP],
+            [C,cP,cA,cP,C],
+            [C,C,cC,C,C],
+        ]
+
+        // Stalactite hanging (5w × 8h) — top-anchored
+        let stalactite: [[UIColor]] = [
+            [rD,rM,rD,rM,rD],
+            [C,rM,rD,rM,C],
+            [C,rM,rL,rM,C],
+            [C,C,rM,C,C],
+            [C,C,rM,C,C],
+            [C,C,rL,C,C],
+            [C,C,rD,C,C],
+            [C,C,C,C,C],
+        ]
+
+        // Bat cluster (5w × 3h)
+        let bat: [[UIColor]] = [
+            [bT,C,C,C,bT],
+            [C,bT,bT,bT,C],
+            [C,C,bT,C,C],
+        ]
+
+        // Bottom-anchored items
+        let bottomPositions: [(x: CGFloat, type: Int)] = [
+            (40, 0), (120, 1), (200, 0), (310, 1), (400, 0),
+            (500, 1), (580, 0), (680, 1), (760, 0),
+        ]
+        // Top-anchored items
+        let topPositions: [(x: CGFloat, type: Int)] = [
+            (80, 2), (250, 3), (420, 2), (560, 3), (720, 2),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Bottom-anchored
+            for pos in bottomPositions {
+                let template = pos.type == 0 ? pillar : cluster
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Top-anchored
+            for pos in topPositions {
+                let template = pos.type == 2 ? stalactite : bat
+                let tH = template.count
+                let tW = template[0].count
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Cave Moss Strip — crystals, cave moss, water drips
+
+    private func renderCaveMossStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let crystCyan = UIColor(red: 0.25, green: 0.82, blue: 0.88, alpha: 0.70)
+            let crystPink = UIColor(red: 0.88, green: 0.25, blue: 0.75, alpha: 0.70)
+            let caveMoss  = UIColor(red: 0.16, green: 0.29, blue: 0.16, alpha: 0.55)
+            let caveRock  = UIColor(red: 0.18, green: 0.16, blue: 0.22, alpha: 0.60)
+
+            var x = 0
+            while x < w {
+                let kind = Int.random(in: 0...2)
+                let gap = Int.random(in: 22...38)
+
+                if kind == 0 {
+                    // Crystal shard — thin triangle pointing up
+                    let sh = Int.random(in: 3...5)
+                    let by = h - sh * ps
+                    let color = Bool.random() ? crystCyan : crystPink
+                    c.setFillColor(color.cgColor)
+                    for row in 0..<sh {
+                        c.fill(CGRect(x: x + ps, y: by + row * ps, width: ps, height: ps))
+                    }
+                    // Glow pixel at base
+                    c.setFillColor(color.withAlphaComponent(0.35).cgColor)
+                    c.fill(CGRect(x: x, y: h - ps, width: ps, height: ps))
+                    c.fill(CGRect(x: x + 2 * ps, y: h - ps, width: ps, height: ps))
+                } else if kind == 1 {
+                    // Cave moss patch
+                    let mw = Int.random(in: 4...6)
+                    let by = h - ps
+                    c.setFillColor(caveMoss.cgColor)
+                    for col in 0..<mw {
+                        c.fill(CGRect(x: x + col * ps, y: by, width: ps, height: ps))
+                    }
+                } else {
+                    // Cave rocks
+                    let rw = Int.random(in: 2...4)
+                    let by = h - 2 * ps
+                    c.setFillColor(caveRock.cgColor)
+                    for col in 0..<rw {
+                        c.fill(CGRect(x: x + col * ps, y: by, width: ps, height: ps))
+                        c.fill(CGRect(x: x + col * ps, y: by + ps, width: ps, height: ps))
+                    }
+                }
+                x += ps * 5 + gap
+            }
+        }
+    }
+
+    // MARK: - Mountain Theme
+
+    // MARK: Mountain Peak Hills — snow-capped mountain range
+
+    private func renderMountainPeakHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Sharp peaks with dominant high points
+        var heightMap = [Int](repeating: 0, count: gridW)
+        let peaks: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 10, 12, 10),        // small peak
+            (gridW / 4, 16, 22),          // dominant peak
+            (gridW * 3 / 8, 10, 8),       // ridge
+            (gridW / 2, 14, 18),          // second dominant
+            (gridW * 5 / 8, 8, 6),        // small ridge
+            (gridW * 3 / 4, 18, 24),      // tallest peak
+            (gridW * 7 / 8, 10, 12),      // medium peak
+        ]
+        for peak in peaks {
+            for x in max(0, peak.center - peak.radius)..<min(gridW, peak.center + peak.radius) {
+                let dist = abs(x - peak.center)
+                let nd = CGFloat(dist) / CGFloat(peak.radius)
+                // Sharp triangular: linear falloff
+                let bh = Int(CGFloat(peak.peak) * max(0, 1.0 - nd))
+                heightMap[x] = max(heightMap[x], bh)
+            }
+        }
+        // Low ridges connecting peaks
+        let ridges: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW * 3 / 16, 14, 4), (gridW * 7 / 16, 12, 3),
+            (gridW * 11 / 16, 16, 5),
+        ]
+        for ridge in ridges {
+            for x in max(0, ridge.center - ridge.radius)..<min(gridW, ridge.center + ridge.radius) {
+                let dist = abs(x - ridge.center)
+                let nd = CGFloat(dist) / CGFloat(ridge.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(ridge.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let rockDark = UIColor(red: 0.23, green: 0.29, blue: 0.35, alpha: 0.60)
+        let rockMid  = UIColor(red: 0.35, green: 0.42, blue: 0.48, alpha: 0.55)
+        let snowShdw = UIColor(red: 0.69, green: 0.75, blue: 0.82, alpha: 0.60)
+        let snowMid  = UIColor(red: 0.85, green: 0.88, blue: 0.92, alpha: 0.65)
+        let snowTop  = UIColor(red: 0.94, green: 0.96, blue: 0.97, alpha: 0.70)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mH = heightMap[x]
+                guard mH > 0 else { continue }
+                for y in 0..<mH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let color: UIColor
+                    // Snow cap on top 30%
+                    if ratio > 0.85 { color = snowTop }
+                    else if ratio > 0.75 { color = snowMid }
+                    else if ratio > 0.65 { color = snowShdw }
+                    else if ratio > 0.35 { color = rockMid }
+                    else { color = rockDark }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: Mountain Pine Forest — pine trees, rocky outcrops, eagle
+
+    private func renderMountainPineForest() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let pD = UIColor(red: 0.10, green: 0.23, blue: 0.10, alpha: 0.70) // pine dark
+        let pM = UIColor(red: 0.16, green: 0.35, blue: 0.16, alpha: 0.65) // pine mid
+        let pL = UIColor(red: 0.23, green: 0.48, blue: 0.23, alpha: 0.55) // pine light
+        let pS = UIColor(red: 0.82, green: 0.88, blue: 0.82, alpha: 0.50) // pine snow
+        let tK = UIColor(red: 0.30, green: 0.20, blue: 0.12, alpha: 0.70) // trunk
+        let rK = UIColor(red: 0.35, green: 0.42, blue: 0.48, alpha: 0.60) // rock
+        let rL = UIColor(red: 0.48, green: 0.54, blue: 0.60, alpha: 0.50) // rock light
+        let eG = UIColor(red: 0.23, green: 0.16, blue: 0.10, alpha: 0.65) // eagle
+
+        // Tall Pine (7w × 14h)
+        let tallPine: [[UIColor]] = [
+            [C,C,C,pS,C,C,C],
+            [C,C,pD,pM,pD,C,C],
+            [C,C,pM,pL,pM,C,C],
+            [C,pD,pM,pL,pM,pD,C],
+            [C,pM,pL,pM,pL,pM,C],
+            [pD,pM,pM,pL,pM,pM,pD],
+            [pM,pM,pL,pM,pL,pM,pM],
+            [C,pM,pM,pM,pM,pM,C],
+            [C,C,pM,pM,pM,C,C],
+            [C,C,C,tK,C,C,C],
+            [C,C,C,tK,C,C,C],
+            [C,C,C,tK,C,C,C],
+            [C,C,C,tK,C,C,C],
+            [C,C,C,tK,C,C,C],
+        ]
+
+        // Short Pine (5w × 8h)
+        let shortPine: [[UIColor]] = [
+            [C,C,pS,C,C],
+            [C,pD,pM,pD,C],
+            [C,pM,pL,pM,C],
+            [pM,pM,pL,pM,pM],
+            [C,pM,pM,pM,C],
+            [C,C,tK,C,C],
+            [C,C,tK,C,C],
+            [C,C,tK,C,C],
+        ]
+
+        // Rocky Outcrop (9w × 5h)
+        let outcrop: [[UIColor]] = [
+            [C,C,C,rK,rK,rK,C,C,C],
+            [C,C,rK,rL,rK,rK,rK,C,C],
+            [C,rK,rK,rK,rL,rK,rK,rK,C],
+            [rK,rK,rK,rK,rK,rL,rK,rK,rK],
+            [rK,rK,rL,rK,rK,rK,rK,rK,rK],
+        ]
+
+        // Eagle (7w × 3h) — top-anchored
+        let eagle: [[UIColor]] = [
+            [eG,C,C,C,C,C,eG],
+            [C,eG,C,eG,C,eG,C],
+            [C,C,eG,eG,eG,C,C],
+        ]
+
+        let bottomPositions: [(x: CGFloat, type: Int)] = [
+            (15, 0), (70, 1), (120, 0), (180, 2), (240, 1), (300, 0),
+            (360, 1), (420, 0), (480, 2), (540, 1), (600, 0), (660, 1),
+            (720, 0), (770, 1),
+        ]
+        let topPositions: [(x: CGFloat, type: Int)] = [
+            (200, 3), (550, 3),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            for pos in bottomPositions {
+                let template: [[UIColor]]
+                switch pos.type {
+                case 0: template = tallPine
+                case 1: template = shortPine
+                default: template = outcrop
+                }
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+
+            for pos in topPositions {
+                let tH = eagle.count
+                let tW = eagle[0].count
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = eagle[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
+                                      y: CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Mountain Meadow Strip — wildflowers, alpine bushes, pebbles
+
+    private func renderMountainMeadowStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 36
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let grass   = UIColor(red: 0.35, green: 0.54, blue: 0.25, alpha: 0.60)
+            let flwrPrp = UIColor(red: 0.50, green: 0.25, blue: 0.63, alpha: 0.55)
+            let flwrYlw = UIColor(red: 0.88, green: 0.75, blue: 0.19, alpha: 0.55)
+            let pebble  = UIColor(red: 0.42, green: 0.48, blue: 0.55, alpha: 0.55)
+
+            var x = 0
+            while x < w {
+                let kind = Int.random(in: 0...2)
+                let gap = Int.random(in: 16...28)
+
+                if kind == 0 {
+                    // Alpine grass tuft
+                    let gw = Int.random(in: 3...5)
+                    let gh = Int.random(in: 2...4)
+                    let by = h - gh * ps
+                    for row in 0..<gh {
+                        for col in 0..<gw {
+                            if row == 0 && (col % 2 == 0) {
+                                c.setFillColor(grass.cgColor)
+                                c.fill(CGRect(x: x + col * ps, y: by, width: ps, height: ps))
+                            } else if row > 0 {
+                                c.setFillColor(grass.cgColor)
+                                c.fill(CGRect(x: x + col * ps, y: by + row * ps, width: ps, height: ps))
+                            }
+                        }
+                    }
+                } else if kind == 1 {
+                    // Wildflower
+                    let by = h - 3 * ps
+                    c.setFillColor(grass.cgColor)
+                    c.fill(CGRect(x: x + ps, y: by + 2 * ps, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: by + ps, width: ps, height: ps))
+                    let fColor = Bool.random() ? flwrPrp : flwrYlw
+                    c.setFillColor(fColor.cgColor)
+                    c.fill(CGRect(x: x, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: by, width: ps, height: ps))
+                    c.fill(CGRect(x: x + 2 * ps, y: by, width: ps, height: ps))
+                } else {
+                    // Mountain pebbles
+                    let pw = Int.random(in: 2...4)
+                    let by = h - ps
+                    for col in 0..<pw {
+                        c.setFillColor(pebble.cgColor)
+                        c.fill(CGRect(x: x + col * ps, y: by, width: ps, height: ps))
+                    }
+                }
+                x += ps * 5 + gap
             }
         }
     }

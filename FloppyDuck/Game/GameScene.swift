@@ -839,6 +839,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             Haptic.score()
             SoundManager.shared.play(.score)
 
+            // Every 10 pipes — play a random duck quack
+            if score % 10 == 0 {
+                SoundManager.shared.playRandomQuack()
+            }
+
             // Item 5: Floating score popup
             let isMilestone = score % 5 == 0
             spawnFloatingScorePopup(isMilestone: isMilestone)

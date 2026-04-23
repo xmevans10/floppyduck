@@ -306,13 +306,13 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .underwater:  return nil // synthesized — deep ocean
         case .volcano:     return nil // synthesized — fire rush
         case .arctic:      return nil // synthesized — ice crystal
-        case .western:     return nil // synthesized — western twang
-        case .jungle:      return nil // synthesized — tribal beat
-        case .cave:        return nil // synthesized — echo drip
-        case .mountain:    return nil // synthesized — wind chime
+        case .western:     return "theme_western"
+        case .jungle:      return "theme_jungle"
+        case .cave:        return "theme_cave"
+        case .mountain:    return "theme_mountain"
         case .space:       return nil // synthesized — cosmic drift
         case .pixelTokyo:  return nil // synthesized — neon pop
-        case .egypt:       return nil // synthesized — pharaoh march
+        case .egypt:       return "theme_egypt"
         }
     }
 
