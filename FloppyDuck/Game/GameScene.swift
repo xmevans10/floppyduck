@@ -754,7 +754,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Each bread node stores its base Y in userData["baseY"].
         let bobPhase = CGFloat(sin(breadBobTime * 7.5)) * 5  // ~1.2 Hz, ±5 pt amplitude
         let duckPos = duck?.position ?? .zero
-        let breadCollectRadius: CGFloat = 22  // slightly generous for feel
+        let breadCollectRadius: CGFloat = 30  // forgiving hitbox for satisfying collection
 
         // PERF: Tighter off-screen cleanup (pipeWidth + 20 instead of pipeWidth * 2)
         // and absolute sine-bob for bread (no drift, no dt multiplication).
