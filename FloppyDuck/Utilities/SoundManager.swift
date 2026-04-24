@@ -134,7 +134,7 @@ final class SoundManager {
             if let url = Bundle.main.url(forResource: menuFile, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
                 player.numberOfLoops = -1
-                player.volume = 0.18
+                player.volume = self.gameplayMusicVolume
                 player.prepareToPlay()
                 player.play()
                 self.bgmPlayer = player
@@ -145,7 +145,7 @@ final class SoundManager {
             guard !self.menuTracks.isEmpty else { return }
             let track = self.menuTracks.randomElement()!
             track.numberOfLoops = -1
-            track.volume = 0.18
+            track.volume = self.gameplayMusicVolume
             track.currentTime = 0
             track.play()
             self.bgmPlayer = track
@@ -289,7 +289,7 @@ final class SoundManager {
         for name in menuFiles {
             if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
-                player.volume = 0.18
+                player.volume = 0.16
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 menuTracks.append(player)
