@@ -159,24 +159,31 @@ final class AudioNormalizationTests: XCTestCase {
         }
     }
 
-    // MARK: - Per-skin quack synthesis
+    // MARK: - Per-skin quack files
 
-    func testSkinQuackVariantsAreSynthesized() {
-        // SoundManager builds synthesized quack variants for non-classic skins.
-        // Verify that every non-classic skin produces a non-empty WAV via the
-        // synthesis pipeline (accessed through buildSkinVariants → skinQuackWav).
-        let sm = SoundManager.shared
+    func testBundledSkinQuackFilesExist() {
+        // Every non-classic skin should have a bundled quack_<skin>.m4a file.
         let nonClassicSkins = DuckSkin.allCases.filter { $0 != .classic }
         for skin in nonClassicSkins {
-            sm.setActiveSkin(skin)
-            // After setting active skin, the skin quack player should exist
-            let key = "\(skin.rawValue)_quack"
-            // Give a brief moment for async build
-            let expectation = expectation(description: "skin quack built for \(skin.rawValue)")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                expectation.fulfill()
+            let fileName = "quack_\(skin.rawValue)"
+            let url = Bundle.main.url(forResource: fileName, withExtension: "m4a", subdirectory: "Quacks/Skins")
+                ?? Bundle.main.url(forResource: fileName, withExtension: "m4a")
+            XCTAssertNotNil(url, "Missing bundled quack file for skin '\(skin.rawValue)' — expected \(fileName).m4a")
+        }
+    }
+
+    func testSkinQuackFilesArePlayable() {
+        let nonClassicSkins = DuckSkin.allCases.filter { $0 != .classic }
+        for skin in nonClassicSkins {
+            let fileName = "quack_\(skin.rawValue)"
+            guard let url = Bundle.main.url(forResource: fileName, withExtension: "m4a", subdirectory: "Quacks/Skins")
+                    ?? Bundle.main.url(forResource: fileName, withExtension: "m4a") else { continue }
+            let player = try? AVAudioPlayer(contentsOf: url)
+            XCTAssertNotNil(player, "quack_\(skin.rawValue).m4a exists but cannot be loaded as audio")
+            if let p = player {
+                XCTAssertGreaterThan(p.duration, 0.1, "quack_\(skin.rawValue).m4a is too short (\(p.duration)s)")
+                XCTAssertLessThan(p.duration, 3.0, "quack_\(skin.rawValue).m4a is too long (\(p.duration)s)")
             }
-            wait(for: [expectation], timeout: 2.0)
         }
     }
 

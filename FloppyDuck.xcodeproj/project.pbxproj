@@ -87,6 +87,14 @@
 		F20000000000000000000024 /* theme_space.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000024 /* theme_space.m4a */; };
 		F20000000000000000000025 /* theme_pixelTokyo.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000025 /* theme_pixelTokyo.m4a */; };
 		F20000000000000000000010 /* theme_western.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* theme_western.m4a */; };
+		F20000000000000000000040 /* quack_cowboy.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000040 /* quack_cowboy.m4a */; };
+		F20000000000000000000041 /* quack_alien.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000041 /* quack_alien.m4a */; };
+		F20000000000000000000042 /* quack_dinosaur.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000042 /* quack_dinosaur.m4a */; };
+		F20000000000000000000043 /* quack_wizard.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000043 /* quack_wizard.m4a */; };
+		F20000000000000000000044 /* quack_devil.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000044 /* quack_devil.m4a */; };
+		F20000000000000000000045 /* quack_sailor.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000045 /* quack_sailor.m4a */; };
+		F20000000000000000000046 /* quack_pirate.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000046 /* quack_pirate.m4a */; };
+		F20000000000000000000047 /* quack_golden.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000047 /* quack_golden.m4a */; };
 		F20000000000000000000011 /* quack_1.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* quack_1.m4a */; };
 		F20000000000000000000012 /* quack_2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000012 /* quack_2.m4a */; };
 		F20000000000000000000013 /* quack_3.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* quack_3.m4a */; };
@@ -202,6 +210,14 @@
 		F10000000000000000000024 /* theme_space.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_space.m4a; sourceTree = "<group>"; };
 		F10000000000000000000025 /* theme_pixelTokyo.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_pixelTokyo.m4a; sourceTree = "<group>"; };
 		F10000000000000000000010 /* theme_western.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_western.m4a; sourceTree = "<group>"; };
+		F10000000000000000000040 /* quack_cowboy.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_cowboy.m4a"; sourceTree = "<group>"; };
+		F10000000000000000000041 /* quack_alien.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_alien.m4a"; sourceTree = "<group>"; };
+		F10000000000000000000042 /* quack_dinosaur.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_dinosaur.m4a"; sourceTree = "<group>"; };
+		F10000000000000000000043 /* quack_wizard.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_wizard.m4a"; sourceTree = "<group>"; };
+		F10000000000000000000044 /* quack_devil.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_devil.m4a"; sourceTree = "<group>"; };
+		F10000000000000000000045 /* quack_sailor.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_sailor.m4a"; sourceTree = "<group>"; };
+		F10000000000000000000046 /* quack_pirate.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_pirate.m4a"; sourceTree = "<group>"; };
+		F10000000000000000000047 /* quack_golden.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_golden.m4a"; sourceTree = "<group>"; };
 		F10000000000000000000011 /* quack_1.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_1.m4a; sourceTree = "<group>"; };
 		F10000000000000000000012 /* quack_2.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_2.m4a; sourceTree = "<group>"; };
 		F10000000000000000000013 /* quack_3.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_3.m4a; sourceTree = "<group>"; };
@@ -456,7 +472,22 @@
 			path = Music;
 			sourceTree = "<group>";
 		};
-		F30000000000000000000003 /* Quacks */ = {
+		F30000000000000000000003 		F30000000000000000000001 /* Skins */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000040 /* quack_cowboy.m4a */,
+				F10000000000000000000041 /* quack_alien.m4a */,
+				F10000000000000000000042 /* quack_dinosaur.m4a */,
+				F10000000000000000000043 /* quack_wizard.m4a */,
+				F10000000000000000000044 /* quack_devil.m4a */,
+				F10000000000000000000045 /* quack_sailor.m4a */,
+				F10000000000000000000046 /* quack_pirate.m4a */,
+				F10000000000000000000047 /* quack_golden.m4a */,
+			);
+			path = Skins;
+			sourceTree = "<group>";
+		};
+/* Quacks */ = {
 			isa = PBXGroup;
 			children = (
 				F10000000000000000000011 /* quack_1.m4a */,
@@ -464,6 +495,7 @@
 				F10000000000000000000013 /* quack_3.m4a */,
 				F10000000000000000000014 /* quack_4.m4a */,
 				F10000000000000000000015 /* quack_5.m4a */,
+				F30000000000000000000001 /* Skins */,
 			);
 			path = Quacks;
 			sourceTree = "<group>";
@@ -596,6 +628,15 @@
 				F20000000000000000000013 /* quack_3.m4a in Resources */,
 				F20000000000000000000014 /* quack_4.m4a in Resources */,
 				F20000000000000000000015 /* quack_5.m4a in Resources */,
+				F20000000000000000000040 /* quack_cowboy.m4a in Resources */,
+				F20000000000000000000041 /* quack_alien.m4a in Resources */,
+				F20000000000000000000042 /* quack_dinosaur.m4a in Resources */,
+				F20000000000000000000043 /* quack_wizard.m4a in Resources */,
+				F20000000000000000000044 /* quack_devil.m4a in Resources */,
+				F20000000000000000000045 /* quack_sailor.m4a in Resources */,
+				F20000000000000000000046 /* quack_pirate.m4a in Resources */,
+				F20000000000000000000047 /* quack_golden.m4a in Resources */,
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -580,7 +580,8 @@ final class SoundManager {
 
     // MARK: - Per-Skin Sound Variants (Item 11)
 
-    /// Build per-skin flap, death, and quack sounds. Non-classic skins get unique waveforms.
+    /// Build per-skin flap, death, and quack sounds.
+    /// Flap/death use synthesized waveforms; quacks load bundled audio files per skin.
     private func buildSkinVariants(for skin: DuckSkin) {
         guard skin != .classic else { return }
         let key_flap = "\(skin.rawValue)_flap"
@@ -592,7 +593,6 @@ final class SoundManager {
 
         let (flapData, flapVol) = self.skinFlapWav(skin: skin)
         let (deathData, deathVol) = self.skinDeathWav(skin: skin)
-        let (quackData, quackVol) = self.skinQuackWav(skin: skin)
 
         if let p = try? AVAudioPlayer(data: flapData) {
             p.volume = flapVol
@@ -604,8 +604,18 @@ final class SoundManager {
             p.prepareToPlay()
             self.skinPlayers[key_death] = p
         }
-        if let p = try? AVAudioPlayer(data: quackData) {
-            p.volume = quackVol
+
+        // Per-skin quack: load bundled audio file (e.g. quack_cowboy.m4a)
+        let quackFile = "quack_\(skin.rawValue)"
+        if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a", subdirectory: "Quacks/Skins"),
+           let p = try? AVAudioPlayer(contentsOf: url) {
+            p.volume = 0.50
+            p.prepareToPlay()
+            self.skinPlayers[key_quack] = p
+        } else if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a"),
+                  let p = try? AVAudioPlayer(contentsOf: url) {
+            // Fallback: flat bundle lookup (Xcode may flatten the directory)
+            p.volume = 0.50
             p.prepareToPlay()
             self.skinPlayers[key_quack] = p
         }
@@ -672,109 +682,6 @@ final class SoundManager {
             return (wav(chirp(f0: 1000, f1: 120, dur: 0.28)), 0.42)
         case .classic:
             return (deathWav(), 0.40)
-        }
-    }
-
-    /// Per-skin quack sound: each duck skin gets a unique quack effect
-    /// that matches their character personality. Triggered every 10 pipes.
-    private func skinQuackWav(skin: DuckSkin) -> (Data, Float) {
-        switch skin {
-        case .cowboy:
-            // Yeehaw! — rising whistle + whip crack snap
-            let whistle = chirp(f0: 600, f1: 1400, dur: 0.15)
-            let snap = square(freq: 120, dur: 0.03, decay: 0.04)
-            let gap = silence(0.05)
-            return (wav(whistle + gap + snap), 0.55)
-
-        case .alien:
-            // Electronic warble — rapid oscillating zap
-            let count = Int(Float(sr) * 0.25)
-            let wobble: [Float] = (0..<count).map { i in
-                let t = Float(i) / Float(sr)
-                let env = max(0, 1.0 - t / 0.30)
-                let mod = sin(2.0 * .pi * 12.0 * t)  // 12 Hz wobble
-                let freq = 1200.0 + 600.0 * mod
-                return sin(2.0 * .pi * freq * t) * env * 0.7
-            }
-            return (wav(wobble), 0.50)
-
-        case .dinosaur:
-            // Deep primal roar — low rumbling growl with overtones
-            let count = Int(Float(sr) * 0.35)
-            let roar: [Float] = (0..<count).map { i in
-                let t = Float(i) / Float(sr)
-                let env = max(0, 1.0 - t / 0.40)
-                let f = 80.0 + 30.0 * sin(2.0 * .pi * 5.0 * t)  // vibrato
-                let fundamental = sin(2.0 * .pi * f * t)
-                let overtone = sin(2.0 * .pi * f * 2.1 * t) * 0.4
-                let grit = sin(2.0 * .pi * f * 3.0 * t) * 0.2
-                return (fundamental + overtone + grit) * env * 0.7
-            }
-            return (wav(roar), 0.55)
-
-        case .wizard:
-            // Magic spell sparkle — ascending shimmer cascade
-            let s1 = sine(freq: 1047, dur: 0.06, decay: 0.08) // C6
-            let s2 = sine(freq: 1319, dur: 0.06, decay: 0.08) // E6
-            let s3 = sine(freq: 1568, dur: 0.06, decay: 0.08) // G6
-            let s4 = sine(freq: 2093, dur: 0.10, decay: 0.14) // C7
-            let sparkle = sine(freq: 2637, dur: 0.08, decay: 0.12) // E7
-            return (wav(s1 + s2 + s3 + s4 + sparkle), 0.45)
-
-        case .devil:
-            // Evil screech — descending distorted growl
-            let count = Int(Float(sr) * 0.30)
-            let screech: [Float] = (0..<count).map { i in
-                let t = Float(i) / Float(sr)
-                let env = max(0, 1.0 - t / 0.35)
-                let f = 500.0 - 400.0 * (t / 0.30)  // descending
-                let saw = (2.0 * fmod(f * t, 1.0) - 1.0)  // sawtooth
-                let sub = sin(2.0 * .pi * 60.0 * t) * 0.5  // sub rumble
-                return (saw + sub) * env * 0.6
-            }
-            return (wav(screech), 0.50)
-
-        case .sailor:
-            // Naval foghorn — deep resonant horn blast
-            let count = Int(Float(sr) * 0.30)
-            let horn: [Float] = (0..<count).map { i in
-                let t = Float(i) / Float(sr)
-                let attack = min(1.0, t / 0.04)
-                let release = max(0, 1.0 - max(0, (t - 0.22)) / 0.08)
-                let env = attack * release
-                let f: Float = 220.0
-                let h1 = sin(2.0 * .pi * f * t)
-                let h2 = sin(2.0 * .pi * f * 2.0 * t) * 0.6
-                let h3 = sin(2.0 * .pi * f * 3.0 * t) * 0.3
-                return (h1 + h2 + h3) * env * 0.5
-            }
-            return (wav(horn), 0.50)
-
-        case .pirate:
-            // Gruff "yarr" — rough low square + noise burst
-            let gruff = square(freq: 160, dur: 0.10, decay: 0.12)
-            let mid = square(freq: 200, dur: 0.08, decay: 0.10)
-            let drop = square(freq: 130, dur: 0.12, decay: 0.15)
-            return (wav(gruff + mid + drop), 0.50)
-
-        case .golden:
-            // Rich bell shimmer — layered harmonics like a golden chime
-            let count = Int(Float(sr) * 0.35)
-            let bell: [Float] = (0..<count).map { i in
-                let t = Float(i) / Float(sr)
-                let env = exp(-3.0 * t)  // bell-like exponential decay
-                let f: Float = 880.0
-                let h1 = sin(2.0 * .pi * f * t)           // fundamental A5
-                let h2 = sin(2.0 * .pi * f * 2.0 * t) * 0.6
-                let h3 = sin(2.0 * .pi * f * 3.5 * t) * 0.3  // inharmonic = bell character
-                let h4 = sin(2.0 * .pi * f * 5.1 * t) * 0.15
-                return (h1 + h2 + h3 + h4) * env * 0.5
-            }
-            return (wav(bell), 0.50)
-
-        case .classic:
-            // Classic uses bundled quack files (handled in playRandomQuack)
-            return (wav(chirp(f0: 800, f1: 400, dur: 0.15)), 0.50)
         }
     }
 
