@@ -297,33 +297,29 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
 
     /// Preferred bundled gameplay music file name (without extension).
     /// `SoundManager` loads this instead of picking a random Action track.
+    /// All themes now have dedicated bundled tracks — no more synthesized fallbacks.
     var gameplayMusicFile: String? {
         switch self {
         case .day:         return "action_level_1"
         case .sunset:      return "action_level_2"
         case .night:       return "action_level_3"
-        case .neonCity:    return nil // synthesized — neon synth
-        case .underwater:  return nil // synthesized — deep ocean
-        case .volcano:     return nil // synthesized — fire rush
-        case .arctic:      return nil // synthesized — ice crystal
+        case .neonCity:    return "theme_neonCity"
+        case .underwater:  return "theme_underwater"
+        case .volcano:     return "theme_volcano"
+        case .arctic:      return "theme_arctic"
         case .western:     return "theme_western"
         case .jungle:      return "theme_jungle"
         case .cave:        return "theme_cave"
         case .mountain:    return "theme_mountain"
-        case .space:       return nil // synthesized — cosmic drift
-        case .pixelTokyo:  return nil // synthesized — neon pop
+        case .space:       return "theme_space"
+        case .pixelTokyo:  return "theme_pixelTokyo"
         case .egypt:       return "theme_egypt"
         }
     }
 
-    /// Preferred bundled menu music file name (without extension).
+    /// Menu music is always the same regardless of theme — "adventure_stage_select".
     var menuMusicFile: String? {
-        switch self {
-        case .day:         return "adventure_stage_select"
-        case .sunset:      return "adventure_stage_1"
-        case .night:       return "adventure_stage_2"
-        default:           return nil // use synthesized per-theme menu music
-        }
+        return "adventure_stage_select"
     }
 
     /// Identifier for synthesized per-theme music (used by SoundManager).

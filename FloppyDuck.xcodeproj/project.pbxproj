@@ -79,6 +79,12 @@
 		F2000000000000000000000D /* theme_egypt.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000D /* theme_egypt.m4a */; };
 		F2000000000000000000000E /* theme_jungle.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000E /* theme_jungle.m4a */; };
 		F2000000000000000000000F /* theme_mountain.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* theme_mountain.m4a */; };
+		F20000000000000000000020 /* theme_neonCity.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000020 /* theme_neonCity.m4a */; };
+		F20000000000000000000021 /* theme_underwater.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000021 /* theme_underwater.m4a */; };
+		F20000000000000000000022 /* theme_volcano.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000022 /* theme_volcano.m4a */; };
+		F20000000000000000000023 /* theme_arctic.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000023 /* theme_arctic.m4a */; };
+		F20000000000000000000024 /* theme_space.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000024 /* theme_space.m4a */; };
+		F20000000000000000000025 /* theme_pixelTokyo.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000025 /* theme_pixelTokyo.m4a */; };
 		F20000000000000000000010 /* theme_western.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* theme_western.m4a */; };
 		F20000000000000000000011 /* quack_1.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* quack_1.m4a */; };
 		F20000000000000000000012 /* quack_2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000012 /* quack_2.m4a */; };
@@ -187,6 +193,12 @@
 		F1000000000000000000000D /* theme_egypt.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_egypt.m4a; sourceTree = "<group>"; };
 		F1000000000000000000000E /* theme_jungle.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_jungle.m4a; sourceTree = "<group>"; };
 		F1000000000000000000000F /* theme_mountain.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_mountain.m4a; sourceTree = "<group>"; };
+		F10000000000000000000020 /* theme_neonCity.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_neonCity.m4a; sourceTree = "<group>"; };
+		F10000000000000000000021 /* theme_underwater.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_underwater.m4a; sourceTree = "<group>"; };
+		F10000000000000000000022 /* theme_volcano.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_volcano.m4a; sourceTree = "<group>"; };
+		F10000000000000000000023 /* theme_arctic.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_arctic.m4a; sourceTree = "<group>"; };
+		F10000000000000000000024 /* theme_space.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_space.m4a; sourceTree = "<group>"; };
+		F10000000000000000000025 /* theme_pixelTokyo.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_pixelTokyo.m4a; sourceTree = "<group>"; };
 		F10000000000000000000010 /* theme_western.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_western.m4a; sourceTree = "<group>"; };
 		F10000000000000000000011 /* quack_1.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_1.m4a; sourceTree = "<group>"; };
 		F10000000000000000000012 /* quack_2.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_2.m4a; sourceTree = "<group>"; };
@@ -430,6 +442,12 @@
 				F1000000000000000000000D /* theme_egypt.m4a */,
 				F1000000000000000000000E /* theme_jungle.m4a */,
 				F1000000000000000000000F /* theme_mountain.m4a */,
+				F10000000000000000000020 /* theme_neonCity.m4a */,
+				F10000000000000000000021 /* theme_underwater.m4a */,
+				F10000000000000000000022 /* theme_volcano.m4a */,
+				F10000000000000000000023 /* theme_arctic.m4a */,
+				F10000000000000000000024 /* theme_space.m4a */,
+				F10000000000000000000025 /* theme_pixelTokyo.m4a */,
 				F10000000000000000000010 /* theme_western.m4a */,
 			);
 			path = Music;
@@ -563,6 +581,12 @@
 				F2000000000000000000000D /* theme_egypt.m4a in Resources */,
 				F2000000000000000000000E /* theme_jungle.m4a in Resources */,
 				F2000000000000000000000F /* theme_mountain.m4a in Resources */,
+				F20000000000000000000020 /* theme_neonCity.m4a in Resources */,
+				F20000000000000000000021 /* theme_underwater.m4a in Resources */,
+				F20000000000000000000022 /* theme_volcano.m4a in Resources */,
+				F20000000000000000000023 /* theme_arctic.m4a in Resources */,
+				F20000000000000000000024 /* theme_space.m4a in Resources */,
+				F20000000000000000000025 /* theme_pixelTokyo.m4a in Resources */,
 				F20000000000000000000010 /* theme_western.m4a in Resources */,
 				F20000000000000000000011 /* quack_1.m4a in Resources */,
 				F20000000000000000000012 /* quack_2.m4a in Resources */,

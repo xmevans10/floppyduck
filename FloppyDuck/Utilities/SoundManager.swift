@@ -128,11 +128,10 @@ final class SoundManager {
             // Stop any currently playing menu music
             self.bgmPlayer?.stop()
 
-            let theme = self.activeTheme
-
-            // Try theme-specific bundled menu track first
-            if let fileName = theme.menuMusicFile,
-               let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
+            // Home screen music is ALWAYS the same track regardless of active theme.
+            // This gives the game a consistent identity on the menu.
+            let menuFile = "adventure_stage_select"
+            if let url = Bundle.main.url(forResource: menuFile, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
                 player.numberOfLoops = -1
                 player.volume = 0.18
@@ -142,18 +141,7 @@ final class SoundManager {
                 return
             }
 
-            // Try per-theme synthesized menu track
-            self.ensureThemeMusic(for: theme)
-            if let themeTrack = self.themeMenuTracks[theme.themeID] {
-                themeTrack.numberOfLoops = -1
-                themeTrack.volume = 0.14
-                themeTrack.currentTime = 0
-                themeTrack.play()
-                self.bgmPlayer = themeTrack
-                return
-            }
-
-            // Fallback: random from Adventure pack
+            // Fallback: try any Adventure track
             guard !self.menuTracks.isEmpty else { return }
             let track = self.menuTracks.randomElement()!
             track.numberOfLoops = -1
@@ -170,6 +158,11 @@ final class SoundManager {
         }
     }
 
+    /// Consistent gameplay music volume for all themes.
+    /// All tracks are pre-normalized to -16 LUFS at the file level,
+    /// so we use a single playback volume for consistent loudness.
+    private let gameplayMusicVolume: Float = 0.16
+
     func startPlayMusic() {
         audioQueue.async { [weak self] in
             guard let self else { return }
@@ -182,34 +175,23 @@ final class SoundManager {
 
             let theme = self.activeTheme
 
-            // Try theme-specific bundled gameplay track first
+            // Every theme now has a bundled gameplay track — no synthesized fallback needed.
             if let fileName = theme.gameplayMusicFile,
                let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
                 player.numberOfLoops = -1
-                player.volume = 0.15
+                player.volume = self.gameplayMusicVolume
                 player.prepareToPlay()
                 player.play()
                 self.playBgmPlayer = player
                 return
             }
 
-            // Try per-theme synthesized gameplay track
-            self.ensureThemeMusic(for: theme)
-            if let themeTrack = self.themePlayTracks[theme.themeID] {
-                themeTrack.numberOfLoops = -1
-                themeTrack.volume = 0.12
-                themeTrack.currentTime = 0
-                themeTrack.play()
-                self.playBgmPlayer = themeTrack
-                return
-            }
-
-            // Fallback: random from Action pack
+            // Fallback: random from Action pack (should never reach here)
             guard !self.playTracks.isEmpty else { return }
             let track = self.playTracks.randomElement()!
             track.numberOfLoops = -1
-            track.volume = 0.15
+            track.volume = self.gameplayMusicVolume
             track.currentTime = 0
             track.play()
             self.playBgmPlayer = track
@@ -538,10 +520,25 @@ final class SoundManager {
         }
     }
 
-    /// Play a random quack from the loaded set — called every 10 pipes.
+    /// Play the skin-specific quack — called every 10 pipes.
+    /// Each duck skin has its own unique quack effect tied to their character.
     func playRandomQuack() {
         audioQueue.async { [weak self] in
-            guard let self, self.isEnabled, !self.quackPlayers.isEmpty else { return }
+            guard let self, self.isEnabled else { return }
+
+            // Non-classic skins get a unique synthesized quack
+            if self.activeSkin != .classic {
+                let key = "\(self.activeSkin.rawValue)_quack"
+                if let skinPlayer = self.skinPlayers[key] {
+                    skinPlayer.stop()
+                    skinPlayer.currentTime = 0
+                    skinPlayer.play()
+                    return
+                }
+            }
+
+            // Classic skin: pick from the bundled quack_1-5 set
+            guard !self.quackPlayers.isEmpty else { return }
             let player = self.quackPlayers.randomElement()!
             player.currentTime = 0
             player.play()
@@ -583,17 +580,19 @@ final class SoundManager {
 
     // MARK: - Per-Skin Sound Variants (Item 11)
 
-    /// Build per-skin flap and death sounds. Non-classic skins get pitch-shifted/modified waveforms.
+    /// Build per-skin flap, death, and quack sounds. Non-classic skins get unique waveforms.
     private func buildSkinVariants(for skin: DuckSkin) {
         guard skin != .classic else { return }
         let key_flap = "\(skin.rawValue)_flap"
         let key_death = "\(skin.rawValue)_death"
+        let key_quack = "\(skin.rawValue)_quack"
 
         // Skip if already built
         if skinPlayers[key_flap] != nil { return }
 
         let (flapData, flapVol) = self.skinFlapWav(skin: skin)
         let (deathData, deathVol) = self.skinDeathWav(skin: skin)
+        let (quackData, quackVol) = self.skinQuackWav(skin: skin)
 
         if let p = try? AVAudioPlayer(data: flapData) {
             p.volume = flapVol
@@ -604,6 +603,11 @@ final class SoundManager {
             p.volume = deathVol
             p.prepareToPlay()
             self.skinPlayers[key_death] = p
+        }
+        if let p = try? AVAudioPlayer(data: quackData) {
+            p.volume = quackVol
+            p.prepareToPlay()
+            self.skinPlayers[key_quack] = p
         }
     }
 
@@ -668,6 +672,109 @@ final class SoundManager {
             return (wav(chirp(f0: 1000, f1: 120, dur: 0.28)), 0.42)
         case .classic:
             return (deathWav(), 0.40)
+        }
+    }
+
+    /// Per-skin quack sound: each duck skin gets a unique quack effect
+    /// that matches their character personality. Triggered every 10 pipes.
+    private func skinQuackWav(skin: DuckSkin) -> (Data, Float) {
+        switch skin {
+        case .cowboy:
+            // Yeehaw! — rising whistle + whip crack snap
+            let whistle = chirp(f0: 600, f1: 1400, dur: 0.15)
+            let snap = square(freq: 120, dur: 0.03, decay: 0.04)
+            let gap = silence(0.05)
+            return (wav(whistle + gap + snap), 0.55)
+
+        case .alien:
+            // Electronic warble — rapid oscillating zap
+            let count = Int(Float(sr) * 0.25)
+            let wobble: [Float] = (0..<count).map { i in
+                let t = Float(i) / Float(sr)
+                let env = max(0, 1.0 - t / 0.30)
+                let mod = sin(2.0 * .pi * 12.0 * t)  // 12 Hz wobble
+                let freq = 1200.0 + 600.0 * mod
+                return sin(2.0 * .pi * freq * t) * env * 0.7
+            }
+            return (wav(wobble), 0.50)
+
+        case .dinosaur:
+            // Deep primal roar — low rumbling growl with overtones
+            let count = Int(Float(sr) * 0.35)
+            let roar: [Float] = (0..<count).map { i in
+                let t = Float(i) / Float(sr)
+                let env = max(0, 1.0 - t / 0.40)
+                let f = 80.0 + 30.0 * sin(2.0 * .pi * 5.0 * t)  // vibrato
+                let fundamental = sin(2.0 * .pi * f * t)
+                let overtone = sin(2.0 * .pi * f * 2.1 * t) * 0.4
+                let grit = sin(2.0 * .pi * f * 3.0 * t) * 0.2
+                return (fundamental + overtone + grit) * env * 0.7
+            }
+            return (wav(roar), 0.55)
+
+        case .wizard:
+            // Magic spell sparkle — ascending shimmer cascade
+            let s1 = sine(freq: 1047, dur: 0.06, decay: 0.08) // C6
+            let s2 = sine(freq: 1319, dur: 0.06, decay: 0.08) // E6
+            let s3 = sine(freq: 1568, dur: 0.06, decay: 0.08) // G6
+            let s4 = sine(freq: 2093, dur: 0.10, decay: 0.14) // C7
+            let sparkle = sine(freq: 2637, dur: 0.08, decay: 0.12) // E7
+            return (wav(s1 + s2 + s3 + s4 + sparkle), 0.45)
+
+        case .devil:
+            // Evil screech — descending distorted growl
+            let count = Int(Float(sr) * 0.30)
+            let screech: [Float] = (0..<count).map { i in
+                let t = Float(i) / Float(sr)
+                let env = max(0, 1.0 - t / 0.35)
+                let f = 500.0 - 400.0 * (t / 0.30)  // descending
+                let saw = (2.0 * fmod(f * t, 1.0) - 1.0)  // sawtooth
+                let sub = sin(2.0 * .pi * 60.0 * t) * 0.5  // sub rumble
+                return (saw + sub) * env * 0.6
+            }
+            return (wav(screech), 0.50)
+
+        case .sailor:
+            // Naval foghorn — deep resonant horn blast
+            let count = Int(Float(sr) * 0.30)
+            let horn: [Float] = (0..<count).map { i in
+                let t = Float(i) / Float(sr)
+                let attack = min(1.0, t / 0.04)
+                let release = max(0, 1.0 - max(0, (t - 0.22)) / 0.08)
+                let env = attack * release
+                let f: Float = 220.0
+                let h1 = sin(2.0 * .pi * f * t)
+                let h2 = sin(2.0 * .pi * f * 2.0 * t) * 0.6
+                let h3 = sin(2.0 * .pi * f * 3.0 * t) * 0.3
+                return (h1 + h2 + h3) * env * 0.5
+            }
+            return (wav(horn), 0.50)
+
+        case .pirate:
+            // Gruff "yarr" — rough low square + noise burst
+            let gruff = square(freq: 160, dur: 0.10, decay: 0.12)
+            let mid = square(freq: 200, dur: 0.08, decay: 0.10)
+            let drop = square(freq: 130, dur: 0.12, decay: 0.15)
+            return (wav(gruff + mid + drop), 0.50)
+
+        case .golden:
+            // Rich bell shimmer — layered harmonics like a golden chime
+            let count = Int(Float(sr) * 0.35)
+            let bell: [Float] = (0..<count).map { i in
+                let t = Float(i) / Float(sr)
+                let env = exp(-3.0 * t)  // bell-like exponential decay
+                let f: Float = 880.0
+                let h1 = sin(2.0 * .pi * f * t)           // fundamental A5
+                let h2 = sin(2.0 * .pi * f * 2.0 * t) * 0.6
+                let h3 = sin(2.0 * .pi * f * 3.5 * t) * 0.3  // inharmonic = bell character
+                let h4 = sin(2.0 * .pi * f * 5.1 * t) * 0.15
+                return (h1 + h2 + h3 + h4) * env * 0.5
+            }
+            return (wav(bell), 0.50)
+
+        case .classic:
+            // Classic uses bundled quack files (handled in playRandomQuack)
+            return (wav(chirp(f0: 800, f1: 400, dur: 0.15)), 0.50)
         }
     }
 
