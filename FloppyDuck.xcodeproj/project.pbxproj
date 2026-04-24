@@ -13,6 +13,7 @@
 		186FEA6281971BA1A9DA11E7 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AF25026FF4DAD8B84CD3AF5 /* ThemeManager.swift */; };
 		198EBFE8E30E445C4F77AAA3 /* GameModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5705907ABD8FDB16D7CA92 /* GameModelTests.swift */; };
 		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };
+		F20000000000000000000030 /* AudioNormalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000030 /* AudioNormalizationTests.swift */; };
 		20823673A32711E924366C3E /* PowerUpTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8AC2575D86DB5D5D7AA15BC /* PowerUpTests.swift */; };
 		2514E0B97AF4CE474E62C8E4 /* BannerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E8274143C4B7D0D42878511 /* BannerManager.swift */; };
 		2EEEE91902883C94188AF143 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93CCF6581206AE4460510C5F /* Achievement.swift */; };
@@ -174,6 +175,7 @@
 		E20000000000000000000002 /* FloppyDuckUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E511804596196C25C1C1D540 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		E67C34482BABF41365A82C48 /* AchievementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementTests.swift; sourceTree = "<group>"; };
+		F10000000000000000000030 /* AudioNormalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNormalizationTests.swift; sourceTree = "<group>"; };
 		E8AC2575D86DB5D5D7AA15BC /* PowerUpTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerUpTests.swift; sourceTree = "<group>"; };
 		ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallaxManager.swift; sourceTree = "<group>"; };
 		EF6223E9869786181FDBDB97 /* TextureFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextureFactory.swift; sourceTree = "<group>"; };
@@ -357,6 +359,7 @@
 				A20000000000000000000003 /* PlayerStatsTests.swift */,
 				E67C34482BABF41365A82C48 /* AchievementTests.swift */,
 				AEC0FA57DB4A1F4290C01227 /* DifficultyManagerTests.swift */,
+				F10000000000000000000030 /* AudioNormalizationTests.swift */,
 				E8AC2575D86DB5D5D7AA15BC /* PowerUpTests.swift */,
 				FE0494021C7FBFABF4BD6618 /* MedalTests.swift */,
 				01FBB5328EEB7721AC2BC6C4 /* BotCharacterTests.swift */,
@@ -673,6 +676,7 @@
 				A10000000000000000000002 /* PlayerStatsTests.swift in Sources */,
 				BCA3E3D34D5746AD643876F3 /* AchievementTests.swift in Sources */,
 				DA952EA9A8F9F4B558AE3005 /* DifficultyManagerTests.swift in Sources */,
+				F20000000000000000000030 /* AudioNormalizationTests.swift in Sources */,
 				20823673A32711E924366C3E /* PowerUpTests.swift in Sources */,
 				5A036B38A42A68B2A8E40347 /* MedalTests.swift in Sources */,
 				B27BE089E51B1C20456A5356 /* BotCharacterTests.swift in Sources */,
