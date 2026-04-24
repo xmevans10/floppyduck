@@ -44,6 +44,9 @@ final class SoundManager {
     /// Currently active background theme for music selection.
     private var activeTheme: BackgroundTheme = .day
 
+    /// Pre-loaded random quack sound players for pipe milestone quacks
+    private var quackPlayers: [AVAudioPlayer] = []
+
     /// Per-skin sound variant players (keyed by "\(skin.rawValue)_\(sound.rawValue)")
     private var skinPlayers: [String: AVAudioPlayer] = [:]
 
@@ -259,6 +262,7 @@ final class SoundManager {
         players.values.forEach { $0.prepareToPlay() }
         menuTracks.forEach { $0.prepareToPlay() }
         playTracks.forEach { $0.prepareToPlay() }
+        loadQuackSounds()
     }
 
     private func setupSession() {
@@ -500,6 +504,48 @@ final class SoundManager {
         return wav(square(freq: 600, dur: 0.12, decay: 0.15) +
                    silence(0.02) +
                    square(freq: 520, dur: 0.15, decay: 0.18))
+    }
+
+    /// Load 5 varied duck quack sounds from bundled Audio/Quacks/ directory.
+    /// These play randomly every 10 pipes during gameplay.
+    private func loadQuackSounds() {
+        quackPlayers.removeAll()
+        let targetVolume: Float = 0.50
+        for i in 1...5 {
+            let name = "quack_\(i)"
+            // Try .m4a first, then .wav
+            let url = Bundle.main.url(forResource: name, withExtension: "m4a",
+                                      subdirectory: "Audio/Quacks")
+                   ?? Bundle.main.url(forResource: name, withExtension: "wav",
+                                      subdirectory: "Audio/Quacks")
+                   ?? Bundle.main.url(forResource: name, withExtension: "m4a")
+                   ?? Bundle.main.url(forResource: name, withExtension: "wav")
+            guard let fileUrl = url, let player = try? AVAudioPlayer(contentsOf: fileUrl) else {
+                print("[SoundManager] ⚠️ Quack file \(name) not found in bundle")
+                continue
+            }
+            player.volume = targetVolume
+            player.prepareToPlay()
+            quackPlayers.append(player)
+            print("[SoundManager] ✅ Loaded \(name) for pipe quacks")
+        }
+        if quackPlayers.isEmpty {
+            // Fallback: re-use the splash quack as the sole pipe quack
+            if let splashPlayer = players[.quack] {
+                quackPlayers.append(splashPlayer)
+                print("[SoundManager] ℹ️ No quack variants found — using splash quack for pipe quacks")
+            }
+        }
+    }
+
+    /// Play a random quack from the loaded set — called every 10 pipes.
+    func playRandomQuack() {
+        audioQueue.async { [weak self] in
+            guard let self, self.isEnabled, !self.quackPlayers.isEmpty else { return }
+            let player = self.quackPlayers.randomElement()!
+            player.currentTime = 0
+            player.play()
+        }
     }
 
     /// Classic retro coin-collect sound — two quick ascending sine tones (B5 → E6).
