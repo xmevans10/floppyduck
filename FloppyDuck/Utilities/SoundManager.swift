@@ -158,10 +158,10 @@ final class SoundManager {
         }
     }
 
-    /// Consistent gameplay music volume for all themes.
+    /// Consistent music volume for all tracks (menu + gameplay).
     /// All tracks are pre-normalized to -16 LUFS at the file level,
     /// so we use a single playback volume for consistent loudness.
-    private let gameplayMusicVolume: Float = 0.16
+    private let gameplayMusicVolume: Float = 0.12
 
     func startPlayMusic() {
         audioQueue.async { [weak self] in
@@ -289,7 +289,7 @@ final class SoundManager {
         for name in menuFiles {
             if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
-                player.volume = 0.16
+                player.volume = self.gameplayMusicVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 menuTracks.append(player)
