@@ -80,6 +80,11 @@ final class BotController {
     /// naturally pulls it into the next pipe or the ground.
     private var doomed: Bool = false
 
+    /// Whether the bot reached its ceiling score before dying.
+    /// Used by GameScene to distinguish a ceiling death (→ player wins)
+    /// from a premature collision (→ game continues).
+    private(set) var reachedCeiling: Bool = false
+
     /// Skin used for the current bot sprite (needed for reset).
     private var currentSkin: DuckSkin?
 
@@ -272,6 +277,7 @@ final class BotController {
         // Gravity will pull it into the next pipe for a natural death.
         if let cap = deathScore, score >= cap {
             doomed = true
+            reachedCeiling = true
         }
     }
 
@@ -332,6 +338,7 @@ final class BotController {
         sprite = nil
         score = 0
         doomed = false
+        reachedCeiling = false
         pipesPassed.removeAll()
         setup(skin: skin, difficulty: diff, deathScore: deathScore)
         updateScoreHUD()

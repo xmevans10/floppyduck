@@ -238,7 +238,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
             bc.onBotDied = { [weak self] in
                 guard let self, self.mode == .vsBot, self.targetScore != nil else { return }
-                // Bot died at its ceiling — player wins!
+                // Only celebrate a win if the bot actually reached its ceiling
+                // score (became doomed).  A premature collision — e.g. the bot
+                // hitting a pipe before reaching targetScore — shouldn't award
+                // a ladder win because the player hasn't proven they can survive
+                // that many pipes.
+                guard self.botController?.reachedCeiling == true else { return }
                 self.celebrateBotLadderWin()
             }
             botController = bc
