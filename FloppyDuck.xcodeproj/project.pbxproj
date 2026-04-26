@@ -472,7 +472,7 @@
 			path = Music;
 			sourceTree = "<group>";
 		};
-		F30000000000000000000003 		F30000000000000000000001 /* Skins */ = {
+		F30000000000000000000004 /* Skins */ = {
 			isa = PBXGroup;
 			children = (
 				F10000000000000000000040 /* quack_cowboy.m4a */,
@@ -487,7 +487,7 @@
 			path = Skins;
 			sourceTree = "<group>";
 		};
-/* Quacks */ = {
+		F30000000000000000000003 /* Quacks */ = {
 			isa = PBXGroup;
 			children = (
 				F10000000000000000000011 /* quack_1.m4a */,
@@ -495,7 +495,7 @@
 				F10000000000000000000013 /* quack_3.m4a */,
 				F10000000000000000000014 /* quack_4.m4a */,
 				F10000000000000000000015 /* quack_5.m4a */,
-				F30000000000000000000001 /* Skins */,
+				F30000000000000000000004 /* Skins */,
 			);
 			path = Quacks;
 			sourceTree = "<group>";
