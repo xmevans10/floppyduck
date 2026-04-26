@@ -160,6 +160,10 @@ final class AnalyticsManager {
         PostHogSDK.shared.capture("banner_equipped", properties: ["banner_id": bannerId])
     }
 
+    func trackPipeSkinEquipped(pipeSkinId: String) {
+        PostHogSDK.shared.capture("pipe_skin_equipped", properties: ["pipe_skin_id": pipeSkinId])
+    }
+
     // MARK: - Feature Adoption (Post-Launch)
 
     func trackStatsViewed() {

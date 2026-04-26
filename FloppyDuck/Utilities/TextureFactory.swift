@@ -40,6 +40,17 @@ final class TextureFactory {
         cacheOrder.removeAll()
     }
 
+    /// Invalidates only pipe-related cached textures so a new pipe skin takes effect.
+    func invalidatePipeCache() {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        let pipeKeys = cache.keys.filter { $0.hasPrefix("pipe_") || $0.hasPrefix("pipecap") }
+        for key in pipeKeys {
+            cache.removeValue(forKey: key)
+            cacheOrder.removeAll { $0 == key }
+        }
+    }
+
     /// Whether pre-warming has completed.
     private var _isPreWarmed: Bool = false
     private let preWarmLock = NSLock()
@@ -57,9 +68,9 @@ final class TextureFactory {
             for phase in 0...2 {
                 _ = duckTexture(wingPhase: phase)
             }
-            // Pipes, ground, sky, parallax layers
-            _ = pipeTexture(height: 300)
-            _ = pipeCapTexture()
+            // Pipes, ground, sky, parallax layers (classic skin for preWarm — background thread safe)
+            _ = pipeTexture(height: 300, skinOverride: .classic)
+            _ = pipeCapTexture(skinOverride: .classic)
             _ = groundTexture()
             _ = skyTexture()
             _ = cloudTexture()
@@ -124,15 +135,17 @@ final class TextureFactory {
         return tex
     }
 
-    /// Green gradient pipe body with pixel border.
+    /// Pipe body with pixel border, coloured by the active pipe skin.
     /// Pre-renders one master texture; subsequent calls crop a sub-region — no per-height rendering.
-    func pipeTexture(height: CGFloat) -> SKTexture {
-        let masterKey = "pipe_master"
+    /// Pass `skinOverride` when calling off the main thread (e.g. preWarm).
+    func pipeTexture(height: CGFloat, skinOverride: PipeSkin? = nil) -> SKTexture {
+        let skin = skinOverride ?? PipeSkinManager.shared.selectedSkin
+        let masterKey = "pipe_master_\(skin.rawValue)"
         let masterTex: SKTexture
         if let cached = cachedTexture(forKey: masterKey) {
             masterTex = cached
         } else {
-            let tex = SKTexture(image: renderPipe(width: GK.pipeWidth, height: GK.worldHeight))
+            let tex = SKTexture(image: renderPipe(width: GK.pipeWidth, height: GK.worldHeight, skin: skin))
             tex.filteringMode = .nearest
             cacheStore(masterKey, tex)
             masterTex = tex
@@ -144,11 +157,13 @@ final class TextureFactory {
         return cropped
     }
 
-    /// Pipe cap with lip
-    func pipeCapTexture() -> SKTexture {
-        let key = "pipecap"
+    /// Pipe cap with lip, coloured by the active pipe skin.
+    /// Pass `skinOverride` when calling off the main thread (e.g. preWarm).
+    func pipeCapTexture(skinOverride: PipeSkin? = nil) -> SKTexture {
+        let skin = skinOverride ?? PipeSkinManager.shared.selectedSkin
+        let key = "pipecap_\(skin.rawValue)"
         if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderPipeCap())
+        let tex = SKTexture(image: renderPipeCap(skin: skin))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
         return tex
@@ -212,6 +227,16 @@ final class TextureFactory {
     /// UIImage of pixel cloud for SwiftUI home background
     func cloudUIImage() -> UIImage {
         return renderPixelCloud()
+    }
+
+    /// UIImage preview of a pipe skin for shop / collection cards.
+    func pipeSkinPreviewUIImage(skin: PipeSkin, width: CGFloat = 30, height: CGFloat = 80) -> UIImage {
+        return renderPipe(width: width, height: height, skin: skin)
+    }
+
+    /// UIImage preview of a pipe cap for shop / collection cards.
+    func pipeSkinCapPreviewUIImage(skin: PipeSkin) -> UIImage {
+        return renderPipeCap(skin: skin)
     }
 
     // MARK: - Performance Textures (batched replacements for SKShapeNodes)
@@ -559,7 +584,7 @@ final class TextureFactory {
 
     // MARK: - Pipes (classic green)
 
-    private func renderPipe(width: CGFloat, height: CGFloat) -> UIImage {
+    private func renderPipe(width: CGFloat, height: CGFloat, skin: PipeSkin = .classic) -> UIImage {
         let size = CGSize(width: width, height: height)
         let borderW: CGFloat = 3
         let highlightW: CGFloat = 6
@@ -567,24 +592,24 @@ final class TextureFactory {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
-            c.setFillColor(UIColor(red: 0.20, green: 0.33, blue: 0.10, alpha: 1).cgColor)
+            c.setFillColor(skin.borderColor.cgColor)
             c.fill(CGRect(origin: .zero, size: size))
 
             let body = CGRect(x: borderW, y: 0, width: width - borderW * 2, height: height)
-            c.setFillColor(UIColor(red: 0.45, green: 0.75, blue: 0.18, alpha: 1).cgColor)
+            c.setFillColor(skin.bodyColor.cgColor)
             c.fill(body)
 
             let highlight = CGRect(x: borderW + 3, y: 0, width: highlightW, height: height)
-            c.setFillColor(UIColor(red: 0.55, green: 0.85, blue: 0.28, alpha: 1).cgColor)
+            c.setFillColor(skin.highlightColor.cgColor)
             c.fill(highlight)
 
             let shadow = CGRect(x: width - borderW - highlightW - 1, y: 0, width: highlightW, height: height)
-            c.setFillColor(UIColor(red: 0.34, green: 0.54, blue: 0.13, alpha: 1).cgColor)
+            c.setFillColor(skin.shadowColor.cgColor)
             c.fill(shadow)
         }
     }
 
-    private func renderPipeCap() -> UIImage {
+    private func renderPipeCap(skin: PipeSkin = .classic) -> UIImage {
         let capW: CGFloat = GK.pipeWidth + 10
         let capH: CGFloat = 30
         let borderW: CGFloat = 3
@@ -593,19 +618,19 @@ final class TextureFactory {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
-            c.setFillColor(UIColor(red: 0.20, green: 0.33, blue: 0.10, alpha: 1).cgColor)
+            c.setFillColor(skin.borderColor.cgColor)
             c.fill(CGRect(origin: .zero, size: size))
 
             let inner = CGRect(x: borderW, y: borderW, width: capW - borderW * 2, height: capH - borderW * 2)
-            c.setFillColor(UIColor(red: 0.45, green: 0.75, blue: 0.18, alpha: 1).cgColor)
+            c.setFillColor(skin.bodyColor.cgColor)
             c.fill(inner)
 
             let hl = CGRect(x: borderW + 3, y: borderW, width: 6, height: capH - borderW * 2)
-            c.setFillColor(UIColor(red: 0.55, green: 0.85, blue: 0.28, alpha: 1).cgColor)
+            c.setFillColor(skin.highlightColor.cgColor)
             c.fill(hl)
 
             let sh = CGRect(x: capW - borderW - 7, y: borderW, width: 6, height: capH - borderW * 2)
-            c.setFillColor(UIColor(red: 0.34, green: 0.54, blue: 0.13, alpha: 1).cgColor)
+            c.setFillColor(skin.shadowColor.cgColor)
             c.fill(sh)
         }
     }

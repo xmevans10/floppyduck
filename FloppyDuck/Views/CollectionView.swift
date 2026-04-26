@@ -5,6 +5,7 @@ struct CollectionView: View {
     @ObservedObject var skinManager = SkinManager.shared
     @ObservedObject var themeManager = ThemeManager.shared
     @ObservedObject var bannerManager = BannerManager.shared
+    @ObservedObject var pipeSkinManager = PipeSkinManager.shared
 
     @State private var selectedTab: CollectionTab = .skins
 
@@ -56,6 +57,8 @@ struct CollectionView: View {
                 switch selectedTab {
                 case .skins:
                     skinsContent
+                case .pipes:
+                    pipesContent
                 case .backgrounds:
                     backgroundsContent
                 case .banners:
@@ -103,6 +106,7 @@ struct CollectionView: View {
     private var collectionTabPicker: some View {
         HStack(spacing: 8) {
             collectionTabButton(.skins)
+            collectionTabButton(.pipes)
             collectionTabButton(.backgrounds)
             collectionTabButton(.banners)
         }
@@ -236,11 +240,140 @@ struct CollectionView: View {
         }
     }
 
+    // MARK: - Pipes Content
+
+    @ViewBuilder
+    private var pipesContent: some View {
+        let ownedPipes = PipeSkin.allCases.filter { pipeSkinManager.ownedSkins.contains($0) }
+
+        if ownedPipes.count <= 1 {
+            Spacer()
+            VStack(spacing: 16) {
+                Text("ONLY DEFAULT PIPES!")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(.white)
+                Text("Beat bots or visit the shop\nto unlock new pipe skins.")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(30)
+            Spacer()
+        } else {
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 14) {
+                    ForEach(ownedPipes) { skin in
+                        pipeCollectionCard(skin)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+                .padding(.bottom, 16)
+            }
+        }
+    }
+
+    // MARK: - Pipe Collection Card
+
+    private func pipeCollectionCard(_ skin: PipeSkin) -> some View {
+        let selected = pipeSkinManager.selectedSkin == skin
+
+        return Button {
+            SoundManager.shared.play(.button)
+            pipeSkinManager.select(skin)
+        } label: {
+            VStack(spacing: 8) {
+                // Pipe preview swatch
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.black.opacity(0.05))
+                        .frame(height: 70)
+
+                    HStack(spacing: 4) {
+                        VStack(spacing: 0) {
+                            Image(uiImage: TextureFactory.shared.pipeSkinCapPreviewUIImage(skin: skin))
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 28, height: 10)
+                            Image(uiImage: TextureFactory.shared.pipeSkinPreviewUIImage(skin: skin, width: 24, height: 50))
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 24, height: 40)
+                        }
+
+                        VStack(spacing: 0) {
+                            Image(uiImage: TextureFactory.shared.pipeSkinPreviewUIImage(skin: skin, width: 24, height: 50))
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 24, height: 40)
+                                .rotationEffect(.degrees(180))
+                            Image(uiImage: TextureFactory.shared.pipeSkinCapPreviewUIImage(skin: skin))
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 28, height: 10)
+                                .rotationEffect(.degrees(180))
+                        }
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(selected ? skin.accentColor : Color.clear, lineWidth: 2)
+                )
+
+                Text(skin.displayName)
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(GK.Colors.panelBorder)
+
+                Text(skin.subtitle)
+                    .font(.custom(GK.pixelFontName, size: 6))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+
+                if selected {
+                    Text("EQUIPPED")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(skin.accentColor))
+                } else {
+                    Text("TAP TO EQUIP")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(GK.Colors.panelCream)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                }
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GK.Colors.panelCream)
+                    .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? skin.accentColor : GK.Colors.panelBorder,
+                            lineWidth: selected ? 3 : 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Shop Link Text
 
     private var shopLinkText: String {
         switch selectedTab {
         case .skins:       return "Get more skins in the Shop"
+        case .pipes:       return "Get more pipe skins in the Shop"
         case .backgrounds: return "Get more backgrounds in the Shop"
         case .banners:     return "Get more banners in the Shop"
         }
@@ -499,12 +632,14 @@ struct CollectionView: View {
 
 private enum CollectionTab: String {
     case skins = "SKINS"
+    case pipes = "PIPES"
     case backgrounds = "BGs"
     case banners = "BANNERS"
 
     var icon: String {
         switch self {
         case .skins:       return "bird"
+        case .pipes:       return "arrow.up.and.down.square"
         case .backgrounds: return "paintpalette"
         case .banners:     return "flag.fill"
         }
@@ -513,6 +648,7 @@ private enum CollectionTab: String {
     var accent: Color {
         switch self {
         case .skins:       return GK.Colors.buttonGreen
+        case .pipes:       return GK.Colors.pipeGreen
         case .backgrounds: return GK.Colors.buttonBlue
         case .banners:     return Color(red: 0.85, green: 0.35, blue: 0.55)
         }

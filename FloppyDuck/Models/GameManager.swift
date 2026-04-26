@@ -41,8 +41,9 @@ final class GameManager: ObservableObject {
 
         AchievementManager.shared.register(gameManager: self)
 
-        // Sync battle banner unlocks with already-beaten bots
+        // Sync battle banner & pipe skin unlocks with already-beaten bots
         BannerManager.shared.syncWithBeatenBots(stats.beatenBots)
+        PipeSkinManager.shared.syncWithBeatenBots(stats.beatenBots)
     }
 
     func navigate(to route: AppRoute) {
@@ -281,8 +282,9 @@ final class GameManager: ObservableObject {
         stats.beatBot(botId)
         saveStats()
         AnalyticsManager.shared.trackBotMatchCompleted(botId: botId, won: true, score: 0)
-        // Auto-unlock any battle banner tied to this bot
+        // Auto-unlock any battle banner or pipe skin tied to this bot
         BannerManager.shared.checkBotRewardUnlock(beatenBotId: botId)
+        PipeSkinManager.shared.checkBotRewardUnlock(beatenBotId: botId)
 
         // Sync to backend immediately so progress persists even if the
         // player replays the level without returning home. (XAN-9)

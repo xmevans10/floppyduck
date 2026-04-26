@@ -68,6 +68,9 @@ Free (with in-app purchases)
 | com.floppyduck.skin.wizard | Non-Consumable | $0.49 | Wizard Skin |
 | com.floppyduck.skin.devil | Non-Consumable | $0.49 | Devil Skin |
 | com.floppyduck.theme.space | Non-Consumable | $0.99 | Space Background |
+| com.floppyduck.pipe.neon | Non-Consumable | $0.49 | Neon Pipe Skin |
+| com.floppyduck.pipe.royal | Non-Consumable | $0.49 | Royal Pipe Skin |
+| com.floppyduck.pipe.gold | Non-Consumable | $0.49 | Gold Pipe Skin |
 | com.floppyduck.theme.pixelTokyo | Non-Consumable | $0.99 | Tokyo Background |
 | com.floppyduck.banner.neonTokyo | Non-Consumable | $0.99 | Neon Tokyo Banner |
 | com.floppyduck.banner.cosmicRift | Non-Consumable | $0.99 | Cosmic Rift Banner |
@@ -80,7 +83,7 @@ KEY FEATURES FOR REVIEW:
 • CLASSIC MODE: Tap to flap, dodge pipes, score points. Available from the home screen.
 • VS BOT: Tap "VS Bot" → select a bot → play. Beating a bot unlocks their unique skin.
 • HEAD TO HEAD: Tap "Head to Head" → Quick Play or Ranked (requires Sign in with Apple). Private rooms require a second device with the join code.
-• SHOP: Tap "Shop" from home. SKINS tab → PREMIUM section for paid skins ($0.49 each). BACKGROUNDS tab for paid themes ($0.99 each). BANNERS tab for paid battle banners ($0.99 each). Restore Purchases button appears for each tab with premium items.
+• SHOP: Tap "Shop" from home. DUCKS tab → PREMIUM section for paid skins ($0.49 each). PIPES tab for pipe cosmetics ($0.49 each for premium). BACKGROUNDS tab for paid themes ($0.99 each). BANNERS tab for paid battle banners ($0.99 each). Restore Purchases button appears for each tab with premium items.
 • CLOSET: Tap "Collection" from home to see owned skins. Tap to equip.
 • STATS: Tap "Stats" from home for player stats and global leaderboard.
 • SETTINGS: Tap gear icon. Sign in with Apple, Sign Out, Restore Purchases, and Delete Account are here.
