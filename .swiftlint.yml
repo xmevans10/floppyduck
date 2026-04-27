@@ -1,0 +1,27 @@
+disabled_rules:
+  - trailing_whitespace
+  - line_length
+  - type_body_length
+  - file_length
+
+opt_in_rules:
+  - empty_count
+  - contains_over_first_not_nil
+  - convenience_type
+  - discouraged_object_literal
+  - empty_string
+  - fatal_error_message
+  - first_where
+  - last_where
+  - toggle_bool
+
+included:
+  - FloppyDuck
+
+excluded:
+  - FloppyDuckTests
+  - FloppyDuckUITests
+
+analyzer_rules:
+  - unused_import
+  - unused_private_declaration
