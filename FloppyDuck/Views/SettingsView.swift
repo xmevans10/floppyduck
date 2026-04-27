@@ -125,17 +125,62 @@ struct SettingsView: View {
                             }
                         }
 
-                        // Sound toggle
+                        // Sound toggle + volume sliders
                         settingsPanel {
-                            HStack {
-                                Text("SOUND")
-                                    .font(.custom(GK.pixelFontName, size: 10))
-                                    .foregroundColor(GK.Colors.panelBorder)
-                                Spacer()
-                                Toggle("Sound", isOn: $manager.soundEnabled)
-                                    .tint(GK.Colors.buttonGreen)
-                                    .labelsHidden()
-                                    .accessibilityLabel("Sound toggle")
+                            VStack(spacing: 12) {
+                                HStack {
+                                    Text("SOUND")
+                                        .font(.custom(GK.pixelFontName, size: 10))
+                                        .foregroundColor(GK.Colors.panelBorder)
+                                    Spacer()
+                                    Toggle("Sound", isOn: $manager.soundEnabled)
+                                        .tint(GK.Colors.buttonGreen)
+                                        .labelsHidden()
+                                        .accessibilityLabel("Sound toggle")
+                                }
+
+                                if manager.soundEnabled {
+                                    VStack(spacing: 10) {
+                                        // Music volume
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "music.note")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                                                .frame(width: 16)
+                                            Text("MUSIC")
+                                                .font(.custom(GK.pixelFontName, size: 7))
+                                                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                                                .frame(width: 38, alignment: .leading)
+                                            Slider(value: $manager.musicVolume, in: 0...1)
+                                                .tint(GK.Colors.buttonBlue)
+                                                .accessibilityLabel("Music volume")
+                                            Text("\(Int(manager.musicVolume * 100))%")
+                                                .font(.custom(GK.pixelFontName, size: 7))
+                                                .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                                                .frame(width: 30, alignment: .trailing)
+                                        }
+
+                                        // SFX volume
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "speaker.wave.2")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                                                .frame(width: 16)
+                                            Text("SFX")
+                                                .font(.custom(GK.pixelFontName, size: 7))
+                                                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                                                .frame(width: 38, alignment: .leading)
+                                            Slider(value: $manager.sfxVolume, in: 0...1)
+                                                .tint(GK.Colors.buttonGreen)
+                                                .accessibilityLabel("Sound effects volume")
+                                            Text("\(Int(manager.sfxVolume * 100))%")
+                                                .font(.custom(GK.pixelFontName, size: 7))
+                                                .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
+                                                .frame(width: 30, alignment: .trailing)
+                                        }
+                                    }
+                                    .padding(.top, 2)
+                                }
                             }
                         }
 
@@ -272,6 +317,12 @@ struct SettingsView: View {
         }
         .onChange(of: manager.soundEnabled) { _, _ in
             SoundManager.shared.refreshAudioPreference()
+        }
+        .onChange(of: manager.musicVolume) { _, _ in
+            SoundManager.shared.refreshMusicVolume()
+        }
+        .onChange(of: manager.sfxVolume) { _, _ in
+            SoundManager.shared.refreshSfxVolume()
         }
         .onChange(of: manager.hapticsEnabled) { _, _ in
             Haptic.refreshPreference()

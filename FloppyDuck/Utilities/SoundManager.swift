@@ -61,11 +61,17 @@ final class SoundManager {
     /// Cached preference — avoids UserDefaults dictionary lookup on every play() call.
     private var _isEnabled: Bool = true
 
+    /// User-configurable volume multipliers (0.0–1.0). Persisted via UserDefaults.
+    private var _musicVolume: Float = 0.8
+    private var _sfxVolume: Float = 0.8
+
     private var isEnabled: Bool { _isEnabled }
 
     private init() {
         // Cache the preference at init time (avoids UserDefaults lookup on every play() call)
         _isEnabled = UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
+        _musicVolume = Float(UserDefaults.standard.object(forKey: "musicVolume") as? Double ?? 0.8)
+        _sfxVolume = Float(UserDefaults.standard.object(forKey: "sfxVolume") as? Double ?? 0.8)
     }
 
     /// Warm up the audio engine (call at app launch).
@@ -158,10 +164,12 @@ final class SoundManager {
         }
     }
 
-    /// Consistent music volume for all tracks (menu + gameplay).
-    /// All tracks are pre-normalized to -16 LUFS at the file level,
-    /// so we use a single playback volume for consistent loudness.
-    private let gameplayMusicVolume: Float = 0.12
+    /// Base music volume — applied as a multiplier with the user's musicVolume preference.
+    /// All tracks are pre-normalized to -16 LUFS at the file level.
+    private let baseMusicVolume: Float = 0.15
+
+    /// Effective music volume = base × user preference.
+    private var gameplayMusicVolume: Float { baseMusicVolume * _musicVolume }
 
     func startPlayMusic() {
         audioQueue.async { [weak self] in
@@ -234,6 +242,58 @@ final class SoundManager {
         }
     }
 
+    /// Refresh music volume from UserDefaults and apply to active players.
+    func refreshMusicVolume() {
+        _musicVolume = Float(UserDefaults.standard.object(forKey: "musicVolume") as? Double ?? 0.8)
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            let vol = self.gameplayMusicVolume
+            self.bgmPlayer?.volume = vol
+            self.playBgmPlayer?.volume = vol
+            self.menuTracks.forEach { $0.volume = vol }
+            self.playTracks.forEach { $0.volume = vol }
+            self.themePlayTracks.values.forEach { $0.volume = vol }
+            self.themeMenuTracks.values.forEach { $0.volume = vol }
+        }
+    }
+
+    /// Refresh SFX volume from UserDefaults and apply to all sound effect players.
+    func refreshSfxVolume() {
+        _sfxVolume = Float(UserDefaults.standard.object(forKey: "sfxVolume") as? Double ?? 0.8)
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            let scale = self._sfxVolume
+            // Re-apply base volumes scaled by user preference
+            let defs: [(GameSound, Float)] = [
+                (.flap, 0.25), (.score, 0.35), (.death, 0.40), (.button, 0.20),
+                (.win, 0.45), (.lose, 0.35), (.medal, 0.40), (.countTick, 0.15),
+                (.newBest, 0.50), (.milestone, 0.30), (.quack, 0.60),
+                (.coin, 0.40), (.powerUp, 0.35), (.debuff, 0.35),
+            ]
+            for (sound, baseVol) in defs {
+                self.players[sound]?.volume = baseVol * scale
+            }
+            self.quackPlayers.forEach { $0.volume = 0.50 * scale }
+            // Update skin variant volumes
+            for (key, player) in self.skinPlayers {
+                if key.hasSuffix("_quack") {
+                    player.volume = 0.50 * scale
+                } else if key.hasSuffix("_flap") {
+                    // Look up base volume from skinFlapWav
+                    if let skin = DuckSkin.allCases.first(where: { key.hasPrefix($0.rawValue) }) {
+                        let (_, baseVol) = self.skinFlapWav(skin: skin)
+                        player.volume = baseVol * scale
+                    }
+                } else if key.hasSuffix("_death") {
+                    if let skin = DuckSkin.allCases.first(where: { key.hasPrefix($0.rawValue) }) {
+                        let (_, baseVol) = self.skinDeathWav(skin: skin)
+                        player.volume = baseVol * scale
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Setup
 
     private func prepareIfNeeded() {
@@ -254,6 +314,7 @@ final class SoundManager {
     }
 
     private func buildSounds() {
+        let sfxScale = _sfxVolume
         let defs: [(GameSound, Data, Float)] = [
             (.flap,      flapWav(),      0.25),
             (.score,     scoreWav(),     0.35),
@@ -273,7 +334,7 @@ final class SoundManager {
         for (sound, data, vol) in defs {
             soundData[sound] = data
             if let p = try? AVAudioPlayer(data: data) {
-                p.volume = vol
+                p.volume = vol * sfxScale
                 p.prepareToPlay()
                 players[sound] = p
             }
@@ -299,7 +360,7 @@ final class SoundManager {
         if menuTracks.isEmpty {
             let bgmData = menuBgmWav()
             if let player = try? AVAudioPlayer(data: bgmData) {
-                player.volume = 0.12
+                player.volume = self.gameplayMusicVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 menuTracks.append(player)
@@ -316,7 +377,7 @@ final class SoundManager {
         for name in playFiles {
             if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
-                player.volume = 0.15
+                player.volume = self.gameplayMusicVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 playTracks.append(player)
@@ -326,7 +387,7 @@ final class SoundManager {
         if playTracks.isEmpty {
             let playData = playBgmWav()
             if let player = try? AVAudioPlayer(data: playData) {
-                player.volume = 0.10
+                player.volume = self.gameplayMusicVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 playTracks.append(player)
@@ -492,7 +553,7 @@ final class SoundManager {
     /// These play randomly every 10 pipes during gameplay.
     private func loadQuackSounds() {
         quackPlayers.removeAll()
-        let targetVolume: Float = 0.50
+        let targetVolume: Float = 0.50 * _sfxVolume
         for i in 1...5 {
             let name = "quack_\(i)"
             // Try .m4a first, then .wav
@@ -593,29 +654,31 @@ final class SoundManager {
 
         let (flapData, flapVol) = self.skinFlapWav(skin: skin)
         let (deathData, deathVol) = self.skinDeathWav(skin: skin)
+        let sfxScale = _sfxVolume
 
         if let p = try? AVAudioPlayer(data: flapData) {
-            p.volume = flapVol
+            p.volume = flapVol * sfxScale
             p.prepareToPlay()
             self.skinPlayers[key_flap] = p
         }
         if let p = try? AVAudioPlayer(data: deathData) {
-            p.volume = deathVol
+            p.volume = deathVol * sfxScale
             p.prepareToPlay()
             self.skinPlayers[key_death] = p
         }
 
         // Per-skin quack: load bundled audio file (e.g. quack_cowboy.m4a)
         let quackFile = "quack_\(skin.rawValue)"
+        let quackVol: Float = 0.50 * _sfxVolume
         if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a", subdirectory: "Quacks/Skins"),
            let p = try? AVAudioPlayer(contentsOf: url) {
-            p.volume = 0.50
+            p.volume = quackVol
             p.prepareToPlay()
             self.skinPlayers[key_quack] = p
         } else if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a"),
                   let p = try? AVAudioPlayer(contentsOf: url) {
             // Fallback: flat bundle lookup (Xcode may flatten the directory)
-            p.volume = 0.50
+            p.volume = quackVol
             p.prepareToPlay()
             self.skinPlayers[key_quack] = p
         }
@@ -897,13 +960,13 @@ final class SoundManager {
         let (playData, menuData) = synthesizeThemeMusic(for: theme)
 
         if let p = try? AVAudioPlayer(data: playData) {
-            p.volume = 0.12
+            p.volume = self.gameplayMusicVolume
             p.numberOfLoops = -1
             p.prepareToPlay()
             themePlayTracks[id] = p
         }
         if let m = try? AVAudioPlayer(data: menuData) {
-            m.volume = 0.14
+            m.volume = self.gameplayMusicVolume
             m.numberOfLoops = -1
             m.prepareToPlay()
             themeMenuTracks[id] = m
