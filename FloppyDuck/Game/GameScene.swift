@@ -416,7 +416,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let bottomH = gapY - effectiveGap / 2 - GK.groundHeight
         if bottomH > 0 {
             let bottomBody = SKSpriteNode(
-                texture: factory.pipeTexture(height: bottomH),
+                texture: factory.pipeTexture(height: bottomH, skinOverride: PipeSkinManager.shared.selectedSkin),
                 size: CGSize(width: GK.pipeWidth, height: bottomH)
             )
             bottomBody.anchorPoint = CGPoint(x: 0.5, y: 0)
@@ -424,7 +424,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             pipeNode.addChild(bottomBody)
 
             let bottomCap = SKSpriteNode(
-                texture: factory.pipeCapTexture(),
+                texture: factory.pipeCapTexture(skinOverride: PipeSkinManager.shared.selectedSkin),
                 size: CGSize(width: GK.pipeWidth + 10, height: 30)
             )
             bottomCap.anchorPoint = CGPoint(x: 0.5, y: 0)
@@ -448,7 +448,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let topH = GK.worldHeight - topY
         if topH > 0 {
             let topBody = SKSpriteNode(
-                texture: factory.pipeTexture(height: topH),
+                texture: factory.pipeTexture(height: topH, skinOverride: PipeSkinManager.shared.selectedSkin),
                 size: CGSize(width: GK.pipeWidth, height: topH)
             )
             topBody.anchorPoint = CGPoint(x: 0.5, y: 1)
@@ -456,7 +456,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             pipeNode.addChild(topBody)
 
             let topCap = SKSpriteNode(
-                texture: factory.pipeCapTexture(),
+                texture: factory.pipeCapTexture(skinOverride: PipeSkinManager.shared.selectedSkin),
                 size: CGSize(width: GK.pipeWidth + 10, height: 30)
             )
             topCap.anchorPoint = CGPoint(x: 0.5, y: 1)

@@ -139,7 +139,12 @@ final class TextureFactory {
     /// Pre-renders one master texture; subsequent calls crop a sub-region — no per-height rendering.
     /// Pass `skinOverride` when calling off the main thread (e.g. preWarm).
     func pipeTexture(height: CGFloat, skinOverride: PipeSkin? = nil) -> SKTexture {
-        let skin = skinOverride ?? PipeSkinManager.shared.selectedSkin
+        let skin: PipeSkin
+        if let skinOverride = skinOverride {
+            skin = skinOverride
+        } else {
+            skin = MainActor.assumeIsolated { PipeSkinManager.shared.selectedSkin }
+        }
         let masterKey = "pipe_master_\(skin.rawValue)"
         let masterTex: SKTexture
         if let cached = cachedTexture(forKey: masterKey) {
@@ -160,7 +165,12 @@ final class TextureFactory {
     /// Pipe cap with lip, coloured by the active pipe skin.
     /// Pass `skinOverride` when calling off the main thread (e.g. preWarm).
     func pipeCapTexture(skinOverride: PipeSkin? = nil) -> SKTexture {
-        let skin = skinOverride ?? PipeSkinManager.shared.selectedSkin
+        let skin: PipeSkin
+        if let skinOverride = skinOverride {
+            skin = skinOverride
+        } else {
+            skin = MainActor.assumeIsolated { PipeSkinManager.shared.selectedSkin }
+        }
         let key = "pipecap_\(skin.rawValue)"
         if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderPipeCap(skin: skin))
