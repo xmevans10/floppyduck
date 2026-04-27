@@ -11,6 +11,7 @@ final class GameManager: ObservableObject {
     @AppStorage("playerName") var playerName: String = "Player"
     @AppStorage("soundEnabled") var soundEnabled: Bool = true
     @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
+    @AppStorage("musicVolume") var musicVolume: Double = 1.0
 
     // Daily streak
     @AppStorage("lastPlayDate") private var lastPlayDateString: String = ""

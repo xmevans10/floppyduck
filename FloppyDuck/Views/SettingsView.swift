@@ -125,17 +125,29 @@ struct SettingsView: View {
                             }
                         }
 
-                        // Sound toggle
+                        // Sound toggle & Volume
                         settingsPanel {
-                            HStack {
-                                Text("SOUND")
-                                    .font(.custom(GK.pixelFontName, size: 10))
-                                    .foregroundColor(GK.Colors.panelBorder)
-                                Spacer()
-                                Toggle("Sound", isOn: $manager.soundEnabled)
-                                    .tint(GK.Colors.buttonGreen)
-                                    .labelsHidden()
-                                    .accessibilityLabel("Sound toggle")
+                            VStack(spacing: 12) {
+                                HStack {
+                                    Text("SOUND")
+                                        .font(.custom(GK.pixelFontName, size: 10))
+                                        .foregroundColor(GK.Colors.panelBorder)
+                                    Spacer()
+                                    Toggle("Sound", isOn: $manager.soundEnabled)
+                                        .tint(GK.Colors.buttonGreen)
+                                        .labelsHidden()
+                                        .accessibilityLabel("Sound toggle")
+                                }
+                                
+                                if manager.soundEnabled {
+                                    HStack {
+                                        Text("MUSIC VOLUME")
+                                            .font(.custom(GK.pixelFontName, size: 8))
+                                            .foregroundColor(GK.Colors.panelBorder.opacity(0.8))
+                                        Slider(value: $manager.musicVolume, in: 0...1)
+                                            .tint(GK.Colors.buttonBlue)
+                                    }
+                                }
                             }
                         }
 
@@ -271,6 +283,9 @@ struct SettingsView: View {
             Text("This will permanently delete your account, all stats, purchases history, and cloud data. You will start fresh as a new guest. This cannot be undone.")
         }
         .onChange(of: manager.soundEnabled) { _, _ in
+            SoundManager.shared.refreshAudioPreference()
+        }
+        .onChange(of: manager.musicVolume) { _, _ in
             SoundManager.shared.refreshAudioPreference()
         }
         .onChange(of: manager.hapticsEnabled) { _, _ in

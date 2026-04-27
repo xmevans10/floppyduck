@@ -60,12 +60,18 @@ final class SoundManager {
 
     /// Cached preference — avoids UserDefaults dictionary lookup on every play() call.
     private var _isEnabled: Bool = true
+    private var _musicVolume: Float = 1.0
 
     private var isEnabled: Bool { _isEnabled }
 
     private init() {
         // Cache the preference at init time (avoids UserDefaults lookup on every play() call)
         _isEnabled = UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
+        if let vol = UserDefaults.standard.object(forKey: "musicVolume") as? Double {
+            _musicVolume = Float(vol)
+        } else {
+            _musicVolume = 1.0
+        }
     }
 
     /// Warm up the audio engine (call at app launch).
@@ -134,7 +140,7 @@ final class SoundManager {
             if let url = Bundle.main.url(forResource: menuFile, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
                 player.numberOfLoops = -1
-                player.volume = self.gameplayMusicVolume
+                player.volume = self.effectiveMenuVolume
                 player.prepareToPlay()
                 player.play()
                 self.bgmPlayer = player
@@ -145,7 +151,7 @@ final class SoundManager {
             guard !self.menuTracks.isEmpty else { return }
             let track = self.menuTracks.randomElement()!
             track.numberOfLoops = -1
-            track.volume = self.gameplayMusicVolume
+            track.volume = self.effectiveMenuVolume
             track.currentTime = 0
             track.play()
             self.bgmPlayer = track
@@ -158,10 +164,10 @@ final class SoundManager {
         }
     }
 
-    /// Consistent music volume for all tracks (menu + gameplay).
-    /// All tracks are pre-normalized to -16 LUFS at the file level,
-    /// so we use a single playback volume for consistent loudness.
-    private let gameplayMusicVolume: Float = 0.12
+    /// Effective volumes based on user preference and perceptual balance.
+    /// The home menu track is perceptually louder, so we scale it down relative to themes.
+    private var effectiveMenuVolume: Float { _musicVolume * 0.08 }
+    private var effectivePlayVolume: Float { _musicVolume * 0.16 }
 
     func startPlayMusic() {
         audioQueue.async { [weak self] in
@@ -180,7 +186,7 @@ final class SoundManager {
                let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
                 player.numberOfLoops = -1
-                player.volume = self.gameplayMusicVolume
+                player.volume = self.effectivePlayVolume
                 player.prepareToPlay()
                 player.play()
                 self.playBgmPlayer = player
@@ -191,7 +197,7 @@ final class SoundManager {
             guard !self.playTracks.isEmpty else { return }
             let track = self.playTracks.randomElement()!
             track.numberOfLoops = -1
-            track.volume = self.gameplayMusicVolume
+            track.volume = self.effectivePlayVolume
             track.currentTime = 0
             track.play()
             self.playBgmPlayer = track
@@ -207,19 +213,30 @@ final class SoundManager {
     func refreshAudioPreference() {
         // Sync cached preference from UserDefaults (main thread safe)
         _isEnabled = UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
+        if let vol = UserDefaults.standard.object(forKey: "musicVolume") as? Double {
+            _musicVolume = Float(vol)
+        } else {
+            _musicVolume = 1.0
+        }
+        
         audioQueue.async { [weak self] in
             guard let self else { return }
+            
+            // Update active track volumes dynamically
+            self.bgmPlayer?.volume = self.effectiveMenuVolume
+            self.playBgmPlayer?.volume = self.effectivePlayVolume
+            self.menuTracks.forEach { $0.volume = self.effectiveMenuVolume }
+            self.playTracks.forEach { $0.volume = self.effectivePlayVolume }
+            
             if self.isEnabled {
                 self.prepareIfNeeded()
                 // Sound was just re-enabled — restart whichever BGM track
                 // is contextually appropriate. The caller's screen will also
                 // trigger startMenuMusic/startPlayMusic on next transition,
                 // but restarting here gives immediate feedback on toggle.
-                if self.bgmPlayer != nil {
-                    self.bgmPlayer?.currentTime = 0
+                if self.bgmPlayer != nil && !self.bgmPlayer!.isPlaying {
                     self.bgmPlayer?.play()
-                } else if self.playBgmPlayer != nil {
-                    self.playBgmPlayer?.currentTime = 0
+                } else if self.playBgmPlayer != nil && !self.playBgmPlayer!.isPlaying {
                     self.playBgmPlayer?.play()
                 }
                 return
@@ -289,7 +306,7 @@ final class SoundManager {
         for name in menuFiles {
             if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
-                player.volume = self.gameplayMusicVolume
+                player.volume = self.effectiveMenuVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 menuTracks.append(player)
@@ -299,7 +316,7 @@ final class SoundManager {
         if menuTracks.isEmpty {
             let bgmData = menuBgmWav()
             if let player = try? AVAudioPlayer(data: bgmData) {
-                player.volume = 0.12
+                player.volume = self.effectiveMenuVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 menuTracks.append(player)
@@ -316,7 +333,7 @@ final class SoundManager {
         for name in playFiles {
             if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
-                player.volume = 0.15
+                player.volume = self.effectivePlayVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 playTracks.append(player)
@@ -326,7 +343,7 @@ final class SoundManager {
         if playTracks.isEmpty {
             let playData = playBgmWav()
             if let player = try? AVAudioPlayer(data: playData) {
-                player.volume = 0.10
+                player.volume = self.effectivePlayVolume
                 player.numberOfLoops = -1
                 player.prepareToPlay()
                 playTracks.append(player)
@@ -897,13 +914,13 @@ final class SoundManager {
         let (playData, menuData) = synthesizeThemeMusic(for: theme)
 
         if let p = try? AVAudioPlayer(data: playData) {
-            p.volume = 0.12
+            p.volume = self.effectivePlayVolume
             p.numberOfLoops = -1
             p.prepareToPlay()
             themePlayTracks[id] = p
         }
         if let m = try? AVAudioPlayer(data: menuData) {
-            m.volume = 0.14
+            m.volume = self.effectiveMenuVolume
             m.numberOfLoops = -1
             m.prepareToPlay()
             themeMenuTracks[id] = m
