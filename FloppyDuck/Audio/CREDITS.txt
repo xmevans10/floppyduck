@@ -33,11 +33,32 @@ Music
 
 Theme Music — Kevin MacLeod (incompetech.com)
   License: Creative Commons: By Attribution 4.0 (http://creativecommons.org/licenses/by/4.0/)
-  "Neo Western" → theme_western.m4a
-  "Expeditionary" → theme_jungle.m4a
-  "Desert City" → theme_egypt.m4a
   "Long Road Ahead" → theme_mountain.m4a
 
 "Crystal Cave (song18)" — cynicmusic / pixelsphere.org (CC0)
   Source: https://opengameart.org/content/crystal-cave-song18
   Track: theme_cave.m4a
+
+"Seaside / Campfire Night" — Arthur Vyncke
+  License: Creative Commons (see artist page for details)
+  Track: theme_underwater.m4a
+
+"Temple of Endless Sands" — Darren Curtis
+  License: Creative Commons (see artist page for details)
+  Track: theme_egypt.m4a
+
+"South Africa" — Eu-Genius
+  License: Creative Commons (see artist page for details)
+  Track: theme_jungle.m4a
+
+"Is This a Dream" — Glitch
+  License: Creative Commons (see artist page for details)
+  Track: theme_pixelTokyo.m4a
+
+"Gravitational Collapse" — Shane Ivers
+  License: Creative Commons (see artist page for details)
+  Track: theme_space.m4a
+
+"Two Guns, One Destiny" — Shane Ivers
+  License: Creative Commons (see artist page for details)
+  Track: theme_western.m4a

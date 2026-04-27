@@ -338,13 +338,15 @@ struct ShopView: View {
     // MARK: - Shop Tab Picker
 
     private var shopTabPicker: some View {
-        HStack(spacing: 8) {
-            shopTabButton(.skins)
-            shopTabButton(.pipes)
-            shopTabButton(.backgrounds)
-            shopTabButton(.banners)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                shopTabButton(.skins)
+                shopTabButton(.pipes)
+                shopTabButton(.backgrounds)
+                shopTabButton(.banners)
+            }
+            .padding(6)
         }
-        .padding(6)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.black.opacity(0.2))
@@ -356,14 +358,16 @@ struct ShopView: View {
             selectedTab = tab
             localErrorMessage = nil
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Image(systemName: tab.icon)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                 Text(tab.rawValue)
                     .font(.custom(GK.pixelFontName, size: 8))
+                    .lineLimit(1)
+                    .fixedSize()
             }
             .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.5))
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)

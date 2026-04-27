@@ -104,13 +104,15 @@ struct CollectionView: View {
     // MARK: - Tab Picker
 
     private var collectionTabPicker: some View {
-        HStack(spacing: 8) {
-            collectionTabButton(.skins)
-            collectionTabButton(.pipes)
-            collectionTabButton(.backgrounds)
-            collectionTabButton(.banners)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                collectionTabButton(.skins)
+                collectionTabButton(.pipes)
+                collectionTabButton(.backgrounds)
+                collectionTabButton(.banners)
+            }
+            .padding(6)
         }
-        .padding(6)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.black.opacity(0.2))
@@ -121,14 +123,16 @@ struct CollectionView: View {
         Button {
             selectedTab = tab
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Image(systemName: tab.icon)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                 Text(tab.rawValue)
                     .font(.custom(GK.pixelFontName, size: 8))
+                    .lineLimit(1)
+                    .fixedSize()
             }
             .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.5))
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
