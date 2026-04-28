@@ -868,19 +868,12 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 300
         let ps: CGFloat = 4
-
         let gridW = Int(w / ps)
-        var heightMap = [Int](repeating: 1, count: gridW)
 
-        // Taller, more varied rolling hills
+        var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10,    30, 32),
-            (gridW / 4,     35, 42),
-            (gridW * 3 / 8, 22, 24),
-            (gridW / 2,     32, 38),
-            (gridW * 5 / 8, 25, 28),
-            (gridW * 3 / 4, 38, 45),
-            (gridW * 9 / 10, 22, 26),
+            (20, 25, 25), (50, 20, 18), (80, 30, 32), (110, 15, 14),
+            (140, 25, 28), (170, 20, 22), (195, 18, 18),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -890,75 +883,121 @@ final class TextureFactory {
             }
         }
 
-        let hillBase  = UIColor(red: 0.35, green: 0.58, blue: 0.28, alpha: 0.80)
-        let hillMid   = UIColor(red: 0.42, green: 0.65, blue: 0.32, alpha: 0.75)
-        let hillTop   = UIColor(red: 0.28, green: 0.48, blue: 0.22, alpha: 0.85)
-        let hillLight = UIColor(red: 0.50, green: 0.72, blue: 0.40, alpha: 0.65)
+        let hillBase   = UIColor(red: 0.30, green: 0.55, blue: 0.22, alpha: 0.70)
+        let hillMid    = UIColor(red: 0.35, green: 0.60, blue: 0.25, alpha: 0.65)
+        let hillLight  = UIColor(red: 0.45, green: 0.68, blue: 0.30, alpha: 0.60)
+        let hillTop    = UIColor(red: 0.25, green: 0.48, blue: 0.18, alpha: 0.75)
+        // Windmill
+        let millBrown  = UIColor(red: 0.35, green: 0.22, blue: 0.12, alpha: 0.82)
+        let millLight  = UIColor(red: 0.48, green: 0.35, blue: 0.20, alpha: 0.78)
+        let millRoof   = UIColor(red: 0.55, green: 0.20, blue: 0.12, alpha: 0.80)
+        let bladeC     = UIColor(red: 0.40, green: 0.38, blue: 0.35, alpha: 0.70)
+        // Barn
+        let barnRed    = UIColor(red: 0.65, green: 0.18, blue: 0.12, alpha: 0.80)
+        let barnDark   = UIColor(red: 0.50, green: 0.12, blue: 0.08, alpha: 0.82)
+        let barnWhite  = UIColor(red: 0.88, green: 0.85, blue: 0.80, alpha: 0.75)
+        // Lake
+        let lakeD      = UIColor(red: 0.20, green: 0.45, blue: 0.65, alpha: 0.50)
+        let lakeL      = UIColor(red: 0.35, green: 0.58, blue: 0.75, alpha: 0.40)
+        // Fence
+        let fenceC     = UIColor(red: 0.50, green: 0.38, blue: 0.22, alpha: 0.60)
+        // Flowers
+        let flowerR    = UIColor(red: 0.85, green: 0.25, blue: 0.20, alpha: 0.65)
+        let flowerY    = UIColor(red: 0.95, green: 0.85, blue: 0.25, alpha: 0.65)
+        let flowerW    = UIColor(red: 0.90, green: 0.88, blue: 0.85, alpha: 0.60)
+        // Sheep
+        let sheepW     = UIColor(red: 0.90, green: 0.88, blue: 0.85, alpha: 0.65)
+        let sheepD     = UIColor(red: 0.20, green: 0.18, blue: 0.18, alpha: 0.60)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── HILLS TERRAIN ──
             for x in 0..<gridW {
-                let hillH = heightMap[x]
-                for y in 0..<hillH {
+                let mH = heightMap[x]
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(hillH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if y == hillH - 1 { color = hillTop }
-                    else if y == hillH - 2 && hillH > 3 { color = hillLight }
-                    else if ratio > 0.6 { color = hillMid }
+                    if y == mH - 1 { color = hillTop }
+                    else if ratio > 0.6 { color = hillLight }
+                    else if ratio > 0.3 { color = hillMid }
                     else { color = hillBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Pixel bushes on hilltops
-            let bushColor = UIColor(red: 0.28, green: 0.48, blue: 0.22, alpha: 0.75)
-            c.setFillColor(bushColor.cgColor)
-            for x in stride(from: 3, to: gridW - 3, by: 7) {
-                let hillH = heightMap[x]
-                if hillH > 4 {
-                    let yPos = h - CGFloat(hillH + 1) * ps
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps * 2, height: ps))
-                    c.fill(CGRect(x: CGFloat(x - 1) * ps, y: yPos + ps, width: ps, height: ps))
-                    c.fill(CGRect(x: CGFloat(x + 2) * ps, y: yPos + ps, width: ps, height: ps))
-                }
+            // ── WINDMILL ── (x=85, on hill)
+            let wmx = 85, wmy = 20
+            fill(wmx + 2, wmy, 4, 25, millBrown)
+            fill(wmx + 3, wmy + 1, 2, 23, millLight)
+            fill(wmx + 1, wmy + 25, 6, 2, millRoof)
+            fill(wmx + 2, wmy + 27, 4, 1, millRoof)
+            // Door
+            fill(wmx + 3, wmy, 2, 4, barnDark)
+            // Window
+            fill(wmx + 3, wmy + 14, 2, 2, UIColor(red: 0.85, green: 0.75, blue: 0.45, alpha: 0.70))
+            // Blades
+            let bcx = wmx + 4, bcy = wmy + 26
+            for i in 1..<8 {
+                dot(bcx + i, bcy + i, bladeC); dot(bcx + i, bcy + i - 1, bladeC)
+                dot(bcx - i, bcy + i, bladeC); dot(bcx - i, bcy + i - 1, bladeC)
+                if i < 6 { dot(bcx + i, bcy - i, bladeC) }
+                if i < 6 { dot(bcx - i, bcy - i, bladeC) }
             }
 
-            // Windmill on tallest hill
-            let tallest = gridW * 3 / 4
-            let tH = heightMap[tallest]
-            let wmX = CGFloat(tallest) * ps
-            let wmBase = h - CGFloat(tH + 1) * ps
-            let wmColor = UIColor(red: 0.52, green: 0.42, blue: 0.32, alpha: 0.70)
-            c.setFillColor(wmColor.cgColor)
-            // Tower
-            for i in 0..<6 { c.fill(CGRect(x: wmX, y: wmBase - CGFloat(i) * ps, width: ps, height: ps)) }
-            // Blades (X shape)
-            let bladeC = UIColor(red: 0.75, green: 0.70, blue: 0.65, alpha: 0.60)
-            c.setFillColor(bladeC.cgColor)
-            let hub = wmBase - ps * 5
-            for d in 1...3 {
-                c.fill(CGRect(x: wmX - CGFloat(d) * ps, y: hub - CGFloat(d) * ps, width: ps, height: ps))
-                c.fill(CGRect(x: wmX + CGFloat(d) * ps, y: hub - CGFloat(d) * ps, width: ps, height: ps))
-                c.fill(CGRect(x: wmX - CGFloat(d) * ps, y: hub + CGFloat(d) * ps, width: ps, height: ps))
-                c.fill(CGRect(x: wmX + CGFloat(d) * ps, y: hub + CGFloat(d) * ps, width: ps, height: ps))
+            // ── RED BARN ── (x=145)
+            let bnx = 145, bny = 5
+            fill(bnx, bny, 16, 12, barnRed)
+            fill(bnx + 1, bny + 1, 14, 10, barnDark)
+            // Barn door
+            fill(bnx + 5, bny, 6, 8, barnDark)
+            fill(bnx + 7, bny, 2, 8, barnRed)
+            // Roof
+            for dx in 0..<18 {
+                let rh = max(0, 5 - abs(dx - 9) * 2 / 3)
+                if rh > 0 { fill(bnx - 1 + dx, bny + 12, 1, rh, barnDark) }
+            }
+            // White trim
+            fill(bnx, bny + 12, 16, 1, barnWhite)
+            // Silo
+            fill(bnx + 16, bny, 4, 16, barnDark)
+            fill(bnx + 17, bny + 1, 2, 14, barnRed)
+            fill(bnx + 16, bny + 16, 4, 1, barnWhite)
+
+            // ── SMALL LAKE ── (x=110..130, y=2..5)
+            fill(108, 2, 24, 3, lakeD)
+            fill(110, 3, 20, 1, lakeL)
+            for rx in stride(from: 112, to: 128, by: 5) { dot(rx, 4, lakeL) }
+
+            // ── FENCE ── (x=55..75)
+            for fx in stride(from: 55, to: 76, by: 5) { fill(fx, 0, 1, 6, fenceC) }
+            fill(55, 2, 20, 1, fenceC); fill(55, 4, 20, 1, fenceC)
+
+            // ── FLOWERS ──
+            for (fx, fy, fc) in [(10,3,flowerR),(15,2,flowerY),(45,4,flowerW),
+                                  (95,5,flowerR),(130,3,flowerY),(175,4,flowerW),
+                                  (188,2,flowerR),(25,3,flowerY)] {
+                dot(fx, fy, fc)
+                dot(fx, fy + 1, UIColor(red: 0.20, green: 0.45, blue: 0.15, alpha: 0.50))
             }
 
-            // Scattered flowers
-            let flowerColors: [UIColor] = [
-                UIColor(red: 1.0, green: 0.40, blue: 0.45, alpha: 0.60),
-                UIColor(red: 1.0, green: 0.85, blue: 0.30, alpha: 0.55),
-                UIColor(red: 0.80, green: 0.50, blue: 0.90, alpha: 0.55),
-            ]
-            for x in stride(from: 5, to: gridW - 5, by: 11) {
-                let fH = heightMap[x]
-                if fH > 3 {
-                    let fy = h - CGFloat(fH + 1) * ps
-                    c.setFillColor(flowerColors[x % flowerColors.count].cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: fy, width: ps, height: ps))
-                }
+            // ── SHEEP ──
+            for (sx, sy) in [(65, 3), (120, 4), (180, 3)] {
+                fill(sx, sy, 3, 2, sheepW)
+                dot(sx, sy + 2, sheepW) // Head
+                dot(sx, sy - 1, sheepD) // Leg
+                dot(sx + 2, sy - 1, sheepD)
             }
         }
     }
@@ -1373,14 +1412,9 @@ final class TextureFactory {
         let gridW = Int(w / ps)
 
         var heightMap = [Int](repeating: 1, count: gridW)
-        // Wider, flatter rolling hills — distinct from day profile
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 12,    45, 28),
-            (gridW / 4,     50, 35),
-            (gridW * 5 / 12, 30, 20),
-            (gridW / 2,     55, 40),
-            (gridW * 2 / 3, 35, 25),
-            (gridW * 5 / 6, 45, 38),
+            (20, 22, 22), (50, 18, 16), (80, 28, 30), (110, 14, 12),
+            (140, 24, 26), (170, 18, 20), (195, 16, 16),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1390,68 +1424,88 @@ final class TextureFactory {
             }
         }
 
-        let hillBase  = UIColor(red: 0.45, green: 0.25, blue: 0.12, alpha: 0.82)
-        let hillMid   = UIColor(red: 0.55, green: 0.32, blue: 0.15, alpha: 0.78)
-        let hillTop   = UIColor(red: 0.35, green: 0.18, blue: 0.08, alpha: 0.88)
-        let hillGlow  = UIColor(red: 0.72, green: 0.45, blue: 0.20, alpha: 0.65)
+        let hillBase  = UIColor(red: 0.50, green: 0.32, blue: 0.15, alpha: 0.72)
+        let hillMid   = UIColor(red: 0.58, green: 0.38, blue: 0.18, alpha: 0.68)
+        let hillLight = UIColor(red: 0.68, green: 0.48, blue: 0.22, alpha: 0.62)
+        let hillTop   = UIColor(red: 0.42, green: 0.26, blue: 0.12, alpha: 0.78)
+        // Barn
+        let barnRed   = UIColor(red: 0.60, green: 0.15, blue: 0.10, alpha: 0.80)
+        let barnDark  = UIColor(red: 0.45, green: 0.10, blue: 0.06, alpha: 0.82)
+        let barnWhite = UIColor(red: 0.85, green: 0.80, blue: 0.72, alpha: 0.72)
+        // Sunflowers
+        let sfYellow  = UIColor(red: 0.95, green: 0.82, blue: 0.20, alpha: 0.75)
+        let sfCenter  = UIColor(red: 0.40, green: 0.25, blue: 0.10, alpha: 0.78)
+        let sfStem    = UIColor(red: 0.25, green: 0.45, blue: 0.15, alpha: 0.65)
+        // Fence
+        let fenceC    = UIColor(red: 0.45, green: 0.32, blue: 0.18, alpha: 0.60)
+        // Hay bale
+        let hayC      = UIColor(red: 0.72, green: 0.60, blue: 0.30, alpha: 0.65)
+        let hayD      = UIColor(red: 0.55, green: 0.45, blue: 0.22, alpha: 0.68)
+        // Sunset birds
+        let birdC     = UIColor(red: 0.20, green: 0.15, blue: 0.10, alpha: 0.45)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // Hills terrain
             for x in 0..<gridW {
-                let hH = heightMap[x]
-                for y in 0..<hH {
+                let mH = heightMap[x]
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(hH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if y == hH - 1 { color = hillTop }
-                    else if y == hH - 2 && hH > 3 { color = hillGlow }
-                    else if ratio > 0.6 { color = hillMid }
+                    if y == mH - 1 { color = hillTop }
+                    else if ratio > 0.6 { color = hillLight }
+                    else if ratio > 0.3 { color = hillMid }
                     else { color = hillBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Barn silhouette on a hilltop
-            let barnX = gridW / 2
-            let barnBase = h - CGFloat(heightMap[barnX] + 1) * ps
-            let barnC = UIColor(red: 0.25, green: 0.12, blue: 0.06, alpha: 0.80)
-            c.setFillColor(barnC.cgColor)
-            // Barn body
-            for row in 0..<5 {
-                let bw = row < 4 ? 6 : 4
-                let offset = (6 - bw) / 2
-                for col in 0..<bw {
-                    c.fill(CGRect(x: CGFloat(barnX + offset + col) * ps, y: barnBase - CGFloat(row) * ps, width: ps, height: ps))
-                }
-            }
-            // Barn roof peak
-            c.fill(CGRect(x: CGFloat(barnX + 2) * ps, y: barnBase - ps * 5, width: ps * 2, height: ps))
+            // ── BARN + SILO ── (x=120)
+            fill(120, 3, 18, 14, barnRed)
+            fill(121, 4, 16, 12, barnDark)
+            fill(126, 3, 6, 8, barnDark) // Door
+            fill(128, 3, 2, 8, barnRed)  // Door center
+            for dx in 0..<20 { let rh = max(0, 5 - abs(dx - 10) * 2 / 3); if rh > 0 { fill(119 + dx, 17, 1, rh, barnDark) } }
+            fill(120, 17, 18, 1, barnWhite)
+            fill(138, 3, 5, 18, barnDark); fill(139, 4, 3, 16, barnRed)
+            fill(138, 21, 5, 1, barnWhite)
 
-            // Sun glow at horizon (behind hills)
-            let sunGlow = UIColor(red: 1.0, green: 0.70, blue: 0.25, alpha: 0.15)
-            c.setFillColor(sunGlow.cgColor)
-            let sunX = w * 0.7, sunY = h - CGFloat(30) * ps
-            for dy in -6...6 {
-                for dx in -6...6 {
-                    if dx * dx + dy * dy <= 36 {
-                        c.fill(CGRect(x: sunX + CGFloat(dx) * ps, y: sunY + CGFloat(dy) * ps, width: ps, height: ps))
-                    }
-                }
+            // ── SUNFLOWERS ── (field near barn)
+            for (sx, sy) in [(100,5),(103,6),(106,4),(109,6),(112,5),(95,4),
+                             (150,5),(153,4),(156,6),(159,4)] {
+                fill(sx, sy - 2, 1, 3, sfStem) // Stem
+                dot(sx - 1, sy + 1, sfYellow); dot(sx + 1, sy + 1, sfYellow)
+                dot(sx, sy + 2, sfYellow); dot(sx, sy, sfYellow)
+                dot(sx, sy + 1, sfCenter) // Center
             }
 
-            // Fence posts along a hill
-            let fenceC = UIColor(red: 0.30, green: 0.18, blue: 0.10, alpha: 0.60)
-            c.setFillColor(fenceC.cgColor)
-            for x in stride(from: gridW / 8, to: gridW / 8 + 20, by: 4) {
-                guard x < gridW else { break }
-                let fY = h - CGFloat(heightMap[x] + 1) * ps
-                c.fill(CGRect(x: CGFloat(x) * ps, y: fY - ps, width: ps, height: ps * 2))
+            // ── FENCE ── (x=60..90)
+            for fx in stride(from: 60, to: 91, by: 5) { fill(fx, 0, 1, 7, fenceC) }
+            fill(60, 3, 30, 1, fenceC); fill(60, 5, 30, 1, fenceC)
+
+            // ── HAY BALES ──
+            for (hx, hy) in [(70, 2), (78, 2), (170, 3)] {
+                fill(hx, hy, 5, 3, hayC); fill(hx + 1, hy + 1, 3, 1, hayD)
+                // Round top
+                fill(hx + 1, hy + 3, 3, 1, hayC)
             }
-            // Fence rail
-            let railStart = CGFloat(gridW / 8) * ps
-            c.fill(CGRect(x: railStart, y: h - CGFloat(heightMap[gridW / 8] + 1) * ps, width: ps * 20, height: ps * 0.5))
+
+            // ── BIRDS ──
+            for (bx, by) in [(30, 55), (40, 58), (48, 56), (150, 60), (160, 57)] {
+                dot(bx - 1, by + 1, birdC); dot(bx, by, birdC); dot(bx + 1, by + 1, birdC)
+            }
         }
     }
 
@@ -1463,16 +1517,11 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
+        // Gentle rolling hills
         var heightMap = [Int](repeating: 1, count: gridW)
-        // Distinctive rolling profile — different from day/sunset
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10,    28, 30),
-            (gridW / 4,     40, 45),
-            (gridW * 3 / 8, 20, 20),
-            (gridW / 2,     35, 38),
-            (gridW * 3 / 5, 28, 32),
-            (gridW * 3 / 4, 42, 48),
-            (gridW * 9 / 10, 25, 25),
+            (20, 30, 22), (55, 25, 18), (85, 35, 28), (115, 20, 15),
+            (145, 30, 25), (170, 25, 20), (195, 20, 16),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1482,90 +1531,220 @@ final class TextureFactory {
             }
         }
 
-        // Dark fills need HIGH alpha to be visible against dark sky
-        let hillBase    = UIColor(red: 0.06, green: 0.08, blue: 0.18, alpha: 0.92)
-        let hillMid     = UIColor(red: 0.08, green: 0.10, blue: 0.22, alpha: 0.88)
-        let hillTop     = UIColor(red: 0.04, green: 0.06, blue: 0.14, alpha: 0.95)
-        // Moonlit edge — bright blue highlight on top pixels
-        let moonEdge    = UIColor(red: 0.30, green: 0.40, blue: 0.65, alpha: 0.70)
-        let moonHighlt  = UIColor(red: 0.45, green: 0.55, blue: 0.80, alpha: 0.55)
+        let hillDark  = UIColor(red: 0.05, green: 0.15, blue: 0.08, alpha: 0.85)
+        let hillMid   = UIColor(red: 0.08, green: 0.22, blue: 0.12, alpha: 0.80)
+        let hillLight = UIColor(red: 0.12, green: 0.30, blue: 0.16, alpha: 0.75)
+        let hillTop   = UIColor(red: 0.04, green: 0.12, blue: 0.06, alpha: 0.88)
+        // Moon
+        let moonYellow  = UIColor(red: 0.98, green: 0.92, blue: 0.55, alpha: 0.95)
+        let moonLight   = UIColor(red: 0.95, green: 0.88, blue: 0.50, alpha: 0.85)
+        let moonGlow    = UIColor(red: 0.95, green: 0.90, blue: 0.55, alpha: 0.15)
+        // Windmill
+        let millBrown   = UIColor(red: 0.25, green: 0.16, blue: 0.08, alpha: 0.90)
+        let millLight   = UIColor(red: 0.35, green: 0.24, blue: 0.14, alpha: 0.85)
+        let bladeGray   = UIColor(red: 0.30, green: 0.28, blue: 0.25, alpha: 0.80)
+        // Cottage
+        let stoneGray   = UIColor(red: 0.35, green: 0.32, blue: 0.30, alpha: 0.88)
+        let stoneDark   = UIColor(red: 0.25, green: 0.22, blue: 0.20, alpha: 0.90)
+        let roofBrown   = UIColor(red: 0.22, green: 0.14, blue: 0.08, alpha: 0.92)
+        let windowWarm  = UIColor(red: 0.95, green: 0.80, blue: 0.35, alpha: 0.90)
+        let chimneyC    = UIColor(red: 0.30, green: 0.25, blue: 0.22, alpha: 0.88)
+        let smokeC      = UIColor(red: 0.50, green: 0.50, blue: 0.55, alpha: 0.25)
+        // Owl
+        let owlBrown    = UIColor(red: 0.35, green: 0.22, blue: 0.12, alpha: 0.85)
+        let owlLight    = UIColor(red: 0.50, green: 0.38, blue: 0.22, alpha: 0.80)
+        let owlEye      = UIColor(red: 0.95, green: 0.85, blue: 0.20, alpha: 0.95)
+        // Fence
+        let fenceBrown  = UIColor(red: 0.30, green: 0.20, blue: 0.10, alpha: 0.70)
+        // Firefly
+        let fireflyY    = UIColor(red: 1.0, green: 0.95, blue: 0.40, alpha: 0.80)
+        let fireflyGlow = UIColor(red: 1.0, green: 0.95, blue: 0.40, alpha: 0.25)
+        // Pine tree
+        let pineD       = UIColor(red: 0.04, green: 0.12, blue: 0.06, alpha: 0.85)
+        let pineM       = UIColor(red: 0.06, green: 0.16, blue: 0.08, alpha: 0.80)
+        // Path
+        let pathC       = UIColor(red: 0.30, green: 0.22, blue: 0.14, alpha: 0.55)
+        // Stars
+        let starC       = UIColor(red: 0.90, green: 0.90, blue: 1.0, alpha: 0.60)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Moon glow in sky
-            let moonX = w * 0.75, moonY = h * 0.12
-            let moonGlow = UIColor(red: 0.60, green: 0.65, blue: 0.85, alpha: 0.08)
-            c.setFillColor(moonGlow.cgColor)
-            for dy in -8...8 {
-                for dx in -8...8 {
-                    if dx * dx + dy * dy <= 64 {
-                        c.fill(CGRect(x: moonX + CGFloat(dx) * ps, y: moonY + CGFloat(dy) * ps, width: ps, height: ps))
-                    }
-                }
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
             }
-            // Moon disc
-            let moonDisc = UIColor(red: 0.85, green: 0.88, blue: 0.95, alpha: 0.55)
-            c.setFillColor(moonDisc.cgColor)
-            for dy in -3...3 {
-                for dx in -3...3 {
-                    if dx * dx + dy * dy <= 9 {
-                        c.fill(CGRect(x: moonX + CGFloat(dx) * ps, y: moonY + CGFloat(dy) * ps, width: ps, height: ps))
-                    }
-                }
-            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
 
-            // Hill silhouettes with moonlit edges
+            // ── STARS ──
+            let starPositions = [(10,68),(25,72),(45,65),(60,70),(75,67),(95,73),
+                                 (110,66),(130,71),(150,68),(165,73),(180,65),(195,70),
+                                 (5,60),(35,62),(55,58),(88,63),(120,60),(142,64),(175,61),(192,63)]
+            for (sx, sy) in starPositions { dot(sx, sy, starC) }
+
+            // ── CRESCENT MOON ── (x=30, y=52)
+            let mx = 30, my = 52
+            // Glow aura
+            for dy in -3..<12 { for dx in -3..<12 {
+                let dist = (dx - 4) * (dx - 4) + (dy - 4) * (dy - 4)
+                if dist < 50 { dot(mx + dx, my + dy, moonGlow) }
+            }}
+            // Crescent shape (full circle minus offset circle)
+            for dy in 0..<9 { for dx in 0..<9 {
+                let cx1 = (dx - 4) * (dx - 4) + (dy - 4) * (dy - 4)
+                let cx2 = (dx - 6) * (dx - 6) + (dy - 4) * (dy - 4)
+                if cx1 <= 16 && cx2 > 12 {
+                    dot(mx + dx, my + dy, moonYellow)
+                } else if cx1 <= 18 && cx2 > 14 && cx1 > 16 {
+                    dot(mx + dx, my + dy, moonLight)
+                }
+            }}
+
+            // ── HILLS TERRAIN ──
             for x in 0..<gridW {
-                let hillH = heightMap[x]
-                for y in 0..<hillH {
+                let mH = heightMap[x]
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(hillH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if y == hillH - 1 { color = moonEdge }
-                    else if y == hillH - 2 && hillH > 4 { color = moonHighlt }
-                    else if y == hillH - 1 { color = hillTop }
-                    else if ratio > 0.6 { color = hillMid }
-                    else { color = hillBase }
+                    if y == mH - 1 { color = hillTop }
+                    else if ratio > 0.7 { color = hillLight }
+                    else if ratio > 0.4 { color = hillMid }
+                    else { color = hillDark }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Fireflies — scattered glowing dots
-            let fireflyColors: [UIColor] = [
-                UIColor(red: 0.85, green: 0.95, blue: 0.40, alpha: 0.65),
-                UIColor(red: 0.75, green: 0.90, blue: 0.35, alpha: 0.55),
-                UIColor(red: 0.90, green: 1.0,  blue: 0.50, alpha: 0.50),
-            ]
-            let fireflyGlow = UIColor(red: 0.80, green: 0.95, blue: 0.35, alpha: 0.10)
-            let fireflyPositions: [(Int, Int)] = [
-                (gridW / 6, 10), (gridW / 3, 15), (gridW / 2 + 5, 8),
-                (gridW * 2 / 3, 18), (gridW * 5 / 6, 12), (gridW / 8, 20),
-                (gridW * 3 / 8, 22), (gridW * 7 / 8, 14),
-            ]
-            for (fx, fy) in fireflyPositions {
-                let fxP = CGFloat(fx) * ps
-                let baseY = h - CGFloat(heightMap[min(fx, gridW - 1)]) * ps
-                let fyP = baseY - CGFloat(fy) * ps
-                // Glow halo
-                c.setFillColor(fireflyGlow.cgColor)
-                c.fill(CGRect(x: fxP - ps, y: fyP - ps, width: ps * 3, height: ps * 3))
-                // Firefly dot
-                c.setFillColor(fireflyColors[fx % fireflyColors.count].cgColor)
-                c.fill(CGRect(x: fxP, y: fyP, width: ps, height: ps))
+            // ── WINDING PATH ── (from x=95 bottom toward cottage at x=135)
+            var pathX = 95
+            for py in 0..<12 {
+                let offset = Int(sin(CGFloat(py) * 0.5) * 3)
+                fill(pathX + offset, py, 4, 1, pathC)
+                pathX += 3
             }
 
-            // House windows — warm glow dots on hills
-            let windowC = UIColor(red: 1.0, green: 0.85, blue: 0.40, alpha: 0.55)
-            let windowPositions: [(Int, Int)] = [(gridW / 4 + 3, 5), (gridW / 2 - 2, 4), (gridW * 3 / 4 + 5, 6)]
-            for (wx, wy) in windowPositions {
-                guard wx < gridW else { continue }
-                let wY = h - CGFloat(wy) * ps
-                c.setFillColor(windowC.cgColor)
-                c.fill(CGRect(x: CGFloat(wx) * ps, y: wY, width: ps, height: ps))
-                c.fill(CGRect(x: CGFloat(wx + 1) * ps, y: wY, width: ps, height: ps))
+            // ── PINE TREES ── (silhouettes)
+            func drawPine(_ bx: Int, _ by: Int, _ ph: Int) {
+                fill(bx + 2, by, 1, ph, pineD) // Trunk
+                for layer in 0..<(ph - 2) {
+                    let layerW = min(1 + layer, 5)
+                    let cx = bx + 2 - layerW / 2
+                    fill(cx, by + ph - 2 - layer + layer / 2, layerW, 1,
+                         layer % 2 == 0 ? pineD : pineM)
+                }
+                // Triangular canopy
+                for row in 0..<(ph * 2 / 3) {
+                    let cw = min(row + 1, 7)
+                    fill(bx + 2 - cw / 2, by + ph / 3 + row, cw, 1, pineD)
+                }
+            }
+            drawPine(8, 0, 18); drawPine(18, 0, 14); drawPine(48, 0, 16)
+            drawPine(160, 0, 20); drawPine(185, 0, 15); drawPine(195, 0, 12)
+
+            // ── WOODEN FENCE ── (x=48..72)
+            for fx in stride(from: 48, to: 73, by: 5) {
+                fill(fx, 0, 1, 10, fenceBrown)
+                dot(fx, 10, fenceBrown)
+            }
+            fill(48, 4, 24, 1, fenceBrown)
+            fill(48, 7, 24, 1, fenceBrown)
+
+            // ── OWL ON FENCE ── (x=55, y=10)
+            let ox = 55, oy = 10
+            fill(ox, oy, 4, 5, owlBrown)               // Body
+            fill(ox + 1, oy + 1, 2, 3, owlLight)        // Chest
+            fill(ox, oy + 5, 4, 2, owlBrown)            // Head
+            dot(ox, oy + 6, owlBrown)                    // Ear tuft left
+            dot(ox + 3, oy + 6, owlBrown)                // Ear tuft right
+            dot(ox + 1, oy + 5, owlEye)                  // Left eye
+            dot(ox + 2, oy + 5, owlEye)                  // Right eye
+
+            // ── WINDMILL ── (x=80, y=10..45)
+            let wmx = 80, wmy = 10
+            // Tower body
+            fill(wmx + 2, wmy, 5, 30, millBrown)
+            fill(wmx + 3, wmy + 1, 3, 28, millLight)
+            // Cap / roof
+            fill(wmx + 1, wmy + 30, 7, 2, roofBrown)
+            fill(wmx + 2, wmy + 32, 5, 2, roofBrown)
+            fill(wmx + 3, wmy + 34, 3, 1, roofBrown)
+            // Door
+            fill(wmx + 3, wmy, 3, 4, roofBrown)
+            // Window
+            fill(wmx + 3, wmy + 16, 3, 3, windowWarm)
+            fill(wmx + 4, wmy + 16, 1, 3, millBrown)   // Cross bar
+            // Platform / balcony
+            fill(wmx, wmy + 14, 9, 1, millBrown)
+            // Blades (X shape from cap center)
+            let bcx = wmx + 4, bcy = wmy + 33
+            // Blade 1: upper-right
+            for i in 1..<10 { dot(bcx + i, bcy + i, bladeGray) }
+            for i in 1..<10 { fill(bcx + i, bcy + i - 1, 1, 2, bladeGray) }
+            // Blade 2: upper-left
+            for i in 1..<10 { dot(bcx - i, bcy + i, bladeGray) }
+            for i in 1..<10 { fill(bcx - i, bcy + i - 1, 1, 2, bladeGray) }
+            // Blade 3: lower-right
+            for i in 1..<8 { dot(bcx + i, bcy - i, bladeGray) }
+            // Blade 4: lower-left
+            for i in 1..<8 { dot(bcx - i, bcy - i, bladeGray) }
+
+            // ── COTTAGE ── (x=125, y=0..22)
+            let cx = 125, cy = 0
+            // Walls
+            fill(cx, cy, 22, 14, stoneGray)
+            fill(cx + 1, cy + 1, 20, 12, stoneDark)
+            // Stone texture
+            for row in stride(from: 1, to: 12, by: 3) {
+                for col in stride(from: 1, to: 20, by: 5) {
+                    fill(cx + col, cy + row, 3, 2, stoneGray)
+                }
+            }
+            // Peaked roof
+            for dx in 0..<24 {
+                let rh = max(0, 8 - abs(dx - 12) * 2 / 3)
+                if rh > 0 { fill(cx - 1 + dx, cy + 14, 1, rh, roofBrown) }
+            }
+            // Door
+            fill(cx + 9, cy, 4, 7, roofBrown)
+            fill(cx + 10, cy, 2, 6, doorDark)
+            dot(cx + 11, cy + 3, windowWarm) // Handle
+            // Windows (lit)
+            fill(cx + 3, cy + 7, 4, 4, windowWarm)
+            fill(cx + 5, cy + 7, 1, 4, stoneDark)  // Cross
+            fill(cx + 3, cy + 9, 4, 1, stoneDark)
+            fill(cx + 15, cy + 7, 4, 4, windowWarm)
+            fill(cx + 17, cy + 7, 1, 4, stoneDark)
+            fill(cx + 15, cy + 9, 4, 1, stoneDark)
+            // Window glow spill
+            fill(cx + 2, cy + 6, 6, 1, UIColor(red: 1, green: 0.9, blue: 0.4, alpha: 0.12))
+            fill(cx + 14, cy + 6, 6, 1, UIColor(red: 1, green: 0.9, blue: 0.4, alpha: 0.12))
+            // Chimney
+            fill(cx + 17, cy + 18, 3, 6, chimneyC)
+            fill(cx + 17, cy + 24, 4, 1, chimneyC) // Cap
+            // Smoke puffs
+            dot(cx + 18, cy + 25, smokeC)
+            dot(cx + 19, cy + 27, smokeC)
+            fill(cx + 17, cy + 26, 2, 1, smokeC)
+            dot(cx + 20, cy + 29, smokeC)
+            dot(cx + 18, cy + 30, smokeC)
+            // Garden bushes
+            fill(cx - 2, cy, 2, 3, pineD)
+            fill(cx + 22, cy, 2, 3, pineD)
+
+            // ── FIREFLIES ──
+            let fireflyPos = [(15,8),(22,15),(42,12),(62,18),(70,6),(88,20),
+                              (100,14),(115,8),(138,16),(152,10),(172,12),(182,18),
+                              (28,22),(78,25),(120,20),(165,22),(145,5),(55,10)]
+            for (fx, fy) in fireflyPos {
+                dot(fx, fy, fireflyY)
+                // Glow
+                for gx in -1...1 { for gy in -1...1 {
+                    if gx != 0 || gy != 0 { dot(fx + gx, fy + gy, fireflyGlow) }
+                }}
             }
         }
     }
@@ -1708,12 +1887,11 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Coral reef — denser, more varied bumps
-        var heightMap = [Int](repeating: 0, count: gridW)
+        // Coral reef terrain
+        var heightMap = [Int](repeating: 3, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 20, 25), (gridW / 5, 30, 40), (gridW * 3 / 10, 15, 20),
-            (gridW * 2 / 5, 35, 45), (gridW / 2, 17, 17), (gridW * 3 / 5, 25, 35),
-            (gridW * 7 / 10, 37, 50), (gridW * 4 / 5, 20, 30), (gridW * 9 / 10, 27, 37),
+            (15, 20, 25), (45, 15, 18), (70, 25, 30), (95, 12, 20),
+            (120, 18, 22), (145, 20, 28), (170, 15, 24), (195, 12, 18),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1723,100 +1901,244 @@ final class TextureFactory {
             }
         }
 
-        // Coral palette with more variety
-        let coralPalette: [(base: UIColor, mid: UIColor, top: UIColor)] = [
-            (UIColor(red: 0.85, green: 0.30, blue: 0.40, alpha: 0.85),
-             UIColor(red: 0.95, green: 0.45, blue: 0.50, alpha: 0.80),
-             UIColor(red: 0.75, green: 0.22, blue: 0.32, alpha: 0.88)),
-            (UIColor(red: 0.90, green: 0.60, blue: 0.20, alpha: 0.82),
-             UIColor(red: 1.0, green: 0.75, blue: 0.35, alpha: 0.78),
-             UIColor(red: 0.80, green: 0.50, blue: 0.15, alpha: 0.85)),
-            (UIColor(red: 0.55, green: 0.25, blue: 0.70, alpha: 0.82),
-             UIColor(red: 0.70, green: 0.40, blue: 0.85, alpha: 0.78),
-             UIColor(red: 0.45, green: 0.18, blue: 0.58, alpha: 0.85)),
-            (UIColor(red: 0.20, green: 0.65, blue: 0.55, alpha: 0.82),
-             UIColor(red: 0.30, green: 0.78, blue: 0.65, alpha: 0.78),
-             UIColor(red: 0.15, green: 0.52, blue: 0.45, alpha: 0.85)),
-        ]
-
-        var bumpOwner = [Int](repeating: 0, count: gridW)
-        for (bi, bump) in bumps.enumerated() {
-            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
-                let dist = abs(x - bump.center)
-                let nd = CGFloat(dist) / CGFloat(bump.radius)
-                let bh = Int(CGFloat(bump.peak) * (1.0 - nd * nd))
-                if bh >= heightMap[x] { bumpOwner[x] = bi % coralPalette.count }
-            }
-        }
-
-        let lightRay = UIColor(red: 0.60, green: 0.85, blue: 0.95, alpha: 0.08)
-        let bubbleC  = UIColor(red: 0.75, green: 0.90, blue: 1.0, alpha: 0.30)
+        // Water gradient
+        let waterTop  = UIColor(red: 0.05, green: 0.20, blue: 0.45, alpha: 0.30)
+        let waterMid  = UIColor(red: 0.08, green: 0.30, blue: 0.55, alpha: 0.25)
+        // Coral colors
+        let coralPinkD = UIColor(red: 0.65, green: 0.25, blue: 0.35, alpha: 0.85)
+        let coralPinkL = UIColor(red: 0.80, green: 0.40, blue: 0.50, alpha: 0.80)
+        let coralOrgD  = UIColor(red: 0.75, green: 0.40, blue: 0.15, alpha: 0.85)
+        let coralOrgL  = UIColor(red: 0.90, green: 0.55, blue: 0.25, alpha: 0.80)
+        let coralPurpD = UIColor(red: 0.40, green: 0.20, blue: 0.55, alpha: 0.82)
+        let coralPurpL = UIColor(red: 0.55, green: 0.35, blue: 0.70, alpha: 0.78)
+        let brainPinkD = UIColor(red: 0.70, green: 0.35, blue: 0.45, alpha: 0.80)
+        let brainPinkL = UIColor(red: 0.85, green: 0.50, blue: 0.60, alpha: 0.75)
+        let sandD      = UIColor(red: 0.60, green: 0.52, blue: 0.38, alpha: 0.65)
+        let sandL      = UIColor(red: 0.72, green: 0.65, blue: 0.50, alpha: 0.60)
+        // Kelp
+        let kelpD      = UIColor(red: 0.15, green: 0.40, blue: 0.18, alpha: 0.80)
+        let kelpL      = UIColor(red: 0.25, green: 0.55, blue: 0.25, alpha: 0.75)
+        // Jellyfish
+        let jellyBody  = UIColor(red: 0.60, green: 0.45, blue: 0.75, alpha: 0.50)
+        let jellyLight = UIColor(red: 0.75, green: 0.60, blue: 0.88, alpha: 0.45)
+        let jellyTent  = UIColor(red: 0.55, green: 0.40, blue: 0.70, alpha: 0.35)
+        // Fish
+        let fishOrange = UIColor(red: 0.95, green: 0.55, blue: 0.15, alpha: 0.80)
+        let fishWhite  = UIColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 0.75)
+        let fishYellow = UIColor(red: 0.95, green: 0.85, blue: 0.25, alpha: 0.78)
+        let fishBlue   = UIColor(red: 0.20, green: 0.45, blue: 0.85, alpha: 0.78)
+        let fishBlack  = UIColor(red: 0.10, green: 0.10, blue: 0.12, alpha: 0.75)
+        // Treasure
+        let chestBrn   = UIColor(red: 0.45, green: 0.28, blue: 0.10, alpha: 0.82)
+        let goldC      = UIColor(red: 0.88, green: 0.75, blue: 0.20, alpha: 0.85)
+        // Shell/starfish
+        let shellPink  = UIColor(red: 0.82, green: 0.55, blue: 0.65, alpha: 0.65)
+        let starOrange = UIColor(red: 0.90, green: 0.45, blue: 0.20, alpha: 0.70)
+        let urchinD    = UIColor(red: 0.10, green: 0.08, blue: 0.15, alpha: 0.70)
+        // Anemone
+        let anemPink   = UIColor(red: 0.85, green: 0.40, blue: 0.55, alpha: 0.70)
+        let anemBase   = UIColor(red: 0.65, green: 0.30, blue: 0.45, alpha: 0.75)
+        // Light rays
+        let lightRay   = UIColor(red: 0.50, green: 0.70, blue: 0.85, alpha: 0.06)
+        // Tube coral
+        let tubeD      = UIColor(red: 0.50, green: 0.25, blue: 0.60, alpha: 0.80)
+        let tubeL      = UIColor(red: 0.65, green: 0.40, blue: 0.75, alpha: 0.75)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Light rays from surface — angled shafts of light
-            let rayPositions: [CGFloat] = [w * 0.15, w * 0.40, w * 0.65, w * 0.85]
-            for rx in rayPositions {
-                c.setFillColor(lightRay.cgColor)
-                // Diagonal ray — a tall parallelogram
-                c.saveGState()
-                let rayPath = CGMutablePath()
-                rayPath.move(to: CGPoint(x: rx, y: 0))
-                rayPath.addLine(to: CGPoint(x: rx + ps * 4, y: 0))
-                rayPath.addLine(to: CGPoint(x: rx + ps * 2, y: h * 0.8))
-                rayPath.addLine(to: CGPoint(x: rx - ps * 2, y: h * 0.8))
-                rayPath.closeSubpath()
-                c.addPath(rayPath)
-                c.fillPath()
-                c.restoreGState()
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── LIGHT RAYS FROM SURFACE ──
+            for rx in stride(from: 25, to: 180, by: 30) {
+                for ry in stride(from: 35, to: 74, by: 1) {
+                    let offset = (74 - ry) / 5
+                    fill(rx - offset, ry, 3, 1, lightRay)
+                }
             }
 
-            // Coral formations
+            // ── WATER GRADIENT ──
+            for y in 50..<75 {
+                fill(0, y, gridW, 1, y > 62 ? waterTop : waterMid)
+            }
+
+            // ── CORAL REEF TERRAIN ──
             for x in 0..<gridW {
-                let coralH = heightMap[x]
-                guard coralH > 0 else { continue }
-                let pal = coralPalette[bumpOwner[x]]
-                for y in 0..<coralH {
+                let mH = heightMap[x]
+                guard mH > 0 else { continue }
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(coralH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if y == coralH - 1 { color = pal.top }
-                    else if ratio > 0.5 { color = pal.mid }
-                    else { color = pal.base }
+                    // Alternate coral colors based on position
+                    let zone = (x / 25) % 4
+                    if y < 3 { color = y % 2 == 0 ? sandD : sandL }
+                    else if zone == 0 { color = ratio > 0.6 ? coralPinkL : coralPinkD }
+                    else if zone == 1 { color = ratio > 0.6 ? coralOrgL : coralOrgD }
+                    else if zone == 2 { color = ratio > 0.6 ? coralPurpL : coralPurpD }
+                    else { color = ratio > 0.6 ? coralPinkL : coralPinkD }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Coral nubs and branching tips
-            let nubColors: [UIColor] = [
-                UIColor(red: 1.0, green: 0.50, blue: 0.60, alpha: 0.50),
-                UIColor(red: 0.60, green: 0.90, blue: 0.70, alpha: 0.50),
-                UIColor(red: 0.95, green: 0.80, blue: 0.30, alpha: 0.50),
-            ]
-            for x in stride(from: 3, to: gridW - 3, by: 7) {
-                let ch = heightMap[x]
-                if ch > 3 {
-                    let yPos = h - CGFloat(ch + 1) * ps
-                    c.setFillColor(nubColors[x % nubColors.count].cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
-                    // Branching tip
-                    if ch > 6 {
-                        c.fill(CGRect(x: CGFloat(x - 1) * ps, y: yPos + ps, width: ps, height: ps))
-                        c.fill(CGRect(x: CGFloat(x + 1) * ps, y: yPos + ps, width: ps, height: ps))
+            // ── BRAIN CORAL ── (round formations)
+            func drawBrainCoral(_ cx: Int, _ cy: Int, _ r: Int) {
+                for dy in -r...r {
+                    for dx in -r...r {
+                        if dx * dx + dy * dy <= r * r {
+                            let swirl = (dx + dy + r) % 3 == 0
+                            dot(cx + dx, cy + dy, swirl ? brainPinkL : brainPinkD)
+                        }
                     }
                 }
             }
+            drawBrainCoral(22, 12, 5)
+            drawBrainCoral(175, 10, 4)
+            drawBrainCoral(95, 8, 3)
 
-            // Bubbles rising from coral
-            c.setFillColor(bubbleC.cgColor)
-            for i in stride(from: 0, to: gridW, by: gridW / 8) {
-                let bx = CGFloat(i) * ps + ps * 3
-                let by = h * 0.2 + CGFloat(i % 4) * ps * 3
-                c.fill(CGRect(x: bx, y: by, width: ps, height: ps))
-                c.fill(CGRect(x: bx + ps * 2, y: by - ps * 2, width: ps * 0.75, height: ps * 0.75))
+            // ── FAN CORAL ── (branching structure)
+            func drawFanCoral(_ bx: Int, _ by: Int, _ fh: Int, _ dark: UIColor, _ light: UIColor) {
+                fill(bx, by, 1, fh, dark) // Main stem
+                for i in 1..<fh {
+                    if i % 2 == 0 {
+                        let spread = min(i / 2, 4)
+                        for s in 1...spread {
+                            dot(bx - s, by + i, i % 4 < 2 ? dark : light)
+                            dot(bx + s, by + i, i % 4 < 2 ? light : dark)
+                        }
+                    }
+                }
+            }
+            drawFanCoral(50, 5, 16, coralPinkD, coralPinkL)
+            drawFanCoral(130, 8, 14, coralOrgD, coralOrgL)
+
+            // ── TUBE CORAL ──
+            for (tx, th) in [(140, 10), (143, 8), (146, 11), (148, 7)] {
+                fill(tx, 3, 2, th, tubeD)
+                dot(tx, 3 + th, tubeL)  // Open top
+                dot(tx + 1, 3 + th, tubeL)
+            }
+
+            // ── KELP STALKS ──
+            func drawKelp(_ bx: Int, _ by: Int, _ kh: Int) {
+                for i in 0..<kh {
+                    let sway = Int(sin(CGFloat(i) * 0.4) * 1.5)
+                    dot(bx + sway, by + i, i % 2 == 0 ? kelpD : kelpL)
+                    if i % 4 == 0 { // Leaf
+                        dot(bx + sway + 1, by + i, kelpL)
+                        dot(bx + sway + 2, by + i + 1, kelpL)
+                    }
+                }
+            }
+            drawKelp(5, 3, 30); drawKelp(10, 5, 25)
+            drawKelp(160, 4, 28); drawKelp(195, 3, 22)
+
+            // ── JELLYFISH ──
+            func drawJellyfish(_ jx: Int, _ jy: Int, _ jr: Int) {
+                // Dome
+                for dy in 0..<jr {
+                    let dw = jr - dy
+                    for dx in -dw...dw {
+                        if dx * dx + dy * dy * 2 <= jr * jr {
+                            dot(jx + dx, jy + dy, dy > jr / 2 ? jellyLight : jellyBody)
+                        }
+                    }
+                }
+                // Tentacles
+                for t in stride(from: -jr + 1, to: jr, by: 2) {
+                    for ty in 1..<(jr + 3) {
+                        let sway = Int(sin(CGFloat(ty) * 0.6 + CGFloat(t)) * 1.5)
+                        dot(jx + t + sway, jy - ty, jellyTent)
+                    }
+                }
+            }
+            drawJellyfish(60, 50, 4)
+            drawJellyfish(150, 55, 5)
+            drawJellyfish(90, 48, 3)
+
+            // ── FISH ──
+            // Clownfish (orange/white)
+            func drawClownfish(_ fx: Int, _ fy: Int) {
+                fill(fx, fy, 4, 2, fishOrange)
+                fill(fx + 1, fy, 1, 2, fishWhite)
+                fill(fx + 3, fy, 1, 2, fishWhite)
+                dot(fx + 4, fy, fishOrange) // Tail
+                dot(fx + 4, fy + 1, fishOrange)
+                dot(fx, fy + 1, fishBlack) // Eye
+            }
+            drawClownfish(40, 38)
+            drawClownfish(105, 42)
+
+            // Blue tang
+            func drawBlueTang(_ fx: Int, _ fy: Int) {
+                fill(fx, fy, 4, 2, fishBlue)
+                fill(fx + 1, fy, 2, 3, fishBlue) // Body depth
+                dot(fx + 4, fy, fishYellow) // Tail
+                dot(fx + 4, fy + 1, fishYellow)
+                dot(fx, fy + 1, fishBlack) // Eye
+            }
+            drawBlueTang(75, 35)
+
+            // Yellow tang
+            fill(112, 30, 3, 2, fishYellow)
+            dot(112, 31, fishBlack) // Eye
+            dot(115, 30, fishYellow) // Tail
+
+            // Small fish school (background)
+            let schoolC = UIColor(red: 0.40, green: 0.50, blue: 0.60, alpha: 0.40)
+            for (sx, sy) in [(82,45),(85,44),(88,46),(91,45),(94,44),(97,46)] {
+                dot(sx, sy, schoolC); dot(sx + 1, sy, schoolC)
+            }
+
+            // ── ANEMONE ──
+            func drawAnemone(_ ax: Int, _ ay: Int) {
+                fill(ax, ay, 4, 2, anemBase)
+                // Waving tentacles
+                for i in 0..<6 {
+                    let sway = Int(sin(CGFloat(i) * 1.2) * 1)
+                    dot(ax + i - 1 + sway, ay + 2, anemPink)
+                    dot(ax + i - 1 + sway, ay + 3, anemPink)
+                    if i % 2 == 0 { dot(ax + i - 1 + sway, ay + 4, anemPink) }
+                }
+            }
+            drawAnemone(80, 5)
+            drawAnemone(115, 3)
+
+            // ── TREASURE CHEST ──
+            let tcx = 165, tcy = 4
+            fill(tcx, tcy, 6, 4, chestBrn)
+            fill(tcx, tcy + 4, 7, 2, chestBrn) // Open lid
+            fill(tcx + 1, tcy + 1, 4, 2, goldC)
+            dot(tcx + 2, tcy + 3, goldC)
+            dot(tcx + 6, tcy, goldC) // Spilled coins
+            dot(tcx + 7, tcy + 1, goldC)
+
+            // ── SEA URCHINS ──
+            for (ux, uy) in [(30, 3), (100, 4), (155, 3)] {
+                fill(ux, uy, 3, 2, urchinD)
+                dot(ux, uy + 2, urchinD); dot(ux + 2, uy + 2, urchinD)
+                dot(ux + 1, uy - 1, urchinD)
+            }
+
+            // ── STARFISH ──
+            for (sfx, sfy) in [(42, 3), (120, 2), (180, 4)] {
+                dot(sfx, sfy + 1, starOrange)
+                dot(sfx - 1, sfy, starOrange); dot(sfx + 1, sfy, starOrange)
+                dot(sfx, sfy + 2, starOrange); dot(sfx, sfy, starOrange)
+            }
+
+            // ── SEASHELLS ──
+            for (shx, shy) in [(55, 2), (140, 3), (190, 2)] {
+                dot(shx, shy, shellPink); dot(shx + 1, shy, shellPink)
+                dot(shx, shy + 1, shellPink)
             }
         }
     }
@@ -1829,109 +2151,146 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Jagged peaks — sharper bumps with smaller radii, taller for drama
-        var heightMap = [Int](repeating: 0, count: gridW)
-        let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 15, 35), (gridW / 5, 25, 60), (gridW * 3 / 10, 10, 25),
-            (gridW * 2 / 5, 20, 50), (gridW / 2, 12, 30), (gridW * 3 / 5, 30, 70),
-            (gridW * 7 / 10, 15, 40), (gridW * 4 / 5, 22, 65), (gridW * 9 / 10, 17, 45),
+        // Jagged volcanic mountains
+        var heightMap = [Int](repeating: 1, count: gridW)
+        let peaks: [(center: Int, radius: Int, peak: Int)] = [
+            (20, 20, 35), (55, 15, 50), (80, 25, 40),
+            (110, 12, 55), (140, 18, 45), (165, 14, 38), (190, 20, 42),
         ]
-        // Track which bump is tallest (the erupting crater)
-        var tallestPeak = 0; var tallestCenter = gridW / 2
-        for bump in bumps {
-            if bump.peak > tallestPeak { tallestPeak = bump.peak; tallestCenter = bump.center }
-            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
-                let dist = abs(x - bump.center)
-                let nd = CGFloat(dist) / CGFloat(bump.radius)
-                let bh = Int(CGFloat(bump.peak) * max(0, 1.0 - nd * nd * nd))
-                heightMap[x] = max(heightMap[x], bh)
+        for p in peaks {
+            for x in max(0, p.center - p.radius)..<min(gridW, p.center + p.radius) {
+                let dist = abs(x - p.center)
+                let nd = CGFloat(dist) / CGFloat(p.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(p.peak) * (1.0 - nd * nd)))
             }
         }
 
-        // Lava river channels — valleys between peaks glow with flowing lava
-        var lavaMap = [Bool](repeating: false, count: gridW)
-        for x in 0..<gridW {
-            // Low valleys (height < 4) get lava
-            if heightMap[x] < 4 && heightMap[x] > 0 { lavaMap[x] = true }
-            // Also fill gaps between adjacent tall peaks
-            if heightMap[x] == 0 {
-                let leftH = x > 0 ? heightMap[x - 1] : 0
-                let rightH = x < gridW - 1 ? heightMap[x + 1] : 0
-                if leftH > 3 || rightH > 3 { lavaMap[x] = true; heightMap[x] = 2 }
-            }
-        }
-
-        let rockBase   = UIColor(red: 0.22, green: 0.12, blue: 0.08, alpha: 0.88)
-        let rockMid    = UIColor(red: 0.32, green: 0.20, blue: 0.12, alpha: 0.82)
-        let rockLight  = UIColor(red: 0.40, green: 0.28, blue: 0.18, alpha: 0.75)
-        let rockTop    = UIColor(red: 0.18, green: 0.10, blue: 0.06, alpha: 0.92)
-        let lavaGlow   = UIColor(red: 1.0, green: 0.45, blue: 0.10, alpha: 0.80)
-        let lavaHot    = UIColor(red: 1.0, green: 0.70, blue: 0.20, alpha: 0.70)
-        let lavaBright = UIColor(red: 1.0, green: 0.85, blue: 0.35, alpha: 0.65)
-        let smokeColor = UIColor(red: 0.25, green: 0.20, blue: 0.18, alpha: 0.25)
-        let emberColor = UIColor(red: 1.0, green: 0.55, blue: 0.15, alpha: 0.45)
+        let rockDark   = UIColor(red: 0.12, green: 0.08, blue: 0.06, alpha: 0.90)
+        let rockMid    = UIColor(red: 0.22, green: 0.15, blue: 0.10, alpha: 0.88)
+        let rockLight  = UIColor(red: 0.30, green: 0.20, blue: 0.14, alpha: 0.82)
+        let rockHot    = UIColor(red: 0.35, green: 0.12, blue: 0.08, alpha: 0.80)
+        let lavaD      = UIColor(red: 0.80, green: 0.20, blue: 0.05, alpha: 0.92)
+        let lavaM      = UIColor(red: 0.95, green: 0.45, blue: 0.10, alpha: 0.90)
+        let lavaL      = UIColor(red: 1.0, green: 0.70, blue: 0.20, alpha: 0.88)
+        let lavaGlow   = UIColor(red: 1.0, green: 0.40, blue: 0.10, alpha: 0.15)
+        let crackGlow  = UIColor(red: 0.90, green: 0.35, blue: 0.10, alpha: 0.60)
+        let emberC     = UIColor(red: 1.0, green: 0.55, blue: 0.15, alpha: 0.70)
+        let emberFaint = UIColor(red: 1.0, green: 0.45, blue: 0.10, alpha: 0.35)
+        let smokeD     = UIColor(red: 0.25, green: 0.22, blue: 0.22, alpha: 0.20)
+        let smokeL     = UIColor(red: 0.40, green: 0.38, blue: 0.38, alpha: 0.12)
+        let charBark   = UIColor(red: 0.10, green: 0.08, blue: 0.06, alpha: 0.80)
+        let charBranch = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.65)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── LAVA GLOW AT BASE ──
+            fill(0, 0, gridW, 6, lavaGlow)
+
+            // ── VOLCANIC TERRAIN ──
             for x in 0..<gridW {
-                let mtnH = heightMap[x]
-                guard mtnH > 0 else { continue }
-                let isLava = lavaMap[x]
-
-                for y in 0..<mtnH {
+                let mH = heightMap[x]
+                guard mH > 0 else { continue }
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-
-                    if isLava && mtnH <= 4 {
-                        // Lava river channel — bright flowing lava
-                        color = y == mtnH - 1 ? lavaBright : (y == 0 ? lavaGlow : lavaHot)
-                    } else if y <= 1 {
-                        color = lavaGlow
-                    } else if y == 2 && mtnH > 6 {
-                        color = lavaHot
-                    } else if y == mtnH - 1 {
-                        color = rockTop
-                    } else if ratio > 0.7 {
-                        color = rockLight
-                    } else if ratio > 0.4 {
-                        // Rock striations — alternating bands for texture
-                        color = (y % 3 == 0) ? rockMid : rockBase
-                    } else {
-                        color = rockBase
-                    }
+                    if ratio > 0.90 { color = rockHot }  // Summit glow
+                    else if ratio > 0.65 { color = rockLight }
+                    else if ratio > 0.35 { color = rockMid }
+                    else { color = rockDark }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
+            }
 
-                // Crater hollow at tallest peak — carve a V shape at the top
-                if abs(x - tallestCenter) < 3 && mtnH == tallestPeak {
-                    let craterDepth = 3 - abs(x - tallestCenter)
-                    for dy in 0..<craterDepth {
-                        let craterY = h - CGFloat(mtnH - dy) * ps
-                        c.setFillColor(lavaHot.cgColor)
-                        c.fill(CGRect(x: CGFloat(x) * ps, y: craterY, width: ps, height: ps))
-                    }
+            // ── LAVA CRATER GLOW ── (at tallest peak = x=110)
+            let craterX = 110, craterPeak = heightMap[110]
+            fill(craterX - 4, craterPeak - 2, 8, 4, lavaL)
+            fill(craterX - 3, craterPeak, 6, 3, lavaM)
+            fill(craterX - 2, craterPeak + 1, 4, 2, lavaD)
+            // Glow above crater
+            for gy in 1..<6 {
+                let gw = max(1, 5 - gy)
+                fill(craterX - gw / 2, craterPeak + 2 + gy, gw, 1,
+                     UIColor(red: 1.0, green: 0.5, blue: 0.15, alpha: CGFloat(max(0.02, 0.12 - Double(gy) * 0.02))))
+            }
+
+            // ── LAVA RIVERS ── (flowing at base between rock formations)
+            // River 1: x=25..65
+            for x in 25..<65 {
+                let waveY = Int(sin(CGFloat(x) * 0.3) * 1.5) + 2
+                fill(x, waveY, 1, 2, lavaD)
+                dot(x, waveY + 2, lavaM)
+                if x % 4 == 0 { dot(x, waveY + 3, lavaL) }
+            }
+            // River 2: x=130..175
+            for x in 130..<175 {
+                let waveY = Int(sin(CGFloat(x) * 0.25 + 1.5) * 1.5) + 1
+                fill(x, waveY, 1, 2, lavaD)
+                dot(x, waveY + 2, lavaM)
+                if x % 5 == 0 { dot(x, waveY + 3, lavaL) }
+            }
+
+            // ── CRACKED GROUND WITH GLOWING VEINS ──
+            let crackPaths: [(start: Int, end: Int, baseY: Int)] = [
+                (70, 90, 3), (95, 115, 2), (150, 168, 4),
+            ]
+            for crack in crackPaths {
+                for x in crack.start..<crack.end {
+                    let cy = crack.baseY + Int(sin(CGFloat(x) * 0.8) * 1.5)
+                    dot(x, cy, crackGlow)
+                    if x % 3 == 0 { dot(x, cy + 1, lavaGlow) }
                 }
             }
 
-            // Smoke wisps rising from crater
-            let smokeBase = h - CGFloat(tallestPeak + 1) * ps
-            for i in 0..<4 {
-                let sx = CGFloat(tallestCenter) * ps + CGFloat(i - 2) * ps * 2
-                let sy = smokeBase - CGFloat(i) * ps * 2
-                c.setFillColor(smokeColor.cgColor)
-                c.fill(CGRect(x: sx, y: sy, width: ps * 2, height: ps))
-                c.fill(CGRect(x: sx + ps, y: sy - ps, width: ps, height: ps))
+            // ── CHARRED TREES ──
+            func drawCharredTree(_ bx: Int, _ by: Int, _ th: Int) {
+                // Trunk
+                fill(bx, by, 2, th, charBark)
+                // Branches (bare, no leaves)
+                let branchY = by + th * 2 / 3
+                // Left branches
+                dot(bx - 1, branchY, charBranch)
+                dot(bx - 2, branchY + 1, charBranch)
+                dot(bx - 2, branchY + 2, charBranch)
+                // Right branches
+                dot(bx + 2, branchY + 2, charBranch)
+                dot(bx + 3, branchY + 3, charBranch)
+                dot(bx + 3, branchY + 4, charBranch)
+                // Top
+                dot(bx, by + th, charBranch)
+                dot(bx + 1, by + th + 1, charBranch)
+            }
+            drawCharredTree(42, 5, 12)
+            drawCharredTree(88, 4, 10)
+            drawCharredTree(155, 6, 14)
+            drawCharredTree(178, 3, 9)
+
+            // ── SMOKE WISPS ── (above peaks)
+            for (sx, sy) in [(55, 52), (110, 58), (140, 48)] {
+                for i in 0..<5 {
+                    let ox = Int(sin(CGFloat(i) * 1.2) * 2)
+                    fill(sx + ox, sy + i * 2, 2, 2, smokeD)
+                    if i > 1 { fill(sx + ox + 1, sy + i * 2 + 1, 3, 2, smokeL) }
+                }
             }
 
-            // Ember particles floating above lava
-            for i in 0..<6 {
-                let ex = CGFloat(i * gridW / 6 + 3) * ps
-                let ey = h - CGFloat(5 + (i % 3) * 4) * ps
-                c.setFillColor(emberColor.cgColor)
-                c.fill(CGRect(x: ex, y: ey, width: ps, height: ps))
+            // ── EMBERS / SPARKS ──
+            let emberPos = [(30,35),(48,42),(62,30),(75,45),(95,50),(105,40),
+                            (118,48),(135,35),(148,42),(160,38),(175,44),(185,32),
+                            (22,28),(68,38),(128,45),(170,30)]
+            for (ex, ey) in emberPos {
+                dot(ex, ey, (ex + ey) % 3 == 0 ? emberC : emberFaint)
             }
         }
     }
@@ -1944,12 +2303,10 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Taller, more dramatic glacier peaks
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 35, 35), (gridW / 4, 45, 55), (gridW * 3 / 8, 20, 25),
-            (gridW / 2, 40, 50), (gridW * 5 / 8, 30, 35), (gridW * 3 / 4, 50, 60),
-            (gridW * 7 / 8, 25, 30),
+            (20, 30, 38), (55, 20, 25), (85, 40, 52), (120, 18, 20),
+            (150, 35, 48), (180, 22, 30), (198, 15, 22),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1959,61 +2316,100 @@ final class TextureFactory {
             }
         }
 
-        let rockBase = UIColor(red: 0.35, green: 0.42, blue: 0.52, alpha: 0.78)
-        let rockMid  = UIColor(red: 0.45, green: 0.52, blue: 0.62, alpha: 0.72)
-        let snowTop  = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.90)
-        let snowMid  = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.82)
-        let icicle   = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.70)
-        // Aurora colors — brighter for visibility
-        let auroraG  = UIColor(red: 0.20, green: 0.80, blue: 0.45, alpha: 0.22)
-        let auroraB  = UIColor(red: 0.25, green: 0.55, blue: 0.85, alpha: 0.18)
-        let auroraP  = UIColor(red: 0.55, green: 0.30, blue: 0.75, alpha: 0.15)
+        let rockBase  = UIColor(red: 0.35, green: 0.40, blue: 0.50, alpha: 0.78)
+        let rockMid   = UIColor(red: 0.45, green: 0.50, blue: 0.60, alpha: 0.72)
+        let snowTop   = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.90)
+        let snowMid   = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.82)
+        let icicle    = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.70)
+        let auroraG   = UIColor(red: 0.20, green: 0.80, blue: 0.45, alpha: 0.22)
+        let auroraB   = UIColor(red: 0.25, green: 0.55, blue: 0.85, alpha: 0.18)
+        let auroraP   = UIColor(red: 0.55, green: 0.30, blue: 0.75, alpha: 0.15)
+        // Igloo
+        let iglooW    = UIColor(red: 0.92, green: 0.95, blue: 0.98, alpha: 0.82)
+        let iglooD    = UIColor(red: 0.78, green: 0.82, blue: 0.88, alpha: 0.78)
+        let iglooDoor = UIColor(red: 0.30, green: 0.35, blue: 0.42, alpha: 0.70)
+        // Penguin
+        let penguinB  = UIColor(red: 0.10, green: 0.10, blue: 0.15, alpha: 0.78)
+        let penguinW  = UIColor(red: 0.92, green: 0.90, blue: 0.88, alpha: 0.75)
+        let penguinO  = UIColor(red: 0.90, green: 0.55, blue: 0.15, alpha: 0.75)
+        // Polar bear
+        let bearW     = UIColor(red: 0.92, green: 0.90, blue: 0.85, alpha: 0.72)
+        let bearD     = UIColor(red: 0.80, green: 0.78, blue: 0.72, alpha: 0.68)
+        let bearNose  = UIColor(red: 0.12, green: 0.10, blue: 0.10, alpha: 0.70)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Aurora borealis — wavy bands of green/blue/purple in upper portion
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── AURORA BOREALIS ──
             let aurColors = [auroraG, auroraB, auroraP, auroraG, auroraB]
             for (i, ac) in aurColors.enumerated() {
-                c.setFillColor(ac.cgColor)
-                let bandY = CGFloat(i) * ps * 3 + ps * 2
-                let bandH = ps * 2
-                // Wavy band using sine
                 for x in 0..<gridW {
-                    let xF = CGFloat(x) / CGFloat(gridW)
-                    let wave = sin(xF * .pi * 3.0 + CGFloat(i) * 1.2) * ps * 2
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: bandY + wave, width: ps, height: bandH))
+                    let wave = Int(sin(CGFloat(x) / CGFloat(gridW) * .pi * 3 + CGFloat(i) * 1.2) * 3)
+                    fill(x, 66 + i * 2 + wave, 1, 2, ac)
                 }
             }
 
-            // Mountain peaks
+            // ── MOUNTAIN PEAKS ──
             for x in 0..<gridW {
-                let mtnH = heightMap[x]
-                for y in 0..<mtnH {
+                let mH = heightMap[x]
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
                     if ratio > 0.80 { color = snowTop }
                     else if ratio > 0.65 { color = snowMid }
-                    else if ratio > 0.35 {
-                        // Rock striations
-                        color = (y % 2 == 0) ? rockMid : rockBase
-                    } else { color = rockBase }
+                    else if ratio > 0.35 { color = y % 2 == 0 ? rockMid : rockBase }
+                    else { color = rockBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
-
-                // Icicle hanging from snow edge
-                if mtnH > 5 {
-                    let leftH = x > 0 ? heightMap[x - 1] : 0
-                    if leftH < mtnH - 2 && (x % 5 == 0) {
-                        let iceBase = h - CGFloat(mtnH - 2) * ps
-                        c.setFillColor(icicle.cgColor)
-                        c.fill(CGRect(x: CGFloat(x) * ps, y: iceBase, width: ps, height: ps * 2))
-                    }
+                // Icicles
+                if mH > 5 && x > 0 && heightMap[x - 1] < mH - 2 && x % 5 == 0 {
+                    fill(x, mH - 4, 1, 2, icicle)
                 }
             }
+
+            // ── IGLOO ── (x=40..55, y=0)
+            let igx = 40
+            for dy in 0..<7 {
+                let dw = 7 - dy
+                fill(igx + 7 - dw, dy, dw * 2, 1, dy % 2 == 0 ? iglooW : iglooD)
+            }
+            // Door tunnel
+            fill(igx - 3, 0, 4, 3, iglooD)
+            fill(igx - 2, 0, 2, 2, iglooDoor)
+
+            // ── PENGUINS ──
+            func drawPenguin(_ px: Int, _ py: Int) {
+                fill(px, py, 2, 3, penguinB)
+                fill(px, py + 1, 2, 1, penguinW) // Belly
+                dot(px, py + 3, penguinB) // Head
+                dot(px + 1, py + 3, penguinB)
+                dot(px, py - 1, penguinO) // Feet
+                dot(px + 1, py - 1, penguinO)
+            }
+            drawPenguin(55, 2); drawPenguin(58, 2); drawPenguin(62, 3)
+            drawPenguin(160, 3); drawPenguin(164, 2)
+
+            // ── POLAR BEAR ── (x=110, y=2)
+            let pbx = 110
+            fill(pbx, 2, 6, 4, bearW)         // Body
+            fill(pbx + 1, 3, 4, 2, bearD)     // Shading
+            fill(pbx - 1, 4, 2, 3, bearW)     // Head
+            dot(pbx - 1, 6, bearW)             // Ear
+            dot(pbx, 6, bearW)
+            dot(pbx - 1, 5, bearNose)          // Nose
+            fill(pbx, 1, 1, 1, bearD)          // Legs
+            fill(pbx + 5, 1, 1, 1, bearD)
         }
     }
 
@@ -2025,12 +2421,11 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Alien terrain — cratered lumpy surface
+        // Alien terrain — lumpy cratered surface
         var heightMap = [Int](repeating: 2, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 30, 30), (gridW / 4, 40, 42), (gridW * 3 / 8, 20, 18),
-            (gridW / 2, 35, 38), (gridW * 3 / 5, 45, 48), (gridW * 3 / 4, 25, 28),
-            (gridW * 9 / 10, 35, 35),
+            (15, 18, 22), (45, 12, 15), (75, 20, 28), (100, 10, 12),
+            (125, 16, 25), (155, 14, 20), (180, 18, 24),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -2039,141 +2434,236 @@ final class TextureFactory {
                 heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
             }
         }
-
-        // Craters
-        let craters: [(cx: Int, r: Int)] = [
-            (gridW / 8, 5), (gridW / 4, 7), (gridW * 2 / 5, 4),
-            (gridW * 3 / 5, 8), (gridW * 3 / 4, 6), (gridW * 7 / 8, 5),
+        // Craters (depressions)
+        let craters: [(center: Int, radius: Int, depth: Int)] = [
+            (35, 5, 8), (90, 7, 10), (145, 4, 6), (170, 6, 8),
         ]
-        var craterMap = [Bool](repeating: false, count: gridW)
         for crater in craters {
-            for x in max(0, crater.cx - crater.r)..<min(gridW, crater.cx + crater.r) {
-                craterMap[x] = true
-                let dist = abs(x - crater.cx)
-                if dist < crater.r {
-                    let dip = Int(CGFloat(crater.r - dist) * 0.5)
-                    heightMap[x] = max(2, heightMap[x] - dip)
-                }
+            for x in max(0, crater.center - crater.radius)..<min(gridW, crater.center + crater.radius) {
+                let dist = abs(x - crater.center)
+                let nd = CGFloat(dist) / CGFloat(crater.radius)
+                let dip = Int(CGFloat(crater.depth) * (1.0 - nd * nd))
+                heightMap[x] = max(2, heightMap[x] - dip)
             }
         }
 
-        // MUCH higher alpha for visibility against dark sky
-        let surfBase   = UIColor(red: 0.22, green: 0.15, blue: 0.35, alpha: 0.88)
-        let surfMid    = UIColor(red: 0.30, green: 0.22, blue: 0.45, alpha: 0.85)
-        let surfTop    = UIColor(red: 0.18, green: 0.12, blue: 0.28, alpha: 0.92)
-        let surfDust   = UIColor(red: 0.25, green: 0.18, blue: 0.38, alpha: 0.82)
-        let craterRim  = UIColor(red: 0.38, green: 0.28, blue: 0.55, alpha: 0.85)
-        let craterFlr  = UIColor(red: 0.14, green: 0.10, blue: 0.25, alpha: 0.90)
-        let crystalA   = UIColor(red: 0.50, green: 0.80, blue: 1.0, alpha: 0.75)
-        let crystalB   = UIColor(red: 0.80, green: 0.40, blue: 1.0, alpha: 0.70)
-
+        let terrainD  = UIColor(red: 0.18, green: 0.14, blue: 0.25, alpha: 0.88)
+        let terrainM  = UIColor(red: 0.28, green: 0.22, blue: 0.35, alpha: 0.85)
+        let terrainL  = UIColor(red: 0.38, green: 0.32, blue: 0.45, alpha: 0.80)
+        let terrainH  = UIColor(red: 0.48, green: 0.40, blue: 0.55, alpha: 0.70)
+        // Planet colors
+        let planetD   = UIColor(red: 0.20, green: 0.15, blue: 0.40, alpha: 0.85)
+        let planetM   = UIColor(red: 0.30, green: 0.22, blue: 0.55, alpha: 0.82)
+        let planetL   = UIColor(red: 0.40, green: 0.30, blue: 0.65, alpha: 0.78)
+        let planetH   = UIColor(red: 0.50, green: 0.38, blue: 0.72, alpha: 0.70)
+        let ringC     = UIColor(red: 0.55, green: 0.45, blue: 0.65, alpha: 0.65)
+        let ringL     = UIColor(red: 0.70, green: 0.58, blue: 0.78, alpha: 0.55)
+        // Stars
+        let starBright = UIColor(red: 0.95, green: 0.95, blue: 1.0, alpha: 0.80)
+        let starDim    = UIColor(red: 0.70, green: 0.70, blue: 0.85, alpha: 0.45)
+        let starPink   = UIColor(red: 0.90, green: 0.60, blue: 0.70, alpha: 0.50)
         // Nebula
-        let nebPurple  = UIColor(red: 0.35, green: 0.12, blue: 0.55, alpha: 0.22)
-        let nebBlue    = UIColor(red: 0.12, green: 0.25, blue: 0.55, alpha: 0.18)
-        let nebPink    = UIColor(red: 0.50, green: 0.15, blue: 0.40, alpha: 0.15)
-
-        // Planet
-        let planetDark  = UIColor(red: 0.30, green: 0.50, blue: 0.70, alpha: 0.65)
-        let planetLight = UIColor(red: 0.50, green: 0.70, blue: 0.90, alpha: 0.60)
-        let ringColor   = UIColor(red: 0.65, green: 0.75, blue: 0.85, alpha: 0.40)
+        let nebulaP    = UIColor(red: 0.50, green: 0.20, blue: 0.60, alpha: 0.08)
+        let nebulaB    = UIColor(red: 0.20, green: 0.30, blue: 0.60, alpha: 0.08)
+        // Satellite
+        let satGray    = UIColor(red: 0.55, green: 0.55, blue: 0.60, alpha: 0.80)
+        let satPanel   = UIColor(red: 0.30, green: 0.40, blue: 0.65, alpha: 0.78)
+        // Galaxy
+        let galaxyC    = UIColor(red: 0.60, green: 0.50, blue: 0.75, alpha: 0.35)
+        let galaxyCore = UIColor(red: 0.80, green: 0.70, blue: 0.90, alpha: 0.55)
+        // Crystals
+        let alienCrystD = UIColor(red: 0.15, green: 0.50, blue: 0.55, alpha: 0.85)
+        let alienCrystM = UIColor(red: 0.25, green: 0.65, blue: 0.70, alpha: 0.80)
+        let alienCrystL = UIColor(red: 0.40, green: 0.82, blue: 0.88, alpha: 0.75)
+        let alienGlow   = UIColor(red: 0.25, green: 0.70, blue: 0.75, alpha: 0.12)
+        // Alien plants
+        let plantPurp   = UIColor(red: 0.55, green: 0.20, blue: 0.60, alpha: 0.70)
+        let plantPink   = UIColor(red: 0.75, green: 0.35, blue: 0.55, alpha: 0.65)
+        let plantGlow   = UIColor(red: 0.60, green: 0.30, blue: 0.55, alpha: 0.12)
+        // Asteroids
+        let asteroidC   = UIColor(red: 0.35, green: 0.30, blue: 0.28, alpha: 0.70)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Large nebula clouds
-            c.setFillColor(nebPurple.cgColor)
-            c.fill(CGRect(x: w * 0.10, y: ps * 2, width: w * 0.35, height: ps * 12))
-            c.setFillColor(nebBlue.cgColor)
-            c.fill(CGRect(x: w * 0.50, y: ps * 4, width: w * 0.30, height: ps * 10))
-            c.setFillColor(nebPink.cgColor)
-            c.fill(CGRect(x: w * 0.30, y: ps * 6, width: w * 0.25, height: ps * 8))
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
 
-            // Ringed planet — large and prominent
-            let planetCX = w * 0.72, planetCY = ps * 10
-            let planetR = 8
-            for dy in -planetR...planetR {
-                for dx in -planetR...planetR {
-                    let dist = sqrt(CGFloat(dx * dx + dy * dy))
-                    if dist <= CGFloat(planetR) {
-                        let pc = dx < 1 ? planetLight : planetDark
-                        c.setFillColor(pc.cgColor)
-                        c.fill(CGRect(x: planetCX + CGFloat(dx) * ps,
-                                      y: planetCY + CGFloat(dy) * ps,
-                                      width: ps, height: ps))
+            // ── NEBULA WISPS ──
+            for ny in stride(from: 40, to: 70, by: 4) {
+                for nx in stride(from: 10, to: 90, by: 3) {
+                    let wave = Int(sin(CGFloat(nx) * 0.15 + CGFloat(ny) * 0.3) * 2)
+                    dot(nx + wave, ny, nebulaP)
+                }
+            }
+            for ny in stride(from: 45, to: 65, by: 3) {
+                for nx in stride(from: 120, to: 195, by: 3) {
+                    let wave = Int(sin(CGFloat(nx) * 0.12 + CGFloat(ny) * 0.2) * 2)
+                    dot(nx + wave, ny, nebulaB)
+                }
+            }
+
+            // ── STARS ──
+            let brightStars = [(5,55),(22,68),(42,60),(60,72),(78,58),(95,65),
+                               (115,70),(132,55),(148,62),(168,72),(182,58),(198,66)]
+            for (sx, sy) in brightStars { dot(sx, sy, starBright) }
+            let dimStars = [(12,50),(28,62),(38,55),(52,67),(68,52),(85,63),
+                            (102,58),(120,65),(138,50),(155,68),(175,53),(192,62),
+                            (8,45),(35,48),(65,44),(105,48),(145,46),(185,47)]
+            for (sx, sy) in dimStars { dot(sx, sy, starDim) }
+            let pinkStars = [(18,58),(48,65),(88,70),(128,60),(158,55),(188,68)]
+            for (sx, sy) in pinkStars { dot(sx, sy, starPink) }
+
+            // ── RINGED PLANET ── (center x=120, y=50, radius ~12)
+            let pcx = 120, pcy = 50, pr = 12
+            for dy in -pr...pr {
+                for dx in -pr...pr {
+                    let dist2 = dx * dx + dy * dy
+                    if dist2 <= pr * pr {
+                        let ratio = CGFloat(dist2) / CGFloat(pr * pr)
+                        let lightSide = dx < 0  // Light from left
+                        let color: UIColor
+                        if ratio < 0.3 { color = lightSide ? planetH : planetM }
+                        else if ratio < 0.6 { color = lightSide ? planetL : planetD }
+                        else if ratio < 0.85 { color = lightSide ? planetM : planetD }
+                        else { color = planetD }
+                        dot(pcx + dx, pcy + dy, color)
                     }
                 }
             }
             // Ring (ellipse around planet)
-            c.setFillColor(ringColor.cgColor)
-            for dx in (-planetR - 5)...(planetR + 5) {
-                let ringY = CGFloat(dx) * 0.3
-                let ringDist = abs(CGFloat(dx))
-                if ringDist > CGFloat(planetR - 1) || abs(Int(ringY)) > 1 {
-                    c.fill(CGRect(x: planetCX + CGFloat(dx) * ps,
-                                  y: planetCY + ringY * ps,
-                                  width: ps, height: ps))
-                }
+            for rx in -18..<19 {
+                let ringY1 = Int(CGFloat(rx) * 0.35)
+                let ringY2 = ringY1 + 1
+                // Skip ring behind planet
+                if abs(rx) <= pr && ringY1 >= -2 { continue }
+                dot(pcx + rx, pcy + ringY1, ringC)
+                dot(pcx + rx, pcy + ringY2, ringL)
+            }
+            // Front part of ring (over planet)
+            for rx in -6..<7 {
+                let ringY = Int(CGFloat(rx) * 0.35) - 1
+                dot(pcx + rx, pcy + ringY, ringL)
             }
 
-            // Stars — bright dots scattered in sky area
-            let starBright = UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.65)
-            let starDim    = UIColor(red: 0.80, green: 0.85, blue: 1.0, alpha: 0.40)
-            let starPositions: [(CGFloat, CGFloat, Bool)] = [
-                (w * 0.05, ps * 3, true), (w * 0.15, ps * 8, false), (w * 0.25, ps * 2, true),
-                (w * 0.35, ps * 12, false), (w * 0.45, ps * 5, true), (w * 0.55, ps * 15, false),
-                (w * 0.65, ps * 3, false), (w * 0.85, ps * 6, true), (w * 0.95, ps * 10, false),
-                (w * 0.08, ps * 18, true), (w * 0.42, ps * 20, false), (w * 0.78, ps * 22, true),
-            ]
-            for (sx, sy, bright) in starPositions {
-                c.setFillColor(bright ? starBright.cgColor : starDim.cgColor)
-                c.fill(CGRect(x: sx, y: sy, width: ps, height: ps))
+            // ── GALAXY SPIRAL ── (x=35, y=62)
+            let gx = 35, gy = 62
+            dot(gx, gy, galaxyCore)
+            dot(gx + 1, gy, galaxyCore); dot(gx, gy + 1, galaxyCore)
+            for arm in 0..<20 {
+                let angle = CGFloat(arm) * 0.6
+                let radius = CGFloat(arm) * 0.5 + 1
+                let sx = gx + Int(cos(angle) * radius)
+                let sy = gy + Int(sin(angle) * radius)
+                dot(sx, sy, galaxyC)
+            }
+            for arm in 0..<20 {
+                let angle = CGFloat(arm) * 0.6 + .pi
+                let radius = CGFloat(arm) * 0.5 + 1
+                let sx = gx + Int(cos(angle) * radius)
+                let sy = gy + Int(sin(angle) * radius)
+                dot(sx, sy, galaxyC)
             }
 
-            // Terrain
+            // ── SECOND GALAXY ── (smaller, x=175, y=65)
+            let g2x = 175, g2y = 65
+            dot(g2x, g2y, galaxyCore)
+            for arm in 0..<12 {
+                let angle = CGFloat(arm) * 0.7
+                let radius = CGFloat(arm) * 0.4 + 1
+                dot(g2x + Int(cos(angle) * radius), g2y + Int(sin(angle) * radius), galaxyC)
+            }
+            for arm in 0..<12 {
+                let angle = CGFloat(arm) * 0.7 + .pi
+                let radius = CGFloat(arm) * 0.4 + 1
+                dot(g2x + Int(cos(angle) * radius), g2y + Int(sin(angle) * radius), galaxyC)
+            }
+
+            // ── SATELLITE ── (x=55, y=55)
+            let stx = 55, sty = 55
+            // Main body
+            fill(stx, sty, 6, 3, satGray)
+            fill(stx + 1, sty + 1, 4, 1, UIColor(red: 0.40, green: 0.55, blue: 0.70, alpha: 0.65))
+            // Solar panels
+            fill(stx - 5, sty, 4, 3, satPanel)
+            fill(stx + 7, sty, 4, 3, satPanel)
+            // Panel grid lines
+            fill(stx - 3, sty, 1, 3, satGray)
+            fill(stx + 9, sty, 1, 3, satGray)
+            // Antenna
+            dot(stx + 3, sty + 3, satGray)
+            dot(stx + 3, sty + 4, satGray)
+            // Dish
+            dot(stx + 2, sty + 5, satGray)
+            dot(stx + 4, sty + 5, satGray)
+
+            // ── ASTEROID BELT ── (scattered rocks)
+            let asteroids: [(x: Int, y: Int, s: Int)] = [
+                (85, 38), (90, 40), (95, 37), (100, 39), (105, 36),
+                (110, 38), (115, 35), (118, 37),
+            ].map { ($0.0, $0.1, (($0.0 + $0.1) % 3) + 1) }
+            for a in asteroids {
+                fill(a.x, a.y, a.s, a.s, asteroidC)
+                if a.s > 1 { dot(a.x, a.y + a.s - 1, terrainL) } // Highlight
+            }
+
+            // ── ALIEN TERRAIN ──
             for x in 0..<gridW {
                 let mH = heightMap[x]
+                guard mH > 0 else { continue }
                 for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mH))
-                    var color: UIColor
-                    if craterMap[x] && y < 3 { color = craterFlr }
-                    else if y == mH - 1 { color = craterMap[x] ? craterRim : surfTop }
-                    else if ratio > 0.5 { color = surfMid }
-                    else { color = (x + y) % 4 == 0 ? surfDust : surfBase }
+                    let color: UIColor
+                    if y == mH - 1 { color = terrainH }
+                    else if ratio > 0.7 { color = terrainL }
+                    else if ratio > 0.4 { color = terrainM }
+                    else { color = terrainD }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Crystal clusters on terrain peaks
-            for x in stride(from: 5, to: gridW - 5, by: 15) {
-                let mH = heightMap[x]
-                if mH > 8 {
-                    let baseY = h - CGFloat(mH + 1) * ps
-                    let cc = x % 2 == 0 ? crystalA : crystalB
-                    c.setFillColor(cc.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: baseY, width: ps, height: ps))
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: baseY - ps, width: ps, height: ps))
-                    c.fill(CGRect(x: CGFloat(x + 1) * ps, y: baseY, width: ps, height: ps))
-                    // Glow
-                    c.setFillColor(cc.withAlphaComponent(0.15).cgColor)
-                    c.fill(CGRect(x: CGFloat(x - 1) * ps, y: baseY - ps, width: ps * 4, height: ps * 3))
+            // ── CRYSTAL FORMATIONS ON TERRAIN ──
+            func drawAlienCrystal(_ bx: Int, _ by: Int, _ ch: Int) {
+                for gy in -1..<(ch + 2) {
+                    for gx in -2..<3 { dot(bx + gx, by + gy, alienGlow) }
                 }
+                for y in 0..<ch {
+                    let cw = max(1, 3 - y * 3 / (ch * 2))
+                    fill(bx - cw / 2, by + y, cw, 1,
+                         y > ch * 2 / 3 ? alienCrystL : (y > ch / 3 ? alienCrystM : alienCrystD))
+                }
+                dot(bx, by + ch, alienCrystL)
             }
+            drawAlienCrystal(18, 15, 10)
+            drawAlienCrystal(22, 12, 7)
+            drawAlienCrystal(155, 14, 9)
+            drawAlienCrystal(160, 10, 6)
 
-            // Floating asteroids
-            let asterC = UIColor(red: 0.30, green: 0.22, blue: 0.45, alpha: 0.55)
-            for (ax, ay, ar) in [(w * 0.12, ps * 14, 3), (w * 0.45, ps * 8, 2), (w * 0.90, ps * 11, 3)] as [(CGFloat, CGFloat, Int)] {
-                for dy in -ar...ar {
-                    for dx in -ar...ar {
-                        if abs(dx) + abs(dy) <= ar + 1 {
-                            c.setFillColor(asterC.cgColor)
-                            c.fill(CGRect(x: ax + CGFloat(dx) * ps, y: ay + CGFloat(dy) * ps, width: ps, height: ps))
-                        }
-                    }
+            // ── ALIEN PLANTS ──
+            func drawAlienPlant(_ bx: Int, _ by: Int, _ ph: Int) {
+                for gy in -1..<(ph + 2) {
+                    for gx in -2..<3 { dot(bx + gx, by + gy, plantGlow) }
+                }
+                fill(bx, by, 1, ph, plantPurp)
+                // Bulb tips
+                for i in 0..<3 {
+                    let tipY = by + ph - 1 + i
+                    let tipX = bx + (i % 2 == 0 ? -1 : 1)
+                    dot(tipX, tipY, plantPink)
+                    dot(bx, tipY + 1, plantPink)
                 }
             }
+            drawAlienPlant(72, 20, 6)
+            drawAlienPlant(140, 8, 5)
+            drawAlienPlant(185, 16, 7)
         }
     }
 
@@ -2185,192 +2675,257 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        var heightMap = [Int](repeating: 0, count: gridW)
-        // Lush tropical island mounds — tall and rolling
-        let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 35, 28), (gridW / 4, 45, 38), (gridW * 2 / 5, 30, 22),
-            (gridW * 3 / 5, 40, 32), (gridW * 4 / 5, 35, 26),
-        ]
-        for bump in bumps {
-            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
-                let dist = abs(x - bump.center)
-                let nd = CGFloat(dist) / CGFloat(bump.radius)
-                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
-            }
-        }
-
-        let islandBase = UIColor(red: 0.15, green: 0.42, blue: 0.28, alpha: 0.82)
-        let islandMid  = UIColor(red: 0.20, green: 0.50, blue: 0.35, alpha: 0.78)
-        let islandTop  = UIColor(red: 0.25, green: 0.55, blue: 0.38, alpha: 0.85)
+        // Water colors
+        let waterD    = UIColor(red: 0.05, green: 0.30, blue: 0.50, alpha: 0.50)
+        let waterM    = UIColor(red: 0.10, green: 0.45, blue: 0.60, alpha: 0.45)
+        let waterL    = UIColor(red: 0.20, green: 0.55, blue: 0.70, alpha: 0.40)
+        let foam      = UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 0.50)
+        // Ship hull
+        let hullDark  = UIColor(red: 0.20, green: 0.12, blue: 0.06, alpha: 0.92)
+        let hullMid   = UIColor(red: 0.32, green: 0.20, blue: 0.10, alpha: 0.90)
+        let hullLight = UIColor(red: 0.42, green: 0.28, blue: 0.14, alpha: 0.85)
+        let hullTrim  = UIColor(red: 0.65, green: 0.50, blue: 0.20, alpha: 0.80)
+        // Sails
+        let sailC     = UIColor(red: 0.92, green: 0.88, blue: 0.78, alpha: 0.90)
+        let sailS     = UIColor(red: 0.80, green: 0.75, blue: 0.65, alpha: 0.85)
+        // Skull
+        let skullW    = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.90)
+        // Mast / rigging
+        let mastC     = UIColor(red: 0.28, green: 0.18, blue: 0.10, alpha: 0.88)
+        let rigging   = UIColor(red: 0.25, green: 0.20, blue: 0.15, alpha: 0.40)
+        // Flags
+        let flagBlack = UIColor(red: 0.10, green: 0.08, blue: 0.08, alpha: 0.85)
+        // Rocky island
+        let rockD     = UIColor(red: 0.30, green: 0.25, blue: 0.20, alpha: 0.82)
+        let rockL     = UIColor(red: 0.45, green: 0.38, blue: 0.30, alpha: 0.78)
+        // Palm tree
+        let trunkBrn  = UIColor(red: 0.40, green: 0.25, blue: 0.12, alpha: 0.85)
+        let leafGrn   = UIColor(red: 0.15, green: 0.50, blue: 0.20, alpha: 0.80)
+        let leafDrk   = UIColor(red: 0.10, green: 0.35, blue: 0.15, alpha: 0.82)
+        // Treasure
+        let chestBrn  = UIColor(red: 0.45, green: 0.28, blue: 0.10, alpha: 0.85)
+        let goldC     = UIColor(red: 0.90, green: 0.78, blue: 0.20, alpha: 0.88)
+        // Beach details
+        let sandC     = UIColor(red: 0.85, green: 0.75, blue: 0.55, alpha: 0.55)
+        let shellPink = UIColor(red: 0.85, green: 0.55, blue: 0.65, alpha: 0.60)
+        let starOrange = UIColor(red: 0.90, green: 0.45, blue: 0.20, alpha: 0.65)
+        let shellWhite = UIColor(red: 0.90, green: 0.85, blue: 0.75, alpha: 0.55)
+        let cannonC   = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.80)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Draw island terrain
-            for x in 0..<gridW {
-                let mH = heightMap[x]
-                for y in 0..<mH {
-                    let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
-                    let color = y == mH - 1 ? islandTop : (ratio > 0.5 ? islandMid : islandBase)
-                    c.setFillColor(color.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
-                }
-            }
-
-            // ── MASSIVE pirate ship ──
-            let shipBaseX = w * 0.62
-            let waterLine = h - CGFloat(12) * ps  // sits above water level
-
-            let darkWood  = UIColor(red: 0.28, green: 0.16, blue: 0.08, alpha: 0.88)
-            let midWood   = UIColor(red: 0.38, green: 0.22, blue: 0.10, alpha: 0.85)
-            let lightWood = UIColor(red: 0.48, green: 0.30, blue: 0.14, alpha: 0.80)
-            let sailWhite = UIColor(red: 0.95, green: 0.92, blue: 0.85, alpha: 0.82)
-            let sailShadow = UIColor(red: 0.82, green: 0.78, blue: 0.72, alpha: 0.75)
-            let mastColor = UIColor(red: 0.22, green: 0.14, blue: 0.06, alpha: 0.88)
-            let flagBlack = UIColor(red: 0.10, green: 0.08, blue: 0.05, alpha: 0.88)
-            let skullWhite = UIColor(red: 0.95, green: 0.90, blue: 0.82, alpha: 0.80)
-
-            // Hull — wide curved shape (20px wide, 8px tall)
-            for row in 0..<8 {
-                let yPos = waterLine - CGFloat(row) * ps
-                // Hull narrows at bottom, widens at top (waterline)
-                let inset = max(0, 3 - row / 2)
-                let hullW = 20 - inset * 2
-                let startX = shipBaseX + CGFloat(inset) * ps
-                let color = row < 2 ? darkWood : (row < 5 ? midWood : lightWood)
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
                 c.setFillColor(color.cgColor)
-                for col in 0..<hullW {
-                    c.fill(CGRect(x: startX + CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── WATER BASE ──
+            for y in 0..<8 {
+                let wc = y < 3 ? waterD : (y < 6 ? waterM : waterL)
+                fill(0, y, gridW, 1, wc)
+            }
+            // Foam lines
+            for x in stride(from: 5, to: gridW, by: 12) {
+                fill(x, 7, 6, 1, foam)
+            }
+
+            // ── ROCKY ISLANDS ──
+            // Left island
+            for x in 0..<20 {
+                let ih = max(0, 12 - abs(x - 10))
+                for y in 6..<(6 + ih) {
+                    fill(x, y, 1, 1, y > 6 + ih - 3 ? rockL : rockD)
+                }
+            }
+            // Right island
+            for x in 180..<200 {
+                let ih = max(0, 10 - abs(x - 190))
+                for y in 6..<(6 + ih) {
+                    fill(x, y, 1, 1, y > 6 + ih - 3 ? rockL : rockD)
                 }
             }
 
-            // Hull stripe (waterline)
-            c.setFillColor(UIColor(red: 0.60, green: 0.25, blue: 0.10, alpha: 0.40).cgColor)
-            for col in 0..<18 {
-                c.fill(CGRect(x: shipBaseX + CGFloat(col + 1) * ps, y: waterLine - ps, width: ps, height: ps))
+            // ── PALM TREES ON ISLANDS ──
+            func drawPalm(_ bx: Int, _ by: Int, _ ph: Int) {
+                // Trunk (slightly curved)
+                for i in 0..<ph {
+                    let lean = i > ph / 2 ? 1 : 0
+                    fill(bx + lean, by + i, 2, 1, trunkBrn)
+                }
+                let top = by + ph
+                // Fronds
+                for dx in -5..<6 {
+                    let droop = abs(dx) > 3 ? -1 : (abs(dx) > 1 ? 0 : 1)
+                    dot(bx + 1 + dx, top + droop, abs(dx) % 2 == 0 ? leafGrn : leafDrk)
+                }
+                for dx in -4..<5 {
+                    let droop = abs(dx) > 2 ? -2 : -1
+                    dot(bx + 1 + dx, top + droop + 2, leafDrk)
+                }
+                // Coconuts
+                dot(bx, top - 1, chestBrn); dot(bx + 2, top - 1, chestBrn)
             }
+            drawPalm(8, 14, 16)
+            drawPalm(186, 12, 14)
 
-            // Bow (pointed front) — triangle
-            c.setFillColor(darkWood.cgColor)
-            c.fill(CGRect(x: shipBaseX - ps, y: waterLine - ps * 3, width: ps, height: ps * 2))
-            c.fill(CGRect(x: shipBaseX - ps * 2, y: waterLine - ps * 2, width: ps, height: ps))
-            // Bowsprit
-            c.fill(CGRect(x: shipBaseX - ps * 4, y: waterLine - ps * 6, width: ps * 3, height: ps))
+            // ══════════════════════════════════════════════
+            // ── MASSIVE PIRATE SHIP ── (center, x=50..150)
+            // ══════════════════════════════════════════════
+            let shipX = 50, shipBaseY = 4
 
-            // Stern (raised back)
-            let sternX = shipBaseX + ps * 17
-            c.setFillColor(midWood.cgColor)
-            for row in 0..<4 {
-                c.fill(CGRect(x: sternX, y: waterLine - CGFloat(8 + row) * ps, width: ps * 3, height: ps))
-            }
-            // Stern windows
-            c.setFillColor(UIColor(red: 1.0, green: 0.85, blue: 0.40, alpha: 0.35).cgColor)
-            c.fill(CGRect(x: sternX + ps, y: waterLine - ps * 10, width: ps, height: ps))
+            // Hull — curved bottom
+            for x in 0..<100 {
+                let distFromCenter = abs(x - 50)
+                let hullH: Int
+                if distFromCenter < 10 { hullH = 18 }
+                else if distFromCenter < 20 { hullH = 17 }
+                else if distFromCenter < 30 { hullH = 15 }
+                else if distFromCenter < 40 { hullH = 12 }
+                else if distFromCenter < 45 { hullH = 8 }
+                else { hullH = max(0, 52 - distFromCenter) }
+                guard hullH > 0 else { continue }
 
-            // Main mast (center, tallest)
-            let mainMastX = shipBaseX + ps * 9
-            let mainMastBase = waterLine - ps * 8
-            c.setFillColor(mastColor.cgColor)
-            for row in 0..<30 {
-                c.fill(CGRect(x: mainMastX, y: mainMastBase - CGFloat(row) * ps, width: ps, height: ps))
-            }
-
-            // Main sail (large rectangle)
-            let mainSailTop = mainMastBase - ps * 26
-            for row in 0..<14 {
-                let yPos = mainSailTop + CGFloat(row) * ps
-                let sailW = row < 3 ? 8 : (row < 10 ? 10 : 8)
-                let offset = (10 - sailW) / 2
-                let color = row < 7 ? sailWhite : sailShadow
-                c.setFillColor(color.cgColor)
-                for col in 0..<sailW {
-                    c.fill(CGRect(x: mainMastX + CGFloat(col + offset - 4) * ps, y: yPos, width: ps, height: ps))
+                for y in 0..<hullH {
+                    let ratio = CGFloat(y) / CGFloat(max(1, hullH))
+                    let hc: UIColor
+                    if y == hullH - 1 { hc = hullTrim }  // Top railing
+                    else if ratio > 0.7 { hc = hullLight }
+                    else if ratio > 0.3 { hc = hullMid }
+                    else { hc = hullDark }
+                    dot(shipX + x, shipBaseY + y, hc)
                 }
             }
 
-            // Lower main sail
-            let lowerSailTop = mainMastBase - ps * 10
-            for row in 0..<8 {
-                let yPos = lowerSailTop + CGFloat(row) * ps
-                let sailW = row < 2 ? 7 : (row < 6 ? 9 : 7)
-                let offset = (9 - sailW) / 2
-                c.setFillColor((row < 4 ? sailWhite : sailShadow).cgColor)
-                for col in 0..<sailW {
-                    c.fill(CGRect(x: mainMastX + CGFloat(col + offset - 3) * ps, y: yPos, width: ps, height: ps))
-                }
+            // Plank lines
+            for py in stride(from: 3, to: 16, by: 3) {
+                fill(shipX + 8, shipBaseY + py, 84, 1,
+                     UIColor(red: 0.18, green: 0.10, blue: 0.05, alpha: 0.25))
             }
 
-            // Fore mast (front, shorter)
-            let foreMastX = shipBaseX + ps * 4
-            let foreMastBase = waterLine - ps * 8
-            c.setFillColor(mastColor.cgColor)
-            for row in 0..<22 {
-                c.fill(CGRect(x: foreMastX, y: foreMastBase - CGFloat(row) * ps, width: ps, height: ps))
-            }
-            // Fore sail
-            let foreSailTop = foreMastBase - ps * 20
-            for row in 0..<10 {
-                let yPos = foreSailTop + CGFloat(row) * ps
-                let sailW = row < 2 ? 5 : (row < 7 ? 7 : 5)
-                let offset = (7 - sailW) / 2
-                c.setFillColor((row < 5 ? sailWhite : sailShadow).cgColor)
-                for col in 0..<sailW {
-                    c.fill(CGRect(x: foreMastX + CGFloat(col + offset - 2) * ps, y: yPos, width: ps, height: ps))
-                }
+            // Cannon ports
+            for cx in stride(from: 15, to: 85, by: 10) {
+                fill(shipX + cx, shipBaseY + 8, 3, 2, cannonC)
+                fill(shipX + cx, shipBaseY + 10, 3, 1, hullTrim)
             }
 
-            // Mizzen mast (back, medium)
-            let mizzenX = shipBaseX + ps * 15
-            let mizzenBase = waterLine - ps * 8
-            c.setFillColor(mastColor.cgColor)
-            for row in 0..<24 {
-                c.fill(CGRect(x: mizzenX, y: mizzenBase - CGFloat(row) * ps, width: ps, height: ps))
+            // Bow (front) decoration
+            fill(shipX + 95, shipBaseY + 10, 4, 2, hullTrim)
+            fill(shipX + 97, shipBaseY + 8, 2, 2, hullTrim)
+
+            // Stern (back) decoration
+            fill(shipX, shipBaseY + 14, 8, 6, hullMid)
+            fill(shipX + 1, shipBaseY + 16, 6, 3, hullLight)
+            // Captain's windows
+            fill(shipX + 2, shipBaseY + 17, 2, 2,
+                 UIColor(red: 0.90, green: 0.80, blue: 0.40, alpha: 0.60))
+            fill(shipX + 5, shipBaseY + 17, 2, 2,
+                 UIColor(red: 0.90, green: 0.80, blue: 0.40, alpha: 0.60))
+
+            // ── MASTS ──
+            let mast1X = shipX + 25  // Foremast
+            let mast2X = shipX + 50  // Mainmast (tallest)
+            let mast3X = shipX + 72  // Mizzenmast
+            let mastBaseY = shipBaseY + 18
+
+            fill(mast1X, mastBaseY, 2, 38, mastC)     // Foremast
+            fill(mast2X, mastBaseY, 2, 48, mastC)     // Mainmast
+            fill(mast3X, mastBaseY, 2, 35, mastC)     // Mizzenmast
+
+            // Cross beams (yards)
+            fill(mast1X - 8, mastBaseY + 30, 18, 1, mastC)
+            fill(mast1X - 6, mastBaseY + 20, 14, 1, mastC)
+            fill(mast2X - 10, mastBaseY + 38, 22, 1, mastC)
+            fill(mast2X - 8, mastBaseY + 28, 18, 1, mastC)
+            fill(mast2X - 6, mastBaseY + 18, 14, 1, mastC)
+            fill(mast3X - 7, mastBaseY + 28, 16, 1, mastC)
+            fill(mast3X - 5, mastBaseY + 18, 12, 1, mastC)
+
+            // ── SAILS ──
+            // Foremast sails
+            fill(mast1X - 7, mastBaseY + 21, 16, 8, sailC)
+            fill(mast1X - 6, mastBaseY + 22, 14, 6, sailS)
+            fill(mast1X - 5, mastBaseY + 31, 12, 5, sailC)
+
+            // Mainmast sails (largest, skull on middle one)
+            fill(mast2X - 9, mastBaseY + 29, 20, 8, sailC)
+            fill(mast2X - 8, mastBaseY + 30, 18, 6, sailS)
+            fill(mast2X - 7, mastBaseY + 19, 16, 8, sailC)
+            fill(mast2X - 6, mastBaseY + 20, 14, 6, sailS)
+            // Skull on main sail
+            let skullX = mast2X - 3, skullY = mastBaseY + 31
+            // Skull outline (6x5)
+            fill(skullX + 1, skullY, 4, 1, skullW)    // Bottom
+            fill(skullX, skullY + 1, 6, 3, skullW)    // Middle
+            fill(skullX + 1, skullY + 4, 4, 1, skullW) // Top
+            // Eye holes (clear = sail color)
+            dot(skullX + 1, skullY + 3, sailS)
+            dot(skullX + 4, skullY + 3, sailS)
+            // Crossbones below
+            dot(skullX, skullY - 1, skullW); dot(skullX + 5, skullY - 1, skullW)
+            dot(skullX + 1, skullY - 2, skullW); dot(skullX + 4, skullY - 2, skullW)
+
+            // Top sail
+            fill(mast2X - 4, mastBaseY + 39, 10, 6, sailC)
+
+            // Mizzenmast sails
+            fill(mast3X - 6, mastBaseY + 19, 14, 8, sailC)
+            fill(mast3X - 5, mastBaseY + 20, 12, 6, sailS)
+            fill(mast3X - 4, mastBaseY + 29, 10, 5, sailC)
+
+            // ── CROW'S NEST ── (on mainmast)
+            fill(mast2X - 3, mastBaseY + 45, 8, 1, mastC)
+            fill(mast2X - 2, mastBaseY + 44, 6, 1, mastC)
+            fill(mast2X - 2, mastBaseY + 46, 1, 2, mastC)
+            fill(mast2X + 3, mastBaseY + 46, 1, 2, mastC)
+
+            // ── JOLLY ROGER FLAG ── (top of mainmast)
+            let flagY = mastBaseY + 48
+            fill(mast2X + 2, flagY, 6, 4, flagBlack)
+            dot(mast2X + 4, flagY + 2, sailC)  // Tiny skull
+            dot(mast2X + 5, flagY + 2, sailC)
+
+            // ── RIGGING LINES ──
+            // Diagonal lines between masts (simplified as dots)
+            for i in 0..<15 {
+                dot(mast1X + 2 + i * 2, mastBaseY + 36 - i, rigging)
             }
-            // Mizzen sail
-            let mizzenSailTop = mizzenBase - ps * 22
-            for row in 0..<10 {
-                let yPos = mizzenSailTop + CGFloat(row) * ps
-                let sailW = row < 2 ? 5 : (row < 7 ? 6 : 4)
-                let offset = (6 - sailW) / 2
-                c.setFillColor((row < 5 ? sailWhite : sailShadow).cgColor)
-                for col in 0..<sailW {
-                    c.fill(CGRect(x: mizzenX + CGFloat(col + offset - 2) * ps, y: yPos, width: ps, height: ps))
-                }
+            for i in 0..<12 {
+                dot(mast2X + 2 + i * 2, mastBaseY + 46 - i, rigging)
             }
 
-            // Crow's nest on main mast
-            let nestY = mainMastBase - ps * 28
-            c.setFillColor(midWood.cgColor)
-            c.fill(CGRect(x: mainMastX - ps, y: nestY, width: ps * 3, height: ps))
-            c.fill(CGRect(x: mainMastX - ps * 2, y: nestY + ps, width: ps * 5, height: ps))
-
-            // Jolly Roger flag on main mast top
-            let flagY = mainMastBase - ps * 30
-            c.setFillColor(flagBlack.cgColor)
-            c.fill(CGRect(x: mainMastX + ps, y: flagY - ps * 3, width: ps * 4, height: ps * 3))
-            // Skull
-            c.setFillColor(skullWhite.cgColor)
-            c.fill(CGRect(x: mainMastX + ps * 2, y: flagY - ps * 2, width: ps * 2, height: ps))
-            c.fill(CGRect(x: mainMastX + ps * 2, y: flagY - ps * 3, width: ps, height: ps))
-
-            // Rigging lines (simple diagonal pixels)
-            let riggingColor = UIColor(red: 0.30, green: 0.22, blue: 0.14, alpha: 0.20)
-            c.setFillColor(riggingColor.cgColor)
-            for i in 0..<6 {
-                // Fore to main
-                let rx = foreMastX + CGFloat(i) * ps
-                let ry = foreMastBase - CGFloat(20 - i) * ps
-                c.fill(CGRect(x: rx, y: ry, width: ps, height: ps))
+            // ── WATER RIPPLES AROUND SHIP ──
+            for rx in stride(from: shipX + 5, to: shipX + 95, by: 8) {
+                fill(rx, shipBaseY - 1, 4, 1, foam)
             }
 
-            // Water ripples around hull
-            let rippleColor = UIColor(red: 0.60, green: 0.82, blue: 0.90, alpha: 0.15)
-            c.setFillColor(rippleColor.cgColor)
-            for i in stride(from: 0, to: 22, by: 3) {
-                c.fill(CGRect(x: shipBaseX + CGFloat(i) * ps - ps, y: waterLine + ps, width: ps * 2, height: ps))
-            }
+            // ── TREASURE CHEST ── (on right island)
+            let tx = 182, ty = 14
+            fill(tx, ty, 6, 4, chestBrn)              // Base
+            fill(tx, ty + 4, 6, 1, chestBrn)          // Lid (open, tilted back)
+            fill(tx + 1, ty + 5, 5, 2, chestBrn)      // Lid open
+            fill(tx + 1, ty + 1, 4, 2, goldC)          // Gold inside
+            dot(tx + 2, ty + 3, goldC); dot(tx + 3, ty + 3, goldC)
+            // Gold coins spilling
+            dot(tx + 6, ty, goldC); dot(tx + 6, ty + 1, goldC)
+            dot(tx - 1, ty, goldC)
+
+            // ── SEASHELLS & STARFISH ──
+            // Starfish
+            dot(170, 7, starOrange); dot(169, 8, starOrange)
+            dot(171, 8, starOrange); dot(170, 9, starOrange)
+            dot(170, 6, starOrange)
+            // Shell
+            dot(175, 7, shellPink); dot(176, 7, shellPink); dot(175, 8, shellPink)
+            // Conch
+            dot(30, 8, shellWhite); dot(31, 8, shellWhite); dot(31, 9, shellWhite)
+            // Sand patches on islands
+            fill(5, 7, 8, 1, sandC)
+            fill(185, 7, 8, 1, sandC)
         }
     }
 
@@ -2382,12 +2937,11 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        var heightMap = [Int](repeating: 1, count: gridW)
+        // Rolling brown hills
+        var heightMap = [Int](repeating: 3, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10,    40, 28), (gridW / 4, 55, 42),
-            (gridW * 2 / 5, 35, 25), (gridW / 2, 50, 45),
-            (gridW * 3 / 5, 30, 22), (gridW * 3 / 4, 45, 38),
-            (gridW * 9 / 10, 37, 30),
+            (25, 35, 40), (65, 25, 32), (100, 30, 45),
+            (135, 20, 28), (165, 25, 35), (190, 20, 30),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -2397,103 +2951,184 @@ final class TextureFactory {
             }
         }
 
-        let hillBase = UIColor(red: 0.42, green: 0.32, blue: 0.22, alpha: 0.82)
-        let hillMid  = UIColor(red: 0.52, green: 0.38, blue: 0.25, alpha: 0.78)
-        let hillTop  = UIColor(red: 0.60, green: 0.45, blue: 0.28, alpha: 0.85)
-        let hillGlow = UIColor(red: 0.85, green: 0.55, blue: 0.30, alpha: 0.60)
+        let hillDark   = UIColor(red: 0.28, green: 0.22, blue: 0.15, alpha: 0.82)
+        let hillMid    = UIColor(red: 0.38, green: 0.30, blue: 0.20, alpha: 0.78)
+        let hillLight  = UIColor(red: 0.48, green: 0.38, blue: 0.25, alpha: 0.72)
+        let hillTop    = UIColor(red: 0.22, green: 0.18, blue: 0.12, alpha: 0.85)
+        // Hollywood sign
+        let signWhite  = UIColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 0.92)
+        let signShadow = UIColor(red: 0.75, green: 0.75, blue: 0.78, alpha: 0.80)
+        // Observatory
+        let obsWall    = UIColor(red: 0.75, green: 0.72, blue: 0.65, alpha: 0.85)
+        let obsDome    = UIColor(red: 0.50, green: 0.55, blue: 0.58, alpha: 0.82)
+        let obsWindow  = UIColor(red: 0.90, green: 0.80, blue: 0.45, alpha: 0.75)
+        // Skyline
+        let bldgDark   = UIColor(red: 0.20, green: 0.22, blue: 0.28, alpha: 0.88)
+        let bldgMid    = UIColor(red: 0.30, green: 0.32, blue: 0.38, alpha: 0.85)
+        let bldgLight  = UIColor(red: 0.38, green: 0.42, blue: 0.50, alpha: 0.80)
+        let windowLit  = UIColor(red: 0.95, green: 0.85, blue: 0.45, alpha: 0.70)
+        let windowDark = UIColor(red: 0.15, green: 0.18, blue: 0.25, alpha: 0.60)
+        // Palm trees
+        let trunkBrn   = UIColor(red: 0.35, green: 0.22, blue: 0.12, alpha: 0.75)
+        let palmGreen  = UIColor(red: 0.12, green: 0.35, blue: 0.15, alpha: 0.72)
+        let palmDark   = UIColor(red: 0.08, green: 0.25, blue: 0.10, alpha: 0.75)
+        // Highway
+        let roadGray   = UIColor(red: 0.25, green: 0.25, blue: 0.28, alpha: 0.70)
+        let lineYellow = UIColor(red: 0.90, green: 0.80, blue: 0.25, alpha: 0.60)
+        // Cars
+        let carRed     = UIColor(red: 0.75, green: 0.15, blue: 0.12, alpha: 0.72)
+        let carWhite   = UIColor(red: 0.88, green: 0.88, blue: 0.90, alpha: 0.70)
+        let carBlue    = UIColor(red: 0.20, green: 0.30, blue: 0.60, alpha: 0.70)
+        // Beach / sunset reflection
+        let sandC      = UIColor(red: 0.75, green: 0.65, blue: 0.45, alpha: 0.40)
+        let reflectC   = UIColor(red: 0.70, green: 0.40, blue: 0.50, alpha: 0.25)
+        // Sunset glow
+        let sunsetGlow = UIColor(red: 0.90, green: 0.55, blue: 0.30, alpha: 0.08)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── SUNSET GLOW ──
+            fill(0, 50, gridW, 25, sunsetGlow)
+
+            // ── HILLS TERRAIN ──
             for x in 0..<gridW {
-                let hH = heightMap[x]
-                for y in 0..<hH {
+                let mH = heightMap[x]
+                guard mH > 0 else { continue }
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(hH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if y == hH - 1 { color = hillTop }
-                    else if y == hH - 2 && hH > 4 { color = hillGlow }
-                    else if ratio > 0.5 { color = hillMid }
-                    else { color = hillBase }
+                    if y == mH - 1 { color = hillTop }
+                    else if ratio > 0.7 { color = hillLight }
+                    else if ratio > 0.4 { color = hillMid }
+                    else { color = hillDark }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // HOLLYWOOD sign on tallest hill
-            let signStart = gridW / 2 - 10
-            let signBase = h - CGFloat(heightMap[gridW / 2] + 2) * ps
-            let letterC = UIColor(red: 0.95, green: 0.95, blue: 0.92, alpha: 0.75)
-            c.setFillColor(letterC.cgColor)
-            // Simplified block letters: H O L L Y W O O D
-            let letters: [[Int]] = [
-                [1,0,1, 1,1,1, 1,0,1],  // H
-                [0,1,0, 1,0,1, 0,1,0],  // O
-                [1,0,0, 1,0,0, 1,1,1],  // L
-                [1,0,0, 1,0,0, 1,1,1],  // L
-                [1,0,1, 0,1,0, 0,1,0],  // Y
-                [1,0,1, 1,1,1, 1,0,1],  // W (simplified)
-                [0,1,0, 1,0,1, 0,1,0],  // O
-                [0,1,0, 1,0,1, 0,1,0],  // O
-                [1,1,0, 1,0,1, 1,1,0],  // D
+            // ── HOLLYWOOD SIGN ── (on hill at x=20..70)
+            // Letters: H-O-L-L-Y-W-O-O-D
+            let letters: [(xOff: Int, pattern: [(dx: Int, dy: Int, w: Int, h: Int)])] = [
+                // H
+                (0, [(0,0,1,7),(4,0,1,7),(1,3,3,1)]),
+                // O
+                (6, [(0,1,1,5),(4,1,1,5),(1,0,3,1),(1,6,3,1)]),
+                // L
+                (12, [(0,0,1,7),(1,0,3,1)]),
+                // L
+                (17, [(0,0,1,7),(1,0,3,1)]),
+                // Y
+                (22, [(0,4,1,3),(4,4,1,3),(1,3,1,1),(3,3,1,1),(2,0,1,3)]),
+                // W
+                (27, [(0,0,1,7),(4,0,1,7),(1,1,1,2),(3,1,1,2),(2,0,1,2)]),
+                // O
+                (33, [(0,1,1,5),(4,1,1,5),(1,0,3,1),(1,6,3,1)]),
+                // O
+                (39, [(0,1,1,5),(4,1,1,5),(1,0,3,1),(1,6,3,1)]),
+                // D
+                (45, [(0,0,1,7),(1,0,3,1),(1,6,3,1),(4,1,1,5)]),
             ]
-            for (li, letter) in letters.enumerated() {
-                let lx = signStart + li * 2
-                // Each letter is 3 wide × 3 tall (in pixels)
-                for row in 0..<3 {
-                    for col in 0..<3 {
-                        if row * 3 + col < letter.count && letter[row * 3 + col] == 1 {
-                            c.fill(CGRect(x: CGFloat(lx + col) * ps * 0.7,
-                                          y: signBase - CGFloat(2 - row) * ps,
-                                          width: ps * 0.7, height: ps))
-                        }
+            let signBaseX = 18, signBaseY = 35
+            for letter in letters {
+                for part in letter.pattern {
+                    fill(signBaseX + letter.xOff + part.dx,
+                         signBaseY + part.dy,
+                         part.w, part.h, signWhite)
+                }
+                // Shadow
+                for part in letter.pattern {
+                    if part.dy == 0 {
+                        fill(signBaseX + letter.xOff + part.dx + 1,
+                             signBaseY - 1, part.w, 1, signShadow)
                     }
                 }
             }
 
-            // Downtown skyline cluster on the right
-            let dtStart = gridW * 3 / 4 + 5
-            let skyColor = UIColor(red: 0.30, green: 0.25, blue: 0.32, alpha: 0.70)
-            let skyLight = UIColor(red: 0.40, green: 0.35, blue: 0.42, alpha: 0.65)
-            let dtBuildings: [(x: Int, w: Int, h: Int)] = [
-                (0, 3, 35), (4, 2, 28), (7, 4, 45), (12, 3, 38), (16, 2, 22),
+            // ── GRIFFITH OBSERVATORY ── (on hilltop x=8..28)
+            let obx = 10, oby = 42
+            // Main building
+            fill(obx, oby, 18, 4, obsWall)
+            fill(obx + 1, oby + 1, 16, 2, obsWall)
+            // Central dome
+            for dy in 0..<4 {
+                let dw = 4 - dy
+                fill(obx + 9 - dw, oby + 4 + dy, dw * 2, 1, obsDome)
+            }
+            dot(obx + 9, oby + 8, obsDome) // Tip
+            // Side wings
+            fill(obx - 2, oby, 3, 3, obsWall)
+            fill(obx + 17, oby, 3, 3, obsWall)
+            // Windows
+            for wx in stride(from: obx + 2, to: obx + 16, by: 3) {
+                dot(wx, oby + 2, obsWindow)
+            }
+
+            // ── DOWNTOWN SKYLINE ── (x=120..185)
+            let buildings: [(x: Int, bw: Int, bh: Int)] = [
+                (120, 5, 40), (126, 6, 48), (133, 4, 35), (138, 7, 52),
+                (146, 5, 38), (152, 6, 45), (159, 4, 30), (164, 5, 42),
+                (170, 6, 35), (177, 5, 28), (183, 4, 32),
             ]
-            for bld in dtBuildings {
-                let bx = dtStart + bld.x
-                for row in 0..<bld.h {
-                    let yPos = h - CGFloat(row + 1) * ps
-                    c.setFillColor(row > bld.h / 2 ? skyLight.cgColor : skyColor.cgColor)
-                    for col in 0..<bld.w {
-                        guard bx + col < gridW else { break }
-                        c.fill(CGRect(x: CGFloat(bx + col) * ps, y: yPos, width: ps, height: ps))
-                    }
-                }
+            for bldg in buildings {
+                let color = bldg.bh > 40 ? bldgMid : bldgDark
+                fill(bldg.x, 5, bldg.bw, bldg.bh, color)
                 // Windows
-                let winC = UIColor(red: 1.0, green: 0.90, blue: 0.55, alpha: 0.50)
-                c.setFillColor(winC.cgColor)
-                for row in stride(from: 3, to: bld.h - 2, by: 4) {
-                    for col in stride(from: 0, to: bld.w, by: 2) {
-                        guard bx + col < gridW else { break }
-                        let yPos = h - CGFloat(row + 1) * ps
-                        c.fill(CGRect(x: CGFloat(bx + col) * ps, y: yPos, width: ps, height: ps))
+                for wy in stride(from: 8, to: 5 + bldg.bh - 2, by: 3) {
+                    for wx in stride(from: bldg.x + 1, to: bldg.x + bldg.bw - 1, by: 2) {
+                        dot(wx, wy, (wx + wy) % 5 < 3 ? windowLit : windowDark)
                     }
+                }
+                // Rooftop details
+                if bldg.bh > 35 {
+                    fill(bldg.x + bldg.bw / 2, 5 + bldg.bh, 1, 3, bldgLight) // Antenna
                 }
             }
 
-            // Griffith Observatory dome on a peak
-            let obsX = gridW / 4
-            let obsBase = h - CGFloat(heightMap[obsX] + 1) * ps
-            let obsC = UIColor(red: 0.72, green: 0.65, blue: 0.55, alpha: 0.70)
-            c.setFillColor(obsC.cgColor)
-            // Base
-            for col in -2...2 { c.fill(CGRect(x: CGFloat(obsX + col) * ps, y: obsBase, width: ps, height: ps)) }
-            // Pillars
-            c.fill(CGRect(x: CGFloat(obsX - 1) * ps, y: obsBase - ps, width: ps, height: ps))
-            c.fill(CGRect(x: CGFloat(obsX + 1) * ps, y: obsBase - ps, width: ps, height: ps))
-            // Dome
-            c.fill(CGRect(x: CGFloat(obsX) * ps, y: obsBase - ps * 2, width: ps, height: ps))
-            c.fill(CGRect(x: CGFloat(obsX - 1) * ps, y: obsBase - ps * 2, width: ps * 3, height: ps))
-            c.fill(CGRect(x: CGFloat(obsX) * ps, y: obsBase - ps * 3, width: ps, height: ps))
+            // ── PALM TREES ──
+            func drawPalm(_ bx: Int, _ by: Int, _ ph: Int) {
+                for i in 0..<ph {
+                    let lean = i > ph * 2 / 3 ? 1 : 0
+                    fill(bx + lean, by + i, 1, 1, trunkBrn)
+                }
+                let top = by + ph
+                for dx in -4..<5 {
+                    let droop = abs(dx) > 2 ? -1 : (abs(dx) > 0 ? 0 : 1)
+                    dot(bx + 1 + dx, top + droop, abs(dx) % 2 == 0 ? palmGreen : palmDark)
+                }
+                for dx in -3..<4 {
+                    let droop = abs(dx) > 1 ? -2 : -1
+                    dot(bx + 1 + dx, top + droop + 2, palmDark)
+                }
+            }
+            drawPalm(90, 5, 22)
+            drawPalm(108, 5, 18)
+            drawPalm(195, 5, 20)
+
+            // ── HIGHWAY ── (y=5..8)
+            fill(0, 5, gridW, 4, roadGray)
+            // Center line
+            for lx in stride(from: 0, to: gridW, by: 6) {
+                fill(lx, 7, 3, 1, lineYellow)
+            }
+            // Cars
+            fill(82, 6, 4, 2, carRed)
+            fill(115, 6, 4, 2, carWhite)
+            fill(150, 8, 4, 2, carBlue)
+
+            // ── BEACH / WATER ── (y=0..4)
+            fill(0, 0, gridW, 3, reflectC)
+            fill(0, 3, gridW, 2, sandC)
         }
     }
 
@@ -2505,128 +3140,242 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        var heightMap = [Int](repeating: 5, count: gridW)
-
-        // Parliament block
-        let parlStart = gridW / 5
-        for x in parlStart..<min(gridW, parlStart + 22) { heightMap[x] = 22 }
-        // Big Ben tower — taller
-        for x in max(0, parlStart - 5)..<parlStart { heightMap[x] = 52 }
-        if parlStart - 3 >= 0 { heightMap[parlStart - 3] = 55 }
-        if parlStart - 2 >= 0 { heightMap[parlStart - 2] = 55 }
-
-        // Tower Bridge area — taller towers
-        let bridgeStart = gridW / 2
-        for x in bridgeStart..<min(gridW, bridgeStart + 6) { heightMap[x] = 45 }
-        for x in min(gridW, bridgeStart + 6)..<min(gridW, bridgeStart + 16) { heightMap[x] = 14 }
-        for x in min(gridW, bridgeStart + 16)..<min(gridW, bridgeStart + 22) { heightMap[x] = 45 }
-        // Bridge suspension cables hint
-        for x in min(gridW, bridgeStart + 8)..<min(gridW, bridgeStart + 14) {
-            let dist = abs(x - bridgeStart - 11)
-            heightMap[x] = max(heightMap[x], 20 - dist * 2)
-        }
-
-        // Gherkin / Shard area — taller
-        let modernStart = gridW * 3 / 4
-        for x in modernStart..<min(gridW, modernStart + 7) {
-            let dist = abs(x - modernStart - 3)
-            heightMap[x] = max(10, 60 - dist * 8)
-        }
-
-        // Generic rooftops
-        let blocks: [(start: Int, w: Int, h: Int)] = [
-            (gridW * 2 / 5, 20, 38), (gridW * 2 / 5 + 12, 8, 25),
-            (gridW * 7 / 8, 25, 48),
-        ]
-        for block in blocks {
-            for x in block.start..<min(gridW, block.start + block.w) { heightMap[x] = max(heightMap[x], block.h) }
-        }
-
-        // MUCH darker buildings for contrast against grey sky
-        let brickDark = UIColor(red: 0.15, green: 0.13, blue: 0.12, alpha: 0.88)
-        let brickMid  = UIColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 0.85)
-        let brickTop  = UIColor(red: 0.28, green: 0.25, blue: 0.22, alpha: 0.88)
-        let windowWarm = UIColor(red: 1.0, green: 0.85, blue: 0.45, alpha: 0.65)
-        let windowCool = UIColor(red: 0.65, green: 0.80, blue: 0.95, alpha: 0.55)
-        let windowOff  = UIColor(red: 0.18, green: 0.16, blue: 0.15, alpha: 0.75)
+        // Moody London sky colors
+        let skyDark   = UIColor(red: 0.18, green: 0.18, blue: 0.28, alpha: 0.15)
+        let cloudC    = UIColor(red: 0.30, green: 0.28, blue: 0.35, alpha: 0.12)
+        // Stone / building
+        let stoneD    = UIColor(red: 0.40, green: 0.35, blue: 0.30, alpha: 0.90)
+        let stoneM    = UIColor(red: 0.50, green: 0.45, blue: 0.38, alpha: 0.88)
+        let stoneL    = UIColor(red: 0.60, green: 0.55, blue: 0.48, alpha: 0.85)
+        let stoneDark = UIColor(red: 0.30, green: 0.28, blue: 0.25, alpha: 0.92)
+        // Clock face
+        let clockFace = UIColor(red: 0.95, green: 0.90, blue: 0.70, alpha: 0.92)
+        let clockGlow = UIColor(red: 0.95, green: 0.90, blue: 0.70, alpha: 0.20)
+        let clockHand = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.90)
+        // Windows
+        let windowLit = UIColor(red: 0.90, green: 0.80, blue: 0.45, alpha: 0.75)
+        let windowDark = UIColor(red: 0.15, green: 0.18, blue: 0.22, alpha: 0.70)
+        // Red elements
+        let redBright = UIColor(red: 0.80, green: 0.15, blue: 0.12, alpha: 0.90)
+        let redDark   = UIColor(red: 0.60, green: 0.10, blue: 0.08, alpha: 0.88)
+        // Bridge cables
+        let cableC    = UIColor(red: 0.35, green: 0.35, blue: 0.40, alpha: 0.55)
+        // Glass buildings
+        let glassD    = UIColor(red: 0.25, green: 0.30, blue: 0.40, alpha: 0.85)
+        let glassM    = UIColor(red: 0.35, green: 0.42, blue: 0.55, alpha: 0.82)
+        let glassL    = UIColor(red: 0.45, green: 0.55, blue: 0.70, alpha: 0.78)
+        // River
+        let riverD    = UIColor(red: 0.12, green: 0.18, blue: 0.28, alpha: 0.55)
+        let riverL    = UIColor(red: 0.20, green: 0.28, blue: 0.38, alpha: 0.40)
+        // Lamp
+        let lampPost  = UIColor(red: 0.15, green: 0.15, blue: 0.18, alpha: 0.80)
+        let lampGlow  = UIColor(red: 0.95, green: 0.85, blue: 0.50, alpha: 0.80)
+        let lampAura  = UIColor(red: 0.95, green: 0.85, blue: 0.50, alpha: 0.12)
+        // Cobblestones
+        let cobbleD   = UIColor(red: 0.30, green: 0.28, blue: 0.26, alpha: 0.50)
+        let cobbleL   = UIColor(red: 0.40, green: 0.38, blue: 0.36, alpha: 0.45)
+        // Gherkin
+        let gherkinD  = UIColor(red: 0.30, green: 0.38, blue: 0.42, alpha: 0.82)
+        let gherkinL  = UIColor(red: 0.40, green: 0.50, blue: 0.55, alpha: 0.78)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for x in 0..<gridW {
-                let bH = heightMap[x]
-                for y in 0..<bH {
-                    let yPos = h - CGFloat(y + 1) * ps
-                    let color = y == bH - 1 ? brickTop : (y > bH / 2 ? brickMid : brickDark)
-                    c.setFillColor(color.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
-                }
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── MOODY SKY ──
+            fill(0, 55, gridW, 20, skyDark)
+            // Clouds
+            for (cx, cy) in [(30, 68), (80, 65), (140, 70), (180, 66)] {
+                fill(cx, cy, 15, 3, cloudC)
+                fill(cx + 3, cy + 3, 10, 2, cloudC)
             }
 
-            // Windows across all buildings
-            let windowColors = [windowWarm, windowCool, windowOff, windowOff, windowWarm]
-            for x in 0..<gridW {
-                let bH = heightMap[x]
-                if bH > 8 {
-                    for row in stride(from: 3, to: bH - 2, by: 4) {
-                        if x % 3 == 1 {
-                            let yPos = h - CGFloat(row + 1) * ps
-                            let wc = windowColors[(row * 5 + x * 3) % windowColors.count]
-                            c.setFillColor(wc.cgColor)
-                            c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
-                        }
+            // ── RIVER THAMES ── (y=4..8)
+            fill(0, 4, gridW, 5, riverD)
+            for rx in stride(from: 5, to: gridW, by: 10) {
+                fill(rx, 6, 5, 1, riverL)
+            }
+
+            // ── PARLIAMENT / HOUSES OF PARLIAMENT ── (x=2..28, y=8..22)
+            fill(2, 8, 26, 16, stoneD)
+            fill(3, 9, 24, 14, stoneM)
+            // Gothic window arches
+            for wx in stride(from: 5, to: 25, by: 4) {
+                fill(wx, 12, 2, 5, windowLit)
+                dot(wx, 17, stoneL) // Arch top
+                dot(wx + 1, 17, stoneL)
+            }
+            // Crenellation
+            for cx in stride(from: 2, to: 28, by: 3) {
+                fill(cx, 24, 2, 2, stoneD)
+            }
+            // Victoria Tower (left end)
+            fill(2, 24, 5, 10, stoneD)
+            fill(3, 25, 3, 8, stoneM)
+            dot(4, 34, stoneL) // Spire
+
+            // ── BIG BEN ── (x=28..40, y=8..60 — TALL)
+            // Main tower
+            fill(30, 8, 8, 48, stoneD)
+            fill(31, 9, 6, 46, stoneM)
+            // Stone detail bands
+            for by in stride(from: 15, to: 50, by: 8) {
+                fill(30, by, 8, 1, stoneL)
+            }
+            // Clock face (large, glowing)
+            let clkX = 31, clkY = 44
+            // Glow aura
+            for gy in -2..<8 {
+                for gx in -2..<8 {
+                    dot(clkX + gx, clkY + gy, clockGlow)
+                }
+            }
+            fill(clkX, clkY, 6, 6, clockFace)
+            fill(clkX + 1, clkY + 1, 4, 4, clockFace)
+            // Clock hands
+            dot(clkX + 3, clkY + 3, clockHand) // Center
+            fill(clkX + 3, clkY + 4, 1, 2, clockHand) // Hour hand
+            fill(clkX + 4, clkY + 3, 2, 1, clockHand) // Minute hand
+            // Spire above clock
+            fill(32, 56, 4, 3, stoneD)
+            fill(33, 59, 2, 4, stoneD)
+            fill(33, 63, 2, 1, stoneL) // Tip
+
+            // Windows on Big Ben
+            for wy in stride(from: 12, to: 42, by: 5) {
+                fill(32, wy, 2, 3, windowLit)
+                fill(35, wy, 2, 3, windowLit)
+            }
+
+            // ── TOWER BRIDGE ── (x=65..110, y=8..45)
+            // Left tower
+            fill(68, 8, 8, 35, stoneD)
+            fill(69, 9, 6, 33, stoneM)
+            // Tower turrets
+            fill(67, 43, 3, 4, stoneD); fill(76, 43, 3, 4, stoneD)
+            dot(68, 47, stoneL); dot(77, 47, stoneL) // Spire tips
+            // Right tower
+            fill(98, 8, 8, 35, stoneD)
+            fill(99, 9, 6, 33, stoneM)
+            fill(97, 43, 3, 4, stoneD); fill(106, 43, 3, 4, stoneD)
+            dot(98, 47, stoneL); dot(107, 47, stoneL)
+            // Bridge road deck
+            fill(68, 18, 38, 2, stoneDark)
+            fill(68, 17, 38, 1, stoneL)
+            // Upper walkway
+            fill(76, 35, 22, 2, stoneD)
+            fill(76, 37, 22, 1, stoneL)
+            // Suspension cables
+            for i in 0..<10 {
+                let cableY = 35 - Int(CGFloat(i) * CGFloat(i) * 0.15)
+                dot(76 + i, max(20, cableY), cableC)
+                dot(98 - i, max(20, cableY), cableC)
+            }
+            // Tower windows
+            for wy in stride(from: 12, to: 38, by: 5) {
+                fill(70, wy, 2, 3, windowLit); fill(73, wy, 2, 3, windowLit)
+                fill(100, wy, 2, 3, windowLit); fill(103, wy, 2, 3, windowLit)
+            }
+
+            // ── THE SHARD ── (x=125..133, y=8..62 — very tall, pointed)
+            for sy in 8..<62 {
+                let ratio = CGFloat(sy - 8) / 54.0
+                let sWidth = max(1, Int(8.0 * (1.0 - ratio * 0.85)))
+                let sx = 129 - sWidth / 2
+                let glass = ratio > 0.5 ? glassL : (ratio > 0.2 ? glassM : glassD)
+                fill(sx, sy, sWidth, 1, glass)
+                // Window floor lines
+                if sy % 3 == 0 && sWidth > 2 {
+                    fill(sx + 1, sy, sWidth - 2, 1,
+                         UIColor(red: 0.50, green: 0.60, blue: 0.75, alpha: 0.30))
+                }
+            }
+            dot(129, 62, glassL) // Very tip
+
+            // ── THE GHERKIN ── (x=140..152, y=8..50)
+            for gy in 8..<50 {
+                let t = CGFloat(gy - 8) / 42.0
+                // Curved profile: wider in middle, narrow at top and bottom
+                let profile = sin(t * .pi) * 0.8 + 0.2
+                let gw = max(2, Int(12.0 * profile))
+                let gx = 146 - gw / 2
+                let glass = t > 0.5 ? gherkinL : gherkinD
+                fill(gx, gy, gw, 1, glass)
+                // Diamond pattern
+                if gy % 4 == 0 {
+                    for dx in stride(from: 0, to: gw, by: 3) {
+                        dot(gx + dx, gy, stoneD)
+                    }
+                }
+            }
+            // Dome at top
+            fill(145, 50, 3, 2, gherkinL)
+            dot(146, 52, stoneL)
+
+            // ── BACKGROUND BUILDINGS ── (fill gaps)
+            for (bx, bw, bh) in [(48, 6, 25), (55, 5, 20), (112, 6, 28), (118, 5, 22),
+                                   (155, 7, 18), (162, 5, 22), (168, 6, 15)] {
+                fill(bx, 8, bw, bh, stoneDark)
+                for wy in stride(from: 12, to: 8 + bh, by: 4) {
+                    for wx in stride(from: bx + 1, to: bx + bw - 1, by: 2) {
+                        dot(wx, wy, (wx + wy) % 3 == 0 ? windowLit : windowDark)
                     }
                 }
             }
 
-            // Big Ben clock face glow — prominent
-            let clockX = CGFloat(max(0, parlStart - 3)) * ps
-            let clockY = h - 53 * ps
-            let clockGlow = UIColor(red: 1.0, green: 0.92, blue: 0.65, alpha: 0.70)
-            c.setFillColor(clockGlow.cgColor)
-            c.fill(CGRect(x: clockX, y: clockY, width: ps * 3, height: ps * 3))
-            // Glow halo
-            c.setFillColor(UIColor(red: 1.0, green: 0.90, blue: 0.55, alpha: 0.12).cgColor)
-            c.fill(CGRect(x: clockX - ps * 2, y: clockY - ps * 2, width: ps * 7, height: ps * 7))
+            // ── RED PHONE BOX ── (x=172, y=0, foreground)
+            let pbx = 172
+            fill(pbx, 0, 5, 10, redBright)
+            fill(pbx, 10, 5, 1, redDark) // Top
+            fill(pbx + 1, 11, 3, 1, redDark) // Crown
+            fill(pbx + 2, 12, 1, 1, redDark) // Tip
+            // Window panes
+            fill(pbx + 1, 3, 3, 5, windowLit)
+            fill(pbx + 2, 3, 1, 5, redDark) // Center bar
+            // Door
+            fill(pbx + 1, 0, 3, 2, redDark)
 
-            // London Eye — partial wheel on left side
-            let eyeCX = w * 0.08, eyeCY = h * 0.30
-            let eyeR = 12
-            let eyeC = UIColor(red: 0.50, green: 0.52, blue: 0.55, alpha: 0.50)
-            c.setFillColor(eyeC.cgColor)
-            // Draw wheel outline
-            for angle in stride(from: 0.0, to: 360.0, by: 5.0) {
-                let rad = angle * .pi / 180.0
-                let dx = Int(cos(rad) * Double(eyeR))
-                let dy = Int(sin(rad) * Double(eyeR))
-                c.fill(CGRect(x: eyeCX + CGFloat(dx) * ps, y: eyeCY + CGFloat(dy) * ps, width: ps, height: ps))
+            // ── DOUBLE-DECKER BUS ── (x=180..196, y=0)
+            let bux = 180
+            fill(bux, 0, 16, 4, redDark)    // Lower deck
+            fill(bux, 4, 16, 4, redBright)   // Upper deck
+            fill(bux, 8, 16, 1, redDark)     // Roof
+            // Windows
+            for wx in stride(from: bux + 1, to: bux + 15, by: 3) {
+                fill(wx, 1, 2, 2, windowLit) // Lower windows
+                fill(wx, 5, 2, 2, windowLit) // Upper windows
             }
-            // Spokes
-            for spoke in stride(from: 0.0, to: 360.0, by: 45.0) {
-                let rad = spoke * .pi / 180.0
-                for r in stride(from: 0, to: eyeR, by: 2) {
-                    let dx = Int(cos(rad) * Double(r))
-                    let dy = Int(sin(rad) * Double(r))
-                    c.fill(CGRect(x: eyeCX + CGFloat(dx) * ps, y: eyeCY + CGFloat(dy) * ps, width: ps, height: ps))
+            // Wheels
+            fill(bux + 2, 0, 2, 1, UIColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 0.80))
+            fill(bux + 12, 0, 2, 1, UIColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 0.80))
+            // Front
+            fill(bux + 15, 1, 1, 6, redDark)
+
+            // ── LAMP POST ── (x=60)
+            fill(60, 0, 1, 16, lampPost)
+            fill(58, 16, 5, 2, lampPost)  // Lamp housing
+            fill(59, 18, 3, 1, lampGlow)  // Lamp light
+            // Glow aura
+            for gy in -2..<4 {
+                for gx in -3..<4 {
+                    dot(60 + gx, 17 + gy, lampAura)
                 }
             }
-            // Pods
-            let podC = UIColor(red: 0.55, green: 0.57, blue: 0.60, alpha: 0.55)
-            c.setFillColor(podC.cgColor)
-            for angle in stride(from: 0.0, to: 360.0, by: 30.0) {
-                let rad = angle * .pi / 180.0
-                let px = eyeCX + CGFloat(cos(rad) * Double(eyeR)) * ps
-                let py = eyeCY + CGFloat(sin(rad) * Double(eyeR)) * ps
-                c.fill(CGRect(x: px, y: py, width: ps * 2, height: ps))
-            }
 
-            // Rain streaks — London atmosphere
-            let rainC = UIColor(red: 0.60, green: 0.62, blue: 0.65, alpha: 0.08)
-            c.setFillColor(rainC.cgColor)
-            for i in stride(from: 0, to: gridW, by: 4) {
-                let rx = CGFloat(i) * ps
-                let ry = CGFloat(i % 5) * ps * 3
-                c.fill(CGRect(x: rx, y: ry, width: ps * 0.5, height: ps * 4))
+            // ── COBBLESTONE FOREGROUND ── (y=0..3)
+            for y in 0..<4 {
+                for x in stride(from: y % 2, to: gridW, by: 3) {
+                    dot(x, y, cobbleD)
+                    if x + 1 < gridW { dot(x + 1, y, cobbleL) }
+                }
             }
         }
     }
@@ -3836,17 +4585,11 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
+        // Mesa height map — flat-topped formations with steep sides
         var heightMap = [Int](repeating: 0, count: gridW)
-
-        // Mesa formations: flat-topped with steep sides, taller for drama
         let mesas: [(center: Int, halfWidth: Int, peak: Int)] = [
-            (gridW / 10, 20, 40),       // narrow butte
-            (gridW / 4, 40, 30),       // wide mesa
-            (gridW * 3 / 8, 15, 50),    // tall narrow butte
-            (gridW / 2, 30, 25),       // medium mesa
-            (gridW * 5 / 8, 12, 45),    // narrow butte
-            (gridW * 3 / 4, 45, 35),   // wide mesa
-            (gridW * 9 / 10, 17, 42),   // medium butte
+            (15, 12, 35), (50, 25, 28), (80, 8, 48),
+            (105, 18, 22), (140, 10, 42), (170, 30, 32), (195, 12, 38),
         ]
         for mesa in mesas {
             for x in max(0, mesa.center - mesa.halfWidth)..<min(gridW, mesa.center + mesa.halfWidth) {
@@ -3856,39 +4599,62 @@ final class TextureFactory {
                 heightMap[x] = max(heightMap[x], bh)
             }
         }
-        // Low rolling sand between mesas
         let dunes: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW * 3 / 16, 30, 7), (gridW * 7 / 16, 25, 5),
-            (gridW * 11 / 16, 35, 7), (gridW * 15 / 16, 25, 5),
+            (35, 20, 6), (95, 15, 5), (125, 20, 7), (155, 15, 4), (185, 12, 5),
         ]
         for dune in dunes {
             for x in max(0, dune.center - dune.radius)..<min(gridW, dune.center + dune.radius) {
                 let dist = abs(x - dune.center)
                 let nd = CGFloat(dist) / CGFloat(dune.radius)
-                let bh = Int(CGFloat(dune.peak) * (1.0 - nd * nd))
-                heightMap[x] = max(heightMap[x], bh)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(dune.peak) * (1.0 - nd * nd)))
             }
         }
 
-        // Erosion layer colors — bands of sedimentary rock
-        let mesaBase   = UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 0.82)
-        let mesaLayer1 = UIColor(red: 0.48, green: 0.28, blue: 0.12, alpha: 0.80)
-        let mesaLayer2 = UIColor(red: 0.54, green: 0.33, blue: 0.16, alpha: 0.78)
-        let mesaLayer3 = UIColor(red: 0.60, green: 0.38, blue: 0.20, alpha: 0.75)
-        let mesaTop    = UIColor(red: 0.23, green: 0.13, blue: 0.06, alpha: 0.88)
-        let mesaLight  = UIColor(red: 0.77, green: 0.57, blue: 0.29, alpha: 0.65)
+        let mesaBase   = UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 0.85)
+        let mesaLayer1 = UIColor(red: 0.48, green: 0.28, blue: 0.12, alpha: 0.82)
+        let mesaLayer2 = UIColor(red: 0.55, green: 0.34, blue: 0.16, alpha: 0.80)
+        let mesaLayer3 = UIColor(red: 0.62, green: 0.40, blue: 0.22, alpha: 0.78)
+        let mesaTop    = UIColor(red: 0.25, green: 0.14, blue: 0.07, alpha: 0.90)
+        let mesaLight  = UIColor(red: 0.78, green: 0.58, blue: 0.30, alpha: 0.65)
         let dustHaze   = UIColor(red: 0.80, green: 0.65, blue: 0.45, alpha: 0.06)
-        let vultureC   = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.40)
+        // Saloon colors
+        let woodDark   = UIColor(red: 0.30, green: 0.18, blue: 0.08, alpha: 0.90)
+        let woodMid    = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 0.88)
+        let woodLight  = UIColor(red: 0.55, green: 0.38, blue: 0.18, alpha: 0.85)
+        let roofRed    = UIColor(red: 0.50, green: 0.15, blue: 0.10, alpha: 0.88)
+        let windowGlow = UIColor(red: 0.90, green: 0.75, blue: 0.35, alpha: 0.85)
+        let signYellow = UIColor(red: 0.85, green: 0.70, blue: 0.25, alpha: 0.80)
+        let doorDark   = UIColor(red: 0.22, green: 0.12, blue: 0.05, alpha: 0.90)
+        // Cactus colors
+        let cactusD    = UIColor(red: 0.15, green: 0.38, blue: 0.12, alpha: 0.88)
+        let cactusM    = UIColor(red: 0.22, green: 0.50, blue: 0.18, alpha: 0.85)
+        let cactusL    = UIColor(red: 0.30, green: 0.60, blue: 0.25, alpha: 0.80)
+        let cactusSpine = UIColor(red: 0.50, green: 0.65, blue: 0.30, alpha: 0.55)
+        // Fence / wagon
+        let fenceBrown = UIColor(red: 0.40, green: 0.25, blue: 0.10, alpha: 0.75)
+        let wagonGray  = UIColor(red: 0.35, green: 0.30, blue: 0.25, alpha: 0.70)
+        let tumbleC    = UIColor(red: 0.55, green: 0.45, blue: 0.25, alpha: 0.50)
+        let sageGreen  = UIColor(red: 0.35, green: 0.42, blue: 0.25, alpha: 0.55)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Dust haze at horizon
-            c.setFillColor(dustHaze.cgColor)
-            c.fill(CGRect(x: 0, y: h * 0.3, width: w, height: h * 0.15))
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) {
+                fill(dx, dy, 1, 1, color)
+            }
 
-            // Mesa formations with erosion bands
+            // Dust haze
+            c.setFillColor(dustHaze.cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.25, width: w, height: h * 0.15))
+
+            // Mesa terrain
             for x in 0..<gridW {
                 let mH = heightMap[x]
                 guard mH > 0 else { continue }
@@ -3902,7 +4668,6 @@ final class TextureFactory {
                     else if ratio > 0.40 { color = mesaLayer1 }
                     else if ratio > 0.20 { color = mesaBase }
                     else { color = mesaLight }
-                    // Sun highlight on exposed edges
                     if x > 0 && heightMap[x - 1] < y && ratio > 0.5 {
                         c.setFillColor(mesaLight.cgColor)
                     } else {
@@ -3910,27 +4675,135 @@ final class TextureFactory {
                     }
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
-                // Shadow on right side of steep edges
-                if x < gridW - 1 && heightMap[x + 1] < heightMap[x] - 3 {
-                    let shadowH = min(heightMap[x], 4)
-                    for sy in 0..<shadowH {
-                        let yPos = h - CGFloat(heightMap[x] - sy) * ps
-                        c.setFillColor(UIColor(red: 0, green: 0, blue: 0, alpha: 0.10).cgColor)
-                        c.fill(CGRect(x: CGFloat(x + 1) * ps, y: yPos, width: ps, height: ps))
+            }
+
+            // ── SALOON BUILDING ── (at x=60..85, y=0..30)
+            let sx = 60, sy = 0
+            fill(sx, sy, 26, 22, woodMid)           // Main body
+            fill(sx, sy + 22, 26, 2, woodDark)       // Top trim
+            // Peaked roof
+            for dx in 0..<26 {
+                let roofH = max(0, 5 - abs(dx - 13) / 2)
+                if roofH > 0 { fill(sx + dx, sy + 24, 1, roofH, roofRed) }
+            }
+            // False front / facade
+            fill(sx + 1, sy + 24, 24, 4, woodLight)
+            fill(sx + 1, sy + 28, 24, 1, woodDark)
+            // SALOON sign
+            fill(sx + 5, sy + 25, 16, 2, signYellow)
+            // Windows (2 upstairs, glowing)
+            fill(sx + 3, sy + 16, 4, 4, windowGlow)
+            fill(sx + 19, sy + 16, 4, 4, windowGlow)
+            // Window frames
+            fill(sx + 3, sy + 20, 4, 1, woodDark)
+            fill(sx + 19, sy + 20, 4, 1, woodDark)
+            fill(sx + 5, sy + 16, 1, 4, woodDark)    // Window cross
+            fill(sx + 21, sy + 16, 1, 4, woodDark)
+            // Swinging doors
+            fill(sx + 10, sy, 6, 10, doorDark)
+            fill(sx + 10, sy + 10, 6, 1, woodDark)   // Door top
+            fill(sx + 12, sy + 5, 1, 1, signYellow)   // Door handle
+            // Porch overhang
+            fill(sx - 1, sy + 12, 28, 1, woodDark)
+            // Porch posts
+            fill(sx, sy, 1, 12, woodDark)
+            fill(sx + 25, sy, 1, 12, woodDark)
+            fill(sx + 8, sy, 1, 12, woodDark)
+            fill(sx + 17, sy, 1, 12, woodDark)
+            // Porch railing
+            fill(sx, sy + 4, 9, 1, fenceBrown)
+            fill(sx + 17, sy + 4, 9, 1, fenceBrown)
+            // Barrel on porch
+            fill(sx + 2, sy, 3, 4, woodDark)
+            fill(sx + 2, sy + 2, 3, 1, woodLight)
+            // Chimney
+            fill(sx + 20, sy + 29, 3, 5, mesaBase)
+
+            // ── SAGUARO CACTUS 1 ── (x=110, tall)
+            let c1x = 110, c1y = 0
+            fill(c1x + 2, c1y, 3, 30, cactusM)       // Main trunk
+            fill(c1x + 3, c1y + 2, 1, 26, cactusL)   // Light highlight
+            // Left arm
+            fill(c1x, c1y + 14, 2, 2, cactusM)       // Horizontal
+            fill(c1x, c1y + 16, 2, 10, cactusM)      // Vertical up
+            fill(c1x + 1, c1y + 17, 1, 8, cactusL)   // Highlight
+            // Right arm
+            fill(c1x + 5, c1y + 18, 2, 2, cactusM)
+            fill(c1x + 5, c1y + 20, 2, 8, cactusM)
+            fill(c1x + 6, c1y + 21, 1, 6, cactusL)
+            // Spines
+            dot(c1x + 1, c1y + 28, cactusSpine)
+            dot(c1x + 4, c1y + 25, cactusSpine)
+            dot(c1x + 1, c1y + 22, cactusSpine)
+
+            // ── SAGUARO CACTUS 2 ── (x=155, shorter)
+            let c2x = 155, c2y = 0
+            fill(c2x + 1, c2y, 3, 22, cactusD)
+            fill(c2x + 2, c2y + 1, 1, 19, cactusM)
+            // One arm left
+            fill(c2x - 1, c2y + 10, 2, 2, cactusD)
+            fill(c2x - 1, c2y + 12, 2, 7, cactusD)
+            fill(c2x, c2y + 13, 1, 5, cactusM)
+
+            // ── BARREL CACTUS ── (x=130)
+            fill(130, 0, 5, 6, cactusD)
+            fill(131, 1, 3, 4, cactusM)
+            fill(132, 6, 1, 1, cactusSpine)           // Flower bud
+
+            // ── WOODEN FENCE ── (x=38..55)
+            for fx in stride(from: 38, to: 56, by: 4) {
+                fill(fx, 0, 1, 8, fenceBrown)          // Post
+                dot(fx, 8, woodDark)                    // Post cap
+            }
+            fill(38, 3, 17, 1, fenceBrown)             // Rail 1
+            fill(38, 6, 17, 1, fenceBrown)             // Rail 2
+
+            // ── WAGON WHEEL ── (x=145, y=0)
+            let wx = 145, wy = 0
+            // Outer rim (circle approx)
+            let wheelR = 4
+            for angle in 0..<12 {
+                let a = CGFloat(angle) * .pi / 6
+                let px = wx + Int(round(CGFloat(wheelR) * cos(a)))
+                let py = wy + wheelR + Int(round(CGFloat(wheelR) * sin(a)))
+                dot(px, py, wagonGray)
+            }
+            dot(wx, wy + wheelR, wagonGray)            // Hub
+            // Spokes
+            fill(wx, wy + 1, 1, 7, wagonGray)
+            fill(wx - 3, wy + wheelR, 7, 1, wagonGray)
+
+            // ── TUMBLEWEEDS ──
+            for tx in [93, 178, 35] {
+                for dy in 0..<3 {
+                    for dx in 0..<3 {
+                        if (dx + dy) % 2 == 0 { dot(tx + dx, dy, tumbleC) }
                     }
                 }
             }
 
-            // Circling vulture silhouettes
-            let vultures: [(x: CGFloat, y: CGFloat)] = [(w * 0.20, h * 0.1), (w * 0.65, h * 0.15)]
-            for v in vultures {
-                c.setFillColor(vultureC.cgColor)
-                c.fill(CGRect(x: v.x - ps * 2, y: v.y, width: ps, height: ps))
-                c.fill(CGRect(x: v.x - ps, y: v.y - ps * 0.5, width: ps, height: ps))
-                c.fill(CGRect(x: v.x, y: v.y, width: ps, height: ps))
-                c.fill(CGRect(x: v.x + ps, y: v.y - ps * 0.5, width: ps, height: ps))
-                c.fill(CGRect(x: v.x + ps * 2, y: v.y, width: ps, height: ps))
+            // ── SAGEBRUSH ──
+            for sbx in [42, 98, 125, 165, 188] {
+                fill(sbx, 0, 3, 2, sageGreen)
+                dot(sbx + 1, 2, sageGreen)
             }
+
+            // ── VULTURES ──
+            let vultureC = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.45)
+            for (vx, vy) in [(40, 62), (130, 58)] {
+                dot(vx - 2, vy, vultureC); dot(vx - 1, vy + 1, vultureC)
+                dot(vx, vy, vultureC)
+                dot(vx + 1, vy + 1, vultureC); dot(vx + 2, vy, vultureC)
+            }
+
+            // ── WATER TOWER ── (x=175)
+            fill(175, 0, 1, 18, woodDark)              // Left leg
+            fill(181, 0, 1, 18, woodDark)              // Right leg
+            fill(178, 0, 1, 18, woodDark)              // Center brace
+            fill(174, 18, 9, 7, woodMid)               // Tank
+            fill(174, 25, 9, 1, woodDark)              // Tank rim
+            fill(175, 19, 7, 5, woodLight)             // Tank highlight
+            fill(177, 18, 1, 1, woodDark)              // Spout
         }
     }
 
@@ -4094,13 +4967,12 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Continuous overlapping bumps for dense canopy
-        var heightMap = [Int](repeating: 1, count: gridW)
+        // Dense overlapping canopy — very tall
+        var heightMap = [Int](repeating: 3, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 12, 35, 30), (gridW / 6, 40, 37), (gridW / 4, 30, 25),
-            (gridW / 3, 45, 40), (gridW * 5 / 12, 35, 32), (gridW / 2, 40, 42),
-            (gridW * 7 / 12, 30, 27), (gridW * 2 / 3, 50, 45), (gridW * 3 / 4, 35, 35),
-            (gridW * 5 / 6, 40, 37), (gridW * 11 / 12, 30, 30),
+            (15, 25, 35), (40, 30, 45), (65, 20, 30), (85, 35, 50),
+            (110, 25, 38), (135, 30, 48), (155, 20, 32), (175, 35, 45),
+            (195, 20, 35),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -4110,28 +4982,175 @@ final class TextureFactory {
             }
         }
 
-        let deepCanopy  = UIColor(red: 0.06, green: 0.24, blue: 0.10, alpha: 0.80)
-        let midCanopy   = UIColor(red: 0.12, green: 0.42, blue: 0.16, alpha: 0.75)
-        let topCanopy   = UIColor(red: 0.04, green: 0.18, blue: 0.07, alpha: 0.85)
-        let sunDapple   = UIColor(red: 0.24, green: 0.63, blue: 0.27, alpha: 0.60)
+        let deepGreen   = UIColor(red: 0.04, green: 0.18, blue: 0.08, alpha: 0.88)
+        let midGreen    = UIColor(red: 0.08, green: 0.32, blue: 0.14, alpha: 0.82)
+        let lightGreen  = UIColor(red: 0.15, green: 0.45, blue: 0.20, alpha: 0.78)
+        let topGreen    = UIColor(red: 0.03, green: 0.14, blue: 0.06, alpha: 0.90)
+        let sunDapple   = UIColor(red: 0.22, green: 0.55, blue: 0.25, alpha: 0.60)
+        // Tree trunks
+        let barkDark    = UIColor(red: 0.18, green: 0.12, blue: 0.06, alpha: 0.88)
+        let barkMid     = UIColor(red: 0.28, green: 0.18, blue: 0.10, alpha: 0.85)
+        let barkLight   = UIColor(red: 0.38, green: 0.25, blue: 0.14, alpha: 0.80)
+        let barkMoss    = UIColor(red: 0.15, green: 0.30, blue: 0.12, alpha: 0.70)
+        // Vines
+        let vineD       = UIColor(red: 0.10, green: 0.28, blue: 0.12, alpha: 0.72)
+        let vineL       = UIColor(red: 0.18, green: 0.40, blue: 0.18, alpha: 0.65)
+        // Snake
+        let snakeGreen  = UIColor(red: 0.25, green: 0.55, blue: 0.20, alpha: 0.80)
+        let snakeYellow = UIColor(red: 0.70, green: 0.60, blue: 0.20, alpha: 0.78)
+        let snakeEye    = UIColor(red: 0.90, green: 0.20, blue: 0.15, alpha: 0.85)
+        // Parrot
+        let parrotRed   = UIColor(red: 0.85, green: 0.20, blue: 0.15, alpha: 0.80)
+        let parrotBlue  = UIColor(red: 0.15, green: 0.40, blue: 0.80, alpha: 0.78)
+        let parrotYellow = UIColor(red: 0.95, green: 0.80, blue: 0.20, alpha: 0.80)
+        // Flowers
+        let orchidPink  = UIColor(red: 0.85, green: 0.35, blue: 0.55, alpha: 0.75)
+        let orchidWhite = UIColor(red: 0.90, green: 0.85, blue: 0.88, alpha: 0.70)
+        // Fern
+        let fernD       = UIColor(red: 0.10, green: 0.35, blue: 0.12, alpha: 0.75)
+        let fernL       = UIColor(red: 0.18, green: 0.50, blue: 0.20, alpha: 0.70)
+        // Frog
+        let frogGreen   = UIColor(red: 0.30, green: 0.70, blue: 0.25, alpha: 0.75)
+        let frogRed     = UIColor(red: 0.80, green: 0.15, blue: 0.10, alpha: 0.72)
+        // Butterfly
+        let butterflyB  = UIColor(red: 0.20, green: 0.50, blue: 0.85, alpha: 0.55)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── CANOPY TERRAIN ──
             for x in 0..<gridW {
                 let mH = heightMap[x]
                 for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if y == mH - 1 { color = topCanopy }
-                    else if ratio > 0.6 {
-                        // Sun dapple at peaks (1 in 5 chance)
-                        color = (x % 5 == 0 && y == mH - 2) ? sunDapple : midCanopy
-                    } else { color = deepCanopy }
+                    if y == mH - 1 { color = topGreen }
+                    else if ratio > 0.75 && x % 5 == 0 { color = sunDapple }
+                    else if ratio > 0.6 { color = lightGreen }
+                    else if ratio > 0.3 { color = midGreen }
+                    else { color = deepGreen }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
+            }
+
+            // ── MASSIVE TREE TRUNK 1 ── (x=30..42, y=0..55)
+            let t1x = 30, t1w = 12
+            fill(t1x, 0, t1w, 55, barkDark)
+            fill(t1x + 1, 1, t1w - 2, 53, barkMid)
+            // Bark texture
+            for by in stride(from: 3, to: 50, by: 5) {
+                fill(t1x + 2, by, t1w - 4, 1, barkLight)
+            }
+            // Moss patches
+            fill(t1x, 8, 2, 4, barkMoss)
+            fill(t1x + t1w - 2, 20, 2, 5, barkMoss)
+            fill(t1x + 1, 35, 3, 3, barkMoss)
+            // Roots spreading out
+            fill(t1x - 3, 0, 3, 3, barkDark)
+            fill(t1x - 2, 0, 2, 5, barkMid)
+            fill(t1x + t1w, 0, 3, 3, barkDark)
+            fill(t1x + t1w + 1, 0, 2, 5, barkMid)
+            // Branch stubs
+            fill(t1x - 2, 30, 2, 2, barkDark)
+            fill(t1x + t1w, 38, 3, 2, barkDark)
+
+            // ── MASSIVE TREE TRUNK 2 ── (x=140..150, y=0..48)
+            let t2x = 140, t2w = 10
+            fill(t2x, 0, t2w, 48, barkDark)
+            fill(t2x + 1, 1, t2w - 2, 46, barkMid)
+            for by in stride(from: 4, to: 44, by: 6) {
+                fill(t2x + 2, by, t2w - 4, 1, barkLight)
+            }
+            fill(t2x, 15, 2, 3, barkMoss)
+            fill(t2x + t2w - 2, 28, 2, 4, barkMoss)
+            // Roots
+            fill(t2x - 2, 0, 2, 4, barkDark)
+            fill(t2x + t2w, 0, 2, 4, barkDark)
+
+            // ── HANGING VINES ──
+            func drawVine(_ vx: Int, _ topY: Int, _ length: Int) {
+                for i in 0..<length {
+                    let sway = Int(sin(CGFloat(i) * 0.3) * 1.5)
+                    dot(vx + sway, topY - i, i % 2 == 0 ? vineD : vineL)
+                    // Leaves on vine
+                    if i % 5 == 0 && i > 0 {
+                        dot(vx + sway + 1, topY - i, vineL)
+                        dot(vx + sway - 1, topY - i + 1, vineD)
+                    }
+                }
+            }
+            drawVine(25, 40, 20); drawVine(50, 38, 18); drawVine(70, 35, 15)
+            drawVine(95, 42, 22); drawVine(120, 36, 16); drawVine(155, 40, 20)
+            drawVine(180, 38, 18); drawVine(195, 35, 14)
+
+            // ── SNAKE ON BRANCH ── (near trunk 2)
+            let snkX = 148, snkY = 35
+            // Body (sinuous)
+            for i in 0..<12 {
+                let sy = Int(sin(CGFloat(i) * 0.8) * 1.5)
+                dot(snkX + i, snkY + sy, i < 3 ? snakeYellow : snakeGreen)
+            }
+            // Head
+            fill(snkX + 12, snkY, 2, 2, snakeGreen)
+            dot(snkX + 13, snkY + 1, snakeEye) // Eye
+            // Forked tongue
+            dot(snkX + 14, snkY, snakeEye)
+
+            // ── PARROTS ──
+            func drawParrot(_ px: Int, _ py: Int) {
+                dot(px, py, parrotRed)           // Body
+                dot(px, py + 1, parrotRed)
+                dot(px + 1, py + 1, parrotBlue)  // Wing
+                dot(px - 1, py + 1, parrotYellow) // Head
+                dot(px - 1, py, parrotYellow)     // Beak
+            }
+            drawParrot(55, 42); drawParrot(110, 38); drawParrot(175, 44)
+
+            // ── ORCHID FLOWERS ──
+            for (fx, fy) in [(38, 20), (145, 15), (80, 25)] {
+                dot(fx, fy, orchidPink); dot(fx + 1, fy, orchidPink)
+                dot(fx, fy + 1, orchidWhite); dot(fx + 1, fy + 1, orchidPink)
+            }
+
+            // ── FERNS AT BASE ──
+            func drawFern(_ bx: Int, _ by: Int) {
+                fill(bx, by, 1, 4, fernD) // Stem
+                for i in 1..<4 {
+                    dot(bx - i, by + i, fernL)  // Left frond
+                    dot(bx + i, by + i, fernL)  // Right frond
+                }
+                dot(bx, by + 4, fernL) // Tip
+            }
+            drawFern(10, 0); drawFern(60, 0); drawFern(100, 0)
+            drawFern(130, 0); drawFern(170, 0); drawFern(192, 0)
+
+            // ── TREE FROG ──
+            let frgX = 75, frgY = 5
+            fill(frgX, frgY, 3, 2, frogGreen)
+            dot(frgX, frgY + 2, frogGreen)    // Head
+            dot(frgX + 2, frgY + 2, frogGreen)
+            dot(frgX, frgY + 3, frogRed)       // Eye
+            dot(frgX + 2, frgY + 3, frogRed)
+            // Feet
+            dot(frgX - 1, frgY, frogGreen)
+            dot(frgX + 3, frgY, frogGreen)
+
+            // ── BUTTERFLIES ──
+            for (bx, by) in [(20, 30), (90, 28), (165, 35)] {
+                dot(bx, by, butterflyB)
+                dot(bx - 1, by + 1, butterflyB); dot(bx + 1, by + 1, butterflyB)
+                dot(bx - 1, by - 1, butterflyB); dot(bx + 1, by - 1, butterflyB)
             }
         }
     }
@@ -4354,12 +5373,11 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        var heightMap = [Int](repeating: 0, count: gridW)
-
-        // Sand dunes (gentle rolling)
+        var heightMap = [Int](repeating: 1, count: gridW)
+        // Sand dunes
         let dunes: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 45, 10), (gridW * 3 / 8, 35, 7),
-            (gridW * 5 / 8, 50, 12), (gridW * 7 / 8, 40, 7),
+            (15, 20, 10), (50, 25, 14), (90, 18, 8), (130, 22, 12),
+            (170, 20, 10), (195, 15, 8),
         ]
         for dune in dunes {
             for x in max(0, dune.center - dune.radius)..<min(gridW, dune.center + dune.radius) {
@@ -4369,100 +5387,116 @@ final class TextureFactory {
             }
         }
 
-        // Pyramids — triangular
-        let pyramids: [(center: Int, halfBase: Int, peak: Int)] = [
-            (gridW / 5, 35, 60),       // large pyramid (taller)
-            (gridW / 5 + 18, 8, 16),   // medium pyramid
-            (gridW * 3 / 4, 25, 45),   // medium pyramid (right side)
-        ]
-
-        var isPyramid = [Bool](repeating: false, count: gridW)
-        for pyr in pyramids {
-            for x in max(0, pyr.center - pyr.halfBase)..<min(gridW, pyr.center + pyr.halfBase) {
-                let dist = abs(x - pyr.center)
-                let pH = Int(CGFloat(pyr.peak) * (1.0 - CGFloat(dist) / CGFloat(pyr.halfBase)))
-                if pH > heightMap[x] {
-                    heightMap[x] = pH
-                    isPyramid[x] = true
-                }
-            }
-        }
-
-        let sandBase  = UIColor(red: 0.72, green: 0.56, blue: 0.38, alpha: 0.55)
-        let sandLight = UIColor(red: 0.83, green: 0.72, blue: 0.50, alpha: 0.50)
-        let pyrShadow = UIColor(red: 0.42, green: 0.30, blue: 0.13, alpha: 0.60)
-        let pyrLit    = UIColor(red: 0.77, green: 0.63, blue: 0.31, alpha: 0.55)
-        let pyrCap    = UIColor(red: 0.91, green: 0.78, blue: 0.25, alpha: 0.65)
-        let pyrBlock  = UIColor(red: 0.62, green: 0.48, blue: 0.24, alpha: 0.50)
-        let sunRay    = UIColor(red: 1.0, green: 0.90, blue: 0.55, alpha: 0.06)
-        let heatHaze  = UIColor(red: 0.85, green: 0.70, blue: 0.45, alpha: 0.05)
+        let sandBase  = UIColor(red: 0.75, green: 0.62, blue: 0.38, alpha: 0.75)
+        let sandLight = UIColor(red: 0.85, green: 0.72, blue: 0.48, alpha: 0.70)
+        let sandDark  = UIColor(red: 0.65, green: 0.52, blue: 0.30, alpha: 0.78)
+        // Pyramids
+        let pyrBase   = UIColor(red: 0.72, green: 0.58, blue: 0.35, alpha: 0.88)
+        let pyrLight  = UIColor(red: 0.82, green: 0.68, blue: 0.42, alpha: 0.85)
+        let pyrDark   = UIColor(red: 0.58, green: 0.45, blue: 0.28, alpha: 0.90)
+        let pyrGold   = UIColor(red: 0.90, green: 0.78, blue: 0.40, alpha: 0.82)
+        // Sphinx
+        let sphinxD   = UIColor(red: 0.60, green: 0.48, blue: 0.30, alpha: 0.85)
+        let sphinxL   = UIColor(red: 0.72, green: 0.58, blue: 0.38, alpha: 0.82)
+        // Temple columns
+        let colWhite  = UIColor(red: 0.85, green: 0.80, blue: 0.72, alpha: 0.78)
+        let colShadow = UIColor(red: 0.65, green: 0.60, blue: 0.52, alpha: 0.75)
+        // Hieroglyphics
+        let hieroC    = UIColor(red: 0.55, green: 0.42, blue: 0.25, alpha: 0.45)
+        // Palm
+        let palmTrunk = UIColor(red: 0.40, green: 0.28, blue: 0.15, alpha: 0.72)
+        let palmLeaf  = UIColor(red: 0.20, green: 0.48, blue: 0.22, alpha: 0.68)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Sun rays emanating from behind largest pyramid
-            let sunX = CGFloat(pyramids[0].center) * ps
-            for i in 0..<5 {
-                let angle = CGFloat(i - 2) * 0.25
-                c.setFillColor(sunRay.cgColor)
-                let rx = sunX + angle * w * 0.2
-                c.fill(CGRect(x: rx - ps, y: 0, width: ps * 3, height: h * 0.5))
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
             }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
 
-            // Heat haze at horizon
-            c.setFillColor(heatHaze.cgColor)
-            c.fill(CGRect(x: 0, y: h * 0.4, width: w, height: h * 0.1))
-
-            // Pyramid and dune terrain
+            // Sand terrain
             for x in 0..<gridW {
                 let mH = heightMap[x]
-                guard mH > 0 else { continue }
                 for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let color: UIColor
-                    if isPyramid[x] {
-                        if y == mH - 1 { color = pyrCap }
-                        else {
-                            var isLeftSide = true
-                            for pyr in pyramids {
-                                if x >= pyr.center - pyr.halfBase && x < pyr.center + pyr.halfBase {
-                                    isLeftSide = x < pyr.center
-                                    break
-                                }
-                            }
-                            // Stone block texture — alternating shade every 3 rows
-                            let blockShade = (y % 3 == 0)
-                            if isLeftSide {
-                                color = blockShade ? pyrBlock : pyrLit
-                            } else {
-                                color = blockShade ? pyrShadow : UIColor(red: 0.48, green: 0.35, blue: 0.18, alpha: 0.58)
-                            }
-                        }
-                    } else {
-                        let ratio = CGFloat(y) / max(1, CGFloat(mH))
-                        // Sand ripple texture
-                        color = (x + y) % 4 == 0 ? sandLight : sandBase
-                    }
+                    let color = y == mH - 1 ? sandDark : (y % 2 == 0 ? sandBase : sandLight)
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Camel caravan silhouette (tiny, between pyramids)
-            let camelC = UIColor(red: 0.35, green: 0.25, blue: 0.15, alpha: 0.30)
-            let camelBase = h - CGFloat(3) * ps
-            let camelX = CGFloat(gridW / 2) * ps
-            c.setFillColor(camelC.cgColor)
-            for i in 0..<3 {
-                let cx = camelX + CGFloat(i) * ps * 4
-                // Body
-                c.fill(CGRect(x: cx, y: camelBase, width: ps * 2, height: ps))
-                // Hump
-                c.fill(CGRect(x: cx + ps * 0.5, y: camelBase - ps, width: ps, height: ps))
-                // Legs
-                c.fill(CGRect(x: cx, y: camelBase + ps, width: ps, height: ps))
-                c.fill(CGRect(x: cx + ps, y: camelBase + ps, width: ps, height: ps))
+            // ── GREAT PYRAMID ── (x=50, large triangle)
+            for row in 0..<40 {
+                let pw = 40 - row
+                let px = 50 - pw / 2
+                let leftSide = row < 20
+                fill(px, row + 5, pw, 1, leftSide || row > 30 ? pyrLight : pyrBase)
+            }
+            // Brick lines
+            for row in stride(from: 5, to: 45, by: 4) {
+                let pw = max(1, 40 - (row - 5))
+                let px = 50 - pw / 2
+                fill(px, row, pw, 1, pyrDark)
+            }
+            // Gold capstone
+            fill(49, 44, 3, 2, pyrGold)
+            dot(50, 46, pyrGold)
+
+            // ── SMALLER PYRAMID ── (x=85)
+            for row in 0..<28 {
+                let pw = 28 - row
+                fill(85 - pw / 2, row + 3, pw, 1, row < 14 ? pyrLight : pyrBase)
+            }
+            for row in stride(from: 3, to: 31, by: 4) {
+                let pw = max(1, 28 - (row - 3))
+                fill(85 - pw / 2, row, pw, 1, pyrDark)
+            }
+            fill(84, 30, 3, 1, pyrGold)
+
+            // ── SPHINX ── (x=110..130, y=2..12)
+            // Body
+            fill(112, 2, 16, 5, sphinxD)
+            fill(113, 3, 14, 3, sphinxL)
+            // Head
+            fill(110, 7, 6, 6, sphinxD)
+            fill(111, 8, 4, 4, sphinxL)
+            // Headdress
+            fill(109, 12, 2, 2, sphinxD)
+            fill(116, 12, 2, 2, sphinxD)
+            // Face detail
+            dot(112, 10, pyrDark) // Eye
+            dot(113, 9, pyrDark)  // Nose
+            // Paws
+            fill(126, 2, 4, 3, sphinxD)
+
+            // ── TEMPLE COLUMNS ── (x=155..175)
+            for cx in stride(from: 155, to: 176, by: 5) {
+                fill(cx, 3, 3, 20, colWhite)
+                fill(cx, 3, 3, 1, colShadow)   // Base
+                fill(cx, 23, 3, 1, colShadow)  // Capital
+                fill(cx + 1, 5, 1, 16, colShadow) // Fluting
+            }
+            // Lintel
+            fill(155, 24, 23, 2, colWhite)
+            fill(155, 26, 23, 1, colShadow)
+            // Hieroglyphics on lintel
+            for hx in stride(from: 157, to: 176, by: 3) {
+                dot(hx, 25, hieroC)
+                dot(hx + 1, 24, hieroC)
+            }
+
+            // ── PALM TREES ──
+            for (px, ph) in [(140, 16), (185, 14), (10, 12)] {
+                for i in 0..<ph { dot(px, 3 + i, palmTrunk) }
+                for dx in -3..<4 {
+                    let droop = abs(dx) > 1 ? -1 : 0
+                    dot(px + dx, 3 + ph + droop, palmLeaf)
+                }
             }
         }
     }
@@ -4620,125 +5654,197 @@ final class TextureFactory {
         let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
+        let gridH = Int(h / ps)
 
-        // Denser stalagmites rising from bottom
-        var bottomMap = [Int](repeating: 0, count: gridW)
+        // Stalagmites from floor
+        var floorMap = [Int](repeating: 2, count: gridW)
         let stalagmites: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 10, 25), (gridW / 6, 15, 40), (gridW / 4, 20, 50),
-            (gridW * 3 / 8, 10, 30), (gridW / 2, 15, 40), (gridW * 5 / 8, 7, 22),
-            (gridW * 7 / 10, 12, 35), (gridW * 3 / 4, 17, 50), (gridW * 7 / 8, 12, 32),
+            (15, 8, 20), (40, 12, 30), (70, 6, 15), (100, 15, 35),
+            (130, 8, 22), (160, 10, 28), (185, 7, 18),
         ]
-        for bump in stalagmites {
-            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
-                let dist = abs(x - bump.center)
-                let nd = CGFloat(dist) / CGFloat(bump.radius)
-                bottomMap[x] = max(bottomMap[x], Int(CGFloat(bump.peak) * max(0, 1.0 - nd * nd * nd)))
+        for s in stalagmites {
+            for x in max(0, s.center - s.radius)..<min(gridW, s.center + s.radius) {
+                let dist = abs(x - s.center)
+                let nd = CGFloat(dist) / CGFloat(s.radius)
+                floorMap[x] = max(floorMap[x], Int(CGFloat(s.peak) * (1.0 - nd * nd)))
             }
         }
 
-        // More and larger stalactites hanging from top
-        var topMap = [Int](repeating: 0, count: gridW)
+        // Stalactites from ceiling
+        var ceilMap = [Int](repeating: 2, count: gridW)
         let stalactites: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 12, 25), (gridW / 4, 17, 35), (gridW * 3 / 8, 10, 20),
-            (gridW / 2, 15, 30), (gridW * 5 / 8, 12, 27), (gridW * 3 / 4, 7, 17),
-            (gridW * 5 / 6, 15, 32), (gridW * 11 / 12, 10, 22),
+            (10, 6, 18), (30, 10, 25), (55, 5, 14), (80, 12, 30),
+            (110, 7, 20), (140, 9, 26), (170, 6, 16), (195, 8, 22),
         ]
-        for bump in stalactites {
-            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
-                let dist = abs(x - bump.center)
-                let nd = CGFloat(dist) / CGFloat(bump.radius)
-                topMap[x] = max(topMap[x], Int(CGFloat(bump.peak) * max(0, 1.0 - nd * nd * nd)))
+        for s in stalactites {
+            for x in max(0, s.center - s.radius)..<min(gridW, s.center + s.radius) {
+                let dist = abs(x - s.center)
+                let nd = CGFloat(dist) / CGFloat(s.radius)
+                ceilMap[x] = max(ceilMap[x], Int(CGFloat(s.peak) * (1.0 - nd * nd)))
             }
         }
 
-        // Ceiling rock — constant top band to make it feel enclosed
-        var ceilingMap = [Int](repeating: 3, count: gridW)
-        // Vary ceiling thickness slightly
-        for x in 0..<gridW {
-            ceilingMap[x] = 3 + (x % 7 < 2 ? 1 : 0)
-        }
-
-        let rockDark    = UIColor(red: 0.10, green: 0.08, blue: 0.13, alpha: 0.88)
-        let rockMid     = UIColor(red: 0.18, green: 0.16, blue: 0.22, alpha: 0.82)
-        let rockLight   = UIColor(red: 0.29, green: 0.25, blue: 0.35, alpha: 0.75)
-        let crystalCyan = UIColor(red: 0.30, green: 0.90, blue: 0.95, alpha: 0.92)
-        let crystalPink = UIColor(red: 0.92, green: 0.30, blue: 0.80, alpha: 0.92)
-        let crystalGlow = UIColor(red: 0.30, green: 0.85, blue: 0.92, alpha: 0.25)
-        let waterGlow   = UIColor(red: 0.18, green: 0.50, blue: 0.70, alpha: 0.35)
-        let waterBright = UIColor(red: 0.30, green: 0.65, blue: 0.85, alpha: 0.30)
-        let dripC       = UIColor(red: 0.45, green: 0.70, blue: 0.85, alpha: 0.55)
+        let rockDark  = UIColor(red: 0.15, green: 0.13, blue: 0.12, alpha: 0.90)
+        let rockMid   = UIColor(red: 0.25, green: 0.22, blue: 0.20, alpha: 0.85)
+        let rockLight = UIColor(red: 0.35, green: 0.30, blue: 0.28, alpha: 0.80)
+        let rockWet   = UIColor(red: 0.20, green: 0.25, blue: 0.30, alpha: 0.75)
+        // Crystal colors
+        let crystPurpD = UIColor(red: 0.40, green: 0.10, blue: 0.60, alpha: 0.90)
+        let crystPurpM = UIColor(red: 0.55, green: 0.20, blue: 0.80, alpha: 0.85)
+        let crystPurpL = UIColor(red: 0.70, green: 0.40, blue: 0.95, alpha: 0.80)
+        let crystCyanD = UIColor(red: 0.10, green: 0.45, blue: 0.65, alpha: 0.88)
+        let crystCyanM = UIColor(red: 0.20, green: 0.60, blue: 0.80, alpha: 0.85)
+        let crystCyanL = UIColor(red: 0.40, green: 0.80, blue: 0.95, alpha: 0.80)
+        let crystGlow  = UIColor(red: 0.50, green: 0.30, blue: 0.80, alpha: 0.12)
+        let cyanGlow   = UIColor(red: 0.20, green: 0.60, blue: 0.85, alpha: 0.12)
+        // Mushroom colors
+        let mushStem   = UIColor(red: 0.55, green: 0.50, blue: 0.45, alpha: 0.75)
+        let mushCapB   = UIColor(red: 0.15, green: 0.45, blue: 0.55, alpha: 0.80)
+        let mushCapG   = UIColor(red: 0.20, green: 0.70, blue: 0.50, alpha: 0.75)
+        let mushGlow   = UIColor(red: 0.20, green: 0.65, blue: 0.55, alpha: 0.15)
+        // Underground pool
+        let poolDark   = UIColor(red: 0.08, green: 0.18, blue: 0.30, alpha: 0.70)
+        let poolLight  = UIColor(red: 0.15, green: 0.30, blue: 0.45, alpha: 0.55)
+        let poolShine  = UIColor(red: 0.30, green: 0.50, blue: 0.65, alpha: 0.40)
+        // Bats
+        let batC       = UIColor(red: 0.12, green: 0.10, blue: 0.10, alpha: 0.70)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Ceiling rock band — makes cave feel enclosed
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // ── STALACTITES FROM CEILING ──
             for x in 0..<gridW {
-                let cH = ceilingMap[x]
+                let cH = ceilMap[x]
+                guard cH > 0 else { continue }
                 for y in 0..<cH {
-                    c.setFillColor((y == cH - 1 ? rockLight : rockDark).cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: CGFloat(y) * ps, width: ps, height: ps))
-                }
-            }
-
-            // Stalactites (from ceiling)
-            for x in 0..<gridW {
-                let mH = topMap[x]
-                for y in 0..<mH {
-                    let yPos = CGFloat(ceilingMap[x] + y) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let screenY = gridH - 1 - y  // Flip: top of grid
+                    let ratio = CGFloat(y) / max(1, CGFloat(cH))
                     let color: UIColor
-                    if y == mH - 1 && (x % 8 == 0) {
-                        color = x % 16 == 0 ? crystalPink : crystalCyan
-                    } else if ratio > 0.6 { color = rockLight }
-                    else if ratio > 0.3 { color = rockMid }
+                    if ratio > 0.8 { color = rockLight }
+                    else if ratio > 0.5 { color = rockMid }
+                    else if y % 3 == 0 { color = rockWet }
                     else { color = rockDark }
-                    c.setFillColor(color.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
-                }
-                // Water drip from stalactite tips
-                if topMap[x] > 6 && x % 11 == 0 {
-                    let dripY = CGFloat(ceilingMap[x] + topMap[x]) * ps + ps
-                    c.setFillColor(dripC.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: dripY, width: ps, height: ps))
+                    dot(x, screenY, color)
                 }
             }
 
-            // Stalagmites (from bottom)
+            // ── STALAGMITES FROM FLOOR ──
             for x in 0..<gridW {
-                let mH = bottomMap[x]
-                for y in 0..<mH {
-                    let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                let fH = floorMap[x]
+                guard fH > 0 else { continue }
+                for y in 0..<fH {
+                    let ratio = CGFloat(y) / max(1, CGFloat(fH))
                     let color: UIColor
-                    if y == mH - 1 && (x % 6 == 0) {
-                        color = x % 12 == 0 ? crystalCyan : crystalPink
-                    } else if ratio > 0.6 { color = rockLight }
-                    else if ratio > 0.3 { color = rockMid }
+                    if y == fH - 1 { color = rockLight }
+                    else if ratio > 0.7 { color = rockMid }
+                    else if y % 4 == 0 { color = rockWet }
                     else { color = rockDark }
-                    c.setFillColor(color.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                    dot(x, y, color)
                 }
             }
 
-            // Crystal glow auras around crystal-tipped formations
-            for x in stride(from: 0, to: gridW, by: 6) {
-                let bH = bottomMap[x]
-                if bH > 5 {
-                    let glowY = h - CGFloat(bH + 1) * ps
-                    c.setFillColor(crystalGlow.cgColor)
-                    c.fill(CGRect(x: CGFloat(x - 1) * ps, y: glowY - ps, width: ps * 3, height: ps * 3))
+            // ── CRYSTAL CLUSTER (PURPLE) ── (x=35..50, growing from floor)
+            func drawCrystal(_ bx: Int, _ by: Int, _ cw: Int, _ ch: Int,
+                             _ dark: UIColor, _ mid: UIColor, _ light: UIColor, _ glow: UIColor) {
+                // Glow aura
+                for gy in -2..<(ch + 2) {
+                    for gx in -2..<(cw + 2) {
+                        dot(bx + gx, by + gy, glow)
+                    }
+                }
+                // Crystal body (tapered)
+                for y in 0..<ch {
+                    let taper = max(1, cw - y * cw / (ch * 2))
+                    let offset = (cw - taper) / 2
+                    for x in 0..<taper {
+                        let ratio = CGFloat(y) / CGFloat(ch)
+                        let color = ratio > 0.7 ? light : (ratio > 0.3 ? mid : dark)
+                        dot(bx + offset + x, by + y, color)
+                    }
+                }
+                // Bright tip
+                dot(bx + cw / 2, by + ch - 1, light)
+                dot(bx + cw / 2, by + ch, light)
+            }
+
+            // Purple cluster (3 crystals, different angles)
+            drawCrystal(36, 8, 4, 18, crystPurpD, crystPurpM, crystPurpL, crystGlow)
+            drawCrystal(41, 5, 3, 14, crystPurpD, crystPurpM, crystPurpL, crystGlow)
+            drawCrystal(45, 10, 5, 20, crystPurpD, crystPurpM, crystPurpL, crystGlow)
+
+            // Cyan cluster
+            drawCrystal(140, 6, 3, 15, crystCyanD, crystCyanM, crystCyanL, cyanGlow)
+            drawCrystal(144, 3, 4, 12, crystCyanD, crystCyanM, crystCyanL, cyanGlow)
+            drawCrystal(149, 8, 3, 16, crystCyanD, crystCyanM, crystCyanL, cyanGlow)
+
+            // Small crystals scattered
+            drawCrystal(15, 12, 2, 6, crystPurpD, crystPurpM, crystPurpL, crystGlow)
+            drawCrystal(170, 5, 2, 8, crystCyanD, crystCyanM, crystCyanL, cyanGlow)
+            drawCrystal(88, 4, 2, 7, crystPurpD, crystPurpM, crystPurpL, crystGlow)
+
+            // ── BIOLUMINESCENT MUSHROOMS ──
+            func drawMushroom(_ bx: Int, _ by: Int, _ sh: Int, _ capW: Int,
+                              _ capColor: UIColor) {
+                // Glow aura
+                for gy in -1..<(sh + capW / 2 + 2) {
+                    for gx in -(capW / 2 + 1)..<(capW / 2 + 2) {
+                        dot(bx + gx, by + gy, mushGlow)
+                    }
+                }
+                // Stem
+                fill(bx, by, 1, sh, mushStem)
+                // Cap (dome)
+                for cy in 0..<(capW / 2 + 1) {
+                    let cw = capW - cy
+                    fill(bx - cw / 2, by + sh + cy, cw, 1, capColor)
+                }
+                // Spots
+                if capW >= 4 {
+                    dot(bx - 1, by + sh + 1,
+                        UIColor(red: 0.80, green: 0.95, blue: 0.85, alpha: 0.70))
+                    dot(bx + 1, by + sh + 1,
+                        UIColor(red: 0.80, green: 0.95, blue: 0.85, alpha: 0.70))
                 }
             }
 
-            // Underground river glow at base between stalagmites
-            for x in 0..<gridW {
-                if bottomMap[x] < 3 {
-                    let riverY = h - ps * 2
-                    let rc = (x % 6 == 0) ? waterBright : waterGlow
-                    c.setFillColor(rc.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: riverY, width: ps, height: ps * 2))
-                }
+            drawMushroom(60, 3, 5, 6, mushCapB)
+            drawMushroom(65, 2, 3, 4, mushCapG)
+            drawMushroom(115, 4, 4, 5, mushCapB)
+            drawMushroom(120, 2, 3, 4, mushCapG)
+            drawMushroom(175, 3, 4, 5, mushCapG)
+
+            // ── UNDERGROUND POOL / RIVER ── (x=75..125, y=0..3)
+            fill(75, 0, 50, 3, poolDark)
+            fill(78, 1, 44, 1, poolLight)
+            // Shimmer reflections
+            for sx in stride(from: 80, to: 120, by: 8) {
+                fill(sx, 2, 3, 1, poolShine)
+            }
+
+            // ── BATS ── (near ceiling)
+            func drawBat(_ bx: Int, _ by: Int) {
+                dot(bx, by, batC)
+                dot(bx - 1, by + 1, batC); dot(bx + 1, by + 1, batC)
+                dot(bx - 2, by, batC); dot(bx + 2, by, batC)
+            }
+            drawBat(25, 68); drawBat(55, 70); drawBat(90, 66)
+            drawBat(125, 69); drawBat(165, 67); drawBat(190, 71)
+
+            // ── DRIPPING WATER DROPS ──
+            let dropC = UIColor(red: 0.30, green: 0.45, blue: 0.55, alpha: 0.50)
+            for dx in [28, 78, 138, 192] {
+                let tipY = gridH - 1 - ceilMap[min(dx, gridW - 1)]
+                dot(dx, tipY - 1, dropC)
+                dot(dx, tipY - 2, dropC)
             }
         }
     }
@@ -4921,102 +6027,124 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Sharp peaks with dominant high points
-        var heightMap = [Int](repeating: 0, count: gridW)
+        var heightMap = [Int](repeating: 2, count: gridW)
         let peaks: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 30, 30),        // small peak
-            (gridW / 4, 40, 60),          // dominant peak (taller)
-            (gridW * 3 / 8, 25, 22),       // ridge
-            (gridW / 2, 35, 50),          // second dominant
-            (gridW * 5 / 8, 20, 17),        // small ridge
-            (gridW * 3 / 4, 45, 65),      // tallest peak
-            (gridW * 7 / 8, 25, 35),      // medium peak
+            (20, 25, 40), (55, 18, 30), (85, 35, 55), (115, 15, 22),
+            (145, 28, 48), (175, 20, 35), (195, 15, 25),
         ]
-        // Track waterfall source peak
-        let waterfallPeak = gridW * 3 / 4
-
-        for peak in peaks {
-            for x in max(0, peak.center - peak.radius)..<min(gridW, peak.center + peak.radius) {
-                let dist = abs(x - peak.center)
-                let nd = CGFloat(dist) / CGFloat(peak.radius)
-                let bh = Int(CGFloat(peak.peak) * max(0, 1.0 - nd))
-                heightMap[x] = max(heightMap[x], bh)
-            }
-        }
-        // Low ridges connecting peaks
-        let ridges: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW * 3 / 16, 35, 12), (gridW * 7 / 16, 30, 10),
-            (gridW * 11 / 16, 40, 15),
-        ]
-        for ridge in ridges {
-            for x in max(0, ridge.center - ridge.radius)..<min(gridW, ridge.center + ridge.radius) {
-                let dist = abs(x - ridge.center)
-                let nd = CGFloat(dist) / CGFloat(ridge.radius)
-                heightMap[x] = max(heightMap[x], Int(CGFloat(ridge.peak) * (1.0 - nd * nd)))
+        for p in peaks {
+            for x in max(0, p.center - p.radius)..<min(gridW, p.center + p.radius) {
+                let dist = abs(x - p.center)
+                let nd = CGFloat(dist) / CGFloat(p.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(p.peak) * (1.0 - nd * nd)))
             }
         }
 
-        let rockDark = UIColor(red: 0.23, green: 0.29, blue: 0.35, alpha: 0.80)
-        let rockMid  = UIColor(red: 0.35, green: 0.42, blue: 0.48, alpha: 0.75)
-        let rockLt   = UIColor(red: 0.42, green: 0.48, blue: 0.55, alpha: 0.70)
-        let snowShdw = UIColor(red: 0.69, green: 0.75, blue: 0.82, alpha: 0.80)
-        let snowMid  = UIColor(red: 0.85, green: 0.88, blue: 0.92, alpha: 0.82)
-        let snowTop  = UIColor(red: 0.94, green: 0.96, blue: 0.97, alpha: 0.88)
-        let waterC   = UIColor(red: 0.55, green: 0.75, blue: 0.90, alpha: 0.50)
-        let waterFm  = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.45)
-        let mistC    = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.15)
+        let rockD     = UIColor(red: 0.30, green: 0.28, blue: 0.25, alpha: 0.85)
+        let rockM     = UIColor(red: 0.40, green: 0.38, blue: 0.35, alpha: 0.80)
+        let rockL     = UIColor(red: 0.50, green: 0.48, blue: 0.45, alpha: 0.75)
+        let snowC     = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.88)
+        let snowM     = UIColor(red: 0.85, green: 0.88, blue: 0.92, alpha: 0.80)
+        // Cabin
+        let cabinBrn  = UIColor(red: 0.38, green: 0.22, blue: 0.10, alpha: 0.82)
+        let cabinLt   = UIColor(red: 0.50, green: 0.35, blue: 0.18, alpha: 0.78)
+        let cabinRoof = UIColor(red: 0.28, green: 0.16, blue: 0.08, alpha: 0.85)
+        let windowW   = UIColor(red: 0.90, green: 0.78, blue: 0.40, alpha: 0.75)
+        let chimneyC  = UIColor(red: 0.35, green: 0.30, blue: 0.28, alpha: 0.80)
+        let smokeC    = UIColor(red: 0.55, green: 0.52, blue: 0.52, alpha: 0.22)
+        // Waterfall
+        let waterW    = UIColor(red: 0.75, green: 0.88, blue: 0.95, alpha: 0.65)
+        let waterD    = UIColor(red: 0.40, green: 0.60, blue: 0.75, alpha: 0.55)
+        let mist      = UIColor(red: 0.80, green: 0.90, blue: 0.95, alpha: 0.20)
+        // Pine tree
+        let pineD     = UIColor(red: 0.08, green: 0.22, blue: 0.10, alpha: 0.78)
+        let pineM     = UIColor(red: 0.12, green: 0.32, blue: 0.15, alpha: 0.72)
+        // Eagle
+        let eagleC    = UIColor(red: 0.20, green: 0.15, blue: 0.12, alpha: 0.55)
+        // Lake
+        let lakeC     = UIColor(red: 0.25, green: 0.50, blue: 0.65, alpha: 0.50)
+        let lakeL     = UIColor(red: 0.40, green: 0.62, blue: 0.75, alpha: 0.38)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // Mountain terrain
             for x in 0..<gridW {
                 let mH = heightMap[x]
-                guard mH > 0 else { continue }
                 for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if ratio > 0.85 { color = snowTop }
-                    else if ratio > 0.75 { color = snowMid }
-                    else if ratio > 0.65 { color = snowShdw }
-                    else if ratio > 0.35 {
-                        // Rock layers with subtle striations
-                        color = (y % 3 == 0) ? rockLt : rockMid
-                    } else { color = rockDark }
+                    if ratio > 0.80 { color = snowC }
+                    else if ratio > 0.65 { color = snowM }
+                    else if ratio > 0.40 { color = rockL }
+                    else if ratio > 0.20 { color = rockM }
+                    else { color = rockD }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Waterfall — cascading down the tallest peak's right side
-            let wfX = CGFloat(waterfallPeak + 2) * ps
-            let wfTopY = h - CGFloat(heightMap[waterfallPeak + 2]) * ps
-            let wfBotY = h - ps * 2
-            // Water stream
-            var wy = wfTopY
-            while wy < wfBotY {
-                c.setFillColor(waterC.cgColor)
-                c.fill(CGRect(x: wfX, y: wy, width: ps, height: ps))
-                // Foam sparkle on alternating pixels
-                if Int(wy / ps) % 3 == 0 {
-                    c.setFillColor(waterFm.cgColor)
-                    c.fill(CGRect(x: wfX + ps, y: wy, width: ps * 0.5, height: ps))
-                }
-                wy += ps
+            // ── WATERFALL ── (at x=88, flowing from peak)
+            let wfx = 88, wfTop = 40
+            for y in 5..<wfTop {
+                let sway = Int(sin(CGFloat(y) * 0.4) * 1)
+                fill(wfx + sway, y, 2, 1, waterW)
+                if y % 3 == 0 { dot(wfx + sway - 1, y, waterD) }
             }
-            // Mist at base of waterfall
-            c.setFillColor(mistC.cgColor)
-            c.fill(CGRect(x: wfX - ps * 3, y: wfBotY - ps, width: ps * 8, height: ps * 3))
+            // Splash at base
+            fill(wfx - 2, 4, 6, 2, mist)
+            fill(wfx - 1, 3, 4, 1, mist)
 
-            // Eagle silhouette (tiny) soaring near peaks
-            let eagleC = UIColor(red: 0.20, green: 0.18, blue: 0.22, alpha: 0.45)
-            let ex = w * 0.35, ey = h * 0.15
-            c.setFillColor(eagleC.cgColor)
-            c.fill(CGRect(x: ex - ps * 2, y: ey, width: ps, height: ps))
-            c.fill(CGRect(x: ex - ps, y: ey - ps * 0.5, width: ps, height: ps))
-            c.fill(CGRect(x: ex, y: ey, width: ps, height: ps))
-            c.fill(CGRect(x: ex + ps, y: ey - ps * 0.5, width: ps, height: ps))
-            c.fill(CGRect(x: ex + ps * 2, y: ey, width: ps, height: ps))
+            // ── MOUNTAIN LAKE ── (x=78..100, y=2..5)
+            fill(78, 2, 22, 3, lakeC)
+            for rx in stride(from: 80, to: 98, by: 5) { dot(rx, 3, lakeL) }
+
+            // ── LOG CABIN ── (x=35, y=3)
+            let cbx = 35, cby = 3
+            fill(cbx, cby, 14, 10, cabinBrn)
+            fill(cbx + 1, cby + 1, 12, 8, cabinLt)
+            // Log lines
+            for ly in stride(from: cby + 2, to: cby + 9, by: 2) {
+                fill(cbx, ly, 14, 1, cabinBrn)
+            }
+            // Roof
+            for dx in 0..<16 { let rh = max(0, 4 - abs(dx - 8) / 2); if rh > 0 { fill(cbx - 1 + dx, cby + 10, 1, rh, cabinRoof) } }
+            // Window
+            fill(cbx + 3, cby + 5, 3, 3, windowW)
+            fill(cbx + 4, cby + 5, 1, 3, cabinBrn) // Cross
+            // Door
+            fill(cbx + 9, cby, 3, 5, cabinRoof)
+            dot(cbx + 11, cby + 3, windowW) // Handle
+            // Chimney & smoke
+            fill(cbx + 10, cby + 12, 2, 4, chimneyC)
+            for i in 0..<4 { dot(cbx + 11 + Int(sin(CGFloat(i)) * 1), cby + 16 + i, smokeC) }
+
+            // ── PINE TREES ──
+            func drawPine(_ bx: Int, _ by: Int, _ ph: Int) {
+                fill(bx + 2, by, 1, 3, pineD) // Trunk
+                for row in 0..<ph {
+                    let cw = min(1 + row, 5)
+                    fill(bx + 2 - cw / 2, by + 3 + row, cw, 1, row % 2 == 0 ? pineD : pineM)
+                }
+            }
+            drawPine(15, 4, 8); drawPine(55, 3, 10); drawPine(110, 5, 7)
+            drawPine(130, 4, 9); drawPine(165, 3, 8); drawPine(185, 5, 6)
+
+            // ── EAGLE ──
+            for (ex, ey) in [(50, 50), (140, 55)] {
+                dot(ex - 2, ey, eagleC); dot(ex - 1, ey + 1, eagleC)
+                dot(ex, ey, eagleC); dot(ex + 1, ey + 1, eagleC); dot(ex + 2, ey, eagleC)
+            }
         }
     }
 
