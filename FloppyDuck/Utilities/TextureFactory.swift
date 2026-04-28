@@ -866,22 +866,22 @@ final class TextureFactory {
 
     private func renderPixelHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4  // pixel size
 
         let gridW = Int(w / ps)
         // Generate stepped hill silhouette using overlapping bumps
         var heightMap = [Int](repeating: 1, count: gridW)
 
-        // Deterministic hill bumps (seeded so they look good)
+        // Deterministic hill bumps — tall rolling hills
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8,     14, 10),
-            (gridW / 4,     18, 14),
-            (gridW * 3 / 8, 10, 7),
-            (gridW / 2,     16, 12),
-            (gridW * 5 / 8, 12, 9),
-            (gridW * 3 / 4, 17, 13),
-            (gridW * 7 / 8, 13, 8),
+            (gridW / 8,     25, 25),
+            (gridW / 4,     30, 35),
+            (gridW * 3 / 8, 18, 18),
+            (gridW / 2,     28, 30),
+            (gridW * 5 / 8, 22, 22),
+            (gridW * 3 / 4, 30, 33),
+            (gridW * 7 / 8, 20, 20),
         ]
 
         for bump in bumps {
@@ -1342,15 +1342,15 @@ final class TextureFactory {
 
     private func renderSunsetHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 14, 10), (gridW / 4, 18, 14), (gridW * 3 / 8, 10, 7),
-            (gridW / 2, 16, 12), (gridW * 5 / 8, 12, 9), (gridW * 3 / 4, 17, 13),
-            (gridW * 7 / 8, 13, 8),
+            (gridW / 8, 25, 25), (gridW / 4, 30, 35), (gridW * 3 / 8, 18, 18),
+            (gridW / 2, 28, 30), (gridW * 5 / 8, 22, 22), (gridW * 3 / 4, 30, 33),
+            (gridW * 7 / 8, 20, 20),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1389,15 +1389,15 @@ final class TextureFactory {
 
     private func renderNightHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 14, 10), (gridW / 4, 18, 14), (gridW * 3 / 8, 10, 7),
-            (gridW / 2, 16, 12), (gridW * 5 / 8, 12, 9), (gridW * 3 / 4, 17, 13),
-            (gridW * 7 / 8, 13, 8),
+            (gridW / 8, 25, 25), (gridW / 4, 30, 35), (gridW * 3 / 8, 18, 18),
+            (gridW / 2, 28, 30), (gridW * 5 / 8, 22, 22), (gridW * 3 / 4, 30, 33),
+            (gridW * 7 / 8, 20, 20),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1436,7 +1436,7 @@ final class TextureFactory {
 
     private func renderCitySkylineHills(neon: Bool) -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
         let gridH = Int(h / ps)
@@ -1465,11 +1465,11 @@ final class TextureFactory {
 
         // Deterministic building specs: (xPixel, widthPixels, heightPixels)
         let buildings: [(x: Int, w: Int, h: Int)] = [
-            (2, 8, 18), (12, 6, 12), (20, 10, 22), (32, 5, 9),
-            (39, 9, 16), (50, 7, 20), (59, 11, 25), (72, 6, 11),
-            (80, 8, 17), (90, 10, 23), (102, 5, 8), (109, 9, 19),
-            (120, 7, 14), (129, 11, 26), (142, 6, 10), (150, 8, 21),
-            (160, 10, 15), (172, 7, 24), (181, 9, 13), (192, 6, 18),
+            (2, 8, 45), (12, 6, 30), (20, 10, 55), (32, 5, 22),
+            (39, 9, 40), (50, 7, 50), (59, 11, 62), (72, 6, 28),
+            (80, 8, 42), (90, 10, 58), (102, 5, 20), (109, 9, 48),
+            (120, 7, 35), (129, 11, 65), (142, 6, 25), (150, 8, 52),
+            (160, 10, 38), (172, 7, 60), (181, 9, 32), (192, 6, 45),
         ]
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
@@ -1566,16 +1566,16 @@ final class TextureFactory {
 
     private func renderCoralReefHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         // Coral reef — denser, more varied bumps
         var heightMap = [Int](repeating: 0, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 8, 10), (gridW / 5, 12, 16), (gridW * 3 / 10, 6, 8),
-            (gridW * 2 / 5, 14, 18), (gridW / 2, 7, 7), (gridW * 3 / 5, 10, 14),
-            (gridW * 7 / 10, 15, 20), (gridW * 4 / 5, 8, 12), (gridW * 9 / 10, 11, 15),
+            (gridW / 10, 20, 25), (gridW / 5, 30, 40), (gridW * 3 / 10, 15, 20),
+            (gridW * 2 / 5, 35, 45), (gridW / 2, 17, 17), (gridW * 3 / 5, 25, 35),
+            (gridW * 7 / 10, 37, 50), (gridW * 4 / 5, 20, 30), (gridW * 9 / 10, 27, 37),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1687,16 +1687,16 @@ final class TextureFactory {
 
     private func renderVolcanoHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         // Jagged peaks — sharper bumps with smaller radii, taller for drama
         var heightMap = [Int](repeating: 0, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 6, 14), (gridW / 5, 10, 24), (gridW * 3 / 10, 4, 10),
-            (gridW * 2 / 5, 8, 20), (gridW / 2, 5, 12), (gridW * 3 / 5, 12, 28),
-            (gridW * 7 / 10, 6, 16), (gridW * 4 / 5, 9, 26), (gridW * 9 / 10, 7, 18),
+            (gridW / 10, 15, 35), (gridW / 5, 25, 60), (gridW * 3 / 10, 10, 25),
+            (gridW * 2 / 5, 20, 50), (gridW / 2, 12, 30), (gridW * 3 / 5, 30, 70),
+            (gridW * 7 / 10, 15, 40), (gridW * 4 / 5, 22, 65), (gridW * 9 / 10, 17, 45),
         ]
         // Track which bump is tallest (the erupting crater)
         var tallestPeak = 0; var tallestCenter = gridW / 2
@@ -1802,16 +1802,16 @@ final class TextureFactory {
 
     private func renderArcticHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         // Taller, more dramatic glacier peaks
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 14, 14), (gridW / 4, 18, 22), (gridW * 3 / 8, 8, 10),
-            (gridW / 2, 16, 20), (gridW * 5 / 8, 12, 14), (gridW * 3 / 4, 20, 24),
-            (gridW * 7 / 8, 10, 12),
+            (gridW / 8, 35, 35), (gridW / 4, 45, 55), (gridW * 3 / 8, 20, 25),
+            (gridW / 2, 40, 50), (gridW * 5 / 8, 30, 35), (gridW * 3 / 4, 50, 60),
+            (gridW * 7 / 8, 25, 30),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1883,16 +1883,16 @@ final class TextureFactory {
 
     private func renderSpaceTerrainHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         // Lumpy alien terrain
         var heightMap = [Int](repeating: 2, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 12, 10), (gridW / 4, 16, 14), (gridW * 3 / 8, 8, 6),
-            (gridW / 2, 14, 12), (gridW * 3 / 5, 18, 16), (gridW * 3 / 4, 10, 9),
-            (gridW * 9 / 10, 14, 11),
+            (gridW / 8, 30, 25), (gridW / 4, 40, 35), (gridW * 3 / 8, 20, 15),
+            (gridW / 2, 35, 30), (gridW * 3 / 5, 45, 40), (gridW * 3 / 4, 25, 22),
+            (gridW * 9 / 10, 35, 27),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1997,15 +1997,15 @@ final class TextureFactory {
 
     private func renderLagoonIslandHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         var heightMap = [Int](repeating: 0, count: gridW)
-        // Gentle island mounds
+        // Lush tropical island mounds — tall and rolling
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 6, 20, 8), (gridW * 2 / 5, 25, 12), (gridW * 3 / 5, 15, 6),
-            (gridW * 4 / 5, 22, 10),
+            (gridW / 8, 35, 28), (gridW / 4, 45, 38), (gridW * 2 / 5, 30, 22),
+            (gridW * 3 / 5, 40, 32), (gridW * 4 / 5, 35, 26),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -2015,13 +2015,15 @@ final class TextureFactory {
             }
         }
 
-        let islandBase = UIColor(red: 0.18, green: 0.48, blue: 0.32, alpha: 0.50)
-        let islandMid  = UIColor(red: 0.22, green: 0.55, blue: 0.38, alpha: 0.45)
-        let islandTop  = UIColor(red: 0.28, green: 0.62, blue: 0.42, alpha: 0.55)
+        let islandBase = UIColor(red: 0.18, green: 0.48, blue: 0.32, alpha: 0.55)
+        let islandMid  = UIColor(red: 0.22, green: 0.55, blue: 0.38, alpha: 0.50)
+        let islandTop  = UIColor(red: 0.28, green: 0.62, blue: 0.42, alpha: 0.60)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Draw island terrain
             for x in 0..<gridW {
                 let mH = heightMap[x]
                 for y in 0..<mH {
@@ -2032,20 +2034,159 @@ final class TextureFactory {
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
-            // Pirate ship silhouette on horizon
-            let shipX = w * 0.75
-            let shipY = h * 0.15
-            let shipColor = UIColor(red: 0.20, green: 0.12, blue: 0.06, alpha: 0.45)
-            c.setFillColor(shipColor.cgColor)
-            // Hull
-            c.fill(CGRect(x: shipX, y: shipY, width: ps * 8, height: ps * 3))
-            // Mast
-            c.fill(CGRect(x: shipX + ps * 3, y: shipY - ps * 6, width: ps, height: ps * 6))
-            // Sail
-            c.fill(CGRect(x: shipX + ps * 4, y: shipY - ps * 5, width: ps * 3, height: ps * 4))
-            // Flag
-            c.setFillColor(UIColor(red: 0.15, green: 0.08, blue: 0.04, alpha: 0.50).cgColor)
-            c.fill(CGRect(x: shipX + ps * 3, y: shipY - ps * 7, width: ps * 2, height: ps))
+
+            // ── MASSIVE pirate ship ──
+            let shipBaseX = w * 0.62
+            let waterLine = h - CGFloat(12) * ps  // sits above water level
+
+            let darkWood  = UIColor(red: 0.28, green: 0.16, blue: 0.08, alpha: 0.55)
+            let midWood   = UIColor(red: 0.38, green: 0.22, blue: 0.10, alpha: 0.50)
+            let lightWood = UIColor(red: 0.48, green: 0.30, blue: 0.14, alpha: 0.45)
+            let sailWhite = UIColor(red: 0.92, green: 0.88, blue: 0.80, alpha: 0.40)
+            let sailShadow = UIColor(red: 0.78, green: 0.74, blue: 0.68, alpha: 0.35)
+            let mastColor = UIColor(red: 0.22, green: 0.14, blue: 0.06, alpha: 0.55)
+            let flagBlack = UIColor(red: 0.10, green: 0.08, blue: 0.05, alpha: 0.55)
+            let skullWhite = UIColor(red: 0.90, green: 0.85, blue: 0.75, alpha: 0.50)
+
+            // Hull — wide curved shape (20px wide, 8px tall)
+            for row in 0..<8 {
+                let yPos = waterLine - CGFloat(row) * ps
+                // Hull narrows at bottom, widens at top (waterline)
+                let inset = max(0, 3 - row / 2)
+                let hullW = 20 - inset * 2
+                let startX = shipBaseX + CGFloat(inset) * ps
+                let color = row < 2 ? darkWood : (row < 5 ? midWood : lightWood)
+                c.setFillColor(color.cgColor)
+                for col in 0..<hullW {
+                    c.fill(CGRect(x: startX + CGFloat(col) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Hull stripe (waterline)
+            c.setFillColor(UIColor(red: 0.60, green: 0.25, blue: 0.10, alpha: 0.40).cgColor)
+            for col in 0..<18 {
+                c.fill(CGRect(x: shipBaseX + CGFloat(col + 1) * ps, y: waterLine - ps, width: ps, height: ps))
+            }
+
+            // Bow (pointed front) — triangle
+            c.setFillColor(darkWood.cgColor)
+            c.fill(CGRect(x: shipBaseX - ps, y: waterLine - ps * 3, width: ps, height: ps * 2))
+            c.fill(CGRect(x: shipBaseX - ps * 2, y: waterLine - ps * 2, width: ps, height: ps))
+            // Bowsprit
+            c.fill(CGRect(x: shipBaseX - ps * 4, y: waterLine - ps * 6, width: ps * 3, height: ps))
+
+            // Stern (raised back)
+            let sternX = shipBaseX + ps * 17
+            c.setFillColor(midWood.cgColor)
+            for row in 0..<4 {
+                c.fill(CGRect(x: sternX, y: waterLine - CGFloat(8 + row) * ps, width: ps * 3, height: ps))
+            }
+            // Stern windows
+            c.setFillColor(UIColor(red: 1.0, green: 0.85, blue: 0.40, alpha: 0.35).cgColor)
+            c.fill(CGRect(x: sternX + ps, y: waterLine - ps * 10, width: ps, height: ps))
+
+            // Main mast (center, tallest)
+            let mainMastX = shipBaseX + ps * 9
+            let mainMastBase = waterLine - ps * 8
+            c.setFillColor(mastColor.cgColor)
+            for row in 0..<30 {
+                c.fill(CGRect(x: mainMastX, y: mainMastBase - CGFloat(row) * ps, width: ps, height: ps))
+            }
+
+            // Main sail (large rectangle)
+            let mainSailTop = mainMastBase - ps * 26
+            for row in 0..<14 {
+                let yPos = mainSailTop + CGFloat(row) * ps
+                let sailW = row < 3 ? 8 : (row < 10 ? 10 : 8)
+                let offset = (10 - sailW) / 2
+                let color = row < 7 ? sailWhite : sailShadow
+                c.setFillColor(color.cgColor)
+                for col in 0..<sailW {
+                    c.fill(CGRect(x: mainMastX + CGFloat(col + offset - 4) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Lower main sail
+            let lowerSailTop = mainMastBase - ps * 10
+            for row in 0..<8 {
+                let yPos = lowerSailTop + CGFloat(row) * ps
+                let sailW = row < 2 ? 7 : (row < 6 ? 9 : 7)
+                let offset = (9 - sailW) / 2
+                c.setFillColor(row < 4 ? sailWhite : sailShadow)
+                for col in 0..<sailW {
+                    c.fill(CGRect(x: mainMastX + CGFloat(col + offset - 3) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Fore mast (front, shorter)
+            let foreMastX = shipBaseX + ps * 4
+            let foreMastBase = waterLine - ps * 8
+            c.setFillColor(mastColor.cgColor)
+            for row in 0..<22 {
+                c.fill(CGRect(x: foreMastX, y: foreMastBase - CGFloat(row) * ps, width: ps, height: ps))
+            }
+            // Fore sail
+            let foreSailTop = foreMastBase - ps * 20
+            for row in 0..<10 {
+                let yPos = foreSailTop + CGFloat(row) * ps
+                let sailW = row < 2 ? 5 : (row < 7 ? 7 : 5)
+                let offset = (7 - sailW) / 2
+                c.setFillColor(row < 5 ? sailWhite : sailShadow)
+                for col in 0..<sailW {
+                    c.fill(CGRect(x: foreMastX + CGFloat(col + offset - 2) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Mizzen mast (back, medium)
+            let mizzenX = shipBaseX + ps * 15
+            let mizzenBase = waterLine - ps * 8
+            c.setFillColor(mastColor.cgColor)
+            for row in 0..<24 {
+                c.fill(CGRect(x: mizzenX, y: mizzenBase - CGFloat(row) * ps, width: ps, height: ps))
+            }
+            // Mizzen sail
+            let mizzenSailTop = mizzenBase - ps * 22
+            for row in 0..<10 {
+                let yPos = mizzenSailTop + CGFloat(row) * ps
+                let sailW = row < 2 ? 5 : (row < 7 ? 6 : 4)
+                let offset = (6 - sailW) / 2
+                c.setFillColor(row < 5 ? sailWhite : sailShadow)
+                for col in 0..<sailW {
+                    c.fill(CGRect(x: mizzenX + CGFloat(col + offset - 2) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Crow's nest on main mast
+            let nestY = mainMastBase - ps * 28
+            c.setFillColor(midWood.cgColor)
+            c.fill(CGRect(x: mainMastX - ps, y: nestY, width: ps * 3, height: ps))
+            c.fill(CGRect(x: mainMastX - ps * 2, y: nestY + ps, width: ps * 5, height: ps))
+
+            // Jolly Roger flag on main mast top
+            let flagY = mainMastBase - ps * 30
+            c.setFillColor(flagBlack.cgColor)
+            c.fill(CGRect(x: mainMastX + ps, y: flagY - ps * 3, width: ps * 4, height: ps * 3))
+            // Skull
+            c.setFillColor(skullWhite.cgColor)
+            c.fill(CGRect(x: mainMastX + ps * 2, y: flagY - ps * 2, width: ps * 2, height: ps))
+            c.fill(CGRect(x: mainMastX + ps * 2, y: flagY - ps * 3, width: ps, height: ps))
+
+            // Rigging lines (simple diagonal pixels)
+            let riggingColor = UIColor(red: 0.30, green: 0.22, blue: 0.14, alpha: 0.20)
+            c.setFillColor(riggingColor.cgColor)
+            for i in 0..<6 {
+                // Fore to main
+                let rx = foreMastX + CGFloat(i) * ps
+                let ry = foreMastBase - CGFloat(20 - i) * ps
+                c.fill(CGRect(x: rx, y: ry, width: ps, height: ps))
+            }
+
+            // Water ripples around hull
+            let rippleColor = UIColor(red: 0.60, green: 0.82, blue: 0.90, alpha: 0.15)
+            c.setFillColor(rippleColor.cgColor)
+            for i in stride(from: 0, to: 22, by: 3) {
+                c.fill(CGRect(x: shipBaseX + CGFloat(i) * ps - ps, y: waterLine + ps, width: ps * 2, height: ps))
+            }
         }
     }
 
@@ -2053,15 +2194,15 @@ final class TextureFactory {
 
     private func renderLosAngelesHollywoodHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 16, 9), (gridW / 4, 22, 14), (gridW * 2 / 5, 14, 8),
-            (gridW / 2, 20, 15), (gridW * 3 / 5, 12, 7), (gridW * 3 / 4, 18, 12),
-            (gridW * 9 / 10, 15, 10),
+            (gridW / 10, 40, 22), (gridW / 4, 55, 35), (gridW * 2 / 5, 35, 20),
+            (gridW / 2, 50, 37), (gridW * 3 / 5, 30, 17), (gridW * 3 / 4, 45, 30),
+            (gridW * 9 / 10, 37, 25),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -2100,37 +2241,37 @@ final class TextureFactory {
 
     private func renderLondonSkylineHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Building-like stepped skyline
-        var heightMap = [Int](repeating: 2, count: gridW)
+        // Building-like stepped skyline — tall and dramatic
+        var heightMap = [Int](repeating: 5, count: gridW)
         // Parliament block
         let parlStart = gridW / 5
-        for x in parlStart..<min(gridW, parlStart + 18) { heightMap[x] = 8 }
+        for x in parlStart..<min(gridW, parlStart + 22) { heightMap[x] = 20 }
         // Big Ben tower
-        for x in max(0, parlStart - 3)..<parlStart { heightMap[x] = 18 }
+        for x in max(0, parlStart - 4)..<parlStart { heightMap[x] = 45 }
         // Clock face at top
-        if parlStart - 2 >= 0 { heightMap[parlStart - 2] = 20 }
+        if parlStart - 2 >= 0 { heightMap[parlStart - 2] = 50 }
 
         // Tower Bridge area
         let bridgeStart = gridW / 2
-        for x in bridgeStart..<min(gridW, bridgeStart + 5) { heightMap[x] = 16 }
-        for x in min(gridW, bridgeStart + 5)..<min(gridW, bridgeStart + 14) { heightMap[x] = 5 }
-        for x in min(gridW, bridgeStart + 14)..<min(gridW, bridgeStart + 19) { heightMap[x] = 16 }
+        for x in bridgeStart..<min(gridW, bridgeStart + 6) { heightMap[x] = 40 }
+        for x in min(gridW, bridgeStart + 6)..<min(gridW, bridgeStart + 16) { heightMap[x] = 12 }
+        for x in min(gridW, bridgeStart + 16)..<min(gridW, bridgeStart + 22) { heightMap[x] = 40 }
 
-        // Gherkin / Shard area
+        // Gherkin / Shard area — tapered spire
         let modernStart = gridW * 3 / 4
-        for x in modernStart..<min(gridW, modernStart + 4) {
-            let dist = abs(x - modernStart - 2)
-            heightMap[x] = 20 - dist * 3
+        for x in modernStart..<min(gridW, modernStart + 6) {
+            let dist = abs(x - modernStart - 3)
+            heightMap[x] = max(10, 55 - dist * 8)
         }
 
         // Generic rooftops
         let blocks: [(start: Int, w: Int, h: Int)] = [
-            (gridW * 2 / 5, 8, 6), (gridW * 2 / 5 + 10, 6, 9),
-            (gridW * 7 / 8, 10, 7),
+            (gridW * 2 / 5, 20, 35), (gridW * 2 / 5 + 12, 8, 22),
+            (gridW * 7 / 8, 25, 42),
         ]
         for block in blocks {
             for x in block.start..<min(gridW, block.start + block.w) { heightMap[x] = max(heightMap[x], block.h) }
@@ -2154,7 +2295,7 @@ final class TextureFactory {
             }
             // Clock face glow on Big Ben
             let clockX = CGFloat(max(0, parlStart - 2)) * ps
-            let clockY = h - 20 * ps
+            let clockY = h - 50 * ps
             c.setFillColor(UIColor(red: 1.0, green: 0.90, blue: 0.60, alpha: 0.5).cgColor)
             c.fill(CGRect(x: clockX, y: clockY, width: ps * 2, height: ps * 2))
         }
@@ -3361,7 +3502,7 @@ final class TextureFactory {
 
     private func renderWesternMesaHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
@@ -3369,13 +3510,13 @@ final class TextureFactory {
 
         // Mesa formations: flat-topped with steep sides, taller for drama
         let mesas: [(center: Int, halfWidth: Int, peak: Int)] = [
-            (gridW / 10, 8, 16),       // narrow butte
-            (gridW / 4, 16, 12),       // wide mesa
-            (gridW * 3 / 8, 6, 20),    // tall narrow butte
-            (gridW / 2, 12, 10),       // medium mesa
-            (gridW * 5 / 8, 5, 18),    // narrow butte
-            (gridW * 3 / 4, 18, 14),   // wide mesa
-            (gridW * 9 / 10, 7, 17),   // medium butte
+            (gridW / 10, 20, 40),       // narrow butte
+            (gridW / 4, 40, 30),       // wide mesa
+            (gridW * 3 / 8, 15, 50),    // tall narrow butte
+            (gridW / 2, 30, 25),       // medium mesa
+            (gridW * 5 / 8, 12, 45),    // narrow butte
+            (gridW * 3 / 4, 45, 35),   // wide mesa
+            (gridW * 9 / 10, 17, 42),   // medium butte
         ]
         for mesa in mesas {
             for x in max(0, mesa.center - mesa.halfWidth)..<min(gridW, mesa.center + mesa.halfWidth) {
@@ -3387,8 +3528,8 @@ final class TextureFactory {
         }
         // Low rolling sand between mesas
         let dunes: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW * 3 / 16, 12, 3), (gridW * 7 / 16, 10, 2),
-            (gridW * 11 / 16, 14, 3), (gridW * 15 / 16, 10, 2),
+            (gridW * 3 / 16, 30, 7), (gridW * 7 / 16, 25, 5),
+            (gridW * 11 / 16, 35, 7), (gridW * 15 / 16, 25, 5),
         ]
         for dune in dunes {
             for x in max(0, dune.center - dune.radius)..<min(gridW, dune.center + dune.radius) {
@@ -3619,17 +3760,17 @@ final class TextureFactory {
 
     private func renderJungleCanopyHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         // Continuous overlapping bumps for dense canopy
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 12, 14, 12), (gridW / 6, 16, 15), (gridW / 4, 12, 10),
-            (gridW / 3, 18, 16), (gridW * 5 / 12, 14, 13), (gridW / 2, 16, 17),
-            (gridW * 7 / 12, 12, 11), (gridW * 2 / 3, 20, 18), (gridW * 3 / 4, 14, 14),
-            (gridW * 5 / 6, 16, 15), (gridW * 11 / 12, 12, 12),
+            (gridW / 12, 35, 30), (gridW / 6, 40, 37), (gridW / 4, 30, 25),
+            (gridW / 3, 45, 40), (gridW * 5 / 12, 35, 32), (gridW / 2, 40, 42),
+            (gridW * 7 / 12, 30, 27), (gridW * 2 / 3, 50, 45), (gridW * 3 / 4, 35, 35),
+            (gridW * 5 / 6, 40, 37), (gridW * 11 / 12, 30, 30),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -3879,7 +4020,7 @@ final class TextureFactory {
 
     private func renderEgyptPyramidHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
@@ -3887,8 +4028,8 @@ final class TextureFactory {
 
         // Sand dunes (gentle rolling)
         let dunes: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 18, 4), (gridW * 3 / 8, 14, 3),
-            (gridW * 5 / 8, 20, 5), (gridW * 7 / 8, 16, 3),
+            (gridW / 8, 45, 10), (gridW * 3 / 8, 35, 7),
+            (gridW * 5 / 8, 50, 12), (gridW * 7 / 8, 40, 7),
         ]
         for dune in dunes {
             for x in max(0, dune.center - dune.radius)..<min(gridW, dune.center + dune.radius) {
@@ -3900,9 +4041,9 @@ final class TextureFactory {
 
         // Pyramids — triangular
         let pyramids: [(center: Int, halfBase: Int, peak: Int)] = [
-            (gridW / 5, 14, 24),       // large pyramid (taller)
+            (gridW / 5, 35, 60),       // large pyramid (taller)
             (gridW / 5 + 18, 8, 16),   // medium pyramid
-            (gridW * 3 / 4, 10, 18),   // medium pyramid (right side)
+            (gridW * 3 / 4, 25, 45),   // medium pyramid (right side)
         ]
 
         var isPyramid = [Bool](repeating: false, count: gridW)
@@ -4146,16 +4287,16 @@ final class TextureFactory {
 
     private func renderCaveFormationHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         // Denser stalagmites rising from bottom
         var bottomMap = [Int](repeating: 0, count: gridW)
         let stalagmites: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 4, 10), (gridW / 6, 6, 16), (gridW / 4, 8, 20),
-            (gridW * 3 / 8, 4, 12), (gridW / 2, 6, 16), (gridW * 5 / 8, 3, 9),
-            (gridW * 7 / 10, 5, 14), (gridW * 3 / 4, 7, 20), (gridW * 7 / 8, 5, 13),
+            (gridW / 10, 10, 25), (gridW / 6, 15, 40), (gridW / 4, 20, 50),
+            (gridW * 3 / 8, 10, 30), (gridW / 2, 15, 40), (gridW * 5 / 8, 7, 22),
+            (gridW * 7 / 10, 12, 35), (gridW * 3 / 4, 17, 50), (gridW * 7 / 8, 12, 32),
         ]
         for bump in stalagmites {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -4168,9 +4309,9 @@ final class TextureFactory {
         // More and larger stalactites hanging from top
         var topMap = [Int](repeating: 0, count: gridW)
         let stalactites: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 5, 10), (gridW / 4, 7, 14), (gridW * 3 / 8, 4, 8),
-            (gridW / 2, 6, 12), (gridW * 5 / 8, 5, 11), (gridW * 3 / 4, 3, 7),
-            (gridW * 5 / 6, 6, 13), (gridW * 11 / 12, 4, 9),
+            (gridW / 8, 12, 25), (gridW / 4, 17, 35), (gridW * 3 / 8, 10, 20),
+            (gridW / 2, 15, 30), (gridW * 5 / 8, 12, 27), (gridW * 3 / 4, 7, 17),
+            (gridW * 5 / 6, 15, 32), (gridW * 11 / 12, 10, 22),
         ]
         for bump in stalactites {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -4446,20 +4587,20 @@ final class TextureFactory {
 
     private func renderMountainPeakHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 120
+        let h: CGFloat = 300
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
         // Sharp peaks with dominant high points
         var heightMap = [Int](repeating: 0, count: gridW)
         let peaks: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 12, 12),        // small peak
-            (gridW / 4, 16, 24),          // dominant peak (taller)
-            (gridW * 3 / 8, 10, 9),       // ridge
-            (gridW / 2, 14, 20),          // second dominant
-            (gridW * 5 / 8, 8, 7),        // small ridge
-            (gridW * 3 / 4, 18, 26),      // tallest peak
-            (gridW * 7 / 8, 10, 14),      // medium peak
+            (gridW / 10, 30, 30),        // small peak
+            (gridW / 4, 40, 60),          // dominant peak (taller)
+            (gridW * 3 / 8, 25, 22),       // ridge
+            (gridW / 2, 35, 50),          // second dominant
+            (gridW * 5 / 8, 20, 17),        // small ridge
+            (gridW * 3 / 4, 45, 65),      // tallest peak
+            (gridW * 7 / 8, 25, 35),      // medium peak
         ]
         // Track waterfall source peak
         let waterfallPeak = gridW * 3 / 4
@@ -4474,8 +4615,8 @@ final class TextureFactory {
         }
         // Low ridges connecting peaks
         let ridges: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW * 3 / 16, 14, 5), (gridW * 7 / 16, 12, 4),
-            (gridW * 11 / 16, 16, 6),
+            (gridW * 3 / 16, 35, 12), (gridW * 7 / 16, 30, 10),
+            (gridW * 11 / 16, 40, 15),
         ]
         for ridge in ridges {
             for x in max(0, ridge.center - ridge.radius)..<min(gridW, ridge.center + ridge.radius) {

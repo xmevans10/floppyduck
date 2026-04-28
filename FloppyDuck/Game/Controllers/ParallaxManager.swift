@@ -176,9 +176,10 @@ final class ParallaxManager {
 
     private func setupHills() {
         let hillTex = factory.themedHillsTexture(theme: theme)
+        hillTex.filteringMode = .nearest
         for i in 0..<2 {
             let hillNode = SKSpriteNode(texture: hillTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 120))
+                                         size: CGSize(width: GK.worldWidth * 2, height: 300))
             hillNode.anchorPoint = CGPoint(x: 0, y: 0)
             hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight + 10)
             hillNode.zPosition = -60
@@ -192,9 +193,12 @@ final class ParallaxManager {
 
     private func setupTrees() {
         let treeTex = factory.themedTreesTexture(theme: theme)
+        // Nearest-neighbor filtering keeps pixel art crisp when texture (160px)
+        // is displayed at 300px (1.875× upscale).
+        treeTex.filteringMode = .nearest
         for i in 0..<2 {
             let treeNode = SKSpriteNode(texture: treeTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 160))
+                                         size: CGSize(width: GK.worldWidth * 2, height: 300))
             treeNode.anchorPoint = CGPoint(x: 0, y: 0)
             treeNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 5)
             treeNode.zPosition = -50
@@ -212,9 +216,12 @@ final class ParallaxManager {
 
     private func setupBushes() {
         let bushTex = factory.themedBushTexture(theme: theme)
+        // Nearest-neighbor filtering keeps pixel art crisp when texture (36px)
+        // is displayed at 60px (1.67× upscale).
+        bushTex.filteringMode = .nearest
         for i in 0..<2 {
             let bushNode = SKSpriteNode(texture: bushTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 36))
+                                         size: CGSize(width: GK.worldWidth * 2, height: 60))
             bushNode.anchorPoint = CGPoint(x: 0, y: 0)
             bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 2)
             bushNode.zPosition = -40
