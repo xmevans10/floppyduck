@@ -2112,7 +2112,7 @@ final class TextureFactory {
                 let yPos = lowerSailTop + CGFloat(row) * ps
                 let sailW = row < 2 ? 7 : (row < 6 ? 9 : 7)
                 let offset = (9 - sailW) / 2
-                c.setFillColor(row < 4 ? sailWhite : sailShadow)
+                c.setFillColor((row < 4 ? sailWhite : sailShadow).cgColor)
                 for col in 0..<sailW {
                     c.fill(CGRect(x: mainMastX + CGFloat(col + offset - 3) * ps, y: yPos, width: ps, height: ps))
                 }
@@ -2131,7 +2131,7 @@ final class TextureFactory {
                 let yPos = foreSailTop + CGFloat(row) * ps
                 let sailW = row < 2 ? 5 : (row < 7 ? 7 : 5)
                 let offset = (7 - sailW) / 2
-                c.setFillColor(row < 5 ? sailWhite : sailShadow)
+                c.setFillColor((row < 5 ? sailWhite : sailShadow).cgColor)
                 for col in 0..<sailW {
                     c.fill(CGRect(x: foreMastX + CGFloat(col + offset - 2) * ps, y: yPos, width: ps, height: ps))
                 }
@@ -2150,7 +2150,7 @@ final class TextureFactory {
                 let yPos = mizzenSailTop + CGFloat(row) * ps
                 let sailW = row < 2 ? 5 : (row < 7 ? 6 : 4)
                 let offset = (6 - sailW) / 2
-                c.setFillColor(row < 5 ? sailWhite : sailShadow)
+                c.setFillColor((row < 5 ? sailWhite : sailShadow).cgColor)
                 for col in 0..<sailW {
                     c.fill(CGRect(x: mizzenX + CGFloat(col + offset - 2) * ps, y: yPos, width: ps, height: ps))
                 }
