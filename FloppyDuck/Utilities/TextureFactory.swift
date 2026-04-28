@@ -867,36 +867,33 @@ final class TextureFactory {
     private func renderPixelHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 300
-        let ps: CGFloat = 4  // pixel size
+        let ps: CGFloat = 4
 
         let gridW = Int(w / ps)
-        // Generate stepped hill silhouette using overlapping bumps
         var heightMap = [Int](repeating: 1, count: gridW)
 
-        // Deterministic hill bumps — tall rolling hills
+        // Taller, more varied rolling hills
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8,     25, 25),
-            (gridW / 4,     30, 35),
-            (gridW * 3 / 8, 18, 18),
-            (gridW / 2,     28, 30),
-            (gridW * 5 / 8, 22, 22),
-            (gridW * 3 / 4, 30, 33),
-            (gridW * 7 / 8, 20, 20),
+            (gridW / 10,    30, 32),
+            (gridW / 4,     35, 42),
+            (gridW * 3 / 8, 22, 24),
+            (gridW / 2,     32, 38),
+            (gridW * 5 / 8, 25, 28),
+            (gridW * 3 / 4, 38, 45),
+            (gridW * 9 / 10, 22, 26),
         ]
-
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
                 let dist = abs(x - bump.center)
                 let nd = CGFloat(dist) / CGFloat(bump.radius)
-                let bh = Int(CGFloat(bump.peak) * (1.0 - nd * nd))
-                heightMap[x] = max(heightMap[x], bh)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
             }
         }
 
-        let hillBase  = UIColor(red: 0.45, green: 0.68, blue: 0.38, alpha: 0.50)
-        let hillMid   = UIColor(red: 0.52, green: 0.74, blue: 0.42, alpha: 0.45)
-        let hillTop   = UIColor(red: 0.38, green: 0.58, blue: 0.32, alpha: 0.55)  // darker top edge
-        let hillLight = UIColor(red: 0.58, green: 0.80, blue: 0.50, alpha: 0.35)  // highlight
+        let hillBase  = UIColor(red: 0.35, green: 0.58, blue: 0.28, alpha: 0.80)
+        let hillMid   = UIColor(red: 0.42, green: 0.65, blue: 0.32, alpha: 0.75)
+        let hillTop   = UIColor(red: 0.28, green: 0.48, blue: 0.22, alpha: 0.85)
+        let hillLight = UIColor(red: 0.50, green: 0.72, blue: 0.40, alpha: 0.65)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -905,25 +902,19 @@ final class TextureFactory {
                 let hillH = heightMap[x]
                 for y in 0..<hillH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    // Gradient within hill: top edge dark, middle light, base medium
                     let ratio = CGFloat(y) / max(1, CGFloat(hillH))
                     let color: UIColor
-                    if y == hillH - 1 {
-                        color = hillTop
-                    } else if y == hillH - 2 && hillH > 3 {
-                        color = hillLight
-                    } else if ratio > 0.6 {
-                        color = hillMid
-                    } else {
-                        color = hillBase
-                    }
+                    if y == hillH - 1 { color = hillTop }
+                    else if y == hillH - 2 && hillH > 3 { color = hillLight }
+                    else if ratio > 0.6 { color = hillMid }
+                    else { color = hillBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Scatter pixel bushes/details on hill tops
-            let bushColor = UIColor(red: 0.35, green: 0.55, blue: 0.28, alpha: 0.50)
+            // Pixel bushes on hilltops
+            let bushColor = UIColor(red: 0.28, green: 0.48, blue: 0.22, alpha: 0.75)
             c.setFillColor(bushColor.cgColor)
             for x in stride(from: 3, to: gridW - 3, by: 7) {
                 let hillH = heightMap[x]
@@ -932,6 +923,41 @@ final class TextureFactory {
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps * 2, height: ps))
                     c.fill(CGRect(x: CGFloat(x - 1) * ps, y: yPos + ps, width: ps, height: ps))
                     c.fill(CGRect(x: CGFloat(x + 2) * ps, y: yPos + ps, width: ps, height: ps))
+                }
+            }
+
+            // Windmill on tallest hill
+            let tallest = gridW * 3 / 4
+            let tH = heightMap[tallest]
+            let wmX = CGFloat(tallest) * ps
+            let wmBase = h - CGFloat(tH + 1) * ps
+            let wmColor = UIColor(red: 0.52, green: 0.42, blue: 0.32, alpha: 0.70)
+            c.setFillColor(wmColor.cgColor)
+            // Tower
+            for i in 0..<6 { c.fill(CGRect(x: wmX, y: wmBase - CGFloat(i) * ps, width: ps, height: ps)) }
+            // Blades (X shape)
+            let bladeC = UIColor(red: 0.75, green: 0.70, blue: 0.65, alpha: 0.60)
+            c.setFillColor(bladeC.cgColor)
+            let hub = wmBase - ps * 5
+            for d in 1...3 {
+                c.fill(CGRect(x: wmX - CGFloat(d) * ps, y: hub - CGFloat(d) * ps, width: ps, height: ps))
+                c.fill(CGRect(x: wmX + CGFloat(d) * ps, y: hub - CGFloat(d) * ps, width: ps, height: ps))
+                c.fill(CGRect(x: wmX - CGFloat(d) * ps, y: hub + CGFloat(d) * ps, width: ps, height: ps))
+                c.fill(CGRect(x: wmX + CGFloat(d) * ps, y: hub + CGFloat(d) * ps, width: ps, height: ps))
+            }
+
+            // Scattered flowers
+            let flowerColors: [UIColor] = [
+                UIColor(red: 1.0, green: 0.40, blue: 0.45, alpha: 0.60),
+                UIColor(red: 1.0, green: 0.85, blue: 0.30, alpha: 0.55),
+                UIColor(red: 0.80, green: 0.50, blue: 0.90, alpha: 0.55),
+            ]
+            for x in stride(from: 5, to: gridW - 5, by: 11) {
+                let fH = heightMap[x]
+                if fH > 3 {
+                    let fy = h - CGFloat(fH + 1) * ps
+                    c.setFillColor(flowerColors[x % flowerColors.count].cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: fy, width: ps, height: ps))
                 }
             }
         }
@@ -1347,10 +1373,14 @@ final class TextureFactory {
         let gridW = Int(w / ps)
 
         var heightMap = [Int](repeating: 1, count: gridW)
+        // Wider, flatter rolling hills — distinct from day profile
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 25, 25), (gridW / 4, 30, 35), (gridW * 3 / 8, 18, 18),
-            (gridW / 2, 28, 30), (gridW * 5 / 8, 22, 22), (gridW * 3 / 4, 30, 33),
-            (gridW * 7 / 8, 20, 20),
+            (gridW / 12,    45, 28),
+            (gridW / 4,     50, 35),
+            (gridW * 5 / 12, 30, 20),
+            (gridW / 2,     55, 40),
+            (gridW * 2 / 3, 35, 25),
+            (gridW * 5 / 6, 45, 38),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1360,28 +1390,68 @@ final class TextureFactory {
             }
         }
 
-        let hillBase  = UIColor(red: 0.55, green: 0.35, blue: 0.18, alpha: 0.55)
-        let hillMid   = UIColor(red: 0.65, green: 0.42, blue: 0.20, alpha: 0.50)
-        let hillTop   = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 0.60)
-        let hillLight = UIColor(red: 0.80, green: 0.55, blue: 0.25, alpha: 0.40)
+        let hillBase  = UIColor(red: 0.45, green: 0.25, blue: 0.12, alpha: 0.82)
+        let hillMid   = UIColor(red: 0.55, green: 0.32, blue: 0.15, alpha: 0.78)
+        let hillTop   = UIColor(red: 0.35, green: 0.18, blue: 0.08, alpha: 0.88)
+        let hillGlow  = UIColor(red: 0.72, green: 0.45, blue: 0.20, alpha: 0.65)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
             for x in 0..<gridW {
-                let hillH = heightMap[x]
-                for y in 0..<hillH {
+                let hH = heightMap[x]
+                for y in 0..<hH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(hillH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(hH))
                     let color: UIColor
-                    if y == hillH - 1 { color = hillTop }
-                    else if y == hillH - 2 && hillH > 3 { color = hillLight }
+                    if y == hH - 1 { color = hillTop }
+                    else if y == hH - 2 && hH > 3 { color = hillGlow }
                     else if ratio > 0.6 { color = hillMid }
                     else { color = hillBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
+
+            // Barn silhouette on a hilltop
+            let barnX = gridW / 2
+            let barnBase = h - CGFloat(heightMap[barnX] + 1) * ps
+            let barnC = UIColor(red: 0.25, green: 0.12, blue: 0.06, alpha: 0.80)
+            c.setFillColor(barnC.cgColor)
+            // Barn body
+            for row in 0..<5 {
+                let bw = row < 4 ? 6 : 4
+                let offset = (6 - bw) / 2
+                for col in 0..<bw {
+                    c.fill(CGRect(x: CGFloat(barnX + offset + col) * ps, y: barnBase - CGFloat(row) * ps, width: ps, height: ps))
+                }
+            }
+            // Barn roof peak
+            c.fill(CGRect(x: CGFloat(barnX + 2) * ps, y: barnBase - ps * 5, width: ps * 2, height: ps))
+
+            // Sun glow at horizon (behind hills)
+            let sunGlow = UIColor(red: 1.0, green: 0.70, blue: 0.25, alpha: 0.15)
+            c.setFillColor(sunGlow.cgColor)
+            let sunX = w * 0.7, sunY = h - CGFloat(30) * ps
+            for dy in -6...6 {
+                for dx in -6...6 {
+                    if dx * dx + dy * dy <= 36 {
+                        c.fill(CGRect(x: sunX + CGFloat(dx) * ps, y: sunY + CGFloat(dy) * ps, width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Fence posts along a hill
+            let fenceC = UIColor(red: 0.30, green: 0.18, blue: 0.10, alpha: 0.60)
+            c.setFillColor(fenceC.cgColor)
+            for x in stride(from: gridW / 8, to: gridW / 8 + 20, by: 4) {
+                guard x < gridW else { break }
+                let fY = h - CGFloat(heightMap[x] + 1) * ps
+                c.fill(CGRect(x: CGFloat(x) * ps, y: fY - ps, width: ps, height: ps * 2))
+            }
+            // Fence rail
+            let railStart = CGFloat(gridW / 8) * ps
+            c.fill(CGRect(x: railStart, y: h - CGFloat(heightMap[gridW / 8] + 1) * ps, width: ps * 20, height: ps * 0.5))
         }
     }
 
@@ -1394,10 +1464,15 @@ final class TextureFactory {
         let gridW = Int(w / ps)
 
         var heightMap = [Int](repeating: 1, count: gridW)
+        // Distinctive rolling profile — different from day/sunset
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 25, 25), (gridW / 4, 30, 35), (gridW * 3 / 8, 18, 18),
-            (gridW / 2, 28, 30), (gridW * 5 / 8, 22, 22), (gridW * 3 / 4, 30, 33),
-            (gridW * 7 / 8, 20, 20),
+            (gridW / 10,    28, 30),
+            (gridW / 4,     40, 45),
+            (gridW * 3 / 8, 20, 20),
+            (gridW / 2,     35, 38),
+            (gridW * 3 / 5, 28, 32),
+            (gridW * 3 / 4, 42, 48),
+            (gridW * 9 / 10, 25, 25),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1407,27 +1482,90 @@ final class TextureFactory {
             }
         }
 
-        let hillBase  = UIColor(red: 0.08, green: 0.10, blue: 0.22, alpha: 0.65)
-        let hillMid   = UIColor(red: 0.10, green: 0.14, blue: 0.28, alpha: 0.60)
-        let hillTop   = UIColor(red: 0.06, green: 0.08, blue: 0.18, alpha: 0.70)
-        let hillLight = UIColor(red: 0.14, green: 0.18, blue: 0.35, alpha: 0.45)
+        // Dark fills need HIGH alpha to be visible against dark sky
+        let hillBase    = UIColor(red: 0.06, green: 0.08, blue: 0.18, alpha: 0.92)
+        let hillMid     = UIColor(red: 0.08, green: 0.10, blue: 0.22, alpha: 0.88)
+        let hillTop     = UIColor(red: 0.04, green: 0.06, blue: 0.14, alpha: 0.95)
+        // Moonlit edge — bright blue highlight on top pixels
+        let moonEdge    = UIColor(red: 0.30, green: 0.40, blue: 0.65, alpha: 0.70)
+        let moonHighlt  = UIColor(red: 0.45, green: 0.55, blue: 0.80, alpha: 0.55)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Moon glow in sky
+            let moonX = w * 0.75, moonY = h * 0.12
+            let moonGlow = UIColor(red: 0.60, green: 0.65, blue: 0.85, alpha: 0.08)
+            c.setFillColor(moonGlow.cgColor)
+            for dy in -8...8 {
+                for dx in -8...8 {
+                    if dx * dx + dy * dy <= 64 {
+                        c.fill(CGRect(x: moonX + CGFloat(dx) * ps, y: moonY + CGFloat(dy) * ps, width: ps, height: ps))
+                    }
+                }
+            }
+            // Moon disc
+            let moonDisc = UIColor(red: 0.85, green: 0.88, blue: 0.95, alpha: 0.55)
+            c.setFillColor(moonDisc.cgColor)
+            for dy in -3...3 {
+                for dx in -3...3 {
+                    if dx * dx + dy * dy <= 9 {
+                        c.fill(CGRect(x: moonX + CGFloat(dx) * ps, y: moonY + CGFloat(dy) * ps, width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Hill silhouettes with moonlit edges
             for x in 0..<gridW {
                 let hillH = heightMap[x]
                 for y in 0..<hillH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(hillH))
                     let color: UIColor
-                    if y == hillH - 1 { color = hillTop }
-                    else if y == hillH - 2 && hillH > 3 { color = hillLight }
+                    if y == hillH - 1 { color = moonEdge }
+                    else if y == hillH - 2 && hillH > 4 { color = moonHighlt }
+                    else if y == hillH - 1 { color = hillTop }
                     else if ratio > 0.6 { color = hillMid }
                     else { color = hillBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
+            }
+
+            // Fireflies — scattered glowing dots
+            let fireflyColors: [UIColor] = [
+                UIColor(red: 0.85, green: 0.95, blue: 0.40, alpha: 0.65),
+                UIColor(red: 0.75, green: 0.90, blue: 0.35, alpha: 0.55),
+                UIColor(red: 0.90, green: 1.0,  blue: 0.50, alpha: 0.50),
+            ]
+            let fireflyGlow = UIColor(red: 0.80, green: 0.95, blue: 0.35, alpha: 0.10)
+            let fireflyPositions: [(Int, Int)] = [
+                (gridW / 6, 10), (gridW / 3, 15), (gridW / 2 + 5, 8),
+                (gridW * 2 / 3, 18), (gridW * 5 / 6, 12), (gridW / 8, 20),
+                (gridW * 3 / 8, 22), (gridW * 7 / 8, 14),
+            ]
+            for (fx, fy) in fireflyPositions {
+                let fxP = CGFloat(fx) * ps
+                let baseY = h - CGFloat(heightMap[min(fx, gridW - 1)]) * ps
+                let fyP = baseY - CGFloat(fy) * ps
+                // Glow halo
+                c.setFillColor(fireflyGlow.cgColor)
+                c.fill(CGRect(x: fxP - ps, y: fyP - ps, width: ps * 3, height: ps * 3))
+                // Firefly dot
+                c.setFillColor(fireflyColors[fx % fireflyColors.count].cgColor)
+                c.fill(CGRect(x: fxP, y: fyP, width: ps, height: ps))
+            }
+
+            // House windows — warm glow dots on hills
+            let windowC = UIColor(red: 1.0, green: 0.85, blue: 0.40, alpha: 0.55)
+            let windowPositions: [(Int, Int)] = [(gridW / 4 + 3, 5), (gridW / 2 - 2, 4), (gridW * 3 / 4 + 5, 6)]
+            for (wx, wy) in windowPositions {
+                guard wx < gridW else { continue }
+                let wY = h - CGFloat(wy) * ps
+                c.setFillColor(windowC.cgColor)
+                c.fill(CGRect(x: CGFloat(wx) * ps, y: wY, width: ps, height: ps))
+                c.fill(CGRect(x: CGFloat(wx + 1) * ps, y: wY, width: ps, height: ps))
             }
         }
     }
@@ -1587,18 +1725,18 @@ final class TextureFactory {
 
         // Coral palette with more variety
         let coralPalette: [(base: UIColor, mid: UIColor, top: UIColor)] = [
-            (UIColor(red: 0.85, green: 0.30, blue: 0.40, alpha: 0.65),
-             UIColor(red: 0.95, green: 0.45, blue: 0.50, alpha: 0.60),
-             UIColor(red: 0.75, green: 0.22, blue: 0.32, alpha: 0.70)),
-            (UIColor(red: 0.90, green: 0.60, blue: 0.20, alpha: 0.60),
-             UIColor(red: 1.0, green: 0.75, blue: 0.35, alpha: 0.55),
-             UIColor(red: 0.80, green: 0.50, blue: 0.15, alpha: 0.65)),
-            (UIColor(red: 0.55, green: 0.25, blue: 0.70, alpha: 0.60),
-             UIColor(red: 0.70, green: 0.40, blue: 0.85, alpha: 0.55),
-             UIColor(red: 0.45, green: 0.18, blue: 0.58, alpha: 0.65)),
-            (UIColor(red: 0.20, green: 0.65, blue: 0.55, alpha: 0.60),
-             UIColor(red: 0.30, green: 0.78, blue: 0.65, alpha: 0.55),
-             UIColor(red: 0.15, green: 0.52, blue: 0.45, alpha: 0.65)),
+            (UIColor(red: 0.85, green: 0.30, blue: 0.40, alpha: 0.85),
+             UIColor(red: 0.95, green: 0.45, blue: 0.50, alpha: 0.80),
+             UIColor(red: 0.75, green: 0.22, blue: 0.32, alpha: 0.88)),
+            (UIColor(red: 0.90, green: 0.60, blue: 0.20, alpha: 0.82),
+             UIColor(red: 1.0, green: 0.75, blue: 0.35, alpha: 0.78),
+             UIColor(red: 0.80, green: 0.50, blue: 0.15, alpha: 0.85)),
+            (UIColor(red: 0.55, green: 0.25, blue: 0.70, alpha: 0.82),
+             UIColor(red: 0.70, green: 0.40, blue: 0.85, alpha: 0.78),
+             UIColor(red: 0.45, green: 0.18, blue: 0.58, alpha: 0.85)),
+            (UIColor(red: 0.20, green: 0.65, blue: 0.55, alpha: 0.82),
+             UIColor(red: 0.30, green: 0.78, blue: 0.65, alpha: 0.78),
+             UIColor(red: 0.15, green: 0.52, blue: 0.45, alpha: 0.85)),
         ]
 
         var bumpOwner = [Int](repeating: 0, count: gridW)
@@ -1723,13 +1861,13 @@ final class TextureFactory {
             }
         }
 
-        let rockBase   = UIColor(red: 0.22, green: 0.12, blue: 0.08, alpha: 0.80)
-        let rockMid    = UIColor(red: 0.32, green: 0.20, blue: 0.12, alpha: 0.75)
-        let rockLight  = UIColor(red: 0.40, green: 0.28, blue: 0.18, alpha: 0.65)
-        let rockTop    = UIColor(red: 0.18, green: 0.10, blue: 0.06, alpha: 0.85)
-        let lavaGlow   = UIColor(red: 1.0, green: 0.45, blue: 0.10, alpha: 0.65)
-        let lavaHot    = UIColor(red: 1.0, green: 0.70, blue: 0.20, alpha: 0.55)
-        let lavaBright = UIColor(red: 1.0, green: 0.85, blue: 0.35, alpha: 0.50)
+        let rockBase   = UIColor(red: 0.22, green: 0.12, blue: 0.08, alpha: 0.88)
+        let rockMid    = UIColor(red: 0.32, green: 0.20, blue: 0.12, alpha: 0.82)
+        let rockLight  = UIColor(red: 0.40, green: 0.28, blue: 0.18, alpha: 0.75)
+        let rockTop    = UIColor(red: 0.18, green: 0.10, blue: 0.06, alpha: 0.92)
+        let lavaGlow   = UIColor(red: 1.0, green: 0.45, blue: 0.10, alpha: 0.80)
+        let lavaHot    = UIColor(red: 1.0, green: 0.70, blue: 0.20, alpha: 0.70)
+        let lavaBright = UIColor(red: 1.0, green: 0.85, blue: 0.35, alpha: 0.65)
         let smokeColor = UIColor(red: 0.25, green: 0.20, blue: 0.18, alpha: 0.25)
         let emberColor = UIColor(red: 1.0, green: 0.55, blue: 0.15, alpha: 0.45)
 
@@ -1821,15 +1959,15 @@ final class TextureFactory {
             }
         }
 
-        let rockBase = UIColor(red: 0.42, green: 0.50, blue: 0.60, alpha: 0.55)
-        let rockMid  = UIColor(red: 0.52, green: 0.60, blue: 0.70, alpha: 0.50)
-        let snowTop  = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.70)
-        let snowMid  = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.60)
-        let icicle   = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.50)
-        // Aurora colors
-        let auroraG  = UIColor(red: 0.20, green: 0.80, blue: 0.45, alpha: 0.12)
-        let auroraB  = UIColor(red: 0.25, green: 0.55, blue: 0.85, alpha: 0.10)
-        let auroraP  = UIColor(red: 0.55, green: 0.30, blue: 0.75, alpha: 0.08)
+        let rockBase = UIColor(red: 0.35, green: 0.42, blue: 0.52, alpha: 0.78)
+        let rockMid  = UIColor(red: 0.45, green: 0.52, blue: 0.62, alpha: 0.72)
+        let snowTop  = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.90)
+        let snowMid  = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.82)
+        let icicle   = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.70)
+        // Aurora colors — brighter for visibility
+        let auroraG  = UIColor(red: 0.20, green: 0.80, blue: 0.45, alpha: 0.22)
+        let auroraB  = UIColor(red: 0.25, green: 0.55, blue: 0.85, alpha: 0.18)
+        let auroraP  = UIColor(red: 0.55, green: 0.30, blue: 0.75, alpha: 0.15)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -1879,7 +2017,7 @@ final class TextureFactory {
         }
     }
 
-    // MARK: Space Terrain Hills — distant cratered planet surface
+    // MARK: Space Terrain Hills — alien planet surface with nebula and ringed planet
 
     private func renderSpaceTerrainHills() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
@@ -1887,12 +2025,12 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Lumpy alien terrain
+        // Alien terrain — cratered lumpy surface
         var heightMap = [Int](repeating: 2, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 30, 25), (gridW / 4, 40, 35), (gridW * 3 / 8, 20, 15),
-            (gridW / 2, 35, 30), (gridW * 3 / 5, 45, 40), (gridW * 3 / 4, 25, 22),
-            (gridW * 9 / 10, 35, 27),
+            (gridW / 8, 30, 30), (gridW / 4, 40, 42), (gridW * 3 / 8, 20, 18),
+            (gridW / 2, 35, 38), (gridW * 3 / 5, 45, 48), (gridW * 3 / 4, 25, 28),
+            (gridW * 9 / 10, 35, 35),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1902,57 +2040,63 @@ final class TextureFactory {
             }
         }
 
-        let surfBase = UIColor(red: 0.15, green: 0.10, blue: 0.25, alpha: 0.65)
-        let surfMid  = UIColor(red: 0.22, green: 0.15, blue: 0.35, alpha: 0.60)
-        let surfTop  = UIColor(red: 0.12, green: 0.08, blue: 0.20, alpha: 0.70)
-        let surfDust = UIColor(red: 0.18, green: 0.13, blue: 0.28, alpha: 0.55)
-
-        // More craters with depth
+        // Craters
         let craters: [(cx: Int, r: Int)] = [
-            (gridW / 8, 4), (gridW / 4, 6), (gridW * 2 / 5, 3),
-            (gridW * 3 / 5, 7), (gridW * 3 / 4, 5), (gridW * 7 / 8, 4),
+            (gridW / 8, 5), (gridW / 4, 7), (gridW * 2 / 5, 4),
+            (gridW * 3 / 5, 8), (gridW * 3 / 4, 6), (gridW * 7 / 8, 5),
         ]
         var craterMap = [Bool](repeating: false, count: gridW)
-        var craterInner = [Bool](repeating: false, count: gridW)
         for crater in craters {
             for x in max(0, crater.cx - crater.r)..<min(gridW, crater.cx + crater.r) {
                 craterMap[x] = true
                 let dist = abs(x - crater.cx)
                 if dist < crater.r {
-                    let dip = Int(CGFloat(crater.r - dist) * 0.6)
+                    let dip = Int(CGFloat(crater.r - dist) * 0.5)
                     heightMap[x] = max(2, heightMap[x] - dip)
-                    if dist < crater.r / 2 { craterInner[x] = true }
                 }
             }
         }
-        let craterRim   = UIColor(red: 0.28, green: 0.20, blue: 0.42, alpha: 0.55)
-        let craterFloor = UIColor(red: 0.10, green: 0.06, blue: 0.18, alpha: 0.70)
 
-        // Nebula glow — faint colored patches in sky
-        let nebulaA = UIColor(red: 0.20, green: 0.08, blue: 0.40, alpha: 0.10)
-        let nebulaB = UIColor(red: 0.08, green: 0.15, blue: 0.35, alpha: 0.08)
-        // Distant planet
-        let planetColor = UIColor(red: 0.35, green: 0.25, blue: 0.50, alpha: 0.30)
-        let planetLight = UIColor(red: 0.50, green: 0.40, blue: 0.65, alpha: 0.25)
+        // MUCH higher alpha for visibility against dark sky
+        let surfBase   = UIColor(red: 0.22, green: 0.15, blue: 0.35, alpha: 0.88)
+        let surfMid    = UIColor(red: 0.30, green: 0.22, blue: 0.45, alpha: 0.85)
+        let surfTop    = UIColor(red: 0.18, green: 0.12, blue: 0.28, alpha: 0.92)
+        let surfDust   = UIColor(red: 0.25, green: 0.18, blue: 0.38, alpha: 0.82)
+        let craterRim  = UIColor(red: 0.38, green: 0.28, blue: 0.55, alpha: 0.85)
+        let craterFlr  = UIColor(red: 0.14, green: 0.10, blue: 0.25, alpha: 0.90)
+        let crystalA   = UIColor(red: 0.50, green: 0.80, blue: 1.0, alpha: 0.75)
+        let crystalB   = UIColor(red: 0.80, green: 0.40, blue: 1.0, alpha: 0.70)
+
+        // Nebula
+        let nebPurple  = UIColor(red: 0.35, green: 0.12, blue: 0.55, alpha: 0.22)
+        let nebBlue    = UIColor(red: 0.12, green: 0.25, blue: 0.55, alpha: 0.18)
+        let nebPink    = UIColor(red: 0.50, green: 0.15, blue: 0.40, alpha: 0.15)
+
+        // Planet
+        let planetDark  = UIColor(red: 0.30, green: 0.50, blue: 0.70, alpha: 0.65)
+        let planetLight = UIColor(red: 0.50, green: 0.70, blue: 0.90, alpha: 0.60)
+        let ringColor   = UIColor(red: 0.65, green: 0.75, blue: 0.85, alpha: 0.40)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Nebula glow patches
-            c.setFillColor(nebulaA.cgColor)
-            c.fill(CGRect(x: w * 0.25, y: ps * 2, width: w * 0.3, height: ps * 8))
-            c.setFillColor(nebulaB.cgColor)
-            c.fill(CGRect(x: w * 0.60, y: ps * 4, width: w * 0.25, height: ps * 6))
+            // Large nebula clouds
+            c.setFillColor(nebPurple.cgColor)
+            c.fill(CGRect(x: w * 0.10, y: ps * 2, width: w * 0.35, height: ps * 12))
+            c.setFillColor(nebBlue.cgColor)
+            c.fill(CGRect(x: w * 0.50, y: ps * 4, width: w * 0.30, height: ps * 10))
+            c.setFillColor(nebPink.cgColor)
+            c.fill(CGRect(x: w * 0.30, y: ps * 6, width: w * 0.25, height: ps * 8))
 
-            // Distant planet (small circle in sky)
-            let planetCX = w * 0.78, planetCY: CGFloat = ps * 6
-            let planetR = 5
+            // Ringed planet — large and prominent
+            let planetCX = w * 0.72, planetCY = ps * 10
+            let planetR = 8
             for dy in -planetR...planetR {
                 for dx in -planetR...planetR {
                     let dist = sqrt(CGFloat(dx * dx + dy * dy))
                     if dist <= CGFloat(planetR) {
-                        let pc = dx < 0 ? planetLight : planetColor
+                        let pc = dx < 1 ? planetLight : planetDark
                         c.setFillColor(pc.cgColor)
                         c.fill(CGRect(x: planetCX + CGFloat(dx) * ps,
                                       y: planetCY + CGFloat(dy) * ps,
@@ -1960,27 +2104,67 @@ final class TextureFactory {
                     }
                 }
             }
+            // Ring (ellipse around planet)
+            c.setFillColor(ringColor.cgColor)
+            for dx in (-planetR - 5)...(planetR + 5) {
+                let ringY = CGFloat(dx) * 0.3
+                let ringDist = abs(CGFloat(dx))
+                if ringDist > CGFloat(planetR - 1) || abs(Int(ringY)) > 1 {
+                    c.fill(CGRect(x: planetCX + CGFloat(dx) * ps,
+                                  y: planetCY + ringY * ps,
+                                  width: ps, height: ps))
+                }
+            }
+
+            // Stars — bright dots scattered in sky area
+            let starBright = UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.65)
+            let starDim    = UIColor(red: 0.80, green: 0.85, blue: 1.0, alpha: 0.40)
+            let starPositions: [(CGFloat, CGFloat, Bool)] = [
+                (w * 0.05, ps * 3, true), (w * 0.15, ps * 8, false), (w * 0.25, ps * 2, true),
+                (w * 0.35, ps * 12, false), (w * 0.45, ps * 5, true), (w * 0.55, ps * 15, false),
+                (w * 0.65, ps * 3, false), (w * 0.85, ps * 6, true), (w * 0.95, ps * 10, false),
+                (w * 0.08, ps * 18, true), (w * 0.42, ps * 20, false), (w * 0.78, ps * 22, true),
+            ]
+            for (sx, sy, bright) in starPositions {
+                c.setFillColor(bright ? starBright.cgColor : starDim.cgColor)
+                c.fill(CGRect(x: sx, y: sy, width: ps, height: ps))
+            }
 
             // Terrain
             for x in 0..<gridW {
-                let mtnH = heightMap[x]
-                for y in 0..<mtnH {
+                let mH = heightMap[x]
+                for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     var color: UIColor
-                    if craterInner[x] && y < 3 { color = craterFloor }
-                    else if y == mtnH - 1 { color = surfTop }
+                    if craterMap[x] && y < 3 { color = craterFlr }
+                    else if y == mH - 1 { color = craterMap[x] ? craterRim : surfTop }
                     else if ratio > 0.5 { color = surfMid }
                     else { color = (x + y) % 4 == 0 ? surfDust : surfBase }
-                    if craterMap[x] && y == mtnH - 1 { color = craterRim }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
 
-            // Floating asteroid silhouettes in sky
-            let asterC = UIColor(red: 0.20, green: 0.15, blue: 0.30, alpha: 0.25)
-            for (ax, ay, ar) in [(w * 0.12, ps * 10, 2), (w * 0.45, ps * 5, 1), (w * 0.90, ps * 8, 2)] as [(CGFloat, CGFloat, Int)] {
+            // Crystal clusters on terrain peaks
+            for x in stride(from: 5, to: gridW - 5, by: 15) {
+                let mH = heightMap[x]
+                if mH > 8 {
+                    let baseY = h - CGFloat(mH + 1) * ps
+                    let cc = x % 2 == 0 ? crystalA : crystalB
+                    c.setFillColor(cc.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: baseY, width: ps, height: ps))
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: baseY - ps, width: ps, height: ps))
+                    c.fill(CGRect(x: CGFloat(x + 1) * ps, y: baseY, width: ps, height: ps))
+                    // Glow
+                    c.setFillColor(cc.withAlphaComponent(0.15).cgColor)
+                    c.fill(CGRect(x: CGFloat(x - 1) * ps, y: baseY - ps, width: ps * 4, height: ps * 3))
+                }
+            }
+
+            // Floating asteroids
+            let asterC = UIColor(red: 0.30, green: 0.22, blue: 0.45, alpha: 0.55)
+            for (ax, ay, ar) in [(w * 0.12, ps * 14, 3), (w * 0.45, ps * 8, 2), (w * 0.90, ps * 11, 3)] as [(CGFloat, CGFloat, Int)] {
                 for dy in -ar...ar {
                     for dx in -ar...ar {
                         if abs(dx) + abs(dy) <= ar + 1 {
@@ -2015,9 +2199,9 @@ final class TextureFactory {
             }
         }
 
-        let islandBase = UIColor(red: 0.18, green: 0.48, blue: 0.32, alpha: 0.55)
-        let islandMid  = UIColor(red: 0.22, green: 0.55, blue: 0.38, alpha: 0.50)
-        let islandTop  = UIColor(red: 0.28, green: 0.62, blue: 0.42, alpha: 0.60)
+        let islandBase = UIColor(red: 0.15, green: 0.42, blue: 0.28, alpha: 0.82)
+        let islandMid  = UIColor(red: 0.20, green: 0.50, blue: 0.35, alpha: 0.78)
+        let islandTop  = UIColor(red: 0.25, green: 0.55, blue: 0.38, alpha: 0.85)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -2039,14 +2223,14 @@ final class TextureFactory {
             let shipBaseX = w * 0.62
             let waterLine = h - CGFloat(12) * ps  // sits above water level
 
-            let darkWood  = UIColor(red: 0.28, green: 0.16, blue: 0.08, alpha: 0.55)
-            let midWood   = UIColor(red: 0.38, green: 0.22, blue: 0.10, alpha: 0.50)
-            let lightWood = UIColor(red: 0.48, green: 0.30, blue: 0.14, alpha: 0.45)
-            let sailWhite = UIColor(red: 0.92, green: 0.88, blue: 0.80, alpha: 0.40)
-            let sailShadow = UIColor(red: 0.78, green: 0.74, blue: 0.68, alpha: 0.35)
-            let mastColor = UIColor(red: 0.22, green: 0.14, blue: 0.06, alpha: 0.55)
-            let flagBlack = UIColor(red: 0.10, green: 0.08, blue: 0.05, alpha: 0.55)
-            let skullWhite = UIColor(red: 0.90, green: 0.85, blue: 0.75, alpha: 0.50)
+            let darkWood  = UIColor(red: 0.28, green: 0.16, blue: 0.08, alpha: 0.88)
+            let midWood   = UIColor(red: 0.38, green: 0.22, blue: 0.10, alpha: 0.85)
+            let lightWood = UIColor(red: 0.48, green: 0.30, blue: 0.14, alpha: 0.80)
+            let sailWhite = UIColor(red: 0.95, green: 0.92, blue: 0.85, alpha: 0.82)
+            let sailShadow = UIColor(red: 0.82, green: 0.78, blue: 0.72, alpha: 0.75)
+            let mastColor = UIColor(red: 0.22, green: 0.14, blue: 0.06, alpha: 0.88)
+            let flagBlack = UIColor(red: 0.10, green: 0.08, blue: 0.05, alpha: 0.88)
+            let skullWhite = UIColor(red: 0.95, green: 0.90, blue: 0.82, alpha: 0.80)
 
             // Hull — wide curved shape (20px wide, 8px tall)
             for row in 0..<8 {
@@ -2200,9 +2384,10 @@ final class TextureFactory {
 
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 40, 22), (gridW / 4, 55, 35), (gridW * 2 / 5, 35, 20),
-            (gridW / 2, 50, 37), (gridW * 3 / 5, 30, 17), (gridW * 3 / 4, 45, 30),
-            (gridW * 9 / 10, 37, 25),
+            (gridW / 10,    40, 28), (gridW / 4, 55, 42),
+            (gridW * 2 / 5, 35, 25), (gridW / 2, 50, 45),
+            (gridW * 3 / 5, 30, 22), (gridW * 3 / 4, 45, 38),
+            (gridW * 9 / 10, 37, 30),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -2212,10 +2397,10 @@ final class TextureFactory {
             }
         }
 
-        let hillBase = UIColor(red: 0.42, green: 0.32, blue: 0.22, alpha: 0.50)
-        let hillMid  = UIColor(red: 0.52, green: 0.38, blue: 0.25, alpha: 0.45)
-        let hillTop  = UIColor(red: 0.60, green: 0.45, blue: 0.28, alpha: 0.55)
-        let hillGlow = UIColor(red: 0.85, green: 0.55, blue: 0.30, alpha: 0.35)
+        let hillBase = UIColor(red: 0.42, green: 0.32, blue: 0.22, alpha: 0.82)
+        let hillMid  = UIColor(red: 0.52, green: 0.38, blue: 0.25, alpha: 0.78)
+        let hillTop  = UIColor(red: 0.60, green: 0.45, blue: 0.28, alpha: 0.85)
+        let hillGlow = UIColor(red: 0.85, green: 0.55, blue: 0.30, alpha: 0.60)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -2234,6 +2419,81 @@ final class TextureFactory {
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
+
+            // HOLLYWOOD sign on tallest hill
+            let signStart = gridW / 2 - 10
+            let signBase = h - CGFloat(heightMap[gridW / 2] + 2) * ps
+            let letterC = UIColor(red: 0.95, green: 0.95, blue: 0.92, alpha: 0.75)
+            c.setFillColor(letterC.cgColor)
+            // Simplified block letters: H O L L Y W O O D
+            let letters: [[Int]] = [
+                [1,0,1, 1,1,1, 1,0,1],  // H
+                [0,1,0, 1,0,1, 0,1,0],  // O
+                [1,0,0, 1,0,0, 1,1,1],  // L
+                [1,0,0, 1,0,0, 1,1,1],  // L
+                [1,0,1, 0,1,0, 0,1,0],  // Y
+                [1,0,1, 1,1,1, 1,0,1],  // W (simplified)
+                [0,1,0, 1,0,1, 0,1,0],  // O
+                [0,1,0, 1,0,1, 0,1,0],  // O
+                [1,1,0, 1,0,1, 1,1,0],  // D
+            ]
+            for (li, letter) in letters.enumerated() {
+                let lx = signStart + li * 2
+                // Each letter is 3 wide × 3 tall (in pixels)
+                for row in 0..<3 {
+                    for col in 0..<3 {
+                        if row * 3 + col < letter.count && letter[row * 3 + col] == 1 {
+                            c.fill(CGRect(x: CGFloat(lx + col) * ps * 0.7,
+                                          y: signBase - CGFloat(2 - row) * ps,
+                                          width: ps * 0.7, height: ps))
+                        }
+                    }
+                }
+            }
+
+            // Downtown skyline cluster on the right
+            let dtStart = gridW * 3 / 4 + 5
+            let skyColor = UIColor(red: 0.30, green: 0.25, blue: 0.32, alpha: 0.70)
+            let skyLight = UIColor(red: 0.40, green: 0.35, blue: 0.42, alpha: 0.65)
+            let dtBuildings: [(x: Int, w: Int, h: Int)] = [
+                (0, 3, 35), (4, 2, 28), (7, 4, 45), (12, 3, 38), (16, 2, 22),
+            ]
+            for bld in dtBuildings {
+                let bx = dtStart + bld.x
+                for row in 0..<bld.h {
+                    let yPos = h - CGFloat(row + 1) * ps
+                    c.setFillColor(row > bld.h / 2 ? skyLight.cgColor : skyColor.cgColor)
+                    for col in 0..<bld.w {
+                        guard bx + col < gridW else { break }
+                        c.fill(CGRect(x: CGFloat(bx + col) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+                // Windows
+                let winC = UIColor(red: 1.0, green: 0.90, blue: 0.55, alpha: 0.50)
+                c.setFillColor(winC.cgColor)
+                for row in stride(from: 3, to: bld.h - 2, by: 4) {
+                    for col in stride(from: 0, to: bld.w, by: 2) {
+                        guard bx + col < gridW else { break }
+                        let yPos = h - CGFloat(row + 1) * ps
+                        c.fill(CGRect(x: CGFloat(bx + col) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Griffith Observatory dome on a peak
+            let obsX = gridW / 4
+            let obsBase = h - CGFloat(heightMap[obsX] + 1) * ps
+            let obsC = UIColor(red: 0.72, green: 0.65, blue: 0.55, alpha: 0.70)
+            c.setFillColor(obsC.cgColor)
+            // Base
+            for col in -2...2 { c.fill(CGRect(x: CGFloat(obsX + col) * ps, y: obsBase, width: ps, height: ps)) }
+            // Pillars
+            c.fill(CGRect(x: CGFloat(obsX - 1) * ps, y: obsBase - ps, width: ps, height: ps))
+            c.fill(CGRect(x: CGFloat(obsX + 1) * ps, y: obsBase - ps, width: ps, height: ps))
+            // Dome
+            c.fill(CGRect(x: CGFloat(obsX) * ps, y: obsBase - ps * 2, width: ps, height: ps))
+            c.fill(CGRect(x: CGFloat(obsX - 1) * ps, y: obsBase - ps * 2, width: ps * 3, height: ps))
+            c.fill(CGRect(x: CGFloat(obsX) * ps, y: obsBase - ps * 3, width: ps, height: ps))
         }
     }
 
@@ -2245,41 +2505,50 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Building-like stepped skyline — tall and dramatic
         var heightMap = [Int](repeating: 5, count: gridW)
+
         // Parliament block
         let parlStart = gridW / 5
-        for x in parlStart..<min(gridW, parlStart + 22) { heightMap[x] = 20 }
-        // Big Ben tower
-        for x in max(0, parlStart - 4)..<parlStart { heightMap[x] = 45 }
-        // Clock face at top
-        if parlStart - 2 >= 0 { heightMap[parlStart - 2] = 50 }
+        for x in parlStart..<min(gridW, parlStart + 22) { heightMap[x] = 22 }
+        // Big Ben tower — taller
+        for x in max(0, parlStart - 5)..<parlStart { heightMap[x] = 52 }
+        if parlStart - 3 >= 0 { heightMap[parlStart - 3] = 55 }
+        if parlStart - 2 >= 0 { heightMap[parlStart - 2] = 55 }
 
-        // Tower Bridge area
+        // Tower Bridge area — taller towers
         let bridgeStart = gridW / 2
-        for x in bridgeStart..<min(gridW, bridgeStart + 6) { heightMap[x] = 40 }
-        for x in min(gridW, bridgeStart + 6)..<min(gridW, bridgeStart + 16) { heightMap[x] = 12 }
-        for x in min(gridW, bridgeStart + 16)..<min(gridW, bridgeStart + 22) { heightMap[x] = 40 }
+        for x in bridgeStart..<min(gridW, bridgeStart + 6) { heightMap[x] = 45 }
+        for x in min(gridW, bridgeStart + 6)..<min(gridW, bridgeStart + 16) { heightMap[x] = 14 }
+        for x in min(gridW, bridgeStart + 16)..<min(gridW, bridgeStart + 22) { heightMap[x] = 45 }
+        // Bridge suspension cables hint
+        for x in min(gridW, bridgeStart + 8)..<min(gridW, bridgeStart + 14) {
+            let dist = abs(x - bridgeStart - 11)
+            heightMap[x] = max(heightMap[x], 20 - dist * 2)
+        }
 
-        // Gherkin / Shard area — tapered spire
+        // Gherkin / Shard area — taller
         let modernStart = gridW * 3 / 4
-        for x in modernStart..<min(gridW, modernStart + 6) {
+        for x in modernStart..<min(gridW, modernStart + 7) {
             let dist = abs(x - modernStart - 3)
-            heightMap[x] = max(10, 55 - dist * 8)
+            heightMap[x] = max(10, 60 - dist * 8)
         }
 
         // Generic rooftops
         let blocks: [(start: Int, w: Int, h: Int)] = [
-            (gridW * 2 / 5, 20, 35), (gridW * 2 / 5 + 12, 8, 22),
-            (gridW * 7 / 8, 25, 42),
+            (gridW * 2 / 5, 20, 38), (gridW * 2 / 5 + 12, 8, 25),
+            (gridW * 7 / 8, 25, 48),
         ]
         for block in blocks {
             for x in block.start..<min(gridW, block.start + block.w) { heightMap[x] = max(heightMap[x], block.h) }
         }
 
-        let brickDark = UIColor(red: 0.25, green: 0.22, blue: 0.20, alpha: 0.55)
-        let brickMid  = UIColor(red: 0.35, green: 0.30, blue: 0.28, alpha: 0.50)
-        let brickTop  = UIColor(red: 0.42, green: 0.38, blue: 0.35, alpha: 0.55)
+        // MUCH darker buildings for contrast against grey sky
+        let brickDark = UIColor(red: 0.15, green: 0.13, blue: 0.12, alpha: 0.88)
+        let brickMid  = UIColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 0.85)
+        let brickTop  = UIColor(red: 0.28, green: 0.25, blue: 0.22, alpha: 0.88)
+        let windowWarm = UIColor(red: 1.0, green: 0.85, blue: 0.45, alpha: 0.65)
+        let windowCool = UIColor(red: 0.65, green: 0.80, blue: 0.95, alpha: 0.55)
+        let windowOff  = UIColor(red: 0.18, green: 0.16, blue: 0.15, alpha: 0.75)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -2293,11 +2562,72 @@ final class TextureFactory {
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
-            // Clock face glow on Big Ben
-            let clockX = CGFloat(max(0, parlStart - 2)) * ps
-            let clockY = h - 50 * ps
-            c.setFillColor(UIColor(red: 1.0, green: 0.90, blue: 0.60, alpha: 0.5).cgColor)
-            c.fill(CGRect(x: clockX, y: clockY, width: ps * 2, height: ps * 2))
+
+            // Windows across all buildings
+            let windowColors = [windowWarm, windowCool, windowOff, windowOff, windowWarm]
+            for x in 0..<gridW {
+                let bH = heightMap[x]
+                if bH > 8 {
+                    for row in stride(from: 3, to: bH - 2, by: 4) {
+                        if x % 3 == 1 {
+                            let yPos = h - CGFloat(row + 1) * ps
+                            let wc = windowColors[(row * 5 + x * 3) % windowColors.count]
+                            c.setFillColor(wc.cgColor)
+                            c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                        }
+                    }
+                }
+            }
+
+            // Big Ben clock face glow — prominent
+            let clockX = CGFloat(max(0, parlStart - 3)) * ps
+            let clockY = h - 53 * ps
+            let clockGlow = UIColor(red: 1.0, green: 0.92, blue: 0.65, alpha: 0.70)
+            c.setFillColor(clockGlow.cgColor)
+            c.fill(CGRect(x: clockX, y: clockY, width: ps * 3, height: ps * 3))
+            // Glow halo
+            c.setFillColor(UIColor(red: 1.0, green: 0.90, blue: 0.55, alpha: 0.12).cgColor)
+            c.fill(CGRect(x: clockX - ps * 2, y: clockY - ps * 2, width: ps * 7, height: ps * 7))
+
+            // London Eye — partial wheel on left side
+            let eyeCX = w * 0.08, eyeCY = h * 0.30
+            let eyeR = 12
+            let eyeC = UIColor(red: 0.50, green: 0.52, blue: 0.55, alpha: 0.50)
+            c.setFillColor(eyeC.cgColor)
+            // Draw wheel outline
+            for angle in stride(from: 0.0, to: 360.0, by: 5.0) {
+                let rad = angle * .pi / 180.0
+                let dx = Int(cos(rad) * Double(eyeR))
+                let dy = Int(sin(rad) * Double(eyeR))
+                c.fill(CGRect(x: eyeCX + CGFloat(dx) * ps, y: eyeCY + CGFloat(dy) * ps, width: ps, height: ps))
+            }
+            // Spokes
+            for spoke in stride(from: 0.0, to: 360.0, by: 45.0) {
+                let rad = spoke * .pi / 180.0
+                for r in stride(from: 0, to: eyeR, by: 2) {
+                    let dx = Int(cos(rad) * Double(r))
+                    let dy = Int(sin(rad) * Double(r))
+                    c.fill(CGRect(x: eyeCX + CGFloat(dx) * ps, y: eyeCY + CGFloat(dy) * ps, width: ps, height: ps))
+                }
+            }
+            // Pods
+            let podC = UIColor(red: 0.55, green: 0.57, blue: 0.60, alpha: 0.55)
+            c.setFillColor(podC.cgColor)
+            for angle in stride(from: 0.0, to: 360.0, by: 30.0) {
+                let rad = angle * .pi / 180.0
+                let px = eyeCX + CGFloat(cos(rad) * Double(eyeR)) * ps
+                let py = eyeCY + CGFloat(sin(rad) * Double(eyeR)) * ps
+                c.fill(CGRect(x: px, y: py, width: ps * 2, height: ps))
+            }
+
+            // Rain streaks — London atmosphere
+            let rainC = UIColor(red: 0.60, green: 0.62, blue: 0.65, alpha: 0.08)
+            c.setFillColor(rainC.cgColor)
+            for i in stride(from: 0, to: gridW, by: 4) {
+                let rx = CGFloat(i) * ps
+                let ry = CGFloat(i % 5) * ps * 3
+                c.fill(CGRect(x: rx, y: ry, width: ps * 0.5, height: ps * 4))
+            }
         }
     }
 
@@ -3541,12 +3871,12 @@ final class TextureFactory {
         }
 
         // Erosion layer colors — bands of sedimentary rock
-        let mesaBase   = UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 0.60)
-        let mesaLayer1 = UIColor(red: 0.48, green: 0.28, blue: 0.12, alpha: 0.58)
-        let mesaLayer2 = UIColor(red: 0.54, green: 0.33, blue: 0.16, alpha: 0.55)
-        let mesaLayer3 = UIColor(red: 0.60, green: 0.38, blue: 0.20, alpha: 0.52)
-        let mesaTop    = UIColor(red: 0.23, green: 0.13, blue: 0.06, alpha: 0.65)
-        let mesaLight  = UIColor(red: 0.77, green: 0.57, blue: 0.29, alpha: 0.45)
+        let mesaBase   = UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 0.82)
+        let mesaLayer1 = UIColor(red: 0.48, green: 0.28, blue: 0.12, alpha: 0.80)
+        let mesaLayer2 = UIColor(red: 0.54, green: 0.33, blue: 0.16, alpha: 0.78)
+        let mesaLayer3 = UIColor(red: 0.60, green: 0.38, blue: 0.20, alpha: 0.75)
+        let mesaTop    = UIColor(red: 0.23, green: 0.13, blue: 0.06, alpha: 0.88)
+        let mesaLight  = UIColor(red: 0.77, green: 0.57, blue: 0.29, alpha: 0.65)
         let dustHaze   = UIColor(red: 0.80, green: 0.65, blue: 0.45, alpha: 0.06)
         let vultureC   = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.40)
 
@@ -3780,10 +4110,10 @@ final class TextureFactory {
             }
         }
 
-        let deepCanopy  = UIColor(red: 0.06, green: 0.24, blue: 0.10, alpha: 0.55)
-        let midCanopy   = UIColor(red: 0.12, green: 0.42, blue: 0.16, alpha: 0.50)
-        let topCanopy   = UIColor(red: 0.04, green: 0.18, blue: 0.07, alpha: 0.60)
-        let sunDapple   = UIColor(red: 0.24, green: 0.63, blue: 0.27, alpha: 0.40)
+        let deepCanopy  = UIColor(red: 0.06, green: 0.24, blue: 0.10, alpha: 0.80)
+        let midCanopy   = UIColor(red: 0.12, green: 0.42, blue: 0.16, alpha: 0.75)
+        let topCanopy   = UIColor(red: 0.04, green: 0.18, blue: 0.07, alpha: 0.85)
+        let sunDapple   = UIColor(red: 0.24, green: 0.63, blue: 0.27, alpha: 0.60)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -4328,15 +4658,15 @@ final class TextureFactory {
             ceilingMap[x] = 3 + (x % 7 < 2 ? 1 : 0)
         }
 
-        let rockDark    = UIColor(red: 0.10, green: 0.08, blue: 0.13, alpha: 0.70)
-        let rockMid     = UIColor(red: 0.18, green: 0.16, blue: 0.22, alpha: 0.65)
-        let rockLight   = UIColor(red: 0.29, green: 0.25, blue: 0.35, alpha: 0.55)
-        let crystalCyan = UIColor(red: 0.25, green: 0.82, blue: 0.88, alpha: 0.75)
-        let crystalPink = UIColor(red: 0.88, green: 0.25, blue: 0.75, alpha: 0.75)
-        let crystalGlow = UIColor(red: 0.25, green: 0.82, blue: 0.88, alpha: 0.10)
-        let waterGlow   = UIColor(red: 0.15, green: 0.45, blue: 0.65, alpha: 0.20)
-        let waterBright = UIColor(red: 0.25, green: 0.60, blue: 0.80, alpha: 0.15)
-        let dripC       = UIColor(red: 0.40, green: 0.65, blue: 0.80, alpha: 0.35)
+        let rockDark    = UIColor(red: 0.10, green: 0.08, blue: 0.13, alpha: 0.88)
+        let rockMid     = UIColor(red: 0.18, green: 0.16, blue: 0.22, alpha: 0.82)
+        let rockLight   = UIColor(red: 0.29, green: 0.25, blue: 0.35, alpha: 0.75)
+        let crystalCyan = UIColor(red: 0.30, green: 0.90, blue: 0.95, alpha: 0.92)
+        let crystalPink = UIColor(red: 0.92, green: 0.30, blue: 0.80, alpha: 0.92)
+        let crystalGlow = UIColor(red: 0.30, green: 0.85, blue: 0.92, alpha: 0.25)
+        let waterGlow   = UIColor(red: 0.18, green: 0.50, blue: 0.70, alpha: 0.35)
+        let waterBright = UIColor(red: 0.30, green: 0.65, blue: 0.85, alpha: 0.30)
+        let dripC       = UIColor(red: 0.45, green: 0.70, blue: 0.85, alpha: 0.55)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -4626,12 +4956,12 @@ final class TextureFactory {
             }
         }
 
-        let rockDark = UIColor(red: 0.23, green: 0.29, blue: 0.35, alpha: 0.60)
-        let rockMid  = UIColor(red: 0.35, green: 0.42, blue: 0.48, alpha: 0.55)
-        let rockLt   = UIColor(red: 0.42, green: 0.48, blue: 0.55, alpha: 0.50)
-        let snowShdw = UIColor(red: 0.69, green: 0.75, blue: 0.82, alpha: 0.60)
-        let snowMid  = UIColor(red: 0.85, green: 0.88, blue: 0.92, alpha: 0.65)
-        let snowTop  = UIColor(red: 0.94, green: 0.96, blue: 0.97, alpha: 0.70)
+        let rockDark = UIColor(red: 0.23, green: 0.29, blue: 0.35, alpha: 0.80)
+        let rockMid  = UIColor(red: 0.35, green: 0.42, blue: 0.48, alpha: 0.75)
+        let rockLt   = UIColor(red: 0.42, green: 0.48, blue: 0.55, alpha: 0.70)
+        let snowShdw = UIColor(red: 0.69, green: 0.75, blue: 0.82, alpha: 0.80)
+        let snowMid  = UIColor(red: 0.85, green: 0.88, blue: 0.92, alpha: 0.82)
+        let snowTop  = UIColor(red: 0.94, green: 0.96, blue: 0.97, alpha: 0.88)
         let waterC   = UIColor(red: 0.55, green: 0.75, blue: 0.90, alpha: 0.50)
         let waterFm  = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.45)
         let mistC    = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.15)
