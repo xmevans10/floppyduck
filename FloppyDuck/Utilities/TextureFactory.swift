@@ -1332,8 +1332,9 @@ final class TextureFactory {
         case .cave:                         return renderCaveFormationHills()
         case .mountain:                     return renderMountainPeakHills()
         case .space:                        return renderSpaceTerrainHills()
-        case .western, .jungle, .cave, .mountain, .egypt:
-            return renderPixelHills() // Fallback for new themes
+        case .lagoon:                       return renderLagoonIslandHills()
+        case .losAngeles:                   return renderLosAngelesHollywoodHills()
+        case .london:                       return renderLondonSkylineHills()
         }
     }
 
@@ -1772,6 +1773,173 @@ final class TextureFactory {
         }
     }
 
+    // MARK: Lagoon Island Hills — gentle tropical island mounds with palm silhouettes
+
+    private func renderLagoonIslandHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        var heightMap = [Int](repeating: 0, count: gridW)
+        // Gentle island mounds
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 6, 20, 8), (gridW * 2 / 5, 25, 12), (gridW * 3 / 5, 15, 6),
+            (gridW * 4 / 5, 22, 10),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let islandBase = UIColor(red: 0.18, green: 0.48, blue: 0.32, alpha: 0.50)
+        let islandMid  = UIColor(red: 0.22, green: 0.55, blue: 0.38, alpha: 0.45)
+        let islandTop  = UIColor(red: 0.28, green: 0.62, blue: 0.42, alpha: 0.55)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let mH = heightMap[x]
+                for y in 0..<mH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let color = y == mH - 1 ? islandTop : (ratio > 0.5 ? islandMid : islandBase)
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+            // Pirate ship silhouette on horizon
+            let shipX = w * 0.75
+            let shipY = h * 0.15
+            let shipColor = UIColor(red: 0.20, green: 0.12, blue: 0.06, alpha: 0.45)
+            c.setFillColor(shipColor.cgColor)
+            // Hull
+            c.fill(CGRect(x: shipX, y: shipY, width: ps * 8, height: ps * 3))
+            // Mast
+            c.fill(CGRect(x: shipX + ps * 3, y: shipY - ps * 6, width: ps, height: ps * 6))
+            // Sail
+            c.fill(CGRect(x: shipX + ps * 4, y: shipY - ps * 5, width: ps * 3, height: ps * 4))
+            // Flag
+            c.setFillColor(UIColor(red: 0.15, green: 0.08, blue: 0.04, alpha: 0.50).cgColor)
+            c.fill(CGRect(x: shipX + ps * 3, y: shipY - ps * 7, width: ps * 2, height: ps))
+        }
+    }
+
+    // MARK: Los Angeles Hollywood Hills — rolling brown hills with HOLLYWOOD-like structures
+
+    private func renderLosAngelesHollywoodHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        var heightMap = [Int](repeating: 1, count: gridW)
+        let bumps: [(center: Int, radius: Int, peak: Int)] = [
+            (gridW / 10, 16, 9), (gridW / 4, 22, 14), (gridW * 2 / 5, 14, 8),
+            (gridW / 2, 20, 15), (gridW * 3 / 5, 12, 7), (gridW * 3 / 4, 18, 12),
+            (gridW * 9 / 10, 15, 10),
+        ]
+        for bump in bumps {
+            for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
+                let dist = abs(x - bump.center)
+                let nd = CGFloat(dist) / CGFloat(bump.radius)
+                heightMap[x] = max(heightMap[x], Int(CGFloat(bump.peak) * (1.0 - nd * nd)))
+            }
+        }
+
+        let hillBase = UIColor(red: 0.42, green: 0.32, blue: 0.22, alpha: 0.50)
+        let hillMid  = UIColor(red: 0.52, green: 0.38, blue: 0.25, alpha: 0.45)
+        let hillTop  = UIColor(red: 0.60, green: 0.45, blue: 0.28, alpha: 0.55)
+        let hillGlow = UIColor(red: 0.85, green: 0.55, blue: 0.30, alpha: 0.35)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let hH = heightMap[x]
+                for y in 0..<hH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(hH))
+                    let color: UIColor
+                    if y == hH - 1 { color = hillTop }
+                    else if y == hH - 2 && hH > 4 { color = hillGlow }
+                    else if ratio > 0.5 { color = hillMid }
+                    else { color = hillBase }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+        }
+    }
+
+    // MARK: London Skyline Hills — iconic London skyline with Big Ben, Parliament, Eye
+
+    private func renderLondonSkylineHills() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 120
+        let ps: CGFloat = 4
+        let gridW = Int(w / ps)
+
+        // Building-like stepped skyline
+        var heightMap = [Int](repeating: 2, count: gridW)
+        // Parliament block
+        let parlStart = gridW / 5
+        for x in parlStart..<min(gridW, parlStart + 18) { heightMap[x] = 8 }
+        // Big Ben tower
+        for x in max(0, parlStart - 3)..<parlStart { heightMap[x] = 18 }
+        // Clock face at top
+        if parlStart - 2 >= 0 { heightMap[parlStart - 2] = 20 }
+
+        // Tower Bridge area
+        let bridgeStart = gridW / 2
+        for x in bridgeStart..<min(gridW, bridgeStart + 5) { heightMap[x] = 16 }
+        for x in min(gridW, bridgeStart + 5)..<min(gridW, bridgeStart + 14) { heightMap[x] = 5 }
+        for x in min(gridW, bridgeStart + 14)..<min(gridW, bridgeStart + 19) { heightMap[x] = 16 }
+
+        // Gherkin / Shard area
+        let modernStart = gridW * 3 / 4
+        for x in modernStart..<min(gridW, modernStart + 4) {
+            let dist = abs(x - modernStart - 2)
+            heightMap[x] = 20 - dist * 3
+        }
+
+        // Generic rooftops
+        let blocks: [(start: Int, w: Int, h: Int)] = [
+            (gridW * 2 / 5, 8, 6), (gridW * 2 / 5 + 10, 6, 9),
+            (gridW * 7 / 8, 10, 7),
+        ]
+        for block in blocks {
+            for x in block.start..<min(gridW, block.start + block.w) { heightMap[x] = max(heightMap[x], block.h) }
+        }
+
+        let brickDark = UIColor(red: 0.25, green: 0.22, blue: 0.20, alpha: 0.55)
+        let brickMid  = UIColor(red: 0.35, green: 0.30, blue: 0.28, alpha: 0.50)
+        let brickTop  = UIColor(red: 0.42, green: 0.38, blue: 0.35, alpha: 0.55)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for x in 0..<gridW {
+                let bH = heightMap[x]
+                for y in 0..<bH {
+                    let yPos = h - CGFloat(y + 1) * ps
+                    let color = y == bH - 1 ? brickTop : (y > bH / 2 ? brickMid : brickDark)
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+            // Clock face glow on Big Ben
+            let clockX = CGFloat(max(0, parlStart - 2)) * ps
+            let clockY = h - 20 * ps
+            c.setFillColor(UIColor(red: 1.0, green: 0.90, blue: 0.60, alpha: 0.5).cgColor)
+            c.fill(CGRect(x: clockX, y: clockY, width: ps * 2, height: ps * 2))
+        }
+    }
+
     // MARK: - Themed Trees (Midground) Rendering
 
     private func renderThemedTrees(theme: BackgroundTheme) -> UIImage {
@@ -1790,8 +1958,9 @@ final class TextureFactory {
         case .cave:                         return renderCaveCrystalPillars()
         case .mountain:                     return renderMountainPineForest()
         case .space:                        return renderSpaceStructures()
-        case .western, .jungle, .cave, .mountain, .egypt:
-            return renderPixelTrees() // Fallback for new themes
+        case .lagoon:                       return renderLagoonPalmsMidground()
+        case .losAngeles:                   return renderLosAngelesMidground()
+        case .london:                       return renderLondonMidground()
         }
     }
 
@@ -2400,6 +2569,219 @@ final class TextureFactory {
         }
     }
 
+    // MARK: Lagoon Palms Midground — tall palm trees with coconuts, tropical flowers
+
+    private func renderLagoonPalmsMidground() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let trunk = UIColor(red: 0.45, green: 0.30, blue: 0.18, alpha: 0.65)
+        let trunkL = UIColor(red: 0.55, green: 0.38, blue: 0.22, alpha: 0.60)
+        let leaf  = UIColor(red: 0.20, green: 0.55, blue: 0.28, alpha: 0.65)
+        let leafL = UIColor(red: 0.30, green: 0.65, blue: 0.35, alpha: 0.55)
+        let coco  = UIColor(red: 0.45, green: 0.30, blue: 0.15, alpha: 0.70)
+        let flower = UIColor(red: 0.95, green: 0.45, blue: 0.55, alpha: 0.60)
+
+        // Palm tree (6w × 16h)
+        let palm: [[UIColor]] = [
+            [C,C,leaf,C,C,C],
+            [C,leaf,leafL,leaf,C,C],
+            [leaf,C,leafL,C,leaf,C],
+            [C,C,trunk,C,C,C],
+            [C,C,coco,trunk,coco,C],
+            [C,C,trunk,C,C,C],
+            [C,C,trunk,C,C,C],
+            [C,C,trunkL,C,C,C],
+            [C,C,trunk,C,C,C],
+            [C,C,trunk,C,C,C],
+            [C,C,trunkL,C,C,C],
+            [C,C,trunk,C,C,C],
+            [C,C,trunk,C,C,C],
+            [C,C,trunk,C,C,C],
+            [C,C,trunkL,C,C,C],
+            [C,C,trunk,C,C,C],
+        ]
+
+        // Tropical flower cluster (3w × 3h)
+        let flowerCluster: [[UIColor]] = [
+            [C, flower, C],
+            [flower, leafL, flower],
+            [C, leaf, C],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (30, 0), (130, 1), (220, 0), (340, 1), (420, 0),
+            (520, 1), (610, 0), (700, 1), (780, 0),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template = pos.type == 0 ? palm : flowerCluster
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps, y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Los Angeles Midground — palm-lined boulevard with buildings
+
+    private func renderLosAngelesMidground() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let trunk = UIColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 0.65)
+        let leafD = UIColor(red: 0.22, green: 0.45, blue: 0.22, alpha: 0.60)
+        let leafL = UIColor(red: 0.35, green: 0.58, blue: 0.30, alpha: 0.50)
+        let bldg  = UIColor(red: 0.65, green: 0.55, blue: 0.48, alpha: 0.40)
+        let bldgD = UIColor(red: 0.50, green: 0.42, blue: 0.35, alpha: 0.45)
+        let glass = UIColor(red: 0.55, green: 0.72, blue: 0.85, alpha: 0.35)
+
+        // Tall palm (4w × 16h)
+        let tallPalm: [[UIColor]] = [
+            [C,leafD,leafL,C],
+            [leafD,C,C,leafL],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+            [C,C,trunk,C],
+        ]
+
+        // Low-rise building (8w × 8h)
+        let building: [[UIColor]] = [
+            [bldgD,bldgD,bldgD,bldgD,bldgD,bldgD,bldgD,bldgD],
+            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
+            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
+            [bldg,bldg,bldg,bldg,bldg,bldg,bldg,bldg],
+            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
+            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
+            [bldg,bldg,bldg,bldg,bldg,bldg,bldg,bldg],
+            [bldg,bldg,bldg,bldg,bldg,bldg,bldg,bldg],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (30, 0), (100, 1), (210, 0), (300, 0), (380, 1),
+            (490, 0), (580, 0), (660, 1), (760, 0),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template = pos.type == 0 ? tallPalm : building
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps, y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: London Midground — red telephone box, lamp post, double-decker bus hint
+
+    private func renderLondonMidground() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = 160
+        let ps: CGFloat = 4
+        let C = UIColor.clear
+
+        let redBus = UIColor(red: 0.78, green: 0.15, blue: 0.12, alpha: 0.65)
+        let redDark = UIColor(red: 0.60, green: 0.10, blue: 0.08, alpha: 0.70)
+        let glass = UIColor(red: 0.55, green: 0.65, blue: 0.75, alpha: 0.50)
+        let lampBlack = UIColor(red: 0.15, green: 0.15, blue: 0.18, alpha: 0.65)
+        let lampGlow = UIColor(red: 1.0, green: 0.90, blue: 0.60, alpha: 0.50)
+
+        // Red telephone box (4w × 10h)
+        let phoneBox: [[UIColor]] = [
+            [C,redDark,redDark,C],
+            [redBus,glass,glass,redBus],
+            [redBus,glass,glass,redBus],
+            [redBus,glass,glass,redBus],
+            [redBus,glass,glass,redBus],
+            [redBus,redBus,redBus,redBus],
+            [redBus,glass,glass,redBus],
+            [redBus,glass,glass,redBus],
+            [redBus,redBus,redBus,redBus],
+            [redBus,redBus,redBus,redBus],
+        ]
+
+        // Lamp post (2w × 14h)
+        let lamp: [[UIColor]] = [
+            [lampGlow, lampGlow],
+            [lampBlack, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [C, lampBlack],
+            [lampBlack, lampBlack],
+        ]
+
+        let positions: [(x: CGFloat, type: Int)] = [
+            (40, 1), (130, 0), (220, 1), (340, 0), (430, 1),
+            (530, 0), (620, 1), (720, 0), (790, 1),
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            for pos in positions {
+                let template = pos.type == 0 ? phoneBox : lamp
+                let tH = template.count
+                let tW = template[0].count
+                let baseY = h - CGFloat(tH) * ps
+                for row in 0..<tH {
+                    for col in 0..<tW {
+                        let color = template[row][col]
+                        guard color != C else { continue }
+                        c.setFillColor(color.cgColor)
+                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps, y: baseY + CGFloat(row) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Themed Bush / Foreground Rendering
 
     private func renderThemedBushes(theme: BackgroundTheme) -> UIImage {
@@ -2417,6 +2799,9 @@ final class TextureFactory {
         case .cave:                         return renderCaveMossStrip()
         case .mountain:                     return renderMountainMeadowStrip()
         case .space:                        return renderSpaceDebrisStrip()
+        case .lagoon:                       return renderLagoonBeachStrip()
+        case .losAngeles:                   return renderLosAngelesStreetStrip()
+        case .london:                       return renderLondonPavementStrip()
         }
     }
 
@@ -3898,6 +4283,118 @@ final class TextureFactory {
         }
     }
 
+    // MARK: Lagoon Beach Strip — seashells, starfish, foam line
+
+    private func renderLagoonBeachStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 40
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            // Foam line
+            var fx = 0
+            while fx < w {
+                let foamW = Int.random(in: 2...5) * ps
+                c.setFillColor(UIColor(red: 0.90, green: 0.95, blue: 0.98, alpha: 0.6).cgColor)
+                c.fill(CGRect(x: fx, y: h - ps * 2, width: foamW, height: ps))
+                fx += foamW + Int.random(in: 3...8) * ps
+            }
+            // Seashells
+            let shell1 = UIColor(red: 0.92, green: 0.82, blue: 0.68, alpha: 0.55)
+            let shell2 = UIColor(red: 0.88, green: 0.72, blue: 0.60, alpha: 0.50)
+            var sx = Int.random(in: 3...8) * ps
+            while sx < w {
+                c.setFillColor(sx % (ps * 10) < ps * 5 ? shell1.cgColor : shell2.cgColor)
+                c.fill(CGRect(x: sx, y: h - ps * 3, width: ps, height: ps))
+                c.fill(CGRect(x: sx + ps, y: h - ps * 3, width: ps, height: ps))
+                sx += Int.random(in: 10...18) * ps
+            }
+            // Starfish
+            let star = UIColor(red: 0.90, green: 0.50, blue: 0.30, alpha: 0.50)
+            c.setFillColor(star.cgColor)
+            c.fill(CGRect(x: w / 3, y: h - ps * 4, width: ps, height: ps * 3))
+            c.fill(CGRect(x: w / 3 - ps, y: h - ps * 3, width: ps * 3, height: ps))
+        }
+    }
+
+    // MARK: Los Angeles Street Strip — palm fronds, litter, sidewalk cracks
+
+    private func renderLosAngelesStreetStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 40
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            // Road markings
+            let marking = UIColor(red: 0.85, green: 0.75, blue: 0.45, alpha: 0.30)
+            c.setFillColor(marking.cgColor)
+            var mx = ps * 4
+            while mx < w {
+                c.fill(CGRect(x: mx, y: h / 2, width: ps * 3, height: ps))
+                mx += ps * 12
+            }
+            // Scattered palm fronds
+            let frond = UIColor(red: 0.30, green: 0.48, blue: 0.22, alpha: 0.35)
+            c.setFillColor(frond.cgColor)
+            var px = Int.random(in: 5...12) * ps
+            while px < w {
+                c.fill(CGRect(x: px, y: h - ps * 3, width: ps * 4, height: ps))
+                c.fill(CGRect(x: px + ps, y: h - ps * 2, width: ps * 2, height: ps))
+                px += Int.random(in: 15...25) * ps
+            }
+        }
+    }
+
+    // MARK: London Pavement Strip — cobblestone hints, puddle reflections, leaves
+
+    private func renderLondonPavementStrip() -> UIImage {
+        let w = Int(GK.worldWidth * 2)
+        let h = 40
+        let ps = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            // Cobblestone grid lines
+            let cobble = UIColor(red: 0.35, green: 0.34, blue: 0.33, alpha: 0.30)
+            c.setFillColor(cobble.cgColor)
+            var gx = 0
+            while gx < w {
+                c.fill(CGRect(x: gx, y: 0, width: 1, height: h))
+                gx += ps * 4
+            }
+            var gy = 0
+            while gy < h {
+                c.fill(CGRect(x: 0, y: gy, width: w, height: 1))
+                gy += ps * 3
+            }
+            // Rain puddles (small reflective patches)
+            let puddle = UIColor(red: 0.40, green: 0.45, blue: 0.55, alpha: 0.30)
+            var pdx = Int.random(in: 5...10) * ps
+            while pdx < w {
+                c.setFillColor(puddle.cgColor)
+                let pw = Int.random(in: 3...6) * ps
+                c.fill(CGRect(x: pdx, y: h - ps * 2, width: pw, height: ps))
+                pdx += Int.random(in: 12...22) * ps
+            }
+            // Fallen leaves (autumn)
+            let leafColors = [
+                UIColor(red: 0.70, green: 0.40, blue: 0.15, alpha: 0.40),
+                UIColor(red: 0.65, green: 0.30, blue: 0.10, alpha: 0.35),
+                UIColor(red: 0.80, green: 0.55, blue: 0.20, alpha: 0.35),
+            ]
+            var lx = Int.random(in: 3...8) * ps
+            var li = 0
+            while lx < w {
+                c.setFillColor(leafColors[li % leafColors.count].cgColor)
+                c.fill(CGRect(x: lx, y: h - ps * 3, width: ps, height: ps))
+                lx += Int.random(in: 8...16) * ps
+                li += 1
+            }
+        }
+    }
+
     // MARK: - Themed Ground Rendering
     //
     // Each theme gets a unique ground tile instead of the default green grass + tan dirt.
@@ -3918,6 +4415,9 @@ final class TextureFactory {
         case .cave:         return renderCaveGround()
         case .mountain:     return renderMountainGround()
         case .space:        return renderSpaceGround()
+        case .lagoon:       return renderLagoonGround()
+        case .losAngeles:   return renderLosAngelesGround()
+        case .london:       return renderLondonGround()
         }
     }
 
@@ -4790,6 +5290,114 @@ final class TextureFactory {
         }
     }
 
+    // MARK: Lagoon Ground — white sand with tidal water hints
+
+    private func renderLagoonGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            // Warm sand base
+            c.setFillColor(UIColor(red: 0.88, green: 0.80, blue: 0.62, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+            // Top strip — wet sand near water
+            let wetH: CGFloat = 20
+            c.setFillColor(UIColor(red: 0.72, green: 0.68, blue: 0.52, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: wetH))
+            // Water foam edge
+            c.setFillColor(UIColor(red: 0.80, green: 0.90, blue: 0.95, alpha: 0.5).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+            // Sandy speckles
+            let speckle = UIColor(red: 0.82, green: 0.75, blue: 0.55, alpha: 0.6)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(speckle.cgColor)
+                let sy = CGFloat(Int.random(in: 2...Int(h / ps) - 1)) * ps
+                c.fill(CGRect(x: sx, y: sy, width: ps, height: ps))
+                sx += CGFloat(Int.random(in: 4...9)) * ps
+            }
+        }
+    }
+
+    // MARK: Los Angeles Ground — hot asphalt road with lane markings
+
+    private func renderLosAngelesGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            // Dark asphalt
+            c.setFillColor(UIColor(red: 0.22, green: 0.22, blue: 0.24, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+            // Curb/sidewalk strip at top
+            let curbH: CGFloat = 18
+            c.setFillColor(UIColor(red: 0.52, green: 0.50, blue: 0.48, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: curbH))
+            c.setFillColor(UIColor(red: 0.60, green: 0.58, blue: 0.55, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+            // Road texture noise
+            let noise = UIColor(red: 0.18, green: 0.18, blue: 0.20, alpha: 0.5)
+            var nx: CGFloat = 0
+            while nx < w {
+                c.setFillColor(noise.cgColor)
+                let ny = CGFloat(Int.random(in: 3...Int(h / ps) - 1)) * ps
+                c.fill(CGRect(x: nx, y: ny, width: ps, height: ps))
+                nx += CGFloat(Int.random(in: 3...7)) * ps
+            }
+        }
+    }
+
+    // MARK: London Ground — wet cobblestone with brick tint
+
+    private func renderLondonGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            // Grey stone base
+            c.setFillColor(UIColor(red: 0.32, green: 0.32, blue: 0.34, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+            // Brick-tinted top strip
+            let brickH: CGFloat = 18
+            c.setFillColor(UIColor(red: 0.38, green: 0.30, blue: 0.26, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: brickH))
+            // Edge line
+            c.setFillColor(UIColor(red: 0.28, green: 0.26, blue: 0.24, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+            // Cobblestone pattern (alternating shade)
+            let stoneLight = UIColor(red: 0.38, green: 0.37, blue: 0.38, alpha: 0.4)
+            let stoneDark  = UIColor(red: 0.26, green: 0.26, blue: 0.28, alpha: 0.4)
+            var sy: CGFloat = brickH
+            var rowIdx = 0
+            while sy < h {
+                var sx: CGFloat = rowIdx % 2 == 0 ? 0 : ps * 2
+                while sx < w {
+                    c.setFillColor(Int(sx / ps) % 3 == 0 ? stoneDark.cgColor : stoneLight.cgColor)
+                    c.fill(CGRect(x: sx, y: sy, width: ps * 4, height: ps * 2))
+                    sx += ps * 4 + 1 // 1px gap
+                }
+                sy += ps * 2 + 1
+                rowIdx += 1
+            }
+            // Wet sheen
+            let sheen = UIColor(red: 0.50, green: 0.55, blue: 0.60, alpha: 0.12)
+            c.setFillColor(sheen.cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        }
+    }
+
     // MARK: - Themed Ground Detail Rendering
     //
     // Each theme gets unique surface decorations above the ground tile.
@@ -4810,6 +5418,9 @@ final class TextureFactory {
         case .cave:        return renderCaveGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .mountain:    return renderMountainGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .space:       return renderSpaceGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .lagoon:      return renderLagoonGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .losAngeles:  return renderLosAngelesGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .london:      return renderLondonGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         }
     }
 
@@ -5195,6 +5806,108 @@ final class TextureFactory {
                 let y = baseY - CGFloat(drand48()) * 12
                 c.setFillColor(UIColor(red: 0.40, green: 0.70, blue: 1.0, alpha: 0.5).cgColor)
                 c.fill(CGRect(x: x, y: y, width: 2, height: 2))
+            }
+        }
+    }
+
+    // MARK: Lagoon Ground Detail — coconut husks, wave lapping, crab
+
+    private func renderLagoonGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Wave foam lapping
+            for _ in 0..<4 {
+                let x = CGFloat(drand48()) * tileWidth
+                let w: CGFloat = CGFloat(drand48()) * 12 + 6
+                c.setFillColor(UIColor(red: 0.85, green: 0.92, blue: 0.96, alpha: 0.35).cgColor)
+                c.fill(CGRect(x: x, y: baseY - 2, width: w, height: 3))
+            }
+            // Coconut husks
+            for _ in 0..<3 {
+                let x = CGFloat(drand48()) * tileWidth
+                let r: CGFloat = CGFloat(drand48()) * 2.0 + 2.0
+                c.setFillColor(UIColor(red: 0.48, green: 0.32, blue: 0.18, alpha: 0.5).cgColor)
+                c.fillEllipse(in: CGRect(x: x - r, y: baseY + 4 - r, width: r * 2, height: r * 1.5))
+            }
+            // Tiny crab
+            let crabX = CGFloat(drand48()) * tileWidth * 0.8 + tileWidth * 0.1
+            c.setFillColor(UIColor(red: 0.85, green: 0.35, blue: 0.20, alpha: 0.5).cgColor)
+            c.fill(CGRect(x: crabX, y: baseY + 2, width: 4, height: 3))
+            c.fill(CGRect(x: crabX - 2, y: baseY + 1, width: 2, height: 2))
+            c.fill(CGRect(x: crabX + 4, y: baseY + 1, width: 2, height: 2))
+        }
+    }
+
+    // MARK: Los Angeles Ground Detail — heat shimmer, road cracks, palm shadows
+
+    private func renderLosAngelesGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Heat shimmer lines
+            for _ in 0..<3 {
+                let x = CGFloat(drand48()) * tileWidth
+                let w: CGFloat = CGFloat(drand48()) * 15 + 8
+                c.setFillColor(UIColor(red: 0.90, green: 0.80, blue: 0.65, alpha: 0.12).cgColor)
+                c.fill(CGRect(x: x, y: baseY - CGFloat(drand48()) * 8, width: w, height: 1.5))
+            }
+            // Road cracks
+            for _ in 0..<5 {
+                let x = CGFloat(drand48()) * tileWidth
+                let crackH = CGFloat(drand48()) * 8 + 3
+                c.setFillColor(UIColor(red: 0.15, green: 0.15, blue: 0.16, alpha: 0.3).cgColor)
+                c.fill(CGRect(x: x, y: baseY + 2, width: 1.5, height: crackH))
+            }
+            // Palm tree shadow streaks
+            for _ in 0..<2 {
+                let x = CGFloat(drand48()) * tileWidth
+                let sw: CGFloat = CGFloat(drand48()) * 20 + 10
+                c.setFillColor(UIColor(red: 0.10, green: 0.10, blue: 0.12, alpha: 0.08).cgColor)
+                c.fill(CGRect(x: x, y: baseY + 1, width: sw, height: 4))
+            }
+        }
+    }
+
+    // MARK: London Ground Detail — rain drops, puddle highlights, leaf scraps
+
+    private func renderLondonGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Rain drop splashes
+            for _ in 0..<8 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 12
+                c.setFillColor(UIColor(red: 0.55, green: 0.60, blue: 0.70, alpha: 0.25).cgColor)
+                c.fillEllipse(in: CGRect(x: x - 1.5, y: y - 1.5, width: 3, height: 3))
+            }
+            // Puddle reflections
+            for _ in 0..<3 {
+                let x = CGFloat(drand48()) * tileWidth
+                let pw: CGFloat = CGFloat(drand48()) * 12 + 5
+                c.setFillColor(UIColor(red: 0.42, green: 0.48, blue: 0.58, alpha: 0.20).cgColor)
+                c.fillEllipse(in: CGRect(x: x, y: baseY + 2, width: pw, height: pw * 0.4))
+            }
+            // Autumn leaves
+            for _ in 0..<4 {
+                let x = CGFloat(drand48()) * tileWidth
+                let r = CGFloat(drand48()) * 0.25 + 0.55
+                let g = CGFloat(drand48()) * 0.15 + 0.25
+                c.setFillColor(UIColor(red: r, green: g, blue: 0.10, alpha: 0.35).cgColor)
+                c.fill(CGRect(x: x, y: baseY + CGFloat(drand48()) * 6, width: 3, height: 2))
             }
         }
     }

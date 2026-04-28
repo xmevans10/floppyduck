@@ -33,6 +33,11 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     case pixelTokyo
     case egypt
 
+    // New themes
+    case lagoon
+    case losAngeles
+    case london
+
     var id: String { rawValue }
 
     // MARK: - Display
@@ -53,6 +58,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space:       return "SPACE"
         case .pixelTokyo:  return "TOKYO"
         case .egypt:       return "EGYPT"
+        case .lagoon:      return "LAGOON"
+        case .losAngeles:  return "LOS ANGELES"
+        case .london:      return "LONDON"
         }
     }
 
@@ -72,6 +80,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space:       return "To The Moon"
         case .pixelTokyo:  return "Neon Nights"
         case .egypt:       return "Pharaoh's Flight"
+        case .lagoon:      return "Pirate Paradise"
+        case .losAngeles:  return "City of Angels"
+        case .london:      return "Cheerio!"
         }
     }
 
@@ -86,6 +97,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return .normal
         case .space, .pixelTokyo, .egypt:
             return .premium
+        case .lagoon, .losAngeles, .london:
+            return .normal
         }
     }
 
@@ -103,6 +116,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .jungle:      return 200
         case .cave:        return 225
         case .mountain:    return 175
+        case .lagoon:      return 225
+        case .losAngeles:  return 250
+        case .london:      return 200
         default:           return nil
         }
     }
@@ -220,6 +236,27 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.75, green: 0.50, blue: 0.20),
                 Color(red: 0.60, green: 0.38, blue: 0.15),
             ]
+        case .lagoon:
+            return [
+                Color(red: 0.40, green: 0.75, blue: 0.95),
+                Color(red: 0.55, green: 0.85, blue: 0.95),
+                Color(red: 0.70, green: 0.92, blue: 0.98),
+                Color(red: 0.85, green: 0.95, blue: 0.98),
+            ]
+        case .losAngeles:
+            return [
+                Color(red: 0.20, green: 0.12, blue: 0.35),
+                Color(red: 0.55, green: 0.25, blue: 0.45),
+                Color(red: 0.90, green: 0.50, blue: 0.30),
+                Color(red: 1.0, green: 0.75, blue: 0.40),
+            ]
+        case .london:
+            return [
+                Color(red: 0.35, green: 0.38, blue: 0.42),
+                Color(red: 0.50, green: 0.52, blue: 0.55),
+                Color(red: 0.62, green: 0.64, blue: 0.66),
+                Color(red: 0.72, green: 0.73, blue: 0.74),
+            ]
         }
     }
 
@@ -240,6 +277,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space:       return UIColor(red: 0.01, green: 0.01, blue: 0.05, alpha: 1)
         case .pixelTokyo:  return UIColor(red: 0.14, green: 0.06, blue: 0.26, alpha: 1)
         case .egypt:       return UIColor(red: 0.82, green: 0.65, blue: 0.32, alpha: 1)
+        case .lagoon:      return UIColor(red: 0.50, green: 0.82, blue: 0.95, alpha: 1)
+        case .losAngeles:  return UIColor(red: 0.70, green: 0.40, blue: 0.35, alpha: 1)
+        case .london:      return UIColor(red: 0.42, green: 0.45, blue: 0.48, alpha: 1)
         }
     }
 
@@ -260,6 +300,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space:       return UIColor(red: 0.15, green: 0.10, blue: 0.30, alpha: 0.3)
         case .pixelTokyo:  return UIColor(red: 0.70, green: 0.25, blue: 0.50, alpha: 0.4)
         case .egypt:       return UIColor(red: 0.90, green: 0.75, blue: 0.50, alpha: 0.4)
+        case .lagoon:      return UIColor(red: 0.95, green: 0.98, blue: 1.0, alpha: 0.85)
+        case .losAngeles:  return UIColor(red: 0.90, green: 0.70, blue: 0.55, alpha: 0.5)
+        case .london:      return UIColor(red: 0.60, green: 0.62, blue: 0.65, alpha: 0.7)
         }
     }
 
@@ -290,6 +333,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .mountain:    return Color(red: 0.48, green: 0.42, blue: 0.35)
         case .space:       return Color(red: 0.10, green: 0.10, blue: 0.14)
         case .egypt:       return Color(red: 0.82, green: 0.68, blue: 0.40)
+        case .lagoon:      return Color(red: 0.85, green: 0.78, blue: 0.60)
+        case .losAngeles:  return Color(red: 0.35, green: 0.35, blue: 0.38)
+        case .london:      return Color(red: 0.30, green: 0.30, blue: 0.32)
         }
     }
 
@@ -310,6 +356,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .mountain:    return Color(red: 0.38, green: 0.48, blue: 0.32)
         case .space:       return Color(red: 0.06, green: 0.06, blue: 0.10)
         case .egypt:       return Color(red: 0.72, green: 0.55, blue: 0.30)
+        case .lagoon:      return Color(red: 0.20, green: 0.55, blue: 0.40)
+        case .losAngeles:  return Color(red: 0.30, green: 0.22, blue: 0.15)
+        case .london:      return Color(red: 0.25, green: 0.25, blue: 0.28)
         }
     }
 
@@ -330,6 +379,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space:       return Color(red: 0.20, green: 0.15, blue: 0.40)
         case .pixelTokyo:  return Color(red: 0.70, green: 0.20, blue: 0.45)
         case .egypt:       return Color(red: 0.85, green: 0.65, blue: 0.25)
+        case .lagoon:      return Color(red: 0.25, green: 0.80, blue: 0.85)
+        case .losAngeles:  return Color(red: 0.90, green: 0.50, blue: 0.30)
+        case .london:      return Color(red: 0.75, green: 0.20, blue: 0.20)
         }
     }
 
@@ -354,6 +406,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space:       return "theme_space"
         case .pixelTokyo:  return "theme_pixelTokyo"
         case .egypt:       return "theme_egypt"
+        case .lagoon:      return nil   // TODO: add theme_lagoon.m4a
+        case .losAngeles:  return nil   // TODO: add theme_losAngeles.m4a
+        case .london:      return nil   // TODO: add theme_london.m4a
         }
     }
 
