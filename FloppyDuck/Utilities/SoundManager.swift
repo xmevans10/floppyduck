@@ -47,11 +47,19 @@ final class SoundManager {
     /// Pre-loaded random quack sound players for pipe milestone quacks
     private var quackPlayers: [AVAudioPlayer] = []
 
+    /// Index tracking which home music track to play next (cycles 0→1→2→0…).
+    private var homeTrackIndex: Int = 0
+    /// Chill tracks used for the home screen menu music.
+    private static let homeTrackFiles = ["theme_cave", "theme_mountain", "theme_underwater"]
+
     /// Per-skin sound variant players (keyed by "\(skin.rawValue)_\(sound.rawValue)")
     private var skinPlayers: [String: AVAudioPlayer] = [:]
 
     /// Currently active skin for sound variants
     private var activeSkin: DuckSkin = .classic
+
+    /// Base volume for each SFX — used to scale with the user's SFX volume preference.
+    private var sfxBaseVolumes: [GameSound: (Data, Float)] = [:]
 
     /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
     private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
@@ -61,6 +69,7 @@ final class SoundManager {
     /// Cached preference — avoids UserDefaults dictionary lookup on every play() call.
     private var _isEnabled: Bool = true
     private var _musicVolume: Float = 1.0
+    private var _sfxVolume: Float = 1.0
 
     private var isEnabled: Bool { _isEnabled }
 
@@ -71,6 +80,11 @@ final class SoundManager {
             _musicVolume = Float(vol)
         } else {
             _musicVolume = 1.0
+        }
+        if let vol = UserDefaults.standard.object(forKey: "sfxVolume") as? Double {
+            _sfxVolume = Float(vol)
+        } else {
+            _sfxVolume = 1.0
         }
     }
 
@@ -134,10 +148,12 @@ final class SoundManager {
             // Stop any currently playing menu music
             self.bgmPlayer?.stop()
 
-            // Home screen music is ALWAYS the same track regardless of active theme.
-            // This gives the game a consistent identity on the menu.
-            let menuFile = "adventure_stage_select"
-            if let url = Bundle.main.url(forResource: menuFile, withExtension: "m4a"),
+            // Cycle through 3 chill tracks for the home screen.
+            let files = Self.homeTrackFiles
+            let file = files[self.homeTrackIndex % files.count]
+            self.homeTrackIndex += 1
+
+            if let url = Bundle.main.url(forResource: file, withExtension: "m4a"),
                let player = try? AVAudioPlayer(contentsOf: url) {
                 player.numberOfLoops = -1
                 player.volume = self.effectiveMenuVolume
@@ -211,13 +227,21 @@ final class SoundManager {
     }
 
     func refreshAudioPreference() {
-        // Sync cached preference from UserDefaults (main thread safe)
+        // Sync cached preferences from UserDefaults (main thread safe)
+        let wasEnabled = _isEnabled
         _isEnabled = UserDefaults.standard.object(forKey: "soundEnabled") as? Bool ?? true
         if let vol = UserDefaults.standard.object(forKey: "musicVolume") as? Double {
             _musicVolume = Float(vol)
         } else {
             _musicVolume = 1.0
         }
+        if let vol = UserDefaults.standard.object(forKey: "sfxVolume") as? Double {
+            _sfxVolume = Float(vol)
+        } else {
+            _sfxVolume = 1.0
+        }
+
+        let justEnabled = !wasEnabled && _isEnabled
         
         audioQueue.async { [weak self] in
             guard let self else { return }
@@ -227,17 +251,26 @@ final class SoundManager {
             self.playBgmPlayer?.volume = self.effectivePlayVolume
             self.menuTracks.forEach { $0.volume = self.effectiveMenuVolume }
             self.playTracks.forEach { $0.volume = self.effectivePlayVolume }
+
+            // Update SFX player volumes
+            for (sound, player) in self.players {
+                if let (_, baseVol) = self.sfxBaseVolumes[sound] {
+                    player.volume = baseVol * self._sfxVolume
+                }
+            }
             
             if self.isEnabled {
                 self.prepareIfNeeded()
-                // Sound was just re-enabled — restart whichever BGM track
-                // is contextually appropriate. The caller's screen will also
-                // trigger startMenuMusic/startPlayMusic on next transition,
-                // but restarting here gives immediate feedback on toggle.
-                if self.bgmPlayer != nil && !self.bgmPlayer!.isPlaying {
-                    self.bgmPlayer?.play()
-                } else if self.playBgmPlayer != nil && !self.playBgmPlayer!.isPlaying {
-                    self.playBgmPlayer?.play()
+                // Only restart BGM when sound was just re-enabled (toggled
+                // from off → on), NOT on every volume slider change.
+                // This prevents the gameplay theme from playing while the
+                // user is adjusting sliders on the settings screen.
+                if justEnabled {
+                    if self.bgmPlayer != nil && !self.bgmPlayer!.isPlaying {
+                        self.bgmPlayer?.play()
+                    } else if self.playBgmPlayer != nil && !self.playBgmPlayer!.isPlaying {
+                        self.playBgmPlayer?.play()
+                    }
                 }
                 return
             }
@@ -289,8 +322,9 @@ final class SoundManager {
         ]
         for (sound, data, vol) in defs {
             soundData[sound] = data
+            sfxBaseVolumes[sound] = (data, vol)
             if let p = try? AVAudioPlayer(data: data) {
-                p.volume = vol
+                p.volume = vol * _sfxVolume
                 p.prepareToPlay()
                 players[sound] = p
             }
@@ -509,7 +543,7 @@ final class SoundManager {
     /// These play randomly every 10 pipes during gameplay.
     private func loadQuackSounds() {
         quackPlayers.removeAll()
-        let targetVolume: Float = 0.50
+        let targetVolume: Float = 0.50 * _sfxVolume
         for i in 1...5 {
             let name = "quack_\(i)"
             // Try .m4a first, then .wav
@@ -612,12 +646,12 @@ final class SoundManager {
         let (deathData, deathVol) = self.skinDeathWav(skin: skin)
 
         if let p = try? AVAudioPlayer(data: flapData) {
-            p.volume = flapVol
+            p.volume = flapVol * _sfxVolume
             p.prepareToPlay()
             self.skinPlayers[key_flap] = p
         }
         if let p = try? AVAudioPlayer(data: deathData) {
-            p.volume = deathVol
+            p.volume = deathVol * _sfxVolume
             p.prepareToPlay()
             self.skinPlayers[key_death] = p
         }
@@ -626,13 +660,13 @@ final class SoundManager {
         let quackFile = "quack_\(skin.rawValue)"
         if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a", subdirectory: "Quacks/Skins"),
            let p = try? AVAudioPlayer(contentsOf: url) {
-            p.volume = 0.50
+            p.volume = 0.50 * _sfxVolume
             p.prepareToPlay()
             self.skinPlayers[key_quack] = p
         } else if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a"),
                   let p = try? AVAudioPlayer(contentsOf: url) {
             // Fallback: flat bundle lookup (Xcode may flatten the directory)
-            p.volume = 0.50
+            p.volume = 0.50 * _sfxVolume
             p.prepareToPlay()
             self.skinPlayers[key_quack] = p
         }

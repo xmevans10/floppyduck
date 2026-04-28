@@ -54,6 +54,7 @@ struct SettingsView: View {
                             }
                         }
 
+                        // Account
                         settingsPanel {
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
@@ -125,9 +126,10 @@ struct SettingsView: View {
                             }
                         }
 
-                        // Sound toggle & Volume
+                        // Audio & Haptics — combined panel
                         settingsPanel {
-                            VStack(spacing: 12) {
+                            VStack(spacing: 14) {
+                                // Sound toggle
                                 HStack {
                                     Text("SOUND")
                                         .font(.custom(GK.pixelFontName, size: 10))
@@ -138,40 +140,49 @@ struct SettingsView: View {
                                         .labelsHidden()
                                         .accessibilityLabel("Sound toggle")
                                 }
-                                
+
                                 if manager.soundEnabled {
-                                    HStack {
-                                        Text("MUSIC VOLUME")
+                                    // Music volume
+                                    HStack(spacing: 8) {
+                                        Text("MUSIC")
                                             .font(.custom(GK.pixelFontName, size: 8))
                                             .foregroundColor(GK.Colors.panelBorder.opacity(0.8))
+                                            .frame(width: 40, alignment: .leading)
                                         Slider(value: $manager.musicVolume, in: 0...1)
                                             .tint(GK.Colors.buttonBlue)
                                     }
+
+                                    // SFX volume
+                                    HStack(spacing: 8) {
+                                        Text("SFX")
+                                            .font(.custom(GK.pixelFontName, size: 8))
+                                            .foregroundColor(GK.Colors.panelBorder.opacity(0.8))
+                                            .frame(width: 40, alignment: .leading)
+                                        Slider(value: $manager.sfxVolume, in: 0...1)
+                                            .tint(GK.Colors.buttonOrange)
+                                    }
+                                }
+
+                                Divider()
+                                    .background(GK.Colors.panelBorder.opacity(0.15))
+
+                                // Haptics toggle
+                                HStack {
+                                    Text("HAPTICS")
+                                        .font(.custom(GK.pixelFontName, size: 10))
+                                        .foregroundColor(GK.Colors.panelBorder)
+                                    Spacer()
+                                    Toggle("Haptics", isOn: $manager.hapticsEnabled)
+                                        .tint(GK.Colors.buttonGreen)
+                                        .labelsHidden()
+                                        .accessibilityLabel("Haptics toggle")
                                 }
                             }
                         }
 
-                        // Haptics toggle
-                        settingsPanel {
-                            HStack {
-                                Text("HAPTICS")
-                                    .font(.custom(GK.pixelFontName, size: 10))
-                                    .foregroundColor(GK.Colors.panelBorder)
-                                Spacer()
-                                Toggle("Haptics", isOn: $manager.hapticsEnabled)
-                                    .tint(GK.Colors.buttonGreen)
-                                    .labelsHidden()
-                                    .accessibilityLabel("Haptics toggle")
-                            }
-                        }
-
-                        // Restore purchases
+                        // Purchases + Restore
                         settingsPanel {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("PURCHASES")
-                                    .font(.custom(GK.pixelFontName, size: 10))
-                                    .foregroundColor(GK.Colors.panelBorder)
-
                                 Button {
                                     Task {
                                         await SkinManager.shared.restorePurchases()
@@ -223,19 +234,6 @@ struct SettingsView: View {
                             }
                         }
 
-                        // Version info
-                        settingsPanel {
-                            HStack {
-                                Text("VERSION")
-                                    .font(.custom(GK.pixelFontName, size: 8))
-                                    .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
-                                Spacer()
-                                Text(Self.versionString)
-                                    .font(.custom(GK.pixelFontName, size: 8))
-                                    .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
-                            }
-                        }
-
                         // Reset stats
                         Button {
                             showResetConfirm = true
@@ -259,6 +257,12 @@ struct SettingsView: View {
                             )
                         }
                         .buttonStyle(.plain)
+
+                        // Version info (compact, not a full panel)
+                        Text("v\(Self.versionString)")
+                            .font(.custom(GK.pixelFontName, size: 7))
+                            .foregroundColor(.white.opacity(0.35))
+                            .padding(.top, 4)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
@@ -286,6 +290,9 @@ struct SettingsView: View {
             SoundManager.shared.refreshAudioPreference()
         }
         .onChange(of: manager.musicVolume) { _, _ in
+            SoundManager.shared.refreshAudioPreference()
+        }
+        .onChange(of: manager.sfxVolume) { _, _ in
             SoundManager.shared.refreshAudioPreference()
         }
         .onChange(of: manager.hapticsEnabled) { _, _ in
