@@ -221,6 +221,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         powerUpCtrl.onShieldConsumed = { [weak self] in
             self?.shieldsUsed += 1
         }
+        powerUpCtrl.setDuckTextures(duckTextures)
 
         // Bot controller (vsBot = sprite + AI, headToHead = score HUD only)
         if mode == .vsBot || mode == .headToHead {
@@ -1241,6 +1242,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Re-bind duck reference in PowerUpController after physics body reset
         powerUpCtrl.setDuck(duck)
+        powerUpCtrl.setDuckTextures(duckTextures)
 
         worldNode.setScale(1.0)  // Reset zoom from death effect
         worldNode.position = .zero  // Reset shake offset

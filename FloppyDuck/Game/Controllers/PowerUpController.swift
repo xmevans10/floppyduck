@@ -46,6 +46,10 @@ final class PowerUpController {
     // when slowMotion or speedBurst expires.
     private var speedModifier: CGFloat = 1.0
 
+    // Expiry warning state — tracks which power-ups are in "wearing off" phase
+    // so we only trigger the warning animation once per power-up.
+    private var expiryWarningActive: Set<UUID> = []
+
     // MARK: - Callbacks
 
     /// Called when a power-up is collected (before activation). Use for achievement tracking.
@@ -53,6 +57,9 @@ final class PowerUpController {
 
     /// Called when a shield absorbs a hit. Use for shield-usage stats.
     var onShieldConsumed: (() -> Void)?
+
+    /// Called when a power-up enters the "wearing off" warning phase.
+    var onPowerUpWearingOff: ((PowerUpKind) -> Void)?
 
     /// Override for collected-label parent node. When set, labels are added here
     /// instead of worldNode — prevents shake during death screen-shake.
@@ -79,6 +86,7 @@ final class PowerUpController {
 
     /// Tick power-up timers and speed modifier; call once per frame from the game update loop.
     func update(dt: TimeInterval, currentTime: TimeInterval) {
+        tickExpiryWarnings(currentTime: currentTime)
         tickExpiry(currentTime: currentTime)
         updateSpeedModifier(dt: dt)
     }
@@ -306,7 +314,14 @@ final class PowerUpController {
     /// Restores duck alpha and removes power-up visuals (shield ring, ghost glow)
     /// during death without resetting the full power-up state. Call from `die()`.
     func cleanupDuckVisuals() {
+        // Stop all expiry warning animations
+        for powerUp in activePowerUps {
+            stopExpiryWarning(for: powerUp.kind)
+        }
+        expiryWarningActive.removeAll()
+
         duck?.alpha = 1.0
+        duck?.colorBlendFactor = 0
         removeShieldVisual()
         removeGhostGlow()
     }
@@ -315,7 +330,12 @@ final class PowerUpController {
 
     /// Clear all power-up state for a new game / retry.
     func reset() {
+        // Clean up any active warning animations before clearing state
+        for powerUp in activePowerUps {
+            stopExpiryWarning(for: powerUp.kind)
+        }
         activePowerUps.removeAll()
+        expiryWarningActive.removeAll()
         removeShieldVisual()
         removeGhostGlow()
         shieldCooldown = false
@@ -352,6 +372,10 @@ final class PowerUpController {
     // MARK: - Deactivation
 
     private func deactivate(_ powerUp: ActivePowerUp) {
+        // Always clean up any expiry warning animation first
+        stopExpiryWarning(for: powerUp.kind)
+        expiryWarningActive.remove(powerUp.id)
+
         switch powerUp.kind {
         case .shield:
             removeShieldVisual()
@@ -362,6 +386,127 @@ final class PowerUpController {
         default:
             break
         }
+    }
+
+    // MARK: - Expiry Warning Animations
+
+    /// Checks all active power-ups for the "wearing off" phase and triggers
+    /// per-type visual warnings exactly once per power-up instance.
+    private func tickExpiryWarnings(currentTime: TimeInterval) {
+        for powerUp in activePowerUps {
+            guard powerUp.isWearingOff(currentTime: currentTime),
+                  !expiryWarningActive.contains(powerUp.id) else { continue }
+
+            expiryWarningActive.insert(powerUp.id)
+            startExpiryWarning(for: powerUp)
+            onPowerUpWearingOff?(powerUp.kind)
+        }
+    }
+
+    /// Dispatches to the correct per-type warning animation.
+    private func startExpiryWarning(for powerUp: ActivePowerUp) {
+        guard let duck else { return }
+
+        switch powerUp.kind {
+        case .dizzyDuck:
+            // Blink: rapid alpha flashing
+            let blink = SKAction.sequence([
+                SKAction.fadeAlpha(to: 0.25, duration: 0.1),
+                SKAction.fadeAlpha(to: 1.0, duration: 0.1),
+            ])
+            duck.run(SKAction.repeatForever(blink), withKey: "expiryWarn_dizzyDuck")
+
+        case .slowMotion:
+            // Speed up wing flap to signal normal speed returning
+            let fastWing = SKAction.animate(with: duckTexturesForWarning(), timePerFrame: 0.04)
+            duck.removeAction(forKey: "wings")
+            duck.run(SKAction.repeatForever(fastWing), withKey: "expiryWarn_slowMotion")
+
+        case .ghostDuck:
+            // Flicker: oscillate between ghost-transparent and solid
+            let flicker = SKAction.sequence([
+                SKAction.fadeAlpha(to: 0.8, duration: 0.12),
+                SKAction.fadeAlpha(to: 0.2, duration: 0.12),
+            ])
+            duck.run(SKAction.repeatForever(flicker), withKey: "expiryWarn_ghostDuck")
+
+        case .speedBurst:
+            // Vibrate/shake horizontally
+            let shake = SKAction.sequence([
+                SKAction.moveBy(x: 2, y: 0, duration: 0.03),
+                SKAction.moveBy(x: -4, y: 0, duration: 0.03),
+                SKAction.moveBy(x: 2, y: 0, duration: 0.03),
+            ])
+            duck.run(SKAction.repeatForever(shake), withKey: "expiryWarn_speedBurst")
+
+        case .shield:
+            break  // Shield is consumed on hit, no time-based expiry
+
+        case .pipeExpander:
+            // Green tint blink on the duck
+            let tintOn = SKAction.colorize(with: UIColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1), colorBlendFactor: 0.4, duration: 0.15)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_pipeExpander")
+
+        case .breadMagnet:
+            // Gold glow blink
+            let tintOn = SKAction.colorize(with: UIColor(red: 0.85, green: 0.68, blue: 0.3, alpha: 1), colorBlendFactor: 0.4, duration: 0.15)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_breadMagnet")
+
+        case .pipeSqueeze:
+            // Red warning blink
+            let tintOn = SKAction.colorize(with: UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1), colorBlendFactor: 0.4, duration: 0.15)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_pipeSqueeze")
+        }
+    }
+
+    /// Cleans up the expiry warning animation for a specific power-up kind.
+    private func stopExpiryWarning(for kind: PowerUpKind) {
+        guard let duck else { return }
+
+        duck.removeAction(forKey: "expiryWarn_\(kind.rawValue)")
+
+        switch kind {
+        case .dizzyDuck:
+            duck.alpha = 1.0
+        case .slowMotion:
+            // Restore normal wing animation speed
+            restoreNormalWingAnimation()
+        case .ghostDuck:
+            // deactivateGhostDuck handles alpha restore
+            break
+        case .speedBurst:
+            // Reset position in case shake left it offset
+            break
+        case .pipeExpander, .breadMagnet, .pipeSqueeze:
+            duck.colorBlendFactor = 0
+        case .shield:
+            break
+        }
+    }
+
+    /// Returns duck textures for the fast-wing warning animation.
+    /// Uses cached textures from the GameScene via a stored reference.
+    private func duckTexturesForWarning() -> [SKTexture] {
+        return cachedDuckTextures
+    }
+
+    /// Duck wing textures — set by GameScene after setup so we can
+    /// run modified wing animations during expiry warnings.
+    private(set) var cachedDuckTextures: [SKTexture] = []
+
+    /// Store duck textures for expiry warning wing animations.
+    func setDuckTextures(_ textures: [SKTexture]) {
+        cachedDuckTextures = textures
+    }
+
+    /// Restores the normal wing animation (0.10s per frame).
+    private func restoreNormalWingAnimation() {
+        guard let duck, !cachedDuckTextures.isEmpty else { return }
+        let normalWing = SKAction.animate(with: cachedDuckTextures, timePerFrame: 0.10)
+        duck.run(SKAction.repeatForever(normalWing), withKey: "wings")
     }
 
     // MARK: - Expiry Tick

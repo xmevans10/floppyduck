@@ -141,6 +141,17 @@ struct ActivePowerUp: Identifiable {
         let elapsed = currentTime - startTime
         return max(0, 1.0 - CGFloat(elapsed / kind.duration))
     }
+
+    /// Whether the power-up is in the "wearing off" warning phase.
+    /// Time-based: last 30% of duration. Pipe-count-based: last pipe remaining.
+    func isWearingOff(currentTime: TimeInterval) -> Bool {
+        if let remaining = remainingPipes {
+            return remaining <= 1 && remaining > 0
+        }
+        guard kind.duration > 0 else { return false }
+        let elapsed = currentTime - startTime
+        return elapsed >= kind.duration * 0.7 && elapsed < kind.duration
+    }
 }
 
 // MARK: - Power-Up Spawn Manager

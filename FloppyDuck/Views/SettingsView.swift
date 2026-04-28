@@ -147,7 +147,9 @@ struct SettingsView: View {
                                         Text("MUSIC")
                                             .font(.custom(GK.pixelFontName, size: 8))
                                             .foregroundColor(GK.Colors.panelBorder.opacity(0.8))
-                                            .frame(width: 40, alignment: .leading)
+                                            .lineLimit(1)
+                                            .fixedSize()
+                                            .frame(width: 50, alignment: .leading)
                                         Slider(value: $manager.musicVolume, in: 0...1)
                                             .tint(GK.Colors.buttonBlue)
                                     }
@@ -157,7 +159,9 @@ struct SettingsView: View {
                                         Text("SFX")
                                             .font(.custom(GK.pixelFontName, size: 8))
                                             .foregroundColor(GK.Colors.panelBorder.opacity(0.8))
-                                            .frame(width: 40, alignment: .leading)
+                                            .lineLimit(1)
+                                            .fixedSize()
+                                            .frame(width: 50, alignment: .leading)
                                         Slider(value: $manager.sfxVolume, in: 0...1)
                                             .tint(GK.Colors.buttonOrange)
                                     }
