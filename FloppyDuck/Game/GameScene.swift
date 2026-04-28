@@ -205,6 +205,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupDuck()
         setupHUD()
 
+        // Reset frame clock when returning from background so the first
+        // update(currentTime:) frame doesn't see a multi-second delta.
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.lastUpdate = 0
+        }
+
         // Power-up controller
         powerUpCtrl = PowerUpController(
             worldNode: worldNode,
@@ -722,8 +732,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return
         }
 
-        let dt = lastUpdate == 0 ? 0 : currentTime - lastUpdate
+        var dt = lastUpdate == 0 ? 0 : currentTime - lastUpdate
         lastUpdate = currentTime
+
+        // Cap delta time to prevent physics & spawning chaos when returning
+        // from background — a large dt would spawn dozens of pipes and move
+        // everything off-screen in a single frame.
+        dt = min(dt, 1.0 / 30.0)
 
         // --- Power-up tick: expire finished effects, update speed modifier ---
         powerUpCtrl.update(dt: dt, currentTime: currentTime)
