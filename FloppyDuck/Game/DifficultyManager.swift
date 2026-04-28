@@ -50,16 +50,16 @@ final class DifficultyManager {
     // MARK: - Curve Tuning
 
     /// Steepness of the log curve.  Higher → faster initial ramp.
-    private let k: CGFloat = 0.08
+    private let k: CGFloat = 0.12
     /// Score at which difficulty reaches 100 %.
-    private let refScore: CGFloat = 50
+    private let refScore: CGFloat = 38
 
     // MARK: - Parameter Ranges  (min at score 0 → max at refScore)
 
-    private let speedRange:   (lo: CGFloat, hi: CGFloat) = (1.0,  1.55)
-    private let gapRange:     (lo: CGFloat, hi: CGFloat) = (1.0,  0.78)
-    private let flapRange:    (lo: CGFloat, hi: CGFloat) = (1.0,  1.20)
-    private let gravityRange: (lo: CGFloat, hi: CGFloat) = (1.0,  1.14)
+    private let speedRange:   (lo: CGFloat, hi: CGFloat) = (1.0,  1.78)
+    private let gapRange:     (lo: CGFloat, hi: CGFloat) = (1.0,  0.68)
+    private let flapRange:    (lo: CGFloat, hi: CGFloat) = (1.0,  1.38)
+    private let gravityRange: (lo: CGFloat, hi: CGFloat) = (1.0,  1.31)
 
     // MARK: - Cached Difficulty Curve
 

@@ -12,17 +12,19 @@ enum PowerUpKind: String, CaseIterable {
     case breadMagnet   // Attracts bread collectibles within larger radius for next 5 pipes
     case slowMotion    // Reduces pipe speed by 35% for 5 seconds
     case ghostDuck     // Phase through pipes for 3 seconds
+    case doublePoints  // Score 2× per pipe for next 5 pipes
 
     // Debuffs (negative)
     case pipeSqueeze   // Narrows gap for next 3 pipes by 20%
     case speedBurst    // Pipes 40% faster for 5 seconds
     case dizzyDuck     // Controls invert for 3 seconds
+    case heavyDuck     // Gravity +50% for 4 seconds — duck drops faster
 
     var isPositive: Bool {
         switch self {
-        case .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck:
+        case .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck, .doublePoints:
             return true
-        case .pipeSqueeze, .speedBurst, .dizzyDuck:
+        case .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck:
             return false
         }
     }
@@ -34,9 +36,11 @@ enum PowerUpKind: String, CaseIterable {
         case .breadMagnet:  return "MAGNET"
         case .slowMotion:   return "SLOW-MO"
         case .ghostDuck:    return "GHOST"
+        case .doublePoints: return "2× PTS"
         case .pipeSqueeze:  return "SQUEEZE"
         case .speedBurst:   return "SPEED!"
         case .dizzyDuck:    return "DIZZY"
+        case .heavyDuck:    return "HEAVY"
         }
     }
 
@@ -47,9 +51,11 @@ enum PowerUpKind: String, CaseIterable {
         case .breadMagnet:  return .breadMagnet
         case .slowMotion:   return .slowMotion
         case .ghostDuck:    return .ghost
+        case .doublePoints: return .doublePoints
         case .pipeSqueeze:  return .pipeSqueeze
         case .speedBurst:   return .speedBurst
         case .dizzyDuck:    return .dizzyDuck
+        case .heavyDuck:    return .heavyDuck
         }
     }
 
@@ -61,9 +67,11 @@ enum PowerUpKind: String, CaseIterable {
         case .breadMagnet:  return 0      // next 5 pipes
         case .slowMotion:   return 5.0
         case .ghostDuck:    return 3.0
+        case .doublePoints: return 0      // next 5 pipes
         case .pipeSqueeze:  return 0      // next 3 pipes
         case .speedBurst:   return 5.0
         case .dizzyDuck:    return 3.0
+        case .heavyDuck:    return 4.0
         }
     }
 
@@ -72,6 +80,7 @@ enum PowerUpKind: String, CaseIterable {
         switch self {
         case .pipeExpander: return 3
         case .breadMagnet:  return 5
+        case .doublePoints: return 5
         case .pipeSqueeze:  return 3
         default:            return nil
         }
@@ -88,9 +97,11 @@ enum PowerUpKind: String, CaseIterable {
         case .breadMagnet:  return 2.0
         case .slowMotion:   return 1.5
         case .ghostDuck:    return 0.8
+        case .doublePoints: return 1.0
         case .pipeSqueeze:  return 1.5
         case .speedBurst:   return 1.2
         case .dizzyDuck:    return 1.0
+        case .heavyDuck:    return 1.2
         }
     }
 
@@ -102,9 +113,11 @@ enum PowerUpKind: String, CaseIterable {
         case .breadMagnet:  return UIColor(red: 0.85, green: 0.68, blue: 0.3, alpha: 1) // warm gold
         case .slowMotion:   return UIColor(red: 0.5, green: 0.9, blue: 0.5, alpha: 1)   // light green
         case .ghostDuck:    return UIColor(red: 0.9, green: 0.9, blue: 0.95, alpha: 1)  // white/silver
+        case .doublePoints: return UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1)  // bright gold
         case .pipeSqueeze:  return UIColor(red: 0.35, green: 0.35, blue: 0.4, alpha: 1) // dark gray
         case .speedBurst:   return UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1)   // red
         case .dizzyDuck:    return UIColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1)   // purple
+        case .heavyDuck:    return UIColor(red: 0.5, green: 0.25, blue: 0.1, alpha: 1)  // dark brown
         }
     }
 
@@ -159,9 +172,9 @@ struct ActivePowerUp: Identifiable {
 /// Controls when and which power-ups spawn in pipe gaps.
 final class PowerUpSpawnManager {
     /// Minimum pipes between power-up spawns.
-    private let minSpawnInterval: Int = 4
+    private let minSpawnInterval: Int = 3
     /// Maximum pipes between power-up spawns.
-    private let maxSpawnInterval: Int = 8
+    private let maxSpawnInterval: Int = 5
 
     private var pipesUntilNextSpawn: Int
     private var lastSpawnedKind: PowerUpKind?
@@ -196,10 +209,10 @@ final class PowerUpSpawnManager {
         // At higher tiers, debuffs become more common
         let debuffBoost: Double = {
             switch tier {
-            case .easy:   return 0.3
-            case .medium: return 0.7
-            case .hard:   return 1.0
-            case .expert: return 1.3
+            case .easy:   return 0.5
+            case .medium: return 0.9
+            case .hard:   return 1.3
+            case .expert: return 1.6
             }
         }()
 

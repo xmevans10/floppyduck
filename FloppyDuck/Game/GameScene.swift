@@ -509,9 +509,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             spawnPowerUpCollectible(afterPipeX: pipeNode.position.x, gapY: gapY, gapHeight: effectiveGap, kind: kind)
         }
 
-        // Spawn bread collectibles between pipes (~60% chance)
-        if CGFloat.random(in: 0...1) < 0.6 {
-            spawnBreadGroup(afterPipeX: GK.worldWidth + GK.pipeWidth, gapY: gapY)
+        // Spawn bread collectibles between pipes (~40% chance, reduced from 60%)
+        if CGFloat.random(in: 0...1) < 0.4 {
+            spawnBreadGroup(afterPipeX: GK.worldWidth + GK.pipeWidth, gapY: gapY, gapHeight: effectiveGap)
         }
     }
 
@@ -581,12 +581,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // MARK: - Bread Collectibles
 
-    /// Spawns 1–3 bread slices between the current pipe and the next expected pipe position.
-    private func spawnBreadGroup(afterPipeX: CGFloat, gapY: CGFloat) {
-        let breadCount = Int.random(in: 1...3)
+    /// Spawns 1–2 bread slices between the current pipe and the next expected pipe position.
+    /// Bread Y is constrained to the pipe gap so it never visually overlaps pipes.
+    private func spawnBreadGroup(afterPipeX: CGFloat, gapY: CGFloat, gapHeight: CGFloat) {
+        let breadCount = Int.random(in: 1...2)
         let spacing = currentPipeSpeed * CGFloat(GK.pipeSpawnInterval)
-        let minBreadY = GK.groundHeight + 40
-        let maxBreadY = GK.worldHeight * 0.80
+
+        // Constrain bread Y to the open gap between pipes (with margin for bread size)
+        let breadMargin: CGFloat = 14  // half bread visual size
+        let minBreadY = max(GK.groundHeight + 40, gapY - gapHeight / 2 + breadMargin)
+        let maxBreadY = min(GK.worldHeight * 0.80, gapY + gapHeight / 2 - breadMargin)
+        guard minBreadY < maxBreadY else { return }  // gap too narrow for bread
 
         for i in 0..<breadCount {
             let xOffset = CGFloat.random(in: (spacing * 0.25)...(spacing * 0.75))
@@ -840,7 +845,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 playerPipesPassed.insert(pipeName)
             }
 
-            score += 1
+            let points = powerUpCtrl.isDoublePointsActive ? 2 : 1
+            score += points
             updateScore()
             Haptic.score()
             SoundManager.shared.play(.score)

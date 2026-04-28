@@ -28,9 +28,11 @@ enum PixelIcon: String, CaseIterable {
     case breadMagnet   // horseshoe magnet
     case slowMotion    // hourglass
     case ghost         // ghost silhouette
+    case doublePoints  // 2× symbol
     case pipeSqueeze   // inward arrows
     case speedBurst    // lightning bolt
     case dizzyDuck     // spiral
+    case heavyDuck     // anchor/weight
 
     // Game items & achievements
     case bread         // bread loaf
@@ -137,7 +139,9 @@ final class PixelIconFactory {
         case .ghost:        grid = ghostGrid()
         case .pipeSqueeze:  grid = pipeSqueezeGrid()
         case .speedBurst:   grid = speedBurstGrid()
+        case .doublePoints: grid = doublePointsGrid()
         case .dizzyDuck:    grid = dizzyDuckGrid()
+        case .heavyDuck:    grid = heavyDuckGrid()
         case .bread:        grid = breadGrid()
         case .star:         grid = starGrid()
         case .crown:        grid = crownGrid()
@@ -564,6 +568,38 @@ final class PixelIconFactory {
             [C,C,C,B,C,C,C,C,C,C],
             [C,C,C,C,C,C,C,C,C,C],
             [C,C,C,B,C,C,C,C,C,C],
+            [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func doublePointsGrid() -> [[UIColor]] {
+        return [
+            [C,C,B,B,C,C,C,C,C,C],
+            [C,B,Y,Y,B,C,C,B,C,C],
+            [C,B,Y,Y,B,C,B,Y,B,C],
+            [C,C,B,Y,B,B,Y,Y,B,C],
+            [C,C,C,B,Y,Y,Y,B,C,C],
+            [C,C,B,Y,Y,Y,B,C,C,C],
+            [C,B,Y,Y,B,B,Y,B,C,C],
+            [C,B,Y,B,C,C,B,Y,B,C],
+            [C,B,B,C,C,C,C,B,C,C],
+            [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func heavyDuckGrid() -> [[UIColor]] {
+        let D = UIColor(red: 0.35, green: 0.35, blue: 0.40, alpha: 1) // dark steel
+        let S = UIColor(red: 0.55, green: 0.55, blue: 0.60, alpha: 1) // steel
+        return [
+            [C,C,C,C,B,C,C,C,C,C],
+            [C,C,C,B,S,B,C,C,C,C],
+            [C,C,B,S,S,S,B,C,C,C],
+            [C,B,S,D,S,D,S,B,C,C],
+            [C,B,S,S,D,S,S,B,C,C],
+            [C,B,S,S,S,S,S,B,C,C],
+            [C,C,B,S,S,S,B,C,C,C],
+            [C,C,C,B,B,B,C,C,C,C],
+            [C,B,B,B,B,B,B,B,C,C],
             [C,C,C,C,C,C,C,C,C,C],
         ]
     }

@@ -133,9 +133,12 @@ final class PowerUpController {
 
     // MARK: - Gameplay Modifiers
 
-    /// Gravity adjusted for active power-ups (dizzyDuck inverts it).
+    /// Gravity adjusted for active power-ups (dizzyDuck inverts, heavyDuck amplifies).
     var effectiveGravity: CGFloat {
         var gravity = difficulty.effectiveGravity
+        if hasActive(.heavyDuck) {
+            gravity *= 1.5
+        }
         if hasActive(.dizzyDuck) {
             gravity = -gravity
         }
@@ -170,6 +173,12 @@ final class PowerUpController {
 
     /// Whether the bread magnet is active and has remaining pipe charges.
     var isBreadMagnetActive: Bool { hasActivePipeCounted(.breadMagnet) }
+
+    /// Whether double-points is active and has remaining pipe charges.
+    var isDoublePointsActive: Bool { hasActivePipeCounted(.doublePoints) }
+
+    /// Whether heavy duck gravity boost is active.
+    var isHeavyDuckActive: Bool { hasActive(.heavyDuck) }
 
     // MARK: - Spawn Flow
 
@@ -454,11 +463,26 @@ final class PowerUpController {
             let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
             duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_breadMagnet")
 
+        case .doublePoints:
+            // Bright gold pulse blink
+            let tintOn = SKAction.colorize(with: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1), colorBlendFactor: 0.4, duration: 0.15)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_doublePoints")
+
         case .pipeSqueeze:
             // Red warning blink
             let tintOn = SKAction.colorize(with: UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1), colorBlendFactor: 0.4, duration: 0.15)
             let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
             duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_pipeSqueeze")
+
+        case .heavyDuck:
+            // Brown tint blink + slight vertical shake
+            let shake = SKAction.sequence([
+                SKAction.moveBy(x: 0, y: -2, duration: 0.04),
+                SKAction.moveBy(x: 0, y: 4, duration: 0.04),
+                SKAction.moveBy(x: 0, y: -2, duration: 0.04),
+            ])
+            duck.run(SKAction.repeatForever(shake), withKey: "expiryWarn_heavyDuck")
         }
     }
 
@@ -480,8 +504,11 @@ final class PowerUpController {
         case .speedBurst:
             // Reset position in case shake left it offset
             break
-        case .pipeExpander, .breadMagnet, .pipeSqueeze:
+        case .pipeExpander, .breadMagnet, .doublePoints, .pipeSqueeze:
             duck.colorBlendFactor = 0
+        case .heavyDuck:
+            // Reset position in case shake left it offset
+            break
         case .shield:
             break
         }
