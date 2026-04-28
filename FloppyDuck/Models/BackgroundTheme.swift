@@ -316,6 +316,16 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// Whether to show floating cloud sprites (false for enclosed / non-sky themes).
+    var showClouds: Bool {
+        switch self {
+        case .cave, .underwater, .space:
+            return false
+        default:
+            return true
+        }
+    }
+
     /// Ground strip color for mini-scene preview cards in Collection / Shop.
     var previewGroundColor: Color {
         switch self {

@@ -34,6 +34,7 @@ final class ParallaxManager {
     private var clouds: [SKSpriteNode] = []
     private var hills: [SKSpriteNode] = []
     private var trees: [SKSpriteNode] = []
+    private var bushes: [SKSpriteNode] = []
 
     // MARK: - Ground Scrolling
 
@@ -76,9 +77,12 @@ final class ParallaxManager {
         reduceMotionEnabled = UIAccessibility.isReduceMotionEnabled
 
         setupBackground()
-        setupClouds()
+        if theme.showClouds {
+            setupClouds()
+        }
         setupHills()
         setupTrees()
+        setupBushes()
         setupGroundTiles()
         setupGroundDetails()
 
@@ -106,9 +110,10 @@ final class ParallaxManager {
 
         // Decorative layers respect Reduce Motion preference (cached at setup)
         if !reduceMotionEnabled {
-            scrollClouds(dtF)
+            if !clouds.isEmpty { scrollClouds(dtF) }
             scrollHills(dtF)
             scrollTrees(dtF)
+            scrollBushes(dtF)
         }
     }
 
@@ -196,6 +201,26 @@ final class ParallaxManager {
             treeNode.alpha = 0.7
             backgroundLayer.addChild(treeNode)
             trees.append(treeNode)
+        }
+    }
+
+    // MARK: - Bushes / Foreground Strip
+    //
+    // Themed bush/fern/debris strip rendered by TextureFactory.  Sits between
+    // the tree layer and the ground, scrolling at bush speed to add an extra
+    // layer of parallax depth.
+
+    private func setupBushes() {
+        let bushTex = factory.themedBushTexture(theme: theme)
+        for i in 0..<2 {
+            let bushNode = SKSpriteNode(texture: bushTex,
+                                         size: CGSize(width: GK.worldWidth * 2, height: 36))
+            bushNode.anchorPoint = CGPoint(x: 0, y: 0)
+            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 2)
+            bushNode.zPosition = -40
+            bushNode.alpha = 0.85
+            backgroundLayer.addChild(bushNode)
+            bushes.append(bushNode)
         }
     }
 
@@ -318,6 +343,15 @@ final class ParallaxManager {
             tree.position.x -= GK.treeSpeed * dt
             if tree.position.x < -(GK.worldWidth * 2) {
                 tree.position.x += GK.worldWidth * 4
+            }
+        }
+    }
+
+    private func scrollBushes(_ dt: CGFloat) {
+        for bush in bushes {
+            bush.position.x -= GK.bushSpeed * dt
+            if bush.position.x < -(GK.worldWidth * 2) {
+                bush.position.x += GK.worldWidth * 4
             }
         }
     }

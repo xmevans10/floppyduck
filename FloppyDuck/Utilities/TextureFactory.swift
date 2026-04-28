@@ -1458,6 +1458,11 @@ final class TextureFactory {
         let windowOff    = UIColor(red: 0.08, green: 0.05, blue: 0.15, alpha: 0.7)
         let windowColors = [windowYellow, windowCyan, windowPink, windowOff, windowOff]
 
+        // Neon sign glow colors
+        let neonCyan  = UIColor(red: 0.20, green: 0.85, blue: 0.95, alpha: 0.35)
+        let neonPink  = UIColor(red: 0.95, green: 0.25, blue: 0.60, alpha: 0.35)
+        let neonGreen = UIColor(red: 0.20, green: 0.90, blue: 0.40, alpha: 0.30)
+
         // Deterministic building specs: (xPixel, widthPixels, heightPixels)
         let buildings: [(x: Int, w: Int, h: Int)] = [
             (2, 8, 18), (12, 6, 12), (20, 10, 22), (32, 5, 9),
@@ -1471,7 +1476,7 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            for bld in buildings {
+            for (bIdx, bld) in buildings.enumerated() {
                 let bx = bld.x
                 let bw = bld.w
                 let bh = min(bld.h, gridH)
@@ -1516,10 +1521,43 @@ final class TextureFactory {
                         let yPos = h - CGFloat(bh + i) * ps
                         c.fill(CGRect(x: CGFloat(antX) * ps, y: yPos, width: ps, height: ps))
                     }
-                    // Blinking light at tip
                     c.setFillColor(antColor.cgColor)
                     c.fill(CGRect(x: CGFloat(antX) * ps, y: h - CGFloat(bh + 4) * ps, width: ps, height: ps))
                 }
+
+                // Neon signs on some buildings (neon mode only)
+                if neon && bw >= 7 && bh > 10 && bIdx % 3 == 0 {
+                    let signY = h - CGFloat(bh / 2 + 2) * ps
+                    let signX = CGFloat(bx + 1) * ps
+                    let signW = CGFloat(bw - 2) * ps
+                    let signColor = [neonCyan, neonPink, neonGreen][bIdx % 3]
+                    // Neon sign rectangle glow
+                    c.setFillColor(signColor.cgColor)
+                    c.fill(CGRect(x: signX, y: signY, width: signW, height: ps))
+                    c.fill(CGRect(x: signX, y: signY + ps * 2, width: signW, height: ps))
+                    c.fill(CGRect(x: signX, y: signY, width: ps, height: ps * 3))
+                    c.fill(CGRect(x: signX + signW - ps, y: signY, width: ps, height: ps * 3))
+                    // Glow halo
+                    let haloColor = signColor.withAlphaComponent(0.08)
+                    c.setFillColor(haloColor.cgColor)
+                    c.fill(CGRect(x: signX - ps, y: signY - ps, width: signW + ps * 2, height: ps * 5))
+                }
+            }
+
+            // Rain streaks (neon only)
+            if neon {
+                let rainC = UIColor(red: 0.60, green: 0.70, blue: 0.85, alpha: 0.08)
+                c.setFillColor(rainC.cgColor)
+                for i in stride(from: 0, to: gridW, by: 5) {
+                    let rx = CGFloat(i) * ps
+                    let ry = CGFloat(i % 7) * ps * 2
+                    c.fill(CGRect(x: rx, y: ry, width: ps * 0.5, height: ps * 3))
+                }
+
+                // Wet ground reflections at base
+                let reflectC = UIColor(red: 0.25, green: 0.15, blue: 0.45, alpha: 0.10)
+                c.setFillColor(reflectC.cgColor)
+                c.fill(CGRect(x: 0, y: h - ps * 2, width: w, height: ps * 2))
             }
         }
     }
@@ -1532,12 +1570,12 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Coral reef uses overlapping rounded bumps like hills but with vibrant ocean colors
+        // Coral reef — denser, more varied bumps
         var heightMap = [Int](repeating: 0, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 8, 8), (gridW / 5, 12, 14), (gridW * 3 / 10, 6, 6),
-            (gridW * 2 / 5, 14, 16), (gridW / 2, 7, 5), (gridW * 3 / 5, 10, 12),
-            (gridW * 7 / 10, 15, 18), (gridW * 4 / 5, 8, 10), (gridW * 9 / 10, 11, 13),
+            (gridW / 10, 8, 10), (gridW / 5, 12, 16), (gridW * 3 / 10, 6, 8),
+            (gridW * 2 / 5, 14, 18), (gridW / 2, 7, 7), (gridW * 3 / 5, 10, 14),
+            (gridW * 7 / 10, 15, 20), (gridW * 4 / 5, 8, 12), (gridW * 9 / 10, 11, 15),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1547,7 +1585,7 @@ final class TextureFactory {
             }
         }
 
-        // Coral palette — each "bump" gets a color from this cycle
+        // Coral palette with more variety
         let coralPalette: [(base: UIColor, mid: UIColor, top: UIColor)] = [
             (UIColor(red: 0.85, green: 0.30, blue: 0.40, alpha: 0.65),
              UIColor(red: 0.95, green: 0.45, blue: 0.50, alpha: 0.60),
@@ -1563,7 +1601,6 @@ final class TextureFactory {
              UIColor(red: 0.15, green: 0.52, blue: 0.45, alpha: 0.65)),
         ]
 
-        // Map each x to its dominant bump for coloring
         var bumpOwner = [Int](repeating: 0, count: gridW)
         for (bi, bump) in bumps.enumerated() {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1574,9 +1611,31 @@ final class TextureFactory {
             }
         }
 
+        let lightRay = UIColor(red: 0.60, green: 0.85, blue: 0.95, alpha: 0.08)
+        let bubbleC  = UIColor(red: 0.75, green: 0.90, blue: 1.0, alpha: 0.30)
+
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Light rays from surface — angled shafts of light
+            let rayPositions: [CGFloat] = [w * 0.15, w * 0.40, w * 0.65, w * 0.85]
+            for rx in rayPositions {
+                c.setFillColor(lightRay.cgColor)
+                // Diagonal ray — a tall parallelogram
+                c.saveGState()
+                let rayPath = CGMutablePath()
+                rayPath.move(to: CGPoint(x: rx, y: 0))
+                rayPath.addLine(to: CGPoint(x: rx + ps * 4, y: 0))
+                rayPath.addLine(to: CGPoint(x: rx + ps * 2, y: h * 0.8))
+                rayPath.addLine(to: CGPoint(x: rx - ps * 2, y: h * 0.8))
+                rayPath.closeSubpath()
+                c.addPath(rayPath)
+                c.fillPath()
+                c.restoreGState()
+            }
+
+            // Coral formations
             for x in 0..<gridW {
                 let coralH = heightMap[x]
                 guard coralH > 0 else { continue }
@@ -1593,15 +1652,33 @@ final class TextureFactory {
                 }
             }
 
-            // Scattered small coral nubs on top
-            let nubColor = UIColor(red: 1.0, green: 0.50, blue: 0.60, alpha: 0.50)
-            c.setFillColor(nubColor.cgColor)
-            for x in stride(from: 5, to: gridW - 3, by: 9) {
+            // Coral nubs and branching tips
+            let nubColors: [UIColor] = [
+                UIColor(red: 1.0, green: 0.50, blue: 0.60, alpha: 0.50),
+                UIColor(red: 0.60, green: 0.90, blue: 0.70, alpha: 0.50),
+                UIColor(red: 0.95, green: 0.80, blue: 0.30, alpha: 0.50),
+            ]
+            for x in stride(from: 3, to: gridW - 3, by: 7) {
                 let ch = heightMap[x]
                 if ch > 3 {
                     let yPos = h - CGFloat(ch + 1) * ps
+                    c.setFillColor(nubColors[x % nubColors.count].cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                    // Branching tip
+                    if ch > 6 {
+                        c.fill(CGRect(x: CGFloat(x - 1) * ps, y: yPos + ps, width: ps, height: ps))
+                        c.fill(CGRect(x: CGFloat(x + 1) * ps, y: yPos + ps, width: ps, height: ps))
+                    }
                 }
+            }
+
+            // Bubbles rising from coral
+            c.setFillColor(bubbleC.cgColor)
+            for i in stride(from: 0, to: gridW, by: gridW / 8) {
+                let bx = CGFloat(i) * ps + ps * 3
+                let by = h * 0.2 + CGFloat(i % 4) * ps * 3
+                c.fill(CGRect(x: bx, y: by, width: ps, height: ps))
+                c.fill(CGRect(x: bx + ps * 2, y: by - ps * 2, width: ps * 0.75, height: ps * 0.75))
             }
         }
     }
@@ -1614,28 +1691,47 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Jagged peaks — sharper bumps with smaller radii
+        // Jagged peaks — sharper bumps with smaller radii, taller for drama
         var heightMap = [Int](repeating: 0, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 6, 12), (gridW / 5, 10, 20), (gridW * 3 / 10, 4, 8),
-            (gridW * 2 / 5, 8, 18), (gridW / 2, 5, 10), (gridW * 3 / 5, 12, 24),
-            (gridW * 7 / 10, 6, 14), (gridW * 4 / 5, 9, 22), (gridW * 9 / 10, 7, 16),
+            (gridW / 10, 6, 14), (gridW / 5, 10, 24), (gridW * 3 / 10, 4, 10),
+            (gridW * 2 / 5, 8, 20), (gridW / 2, 5, 12), (gridW * 3 / 5, 12, 28),
+            (gridW * 7 / 10, 6, 16), (gridW * 4 / 5, 9, 26), (gridW * 9 / 10, 7, 18),
         ]
+        // Track which bump is tallest (the erupting crater)
+        var tallestPeak = 0; var tallestCenter = gridW / 2
         for bump in bumps {
+            if bump.peak > tallestPeak { tallestPeak = bump.peak; tallestCenter = bump.center }
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
                 let dist = abs(x - bump.center)
                 let nd = CGFloat(dist) / CGFloat(bump.radius)
-                // Steeper falloff for jagged look
                 let bh = Int(CGFloat(bump.peak) * max(0, 1.0 - nd * nd * nd))
                 heightMap[x] = max(heightMap[x], bh)
             }
         }
 
-        let rockBase = UIColor(red: 0.25, green: 0.15, blue: 0.10, alpha: 0.75)
-        let rockMid  = UIColor(red: 0.35, green: 0.22, blue: 0.15, alpha: 0.70)
-        let rockTop  = UIColor(red: 0.20, green: 0.12, blue: 0.08, alpha: 0.80)
-        let lavaGlow = UIColor(red: 1.0, green: 0.45, blue: 0.10, alpha: 0.60)
-        let lavaHot  = UIColor(red: 1.0, green: 0.70, blue: 0.20, alpha: 0.50)
+        // Lava river channels — valleys between peaks glow with flowing lava
+        var lavaMap = [Bool](repeating: false, count: gridW)
+        for x in 0..<gridW {
+            // Low valleys (height < 4) get lava
+            if heightMap[x] < 4 && heightMap[x] > 0 { lavaMap[x] = true }
+            // Also fill gaps between adjacent tall peaks
+            if heightMap[x] == 0 {
+                let leftH = x > 0 ? heightMap[x - 1] : 0
+                let rightH = x < gridW - 1 ? heightMap[x + 1] : 0
+                if leftH > 3 || rightH > 3 { lavaMap[x] = true; heightMap[x] = 2 }
+            }
+        }
+
+        let rockBase   = UIColor(red: 0.22, green: 0.12, blue: 0.08, alpha: 0.80)
+        let rockMid    = UIColor(red: 0.32, green: 0.20, blue: 0.12, alpha: 0.75)
+        let rockLight  = UIColor(red: 0.40, green: 0.28, blue: 0.18, alpha: 0.65)
+        let rockTop    = UIColor(red: 0.18, green: 0.10, blue: 0.06, alpha: 0.85)
+        let lavaGlow   = UIColor(red: 1.0, green: 0.45, blue: 0.10, alpha: 0.65)
+        let lavaHot    = UIColor(red: 1.0, green: 0.70, blue: 0.20, alpha: 0.55)
+        let lavaBright = UIColor(red: 1.0, green: 0.85, blue: 0.35, alpha: 0.50)
+        let smokeColor = UIColor(red: 0.25, green: 0.20, blue: 0.18, alpha: 0.25)
+        let emberColor = UIColor(red: 1.0, green: 0.55, blue: 0.15, alpha: 0.45)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -1643,18 +1739,61 @@ final class TextureFactory {
             for x in 0..<gridW {
                 let mtnH = heightMap[x]
                 guard mtnH > 0 else { continue }
+                let isLava = lavaMap[x]
+
                 for y in 0..<mtnH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
                     let color: UIColor
-                    if y <= 1 { color = lavaGlow }          // lava glow at base
-                    else if y == 2 && mtnH > 5 { color = lavaHot }
-                    else if y == mtnH - 1 { color = rockTop }
-                    else if ratio > 0.5 { color = rockMid }
-                    else { color = rockBase }
+
+                    if isLava && mtnH <= 4 {
+                        // Lava river channel — bright flowing lava
+                        color = y == mtnH - 1 ? lavaBright : (y == 0 ? lavaGlow : lavaHot)
+                    } else if y <= 1 {
+                        color = lavaGlow
+                    } else if y == 2 && mtnH > 6 {
+                        color = lavaHot
+                    } else if y == mtnH - 1 {
+                        color = rockTop
+                    } else if ratio > 0.7 {
+                        color = rockLight
+                    } else if ratio > 0.4 {
+                        // Rock striations — alternating bands for texture
+                        color = (y % 3 == 0) ? rockMid : rockBase
+                    } else {
+                        color = rockBase
+                    }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
+
+                // Crater hollow at tallest peak — carve a V shape at the top
+                if abs(x - tallestCenter) < 3 && mtnH == tallestPeak {
+                    let craterDepth = 3 - abs(x - tallestCenter)
+                    for dy in 0..<craterDepth {
+                        let craterY = h - CGFloat(mtnH - dy) * ps
+                        c.setFillColor(lavaHot.cgColor)
+                        c.fill(CGRect(x: CGFloat(x) * ps, y: craterY, width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Smoke wisps rising from crater
+            let smokeBase = h - CGFloat(tallestPeak + 1) * ps
+            for i in 0..<4 {
+                let sx = CGFloat(tallestCenter) * ps + CGFloat(i - 2) * ps * 2
+                let sy = smokeBase - CGFloat(i) * ps * 2
+                c.setFillColor(smokeColor.cgColor)
+                c.fill(CGRect(x: sx, y: sy, width: ps * 2, height: ps))
+                c.fill(CGRect(x: sx + ps, y: sy - ps, width: ps, height: ps))
+            }
+
+            // Ember particles floating above lava
+            for i in 0..<6 {
+                let ex = CGFloat(i * gridW / 6 + 3) * ps
+                let ey = h - CGFloat(5 + (i % 3) * 4) * ps
+                c.setFillColor(emberColor.cgColor)
+                c.fill(CGRect(x: ex, y: ey, width: ps, height: ps))
             }
         }
     }
@@ -1667,11 +1806,12 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
+        // Taller, more dramatic glacier peaks
         var heightMap = [Int](repeating: 1, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 16, 12), (gridW / 4, 20, 18), (gridW * 3 / 8, 10, 8),
-            (gridW / 2, 18, 16), (gridW * 5 / 8, 14, 11), (gridW * 3 / 4, 22, 20),
-            (gridW * 7 / 8, 12, 10),
+            (gridW / 8, 14, 14), (gridW / 4, 18, 22), (gridW * 3 / 8, 8, 10),
+            (gridW / 2, 16, 20), (gridW * 5 / 8, 12, 14), (gridW * 3 / 4, 20, 24),
+            (gridW * 7 / 8, 10, 12),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1681,27 +1821,59 @@ final class TextureFactory {
             }
         }
 
-        let rockBase = UIColor(red: 0.45, green: 0.52, blue: 0.62, alpha: 0.55)
-        let rockMid  = UIColor(red: 0.55, green: 0.62, blue: 0.72, alpha: 0.50)
+        let rockBase = UIColor(red: 0.42, green: 0.50, blue: 0.60, alpha: 0.55)
+        let rockMid  = UIColor(red: 0.52, green: 0.60, blue: 0.70, alpha: 0.50)
         let snowTop  = UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.70)
         let snowMid  = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.60)
+        let icicle   = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.50)
+        // Aurora colors
+        let auroraG  = UIColor(red: 0.20, green: 0.80, blue: 0.45, alpha: 0.12)
+        let auroraB  = UIColor(red: 0.25, green: 0.55, blue: 0.85, alpha: 0.10)
+        let auroraP  = UIColor(red: 0.55, green: 0.30, blue: 0.75, alpha: 0.08)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Aurora borealis — wavy bands of green/blue/purple in upper portion
+            let aurColors = [auroraG, auroraB, auroraP, auroraG, auroraB]
+            for (i, ac) in aurColors.enumerated() {
+                c.setFillColor(ac.cgColor)
+                let bandY = CGFloat(i) * ps * 3 + ps * 2
+                let bandH = ps * 2
+                // Wavy band using sine
+                for x in 0..<gridW {
+                    let xF = CGFloat(x) / CGFloat(gridW)
+                    let wave = sin(xF * .pi * 3.0 + CGFloat(i) * 1.2) * ps * 2
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: bandY + wave, width: ps, height: bandH))
+                }
+            }
+
+            // Mountain peaks
             for x in 0..<gridW {
                 let mtnH = heightMap[x]
                 for y in 0..<mtnH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
                     let color: UIColor
-                    // Top 35% is snow, rest is blue-gray rock
-                    if ratio > 0.75 { color = snowTop }
+                    if ratio > 0.80 { color = snowTop }
                     else if ratio > 0.65 { color = snowMid }
-                    else if ratio > 0.35 { color = rockMid }
-                    else { color = rockBase }
+                    else if ratio > 0.35 {
+                        // Rock striations
+                        color = (y % 2 == 0) ? rockMid : rockBase
+                    } else { color = rockBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+
+                // Icicle hanging from snow edge
+                if mtnH > 5 {
+                    let leftH = x > 0 ? heightMap[x - 1] : 0
+                    if leftH < mtnH - 2 && (x % 5 == 0) {
+                        let iceBase = h - CGFloat(mtnH - 2) * ps
+                        c.setFillColor(icicle.cgColor)
+                        c.fill(CGRect(x: CGFloat(x) * ps, y: iceBase, width: ps, height: ps * 2))
+                    }
                 }
             }
         }
@@ -1718,9 +1890,9 @@ final class TextureFactory {
         // Lumpy alien terrain
         var heightMap = [Int](repeating: 2, count: gridW)
         let bumps: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 12, 8), (gridW / 4, 16, 11), (gridW * 3 / 8, 8, 5),
-            (gridW / 2, 14, 10), (gridW * 3 / 5, 18, 14), (gridW * 3 / 4, 10, 7),
-            (gridW * 9 / 10, 14, 9),
+            (gridW / 8, 12, 10), (gridW / 4, 16, 14), (gridW * 3 / 8, 8, 6),
+            (gridW / 2, 14, 12), (gridW * 3 / 5, 18, 16), (gridW * 3 / 4, 10, 9),
+            (gridW * 9 / 10, 14, 11),
         ]
         for bump in bumps {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -1733,41 +1905,89 @@ final class TextureFactory {
         let surfBase = UIColor(red: 0.15, green: 0.10, blue: 0.25, alpha: 0.65)
         let surfMid  = UIColor(red: 0.22, green: 0.15, blue: 0.35, alpha: 0.60)
         let surfTop  = UIColor(red: 0.12, green: 0.08, blue: 0.20, alpha: 0.70)
+        let surfDust = UIColor(red: 0.18, green: 0.13, blue: 0.28, alpha: 0.55)
 
-        // Crater positions (column index, radius in grid cells)
+        // More craters with depth
         let craters: [(cx: Int, r: Int)] = [
-            (gridW / 6, 5), (gridW * 2 / 5, 3), (gridW * 2 / 3, 6), (gridW * 5 / 6, 4),
+            (gridW / 8, 4), (gridW / 4, 6), (gridW * 2 / 5, 3),
+            (gridW * 3 / 5, 7), (gridW * 3 / 4, 5), (gridW * 7 / 8, 4),
         ]
         var craterMap = [Bool](repeating: false, count: gridW)
+        var craterInner = [Bool](repeating: false, count: gridW)
         for crater in craters {
             for x in max(0, crater.cx - crater.r)..<min(gridW, crater.cx + crater.r) {
                 craterMap[x] = true
-                // Dip the heightmap for crater interior
                 let dist = abs(x - crater.cx)
                 if dist < crater.r {
                     let dip = Int(CGFloat(crater.r - dist) * 0.6)
                     heightMap[x] = max(2, heightMap[x] - dip)
+                    if dist < crater.r / 2 { craterInner[x] = true }
                 }
             }
         }
-        let craterRim = UIColor(red: 0.28, green: 0.20, blue: 0.42, alpha: 0.55)
+        let craterRim   = UIColor(red: 0.28, green: 0.20, blue: 0.42, alpha: 0.55)
+        let craterFloor = UIColor(red: 0.10, green: 0.06, blue: 0.18, alpha: 0.70)
+
+        // Nebula glow — faint colored patches in sky
+        let nebulaA = UIColor(red: 0.20, green: 0.08, blue: 0.40, alpha: 0.10)
+        let nebulaB = UIColor(red: 0.08, green: 0.15, blue: 0.35, alpha: 0.08)
+        // Distant planet
+        let planetColor = UIColor(red: 0.35, green: 0.25, blue: 0.50, alpha: 0.30)
+        let planetLight = UIColor(red: 0.50, green: 0.40, blue: 0.65, alpha: 0.25)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Nebula glow patches
+            c.setFillColor(nebulaA.cgColor)
+            c.fill(CGRect(x: w * 0.25, y: ps * 2, width: w * 0.3, height: ps * 8))
+            c.setFillColor(nebulaB.cgColor)
+            c.fill(CGRect(x: w * 0.60, y: ps * 4, width: w * 0.25, height: ps * 6))
+
+            // Distant planet (small circle in sky)
+            let planetCX = w * 0.78, planetCY: CGFloat = ps * 6
+            let planetR = 5
+            for dy in -planetR...planetR {
+                for dx in -planetR...planetR {
+                    let dist = sqrt(CGFloat(dx * dx + dy * dy))
+                    if dist <= CGFloat(planetR) {
+                        let pc = dx < 0 ? planetLight : planetColor
+                        c.setFillColor(pc.cgColor)
+                        c.fill(CGRect(x: planetCX + CGFloat(dx) * ps,
+                                      y: planetCY + CGFloat(dy) * ps,
+                                      width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Terrain
             for x in 0..<gridW {
                 let mtnH = heightMap[x]
                 for y in 0..<mtnH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mtnH))
                     var color: UIColor
-                    if y == mtnH - 1 { color = surfTop }
+                    if craterInner[x] && y < 3 { color = craterFloor }
+                    else if y == mtnH - 1 { color = surfTop }
                     else if ratio > 0.5 { color = surfMid }
-                    else { color = surfBase }
-                    // Tint crater rims
+                    else { color = (x + y) % 4 == 0 ? surfDust : surfBase }
                     if craterMap[x] && y == mtnH - 1 { color = craterRim }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+            }
+
+            // Floating asteroid silhouettes in sky
+            let asterC = UIColor(red: 0.20, green: 0.15, blue: 0.30, alpha: 0.25)
+            for (ax, ay, ar) in [(w * 0.12, ps * 10, 2), (w * 0.45, ps * 5, 1), (w * 0.90, ps * 8, 2)] as [(CGFloat, CGFloat, Int)] {
+                for dy in -ar...ar {
+                    for dx in -ar...ar {
+                        if abs(dx) + abs(dy) <= ar + 1 {
+                            c.setFillColor(asterC.cgColor)
+                            c.fill(CGRect(x: ax + CGFloat(dx) * ps, y: ay + CGFloat(dy) * ps, width: ps, height: ps))
+                        }
+                    }
                 }
             }
         }
@@ -3147,21 +3367,20 @@ final class TextureFactory {
 
         var heightMap = [Int](repeating: 0, count: gridW)
 
-        // Mesa formations: flat-topped with steep sides
+        // Mesa formations: flat-topped with steep sides, taller for drama
         let mesas: [(center: Int, halfWidth: Int, peak: Int)] = [
-            (gridW / 10, 8, 14),       // narrow butte
-            (gridW / 4, 16, 10),       // wide mesa
-            (gridW * 3 / 8, 6, 18),    // tall narrow butte
-            (gridW / 2, 12, 8),        // medium mesa
-            (gridW * 5 / 8, 5, 16),    // narrow butte
-            (gridW * 3 / 4, 18, 12),   // wide mesa
-            (gridW * 9 / 10, 7, 15),   // medium butte
+            (gridW / 10, 8, 16),       // narrow butte
+            (gridW / 4, 16, 12),       // wide mesa
+            (gridW * 3 / 8, 6, 20),    // tall narrow butte
+            (gridW / 2, 12, 10),       // medium mesa
+            (gridW * 5 / 8, 5, 18),    // narrow butte
+            (gridW * 3 / 4, 18, 14),   // wide mesa
+            (gridW * 9 / 10, 7, 17),   // medium butte
         ]
         for mesa in mesas {
             for x in max(0, mesa.center - mesa.halfWidth)..<min(gridW, mesa.center + mesa.halfWidth) {
                 let dist = abs(x - mesa.center)
                 let edgeDist = mesa.halfWidth - dist
-                // Steep edges (2px ramp) with flat top
                 let bh = edgeDist <= 2 ? Int(CGFloat(mesa.peak) * CGFloat(edgeDist) / 3.0) : mesa.peak
                 heightMap[x] = max(heightMap[x], bh)
             }
@@ -3180,14 +3399,25 @@ final class TextureFactory {
             }
         }
 
+        // Erosion layer colors — bands of sedimentary rock
         let mesaBase   = UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 0.60)
-        let mesaMid    = UIColor(red: 0.54, green: 0.33, blue: 0.16, alpha: 0.55)
+        let mesaLayer1 = UIColor(red: 0.48, green: 0.28, blue: 0.12, alpha: 0.58)
+        let mesaLayer2 = UIColor(red: 0.54, green: 0.33, blue: 0.16, alpha: 0.55)
+        let mesaLayer3 = UIColor(red: 0.60, green: 0.38, blue: 0.20, alpha: 0.52)
         let mesaTop    = UIColor(red: 0.23, green: 0.13, blue: 0.06, alpha: 0.65)
         let mesaLight  = UIColor(red: 0.77, green: 0.57, blue: 0.29, alpha: 0.45)
+        let dustHaze   = UIColor(red: 0.80, green: 0.65, blue: 0.45, alpha: 0.06)
+        let vultureC   = UIColor(red: 0.15, green: 0.12, blue: 0.10, alpha: 0.40)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Dust haze at horizon
+            c.setFillColor(dustHaze.cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.3, width: w, height: h * 0.15))
+
+            // Mesa formations with erosion bands
             for x in 0..<gridW {
                 let mH = heightMap[x]
                 guard mH > 0 else { continue }
@@ -3196,10 +3426,12 @@ final class TextureFactory {
                     let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
                     if y == mH - 1 { color = mesaTop }
-                    else if ratio > 0.7 { color = mesaMid }
-                    else if ratio > 0.3 { color = mesaBase }
+                    else if ratio > 0.80 { color = mesaLayer3 }
+                    else if ratio > 0.60 { color = mesaLayer2 }
+                    else if ratio > 0.40 { color = mesaLayer1 }
+                    else if ratio > 0.20 { color = mesaBase }
                     else { color = mesaLight }
-                    // Sun highlight on left edge
+                    // Sun highlight on exposed edges
                     if x > 0 && heightMap[x - 1] < y && ratio > 0.5 {
                         c.setFillColor(mesaLight.cgColor)
                     } else {
@@ -3207,6 +3439,26 @@ final class TextureFactory {
                     }
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
+                // Shadow on right side of steep edges
+                if x < gridW - 1 && heightMap[x + 1] < heightMap[x] - 3 {
+                    let shadowH = min(heightMap[x], 4)
+                    for sy in 0..<shadowH {
+                        let yPos = h - CGFloat(heightMap[x] - sy) * ps
+                        c.setFillColor(UIColor(red: 0, green: 0, blue: 0, alpha: 0.10).cgColor)
+                        c.fill(CGRect(x: CGFloat(x + 1) * ps, y: yPos, width: ps, height: ps))
+                    }
+                }
+            }
+
+            // Circling vulture silhouettes
+            let vultures: [(x: CGFloat, y: CGFloat)] = [(w * 0.20, h * 0.1), (w * 0.65, h * 0.15)]
+            for v in vultures {
+                c.setFillColor(vultureC.cgColor)
+                c.fill(CGRect(x: v.x - ps * 2, y: v.y, width: ps, height: ps))
+                c.fill(CGRect(x: v.x - ps, y: v.y - ps * 0.5, width: ps, height: ps))
+                c.fill(CGRect(x: v.x, y: v.y, width: ps, height: ps))
+                c.fill(CGRect(x: v.x + ps, y: v.y - ps * 0.5, width: ps, height: ps))
+                c.fill(CGRect(x: v.x + ps * 2, y: v.y, width: ps, height: ps))
             }
         }
     }
@@ -3413,7 +3665,7 @@ final class TextureFactory {
         }
     }
 
-    // MARK: Jungle Tropical Trees — thick trees with vines and flowers
+    // MARK: Jungle Tropical Trees — HUGE trees, snakes, dense vines, flowers, butterflies
 
     private func renderJungleTropicalTrees() -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
@@ -3424,27 +3676,68 @@ final class TextureFactory {
         let gD = UIColor(red: 0.12, green: 0.42, blue: 0.16, alpha: 0.65) // canopy dark
         let gM = UIColor(red: 0.24, green: 0.63, blue: 0.27, alpha: 0.60) // canopy mid
         let gL = UIColor(red: 0.42, green: 0.75, blue: 0.33, alpha: 0.50) // canopy light
+        let gB = UIColor(red: 0.30, green: 0.70, blue: 0.35, alpha: 0.45) // bright leaf
         let tK = UIColor(red: 0.16, green: 0.10, blue: 0.06, alpha: 0.70) // trunk
+        let tL = UIColor(red: 0.22, green: 0.14, blue: 0.08, alpha: 0.65) // trunk light
         let vN = UIColor(red: 0.10, green: 0.30, blue: 0.10, alpha: 0.55) // vine
         let fP = UIColor(red: 0.91, green: 0.25, blue: 0.50, alpha: 0.60) // flower pink
         let fO = UIColor(red: 1.00, green: 0.53, blue: 0.19, alpha: 0.60) // flower orange
+        let sG = UIColor(red: 0.20, green: 0.55, blue: 0.12, alpha: 0.70) // snake green
+        let sY = UIColor(red: 0.65, green: 0.60, blue: 0.10, alpha: 0.65) // snake pattern
+        let sE = UIColor(red: 0.80, green: 0.15, blue: 0.10, alpha: 0.70) // snake eye
+        let bW = UIColor(red: 0.30, green: 0.65, blue: 0.85, alpha: 0.50) // butterfly blue
+        let bO = UIColor(red: 0.95, green: 0.55, blue: 0.15, alpha: 0.50) // butterfly orange
 
-        // Wide Tropical Tree (11w × 16h)
-        let tropTree: [[UIColor]] = [
+        // HUGE Jungle Tree (15w × 26h) — massive canopy, thick trunk, roots
+        let hugeTree: [[UIColor]] = [
+            [C,C,C,C,C,C,gD,gD,gD,C,C,C,C,C,C],
+            [C,C,C,C,gD,gM,gM,gB,gM,gM,gD,C,C,C,C],
+            [C,C,C,gD,gM,gL,gB,gL,gB,gL,gM,gD,C,C,C],
+            [C,C,gD,gM,gL,gM,gL,gM,gL,gM,gL,gM,gD,C,C],
+            [C,gD,gM,gL,gB,gM,gM,gM,gM,gB,gL,gM,gD,C,C],
+            [gD,gM,gM,gM,gL,gL,gM,gM,gL,gL,gM,gM,gM,gD,C],
+            [gD,gM,gL,gM,gM,gM,gM,gM,gM,gM,gM,gL,gM,gM,gD],
+            [gD,gM,gM,gL,gM,gM,gM,gM,gM,gM,gL,gM,gM,gM,gD],
+            [C,gD,gM,gM,gM,gM,gM,gM,gM,gM,gM,gM,gM,gD,C],
+            [C,C,gD,gM,gM,gD,gM,gM,gM,gD,gM,gM,gD,C,C],
+            [C,C,C,gD,gD,C,gD,gM,gD,C,gD,gD,C,C,C],
+            [C,C,C,C,C,C,C,tK,C,C,C,C,C,C,C],
+            [C,C,C,C,C,C,tK,tK,tK,C,C,C,C,C,C],
+            [C,vN,C,C,C,C,tK,tL,tK,C,C,C,C,vN,C],
+            [C,vN,C,C,C,C,tK,tL,tK,C,C,C,C,vN,C],
+            [C,vN,C,C,C,C,tK,tL,tK,C,C,C,C,vN,C],
+            [C,C,vN,C,C,C,tK,tL,tK,C,C,C,vN,C,C],
+            [C,C,vN,C,C,tK,tK,tL,tK,tK,C,C,vN,C,C],
+            [C,C,C,vN,C,tK,tL,tK,tL,tK,C,vN,C,C,C],
+            [C,C,C,vN,C,tK,tL,tK,tL,tK,C,vN,C,C,C],
+            [C,C,C,C,C,tK,tL,tK,tL,tK,C,C,C,C,C],
+            [C,C,C,C,tK,tK,tL,tK,tL,tK,tK,C,C,C,C],
+            [C,C,C,tK,tK,C,tK,tK,tK,C,tK,tK,C,C,C],
+            [C,C,tK,tK,C,C,C,tK,C,C,C,tK,tK,C,C],
+            [C,tK,C,C,C,C,C,tK,C,C,C,C,C,tK,C],
+            [tK,C,C,C,C,C,C,tK,C,C,C,C,C,C,tK],
+        ]
+
+        // Tree with snake wrapped around trunk (11w × 20h)
+        let snakeTree: [[UIColor]] = [
             [C,C,C,C,gD,gD,gD,C,C,C,C],
-            [C,C,C,gD,gM,gM,gM,gD,C,C,C],
-            [C,C,gD,gM,gL,gM,gM,gM,gD,C,C],
-            [C,gD,gM,gM,gL,gL,gM,gM,gM,gD,C],
-            [gD,gM,gM,gL,gL,gM,gM,gM,gM,gM,gD],
-            [gD,gM,gM,gM,gM,gM,gM,gM,gM,gM,gD],
+            [C,C,gD,gM,gM,gB,gM,gM,gD,C,C],
+            [C,gD,gM,gL,gM,gM,gM,gL,gM,gD,C],
+            [gD,gM,gM,gM,gL,gM,gL,gM,gM,gM,gD],
+            [gD,gM,gL,gM,gM,gM,gM,gM,gL,gM,gD],
             [C,gD,gM,gM,gM,gM,gM,gM,gM,gD,C],
-            [C,C,gD,gM,gM,gM,gM,gM,gD,C,C],
-            [C,C,C,gD,gD,gM,gD,gD,C,C,C],
+            [C,C,gD,gD,gD,gM,gD,gD,gD,C,C],
             [C,C,C,C,C,tK,C,C,C,C,C],
+            [C,C,C,C,sG,tK,C,C,C,C,C],    // snake starts
+            [C,C,C,sG,sY,tK,C,C,C,C,C],
+            [C,C,C,C,sG,tK,sG,C,C,C,C],
+            [C,C,C,C,tK,tK,sY,sG,C,C,C],
+            [C,C,C,C,tK,sG,sG,C,C,C,C],
+            [C,C,C,sG,sY,tK,C,C,C,C,C],
+            [C,C,sE,sG,sG,tK,C,C,C,C,C],  // snake head with eye
             [C,C,C,C,C,tK,C,C,C,C,C],
             [C,vN,C,C,C,tK,C,C,C,vN,C],
             [C,vN,C,C,C,tK,C,C,C,vN,C],
-            [C,vN,C,C,C,tK,C,C,C,C,C],
             [C,C,C,C,C,tK,C,C,C,C,C],
             [C,C,C,C,C,tK,C,C,C,C,C],
         ]
@@ -3458,17 +3751,26 @@ final class TextureFactory {
             [C,C,gM,gM,gM,C,C],
         ]
 
-        // Vine Cluster (3w × 10h)
+        // Vine Cluster (3w × 12h) — longer hanging vines
         let vineCluster: [[UIColor]] = [
             [vN,C,C], [vN,C,vN], [vN,C,vN], [C,vN,vN],
             [C,vN,C], [C,vN,C], [vN,vN,C], [vN,C,C],
-            [vN,C,vN], [C,C,vN],
+            [vN,C,vN], [C,C,vN], [C,vN,C], [C,vN,C],
         ]
 
         let positions: [(x: CGFloat, type: Int)] = [
-            (15, 0), (75, 2), (120, 1), (180, 0), (250, 2), (300, 1),
-            (360, 0), (420, 2), (470, 1), (530, 0), (590, 2), (640, 1),
-            (700, 0), (760, 2),
+            (10, 0),   // huge tree
+            (80, 3),   // vine
+            (120, 2),  // flower bush
+            (180, 1),  // snake tree
+            (280, 3),  // vine
+            (330, 2),  // flower bush
+            (380, 0),  // huge tree
+            (480, 3),  // vine
+            (530, 1),  // snake tree
+            (620, 2),  // flower bush
+            (670, 0),  // huge tree
+            (770, 3),  // vine
         ]
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
@@ -3477,8 +3779,9 @@ final class TextureFactory {
             for pos in positions {
                 let template: [[UIColor]]
                 switch pos.type {
-                case 0: template = tropTree
-                case 1: template = flowerBush
+                case 0: template = hugeTree
+                case 1: template = snakeTree
+                case 2: template = flowerBush
                 default: template = vineCluster
                 }
                 let tH = template.count
@@ -3494,6 +3797,21 @@ final class TextureFactory {
                                       width: ps, height: ps))
                     }
                 }
+            }
+
+            // Butterflies floating between trees
+            let butterflies: [(x: CGFloat, y: CGFloat, color: UIColor)] = [
+                (w * 0.15, h * 0.3, bW), (w * 0.35, h * 0.2, bO),
+                (w * 0.55, h * 0.35, bW), (w * 0.78, h * 0.25, bO),
+            ]
+            for bf in butterflies {
+                // Wing left + right
+                c.setFillColor(bf.color.cgColor)
+                c.fill(CGRect(x: bf.x - ps, y: bf.y, width: ps, height: ps))
+                c.fill(CGRect(x: bf.x + ps, y: bf.y, width: ps, height: ps))
+                // Body
+                c.setFillColor(UIColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5).cgColor)
+                c.fill(CGRect(x: bf.x, y: bf.y, width: ps, height: ps))
             }
         }
     }
@@ -3580,14 +3898,13 @@ final class TextureFactory {
             }
         }
 
-        // Pyramids — triangular (straight linear edges)
+        // Pyramids — triangular
         let pyramids: [(center: Int, halfBase: Int, peak: Int)] = [
-            (gridW / 5, 14, 22),       // large pyramid
-            (gridW / 5 + 18, 8, 14),   // medium pyramid (offset right)
-            (gridW * 3 / 4, 10, 16),   // medium pyramid (right side)
+            (gridW / 5, 14, 24),       // large pyramid (taller)
+            (gridW / 5 + 18, 8, 16),   // medium pyramid
+            (gridW * 3 / 4, 10, 18),   // medium pyramid (right side)
         ]
 
-        // Track pyramid pixels for coloring
         var isPyramid = [Bool](repeating: false, count: gridW)
         for pyr in pyramids {
             for x in max(0, pyr.center - pyr.halfBase)..<min(gridW, pyr.center + pyr.halfBase) {
@@ -3605,10 +3922,28 @@ final class TextureFactory {
         let pyrShadow = UIColor(red: 0.42, green: 0.30, blue: 0.13, alpha: 0.60)
         let pyrLit    = UIColor(red: 0.77, green: 0.63, blue: 0.31, alpha: 0.55)
         let pyrCap    = UIColor(red: 0.91, green: 0.78, blue: 0.25, alpha: 0.65)
+        let pyrBlock  = UIColor(red: 0.62, green: 0.48, blue: 0.24, alpha: 0.50)
+        let sunRay    = UIColor(red: 1.0, green: 0.90, blue: 0.55, alpha: 0.06)
+        let heatHaze  = UIColor(red: 0.85, green: 0.70, blue: 0.45, alpha: 0.05)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            // Sun rays emanating from behind largest pyramid
+            let sunX = CGFloat(pyramids[0].center) * ps
+            for i in 0..<5 {
+                let angle = CGFloat(i - 2) * 0.25
+                c.setFillColor(sunRay.cgColor)
+                let rx = sunX + angle * w * 0.2
+                c.fill(CGRect(x: rx - ps, y: 0, width: ps * 3, height: h * 0.5))
+            }
+
+            // Heat haze at horizon
+            c.setFillColor(heatHaze.cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.4, width: w, height: h * 0.1))
+
+            // Pyramid and dune terrain
             for x in 0..<gridW {
                 let mH = heightMap[x]
                 guard mH > 0 else { continue }
@@ -3618,7 +3953,6 @@ final class TextureFactory {
                     if isPyramid[x] {
                         if y == mH - 1 { color = pyrCap }
                         else {
-                            // Shade by side: left = lit, right = shadow
                             var isLeftSide = true
                             for pyr in pyramids {
                                 if x >= pyr.center - pyr.halfBase && x < pyr.center + pyr.halfBase {
@@ -3626,15 +3960,38 @@ final class TextureFactory {
                                     break
                                 }
                             }
-                            color = isLeftSide ? pyrLit : pyrShadow
+                            // Stone block texture — alternating shade every 3 rows
+                            let blockShade = (y % 3 == 0)
+                            if isLeftSide {
+                                color = blockShade ? pyrBlock : pyrLit
+                            } else {
+                                color = blockShade ? pyrShadow : UIColor(red: 0.48, green: 0.35, blue: 0.18, alpha: 0.58)
+                            }
                         }
                     } else {
                         let ratio = CGFloat(y) / max(1, CGFloat(mH))
-                        color = ratio > 0.5 ? sandLight : sandBase
+                        // Sand ripple texture
+                        color = (x + y) % 4 == 0 ? sandLight : sandBase
                     }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
+            }
+
+            // Camel caravan silhouette (tiny, between pyramids)
+            let camelC = UIColor(red: 0.35, green: 0.25, blue: 0.15, alpha: 0.30)
+            let camelBase = h - CGFloat(3) * ps
+            let camelX = CGFloat(gridW / 2) * ps
+            c.setFillColor(camelC.cgColor)
+            for i in 0..<3 {
+                let cx = camelX + CGFloat(i) * ps * 4
+                // Body
+                c.fill(CGRect(x: cx, y: camelBase, width: ps * 2, height: ps))
+                // Hump
+                c.fill(CGRect(x: cx + ps * 0.5, y: camelBase - ps, width: ps, height: ps))
+                // Legs
+                c.fill(CGRect(x: cx, y: camelBase + ps, width: ps, height: ps))
+                c.fill(CGRect(x: cx + ps, y: camelBase + ps, width: ps, height: ps))
             }
         }
     }
@@ -3793,12 +4150,12 @@ final class TextureFactory {
         let ps: CGFloat = 4
         let gridW = Int(w / ps)
 
-        // Stalagmites rising from bottom
+        // Denser stalagmites rising from bottom
         var bottomMap = [Int](repeating: 0, count: gridW)
         let stalagmites: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 8, 5, 12), (gridW / 4, 8, 16), (gridW * 3 / 8, 4, 10),
-            (gridW / 2, 6, 14), (gridW * 5 / 8, 3, 8), (gridW * 3 / 4, 7, 18),
-            (gridW * 7 / 8, 5, 12),
+            (gridW / 10, 4, 10), (gridW / 6, 6, 16), (gridW / 4, 8, 20),
+            (gridW * 3 / 8, 4, 12), (gridW / 2, 6, 16), (gridW * 5 / 8, 3, 9),
+            (gridW * 7 / 10, 5, 14), (gridW * 3 / 4, 7, 20), (gridW * 7 / 8, 5, 13),
         ]
         for bump in stalagmites {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -3808,11 +4165,12 @@ final class TextureFactory {
             }
         }
 
-        // Stalactites hanging from top
+        // More and larger stalactites hanging from top
         var topMap = [Int](repeating: 0, count: gridW)
         let stalactites: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 6, 4, 8), (gridW / 3, 6, 12), (gridW * 5 / 12, 3, 6),
-            (gridW * 7 / 12, 5, 10), (gridW * 5 / 6, 4, 9),
+            (gridW / 8, 5, 10), (gridW / 4, 7, 14), (gridW * 3 / 8, 4, 8),
+            (gridW / 2, 6, 12), (gridW * 5 / 8, 5, 11), (gridW * 3 / 4, 3, 7),
+            (gridW * 5 / 6, 6, 13), (gridW * 11 / 12, 4, 9),
         ]
         for bump in stalactites {
             for x in max(0, bump.center - bump.radius)..<min(gridW, bump.center + bump.radius) {
@@ -3822,25 +4180,68 @@ final class TextureFactory {
             }
         }
 
+        // Ceiling rock — constant top band to make it feel enclosed
+        var ceilingMap = [Int](repeating: 3, count: gridW)
+        // Vary ceiling thickness slightly
+        for x in 0..<gridW {
+            ceilingMap[x] = 3 + (x % 7 < 2 ? 1 : 0)
+        }
+
         let rockDark    = UIColor(red: 0.10, green: 0.08, blue: 0.13, alpha: 0.70)
         let rockMid     = UIColor(red: 0.18, green: 0.16, blue: 0.22, alpha: 0.65)
         let rockLight   = UIColor(red: 0.29, green: 0.25, blue: 0.35, alpha: 0.55)
         let crystalCyan = UIColor(red: 0.25, green: 0.82, blue: 0.88, alpha: 0.75)
         let crystalPink = UIColor(red: 0.88, green: 0.25, blue: 0.75, alpha: 0.75)
+        let crystalGlow = UIColor(red: 0.25, green: 0.82, blue: 0.88, alpha: 0.10)
+        let waterGlow   = UIColor(red: 0.15, green: 0.45, blue: 0.65, alpha: 0.20)
+        let waterBright = UIColor(red: 0.25, green: 0.60, blue: 0.80, alpha: 0.15)
+        let dripC       = UIColor(red: 0.40, green: 0.65, blue: 0.80, alpha: 0.35)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            // Draw stalagmites (from bottom)
+            // Ceiling rock band — makes cave feel enclosed
+            for x in 0..<gridW {
+                let cH = ceilingMap[x]
+                for y in 0..<cH {
+                    c.setFillColor((y == cH - 1 ? rockLight : rockDark).cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: CGFloat(y) * ps, width: ps, height: ps))
+                }
+            }
+
+            // Stalactites (from ceiling)
+            for x in 0..<gridW {
+                let mH = topMap[x]
+                for y in 0..<mH {
+                    let yPos = CGFloat(ceilingMap[x] + y) * ps
+                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
+                    let color: UIColor
+                    if y == mH - 1 && (x % 8 == 0) {
+                        color = x % 16 == 0 ? crystalPink : crystalCyan
+                    } else if ratio > 0.6 { color = rockLight }
+                    else if ratio > 0.3 { color = rockMid }
+                    else { color = rockDark }
+                    c.setFillColor(color.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                }
+                // Water drip from stalactite tips
+                if topMap[x] > 6 && x % 11 == 0 {
+                    let dripY = CGFloat(ceilingMap[x] + topMap[x]) * ps + ps
+                    c.setFillColor(dripC.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: dripY, width: ps, height: ps))
+                }
+            }
+
+            // Stalagmites (from bottom)
             for x in 0..<gridW {
                 let mH = bottomMap[x]
                 for y in 0..<mH {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    if y == mH - 1 && (x % 7 == 0) {
-                        color = x % 14 == 0 ? crystalCyan : crystalPink
+                    if y == mH - 1 && (x % 6 == 0) {
+                        color = x % 12 == 0 ? crystalCyan : crystalPink
                     } else if ratio > 0.6 { color = rockLight }
                     else if ratio > 0.3 { color = rockMid }
                     else { color = rockDark }
@@ -3849,20 +4250,23 @@ final class TextureFactory {
                 }
             }
 
-            // Draw stalactites (from top)
+            // Crystal glow auras around crystal-tipped formations
+            for x in stride(from: 0, to: gridW, by: 6) {
+                let bH = bottomMap[x]
+                if bH > 5 {
+                    let glowY = h - CGFloat(bH + 1) * ps
+                    c.setFillColor(crystalGlow.cgColor)
+                    c.fill(CGRect(x: CGFloat(x - 1) * ps, y: glowY - ps, width: ps * 3, height: ps * 3))
+                }
+            }
+
+            // Underground river glow at base between stalagmites
             for x in 0..<gridW {
-                let mH = topMap[x]
-                for y in 0..<mH {
-                    let yPos = CGFloat(y) * ps
-                    let ratio = CGFloat(y) / max(1, CGFloat(mH))
-                    let color: UIColor
-                    if y == mH - 1 && (x % 9 == 0) {
-                        color = x % 18 == 0 ? crystalPink : crystalCyan
-                    } else if ratio > 0.6 { color = rockLight }
-                    else if ratio > 0.3 { color = rockMid }
-                    else { color = rockDark }
-                    c.setFillColor(color.cgColor)
-                    c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
+                if bottomMap[x] < 3 {
+                    let riverY = h - ps * 2
+                    let rc = (x % 6 == 0) ? waterBright : waterGlow
+                    c.setFillColor(rc.cgColor)
+                    c.fill(CGRect(x: CGFloat(x) * ps, y: riverY, width: ps, height: ps * 2))
                 }
             }
         }
@@ -4049,27 +4453,29 @@ final class TextureFactory {
         // Sharp peaks with dominant high points
         var heightMap = [Int](repeating: 0, count: gridW)
         let peaks: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW / 10, 12, 10),        // small peak
-            (gridW / 4, 16, 22),          // dominant peak
-            (gridW * 3 / 8, 10, 8),       // ridge
-            (gridW / 2, 14, 18),          // second dominant
-            (gridW * 5 / 8, 8, 6),        // small ridge
-            (gridW * 3 / 4, 18, 24),      // tallest peak
-            (gridW * 7 / 8, 10, 12),      // medium peak
+            (gridW / 10, 12, 12),        // small peak
+            (gridW / 4, 16, 24),          // dominant peak (taller)
+            (gridW * 3 / 8, 10, 9),       // ridge
+            (gridW / 2, 14, 20),          // second dominant
+            (gridW * 5 / 8, 8, 7),        // small ridge
+            (gridW * 3 / 4, 18, 26),      // tallest peak
+            (gridW * 7 / 8, 10, 14),      // medium peak
         ]
+        // Track waterfall source peak
+        let waterfallPeak = gridW * 3 / 4
+
         for peak in peaks {
             for x in max(0, peak.center - peak.radius)..<min(gridW, peak.center + peak.radius) {
                 let dist = abs(x - peak.center)
                 let nd = CGFloat(dist) / CGFloat(peak.radius)
-                // Sharp triangular: linear falloff
                 let bh = Int(CGFloat(peak.peak) * max(0, 1.0 - nd))
                 heightMap[x] = max(heightMap[x], bh)
             }
         }
         // Low ridges connecting peaks
         let ridges: [(center: Int, radius: Int, peak: Int)] = [
-            (gridW * 3 / 16, 14, 4), (gridW * 7 / 16, 12, 3),
-            (gridW * 11 / 16, 16, 5),
+            (gridW * 3 / 16, 14, 5), (gridW * 7 / 16, 12, 4),
+            (gridW * 11 / 16, 16, 6),
         ]
         for ridge in ridges {
             for x in max(0, ridge.center - ridge.radius)..<min(gridW, ridge.center + ridge.radius) {
@@ -4081,9 +4487,13 @@ final class TextureFactory {
 
         let rockDark = UIColor(red: 0.23, green: 0.29, blue: 0.35, alpha: 0.60)
         let rockMid  = UIColor(red: 0.35, green: 0.42, blue: 0.48, alpha: 0.55)
+        let rockLt   = UIColor(red: 0.42, green: 0.48, blue: 0.55, alpha: 0.50)
         let snowShdw = UIColor(red: 0.69, green: 0.75, blue: 0.82, alpha: 0.60)
         let snowMid  = UIColor(red: 0.85, green: 0.88, blue: 0.92, alpha: 0.65)
         let snowTop  = UIColor(red: 0.94, green: 0.96, blue: 0.97, alpha: 0.70)
+        let waterC   = UIColor(red: 0.55, green: 0.75, blue: 0.90, alpha: 0.50)
+        let waterFm  = UIColor(red: 0.80, green: 0.92, blue: 0.98, alpha: 0.45)
+        let mistC    = UIColor(red: 0.85, green: 0.90, blue: 0.95, alpha: 0.15)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
@@ -4095,16 +4505,47 @@ final class TextureFactory {
                     let yPos = h - CGFloat(y + 1) * ps
                     let ratio = CGFloat(y) / max(1, CGFloat(mH))
                     let color: UIColor
-                    // Snow cap on top 30%
                     if ratio > 0.85 { color = snowTop }
                     else if ratio > 0.75 { color = snowMid }
                     else if ratio > 0.65 { color = snowShdw }
-                    else if ratio > 0.35 { color = rockMid }
-                    else { color = rockDark }
+                    else if ratio > 0.35 {
+                        // Rock layers with subtle striations
+                        color = (y % 3 == 0) ? rockLt : rockMid
+                    } else { color = rockDark }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
                 }
             }
+
+            // Waterfall — cascading down the tallest peak's right side
+            let wfX = CGFloat(waterfallPeak + 2) * ps
+            let wfTopY = h - CGFloat(heightMap[waterfallPeak + 2]) * ps
+            let wfBotY = h - ps * 2
+            // Water stream
+            var wy = wfTopY
+            while wy < wfBotY {
+                c.setFillColor(waterC.cgColor)
+                c.fill(CGRect(x: wfX, y: wy, width: ps, height: ps))
+                // Foam sparkle on alternating pixels
+                if Int(wy / ps) % 3 == 0 {
+                    c.setFillColor(waterFm.cgColor)
+                    c.fill(CGRect(x: wfX + ps, y: wy, width: ps * 0.5, height: ps))
+                }
+                wy += ps
+            }
+            // Mist at base of waterfall
+            c.setFillColor(mistC.cgColor)
+            c.fill(CGRect(x: wfX - ps * 3, y: wfBotY - ps, width: ps * 8, height: ps * 3))
+
+            // Eagle silhouette (tiny) soaring near peaks
+            let eagleC = UIColor(red: 0.20, green: 0.18, blue: 0.22, alpha: 0.45)
+            let ex = w * 0.35, ey = h * 0.15
+            c.setFillColor(eagleC.cgColor)
+            c.fill(CGRect(x: ex - ps * 2, y: ey, width: ps, height: ps))
+            c.fill(CGRect(x: ex - ps, y: ey - ps * 0.5, width: ps, height: ps))
+            c.fill(CGRect(x: ex, y: ey, width: ps, height: ps))
+            c.fill(CGRect(x: ex + ps, y: ey - ps * 0.5, width: ps, height: ps))
+            c.fill(CGRect(x: ex + ps * 2, y: ey, width: ps, height: ps))
         }
     }
 
