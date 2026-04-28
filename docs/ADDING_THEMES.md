@@ -100,7 +100,7 @@ Each renderer follows a consistent pattern. Here's a template:
 ```swift
 private func renderMyThemeHills() -> UIImage {
     let w: CGFloat = GK.worldWidth * 2    // standard width
-    let h: CGFloat = 120                   // standard hills height
+    let h: CGFloat = 300                   // standard hills height (fills ~50% of screen)
     let ps: CGFloat = 4                    // pixel size (keep at 4)
     let gridW = Int(w / ps)
 
@@ -197,13 +197,28 @@ private func renderMyThemeGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat
 
 ### Standard Dimensions
 
-| Layer | Width | Height | Pixel Size |
-|-------|-------|--------|------------|
-| Hills | `GK.worldWidth * 2` | `120` | `4` |
-| Trees/Midground | `GK.worldWidth * 2` | `160` | `4` |
-| Bushes/Foreground | `GK.worldWidth * 2` | `40` | `4` |
-| Ground | `GK.worldWidth * 2` | `GK.groundHeight` | `4` |
-| Ground Detail | `tileWidth` (param) | `groundHeight + 20` | varies |
+| Layer | Render Size | Display Size | Pixel Size | Upscale |
+|-------|-------------|--------------|------------|---------|
+| Hills | `worldWidth*2 × 300` | `300` | `4` | 1:1 |
+| Trees/Midground | `worldWidth*2 × 160` | `300` | `4` | 1.875× |
+| Bushes/Foreground | `worldWidth*2 × 36–40` | `60` | `4` | ~1.67× |
+| Ground | `worldWidth*2 × groundHeight` | `groundHeight` | `4` | 1:1 |
+| Ground Detail | `tileWidth × groundHeight+20` | native | varies | 1:1 |
+
+> **SpriteKit upscaling:** Trees and bushes render at smaller textures than their
+> display size. ParallaxManager sets `.nearest` filtering on all three layers
+> (hills, trees, bushes) so pixel art stays crisp at any magnification.
+>
+> **Hills are the tallest layer.** With `h = 300` and peak heights up to 65+ rows
+> (260px), hills fill 50%+ of the 700px world height. Scale your hill peaks
+> accordingly — aim for peaks in the 25–65 range for good visual impact.
+>
+> **Trees don't need huge templates.** Because they're displayed at 1.875× scale,
+> a 14-row pixel template appears ~105px tall in-game. Focus on art quality rather
+> than raw size.
+>
+> **showClouds property:** Add `showClouds: Bool` to `BackgroundTheme.swift` — return
+> `false` for indoor/enclosed themes (cave, underwater, space) to suppress clouds.
 
 ---
 
