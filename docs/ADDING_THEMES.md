@@ -334,3 +334,61 @@ BackgroundTheme.swift          ← enum + visual palette
 4. **Music:** `nil` initially → add `theme_swamp.m4a` later
 
 Total: ~300–500 lines of new code across 3 files.
+
+---
+
+## Quality Bar & Rendering Patterns
+
+Every theme hill renderer follows a consistent internal structure. Use these patterns when writing yours:
+
+### Helper Functions (define inside the `renderer.image { ctx in` closure)
+
+```swift
+let c = ctx.cgContext
+
+// Fill a pixel-grid-aligned rectangle (in grid coordinates, not points)
+func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+    guard fw > 0 && fh > 0 else { return }
+    c.setFillColor(color.cgColor)
+    c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
+                  width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
+}
+
+// Single pixel
+func dot(_ dx: Int, _ dy: Int, _ color: UIColor) {
+    fill(dx, dy, 1, 1, color)
+}
+```
+
+These `fill()` and `dot()` helpers use bottom-left origin (y=0 is ground level, y increases upward). All coordinates are in grid units (each unit = `ps` points = 4pt = 16px @4x).
+
+### Quality Expectations
+
+The current quality bar for hill renderers is **high-detail pixel art**. Each theme should have:
+
+1. **Terrain heightmap** — rolling hills, mountains, mesa formations, or reef shapes appropriate to the theme
+2. **3–5 major landmark elements** — recognizable structures drawn pixel-by-pixel (buildings, ships, monuments, large trees)
+3. **5–10 secondary details** — smaller environmental elements (fences, plants, animals, vehicles)
+4. **Atmospheric effects** — glow auras, fog, light rays, reflections where appropriate
+5. **Color depth** — each element should use 2–4 shades (dark/mid/light/highlight) for visual depth
+
+### Examples of What "Good" Looks Like
+
+| Theme | Landmarks | Secondary Details |
+|-------|-----------|-------------------|
+| Western | Saloon (30+ pixels wide, doors/windows/sign), water tower | Saguaro cacti, wagon wheel, tumbleweeds, sagebrush, vultures |
+| Lagoon | Pirate ship (100 pixels wide, 3 masts/sails/skull) | Treasure chest, palm trees, starfish, seashells |
+| London | Big Ben (50+ pixels tall, clock face with glow), Tower Bridge | Phone box, double-decker bus, lamp post, cobblestones |
+| Cave | Stalactite/stalagmite dual terrain | Crystal clusters with glow aura, mushrooms, underground pool, bats |
+
+### Alpha Values
+
+Use semi-transparent colors (alpha 0.55–0.90) for most elements. This lets the sky gradient show through slightly, creating depth. Higher alpha (0.85–0.92) for foreground/solid structures, lower alpha (0.40–0.65) for atmospheric/background elements.
+
+### Grid Coordinate Reference
+
+- Grid is `200 × 75` cells (800×300px at ps=4)
+- x: 0 = left edge, 199 = right edge
+- y: 0 = ground level (bottom), 74 = top of canvas
+- Landmarks typically span y=0..40 (ground to mid-sky)
+- Atmospheric elements (birds, stars, moons) at y=50..74
