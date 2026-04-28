@@ -144,7 +144,7 @@ final class TextureFactory {
         if let skinOverride = skinOverride {
             skin = skinOverride
         } else {
-            skin = MainActor.assumeIsolated { PipeSkinManager.shared.selectedSkin }
+            skin = DispatchQueue.main.sync { PipeSkinManager.shared.selectedSkin }
         }
         let masterKey = "pipe_master_\(skin.rawValue)"
         let masterTex: SKTexture
@@ -170,7 +170,7 @@ final class TextureFactory {
         if let skinOverride = skinOverride {
             skin = skinOverride
         } else {
-            skin = MainActor.assumeIsolated { PipeSkinManager.shared.selectedSkin }
+            skin = DispatchQueue.main.sync { PipeSkinManager.shared.selectedSkin }
         }
         let key = "pipecap_\(skin.rawValue)"
         if let cached = cachedTexture(forKey: key) { return cached }

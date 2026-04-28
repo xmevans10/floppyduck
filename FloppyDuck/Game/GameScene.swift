@@ -25,6 +25,7 @@ protocol GameSceneDelegate: AnyObject {
 
 // MARK: - GameScene
 
+@MainActor
 final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // MARK: - Properties
