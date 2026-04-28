@@ -180,10 +180,12 @@ final class SoundManager {
         }
     }
 
-    /// Effective volumes based on user preference and perceptual balance.
-    /// The home menu track is perceptually louder, so we scale it down relative to themes.
-    private var effectiveMenuVolume: Float { _musicVolume * 0.08 }
-    private var effectivePlayVolume: Float { _musicVolume * 0.16 }
+    /// Effective volumes based on user preference.
+    /// All music tracks are pre-normalized to -14 LUFS via ffmpeg-normalize (EBU R128),
+    /// so a single multiplier is used for both menu and gameplay music.
+    private static let normalizedMusicGain: Float = 0.12
+    private var effectiveMenuVolume: Float { _musicVolume * Self.normalizedMusicGain }
+    private var effectivePlayVolume: Float { _musicVolume * Self.normalizedMusicGain }
 
     func startPlayMusic() {
         audioQueue.async { [weak self] in

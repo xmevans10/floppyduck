@@ -339,7 +339,7 @@ struct SettingsView: View {
                 .resizable()
                 .frame(width: 28, height: 28)
                 .padding(8)
-                .background(Circle().fill(Color.white.opacity(0.2)))
+                .background(PixelButtonBackground(style: .light, size: 44))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Back")

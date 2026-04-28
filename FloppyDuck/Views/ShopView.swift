@@ -8,7 +8,6 @@ struct ShopView: View {
     @ObservedObject var pipeSkinManager = PipeSkinManager.shared
 
     @State private var selectedTab: ShopTab = .skins
-    @State private var selectedSection: ShopSection = .normal
     @State private var localErrorMessage: String?
 
     private let icons = PixelIconFactory.shared
@@ -38,7 +37,7 @@ struct ShopView: View {
                             .resizable()
                             .frame(width: 28, height: 28)
                             .padding(8)
-                            .background(Circle().fill(Color.black.opacity(0.15)))
+                            .background(PixelButtonBackground(style: .dark, size: 44))
                     }
                     .accessibilityLabel("Back")
                     Spacer()
@@ -70,13 +69,6 @@ struct ShopView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 14)
 
-                if selectedTab == .skins {
-                    // Sub-section picker for skins
-                    sectionPicker
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
-                }
-
                 if let message = activeErrorMessage {
                     Text(message)
                         .font(.custom(GK.pixelFontName, size: 7))
@@ -97,7 +89,7 @@ struct ShopView: View {
                         .padding(.top, 14)
                         .padding(.bottom, 30)
 
-                        if selectedSection == .premium {
+                        if DuckSkin.allCases.contains(where: { $0.isPremium }) {
                             Button {
                                 Task { await skinManager.restorePurchases() }
                             } label: {
@@ -106,8 +98,6 @@ struct ShopView: View {
                                     .foregroundColor(.white.opacity(0.7))
                             }
                             .padding(.bottom, 40)
-                        } else {
-                            Spacer().frame(height: 24)
                         }
                     } else if selectedTab == .backgrounds {
                         // Background themes grid
@@ -180,41 +170,6 @@ struct ShopView: View {
     }
 
     // MARK: - Section Picker
-
-    private var sectionPicker: some View {
-        HStack(spacing: 8) {
-            sectionButton(.normal)
-            sectionButton(.premium)
-        }
-        .padding(6)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(GK.Colors.panelCream)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
-                )
-        )
-    }
-
-    private func sectionButton(_ section: ShopSection) -> some View {
-        Button {
-            selectedSection = section
-            localErrorMessage = nil
-        } label: {
-            Text(section.rawValue)
-                .font(.custom(GK.pixelFontName, size: 8))
-                .foregroundColor(selectedSection == section ? .white : GK.Colors.panelBorder)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(selectedSection == section ? section.accent : Color.white)
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(section.rawValue) section")
-    }
 
     // MARK: - Skin Card
 
@@ -411,35 +366,10 @@ struct ShopView: View {
             }
         } label: {
             VStack(spacing: 8) {
-                // Gradient preview swatch
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(
-                        LinearGradient(
-                            colors: theme.gradientColors,
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                // Mini-scene preview showing sky + hills + ground
+                ThemePreviewView(theme: theme)
                     .frame(height: 70)
-                    .overlay(
-                        // Stars overlay for night/space themes
-                        Group {
-                            if theme.showStars {
-                                ZStack {
-                                    ForEach(0..<8, id: \.self) { i in
-                                        let opacities: [Double] = [0.9, 0.5, 0.7, 0.4, 0.8, 0.6, 0.5, 0.7]
-                                        let sizes: [CGFloat] = [2.0, 1.5, 2.5, 1.5, 3.0, 2.0, 1.5, 2.5]
-                                        let xOffsets: [CGFloat] = [-30, 15, -10, 25, -20, 5, 30, -15]
-                                        let yOffsets: [CGFloat] = [-20, 10, -5, 20, -15, 25, -10, 5]
-                                        Circle()
-                                            .fill(.white.opacity(opacities[i]))
-                                            .frame(width: sizes[i], height: sizes[i])
-                                            .offset(x: xOffsets[i], y: yOffsets[i])
-                                    }
-                                }
-                            }
-                        }
-                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(selected ? theme.accentColor : Color.clear, lineWidth: 2)
@@ -848,13 +778,7 @@ struct ShopView: View {
     private var filteredSkins: [DuckSkin] {
         DuckSkin.allCases.filter { skin in
             // Bot reward skins are not shown in shop
-            if skin.isBotReward { return false }
-            switch selectedSection {
-            case .normal:
-                return skin.isNormal || skin.isFree
-            case .premium:
-                return skin.isPremium
-            }
+            !skin.isBotReward
         }
     }
 
@@ -888,16 +812,4 @@ private enum ShopTab: String {
     }
 }
 
-private enum ShopSection: String, CaseIterable {
-    case normal = "NORMAL"
-    case premium = "PREMIUM"
 
-    var accent: Color {
-        switch self {
-        case .normal:
-            return GK.Colors.buttonGreen
-        case .premium:
-            return GK.Colors.buttonOrange
-        }
-    }
-}
