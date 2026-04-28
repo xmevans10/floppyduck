@@ -202,7 +202,7 @@ final class ParallaxManager {
     // MARK: - Ground Tiles (visual only — physics stays in GameScene)
 
     private func setupGroundTiles() {
-        let groundTex = factory.groundTexture()
+        let groundTex = factory.themedGroundTexture(theme: theme)
         let tilesNeeded = 3
         for i in 0..<tilesNeeded {
             let tile = SKSpriteNode(texture: groundTex,
@@ -227,7 +227,8 @@ final class ParallaxManager {
     private func setupGroundDetails() {
         let factory = TextureFactory.shared
         for i in 0..<3 {
-            let tex = factory.groundDetailTexture(
+            let tex = factory.themedGroundDetailTexture(
+                theme: theme,
                 tileWidth: groundTileWidth,
                 groundHeight: GK.groundHeight,
                 seed: i * 1337  // deterministic, visually distinct per tile

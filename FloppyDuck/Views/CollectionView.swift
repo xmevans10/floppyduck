@@ -36,7 +36,7 @@ struct CollectionView: View {
                             .resizable()
                             .frame(width: 28, height: 28)
                             .padding(8)
-                            .background(Circle().fill(Color.black.opacity(0.15)))
+                            .background(PixelButtonBackground(style: .dark, size: 44))
                     }
                     Spacer()
                     Text("COLLECTION")
@@ -464,34 +464,10 @@ struct CollectionView: View {
             themeManager.select(theme)
         } label: {
             VStack(spacing: 8) {
-                // Gradient preview swatch
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(
-                        LinearGradient(
-                            colors: theme.gradientColors,
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                // Mini-scene preview showing sky + hills + ground
+                ThemePreviewView(theme: theme)
                     .frame(height: 70)
-                    .overlay(
-                        Group {
-                            if theme.showStars {
-                                ZStack {
-                                    ForEach(0..<8, id: \.self) { i in
-                                        Circle()
-                                            .fill(.white.opacity(Double.random(in: 0.4...0.9)))
-                                            .frame(width: CGFloat.random(in: 1.5...3),
-                                                   height: CGFloat.random(in: 1.5...3))
-                                            .offset(
-                                                x: CGFloat.random(in: -35...35),
-                                                y: CGFloat.random(in: -25...25)
-                                            )
-                                    }
-                                }
-                            }
-                        }
-                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(selected ? theme.accentColor : Color.clear, lineWidth: 2)

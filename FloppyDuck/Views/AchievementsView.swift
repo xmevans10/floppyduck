@@ -69,7 +69,7 @@ struct AchievementsView: View {
                     .resizable()
                     .frame(width: 28, height: 28)
                     .padding(8)
-                    .background(Circle().fill(Color.black.opacity(0.15)))
+                    .background(PixelButtonBackground(style: .dark, size: 44))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Back")
