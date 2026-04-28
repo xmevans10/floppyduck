@@ -50,7 +50,7 @@ final class SoundManager {
     /// Index tracking which home music track to play next (cycles 0→1→2→0…).
     private var homeTrackIndex: Int = 0
     /// Chill tracks used for the home screen menu music.
-    private static let homeTrackFiles = ["theme_cave", "theme_mountain", "theme_underwater"]
+    private static let homeTrackFiles = ["adventure_stage_select", "adventure_stage_1", "adventure_stage_2"]
 
     /// Per-skin sound variant players (keyed by "\(skin.rawValue)_\(sound.rawValue)")
     private var skinPlayers: [String: AVAudioPlayer] = [:]
@@ -335,7 +335,6 @@ final class SoundManager {
             "adventure_stage_select",
             "adventure_stage_1",
             "adventure_stage_2",
-            "adventure_boss_fight",
         ]
         for name in menuFiles {
             if let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
