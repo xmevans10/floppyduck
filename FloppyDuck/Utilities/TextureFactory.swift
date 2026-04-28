@@ -84,6 +84,7 @@ final class TextureFactory {
                 _ = self.themedHillsTexture(theme: theme)
                 _ = self.themedTreesTexture(theme: theme)
                 _ = self.themedBushTexture(theme: theme)
+                _ = self.themedGroundTexture(theme: theme)
             }
 
             // Performance textures (batched ground details, star field)
@@ -189,6 +190,16 @@ final class TextureFactory {
         return tex
     }
 
+    /// Theme-aware scrolling ground tile. Each theme gets a unique ground surface.
+    func themedGroundTexture(theme: BackgroundTheme) -> SKTexture {
+        let key = "ground_\(theme.rawValue)"
+        if let cached = cachedTexture(forKey: key) { return cached }
+        let tex = SKTexture(image: renderThemedGround(theme: theme))
+        tex.filteringMode = .nearest
+        cacheStore(key, tex)
+        return tex
+    }
+
     /// Sky gradient background
     func skyTexture() -> SKTexture {
         let key = "sky"
@@ -257,6 +268,17 @@ final class TextureFactory {
         let key = "groundDetail_\(Int(tileWidth))_\(seed)"
         if let cached = cachedTexture(forKey: key) { return cached }
         let tex = SKTexture(image: renderGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed))
+        tex.filteringMode = .nearest
+        cacheStore(key, tex)
+        return tex
+    }
+
+    /// Theme-aware ground detail tile — each theme gets unique surface decorations
+    /// instead of the generic grass blades + pebbles.
+    func themedGroundDetailTexture(theme: BackgroundTheme, tileWidth: CGFloat, groundHeight: CGFloat, seed: Int = 0) -> SKTexture {
+        let key = "groundDetail_\(theme.rawValue)_\(Int(tileWidth))_\(seed)"
+        if let cached = cachedTexture(forKey: key) { return cached }
+        let tex = SKTexture(image: renderThemedGroundDetail(theme: theme, tileWidth: tileWidth, groundHeight: groundHeight, seed: seed))
         tex.filteringMode = .nearest
         cacheStore(key, tex)
         return tex
@@ -354,24 +376,52 @@ final class TextureFactory {
 
     private func renderGlowCircle(radius: CGFloat, color: UIColor) -> UIImage {
         let padding: CGFloat = 4
+        let ps: CGFloat = 2  // pixel size for 8-bit stepped look
         let size = CGSize(width: (radius + padding) * 2, height: (radius + padding) * 2)
-        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let cx = size.width / 2
+        let cy = size.height / 2
 
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
-            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-            color.getRed(&r, green: &g, blue: &b, alpha: &a)
+            var cr: CGFloat = 0, cg: CGFloat = 0, cb: CGFloat = 0, ca: CGFloat = 0
+            color.getRed(&cr, green: &cg, blue: &cb, alpha: &ca)
 
-            // Inner fill
-            c.setFillColor(UIColor(red: r, green: g, blue: b, alpha: 0.25).cgColor)
-            c.fillEllipse(in: CGRect(x: center.x - radius, y: center.y - radius,
-                                      width: radius * 2, height: radius * 2))
-            // Outer stroke ring
-            c.setStrokeColor(UIColor(red: r, green: g, blue: b, alpha: 0.6).cgColor)
-            c.setLineWidth(1.5)
-            c.strokeEllipse(in: CGRect(x: center.x - radius, y: center.y - radius,
-                                        width: radius * 2, height: radius * 2))
+            // Inner fill — pixelated diamond/octagon shape
+            let fillColor = UIColor(red: cr, green: cg, blue: cb, alpha: 0.20)
+            c.setFillColor(fillColor.cgColor)
+            let innerR = radius - ps
+            var py = cy - innerR
+            while py <= cy + innerR {
+                let dy = abs(py - cy)
+                let halfW = innerR * (1.0 - dy / innerR * 0.35)  // slight diamond taper
+                let snapW = floor(halfW / ps) * ps
+                var px = cx - snapW
+                while px <= cx + snapW {
+                    c.fill(CGRect(x: floor(px / ps) * ps, y: floor(py / ps) * ps, width: ps, height: ps))
+                    px += ps
+                }
+                py += ps
+            }
+
+            // Outer pixel ring — stepped circle outline
+            let ringColor = UIColor(red: cr, green: cg, blue: cb, alpha: 0.55)
+            c.setFillColor(ringColor.cgColor)
+            let steps = Int(2 * .pi * radius / ps)
+            for i in 0..<steps {
+                let angle = CGFloat(i) / CGFloat(steps) * 2 * .pi
+                let px = floor((cx + cos(angle) * radius) / ps) * ps
+                let py = floor((cy + sin(angle) * radius) / ps) * ps
+                c.fill(CGRect(x: px, y: py, width: ps, height: ps))
+            }
+
+            // Corner highlight pixel (top-left sparkle)
+            let spark = UIColor(red: min(cr + 0.3, 1), green: min(cg + 0.3, 1), blue: min(cb + 0.3, 1), alpha: 0.4)
+            c.setFillColor(spark.cgColor)
+            let sparkAngle: CGFloat = -.pi * 0.75
+            let spx = floor((cx + cos(sparkAngle) * (radius - ps)) / ps) * ps
+            let spy = floor((cy + sin(sparkAngle) * (radius - ps)) / ps) * ps
+            c.fill(CGRect(x: spx, y: spy, width: ps, height: ps))
         }
     }
 
@@ -2367,8 +2417,6 @@ final class TextureFactory {
         case .cave:                         return renderCaveMossStrip()
         case .mountain:                     return renderMountainMeadowStrip()
         case .space:                        return renderSpaceDebrisStrip()
-        case .western, .jungle, .cave, .mountain, .egypt:
-            return renderDayBushStrip() // Fallback for new themes
         }
     }
 
@@ -3846,6 +3894,1307 @@ final class TextureFactory {
                     }
                 }
                 x += ps * 5 + gap
+            }
+        }
+    }
+
+    // MARK: - Themed Ground Rendering
+    //
+    // Each theme gets a unique ground tile instead of the default green grass + tan dirt.
+
+    private func renderThemedGround(theme: BackgroundTheme) -> UIImage {
+        switch theme {
+        case .day:          return renderGround()
+        case .sunset:       return renderSunsetGround()
+        case .night:        return renderNightGround()
+        case .neonCity:     return renderNeonCityGround()
+        case .pixelTokyo:   return renderTokyoGround()
+        case .underwater:   return renderUnderwaterGround()
+        case .volcano:      return renderVolcanoGround()
+        case .arctic:       return renderArcticGround()
+        case .western:      return renderWesternGround()
+        case .jungle:       return renderJungleGround()
+        case .egypt:        return renderEgyptGround()
+        case .cave:         return renderCaveGround()
+        case .mountain:     return renderMountainGround()
+        case .space:        return renderSpaceGround()
+        }
+    }
+
+    // MARK: Sunset Ground — warm amber dirt with golden-hour grass
+
+    private func renderSunsetGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Warm amber earth base
+            c.setFillColor(UIColor(red: 0.62, green: 0.45, blue: 0.28, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Diagonal pixel dirt stripes
+            let stripe = UIColor(red: 0.55, green: 0.38, blue: 0.22, alpha: 1)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(stripe.cgColor)
+                for i in 0..<Int(h / ps) {
+                    let px = sx + CGFloat(i) * ps
+                    let py = h - CGFloat(i + 1) * ps
+                    if px < w && py >= 22 { c.fill(CGRect(x: px, y: py, width: ps, height: ps)) }
+                }
+                sx += ps * 4
+            }
+
+            // Golden grass top
+            let grassH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.65, green: 0.55, blue: 0.20, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: grassH))
+
+            // Dark grass line
+            c.setFillColor(UIColor(red: 0.50, green: 0.38, blue: 0.14, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Amber tufts
+            let tufts = UIColor(red: 0.72, green: 0.58, blue: 0.22, alpha: 1)
+            var tx: CGFloat = 0
+            while tx < w {
+                c.setFillColor(tufts.cgColor)
+                let tw = Int.random(in: 1...3)
+                for t in 0..<tw { c.fill(CGRect(x: tx + CGFloat(t) * ps, y: grassH, width: ps, height: ps)) }
+                c.fill(CGRect(x: tx + CGFloat(tw / 2) * ps, y: grassH + ps, width: ps, height: ps))
+                tx += CGFloat(Int.random(in: 3...6)) * ps
+            }
+
+            // Warm-toned flowers
+            let flowerColors: [UIColor] = [
+                UIColor(red: 0.95, green: 0.65, blue: 0.20, alpha: 1),
+                UIColor(red: 0.90, green: 0.40, blue: 0.25, alpha: 1),
+                UIColor(red: 0.95, green: 0.82, blue: 0.40, alpha: 1),
+            ]
+            var fx: CGFloat = CGFloat.random(in: 5...10) * ps
+            while fx < w {
+                c.setFillColor(flowerColors[Int.random(in: 0..<flowerColors.count)].cgColor)
+                let fy = CGFloat(Int.random(in: 1...4)) * ps
+                c.fill(CGRect(x: fx, y: fy, width: ps, height: ps))
+                fx += CGFloat(Int.random(in: 6...12)) * ps
+            }
+        }
+    }
+
+    // MARK: Night Ground — dark grass with firefly dots
+
+    private func renderNightGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Dark earth
+            c.setFillColor(UIColor(red: 0.18, green: 0.16, blue: 0.12, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Subtle dark stripes
+            let stripe = UIColor(red: 0.14, green: 0.12, blue: 0.08, alpha: 1)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(stripe.cgColor)
+                for i in 0..<Int(h / ps) {
+                    let px = sx + CGFloat(i) * ps
+                    let py = h - CGFloat(i + 1) * ps
+                    if px < w && py >= 22 { c.fill(CGRect(x: px, y: py, width: ps, height: ps)) }
+                }
+                sx += ps * 4
+            }
+
+            // Dark blue-green grass
+            let grassH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.10, green: 0.22, blue: 0.12, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: grassH))
+
+            c.setFillColor(UIColor(red: 0.06, green: 0.14, blue: 0.08, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Dark tufts
+            let tufts = UIColor(red: 0.14, green: 0.28, blue: 0.16, alpha: 1)
+            var tx: CGFloat = 0
+            while tx < w {
+                c.setFillColor(tufts.cgColor)
+                let tw = Int.random(in: 1...3)
+                for t in 0..<tw { c.fill(CGRect(x: tx + CGFloat(t) * ps, y: grassH, width: ps, height: ps)) }
+                c.fill(CGRect(x: tx + CGFloat(tw / 2) * ps, y: grassH + ps, width: ps, height: ps))
+                tx += CGFloat(Int.random(in: 3...6)) * ps
+            }
+
+            // Firefly dots (small yellow/green glowing pixels)
+            var fx: CGFloat = CGFloat.random(in: 8...15) * ps
+            while fx < w {
+                let glow = Bool.random()
+                    ? UIColor(red: 0.85, green: 0.90, blue: 0.30, alpha: 0.7)
+                    : UIColor(red: 0.40, green: 0.80, blue: 0.35, alpha: 0.5)
+                c.setFillColor(glow.cgColor)
+                let fy = CGFloat(Int.random(in: 1...4)) * ps
+                c.fill(CGRect(x: fx, y: fy, width: ps, height: ps))
+                fx += CGFloat(Int.random(in: 10...18)) * ps
+            }
+        }
+    }
+
+    // MARK: Neon City Ground — asphalt with road markings and neon reflections
+
+    private func renderNeonCityGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Dark asphalt
+            c.setFillColor(UIColor(red: 0.10, green: 0.08, blue: 0.14, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Asphalt speckles
+            let speck = UIColor(red: 0.14, green: 0.12, blue: 0.18, alpha: 1)
+            c.setFillColor(speck.cgColor)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.fill(CGRect(x: sx, y: CGFloat(Int.random(in: 4...Int(h/ps)-1)) * ps, width: ps, height: ps))
+                sx += CGFloat(Int.random(in: 3...8)) * ps
+            }
+
+            // Sidewalk curb (top strip)
+            let curbH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.22, green: 0.18, blue: 0.30, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: curbH))
+
+            // Curb top edge
+            c.setFillColor(UIColor(red: 0.30, green: 0.25, blue: 0.40, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Neon reflection strips
+            let neonColors: [UIColor] = [
+                UIColor(red: 0.80, green: 0.20, blue: 0.60, alpha: 0.35),
+                UIColor(red: 0.20, green: 0.80, blue: 0.95, alpha: 0.30),
+                UIColor(red: 0.95, green: 0.40, blue: 0.90, alpha: 0.25),
+            ]
+            var nx: CGFloat = CGFloat.random(in: 5...12) * ps
+            while nx < w {
+                c.setFillColor(neonColors[Int.random(in: 0..<neonColors.count)].cgColor)
+                let nw = Int.random(in: 2...5)
+                for i in 0..<nw { c.fill(CGRect(x: nx + CGFloat(i) * ps, y: curbH, width: ps, height: ps)) }
+                nx += CGFloat(Int.random(in: 8...16)) * ps
+            }
+
+            // Road dashes
+            let dashColor = UIColor(red: 0.80, green: 0.75, blue: 0.40, alpha: 0.5)
+            c.setFillColor(dashColor.cgColor)
+            var dx: CGFloat = ps * 3
+            while dx < w {
+                c.fill(CGRect(x: dx, y: h - ps * 3, width: ps * 4, height: ps))
+                dx += ps * 12
+            }
+        }
+    }
+
+    // MARK: Tokyo Ground — patterned sidewalk tiles with cherry blossom petals
+
+    private func renderTokyoGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Grey-purple pavement base
+            c.setFillColor(UIColor(red: 0.20, green: 0.16, blue: 0.25, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Tile grid pattern
+            let tileColor = UIColor(red: 0.25, green: 0.20, blue: 0.32, alpha: 1)
+            c.setFillColor(tileColor.cgColor)
+            // Horizontal lines every 3 pixels
+            var gy: CGFloat = ps * 3
+            while gy < h {
+                c.fill(CGRect(x: 0, y: gy, width: w, height: 1))
+                gy += ps * 3
+            }
+            // Vertical lines staggered
+            var row = 0
+            gy = 0
+            while gy < h {
+                var gx: CGFloat = (row % 2 == 0) ? 0 : ps * 4
+                while gx < w {
+                    c.fill(CGRect(x: gx, y: gy, width: 1, height: ps * 3))
+                    gx += ps * 8
+                }
+                gy += ps * 3
+                row += 1
+            }
+
+            // Sidewalk curb
+            let curbH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.30, green: 0.22, blue: 0.38, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: curbH))
+
+            c.setFillColor(UIColor(red: 0.38, green: 0.28, blue: 0.48, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Cherry blossom petals scattered
+            let petalColors: [UIColor] = [
+                UIColor(red: 1.0, green: 0.70, blue: 0.80, alpha: 0.7),
+                UIColor(red: 1.0, green: 0.80, blue: 0.85, alpha: 0.6),
+                UIColor(red: 0.95, green: 0.55, blue: 0.70, alpha: 0.5),
+            ]
+            var px: CGFloat = CGFloat.random(in: 3...8) * ps
+            while px < w {
+                c.setFillColor(petalColors[Int.random(in: 0..<petalColors.count)].cgColor)
+                let py = CGFloat(Int.random(in: 1...5)) * ps
+                c.fill(CGRect(x: px, y: py, width: ps, height: ps))
+                // Second petal pixel offset
+                if Bool.random() {
+                    c.fill(CGRect(x: px + ps, y: py - ps, width: ps, height: ps))
+                }
+                px += CGFloat(Int.random(in: 6...14)) * ps
+            }
+        }
+    }
+
+    // MARK: Underwater Ground — sandy ocean floor with shells and coral bits
+
+    private func renderUnderwaterGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Sandy ocean floor
+            c.setFillColor(UIColor(red: 0.60, green: 0.52, blue: 0.35, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Darker sand layers
+            let deepSand = UIColor(red: 0.50, green: 0.42, blue: 0.28, alpha: 1)
+            c.setFillColor(deepSand.cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.6, width: w, height: h * 0.4))
+
+            // Sand ripple stripes
+            let ripple = UIColor(red: 0.55, green: 0.48, blue: 0.32, alpha: 1)
+            var rx: CGFloat = 0
+            while rx < w {
+                c.setFillColor(ripple.cgColor)
+                for i in 0..<3 {
+                    let ry = CGFloat(Int.random(in: 5...Int(h/ps)-2)) * ps
+                    c.fill(CGRect(x: rx + CGFloat(i) * ps, y: ry, width: ps, height: ps))
+                }
+                rx += CGFloat(Int.random(in: 4...8)) * ps
+            }
+
+            // Coral/reef top strip
+            let coralH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.65, green: 0.55, blue: 0.38, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: coralH))
+
+            c.setFillColor(UIColor(red: 0.48, green: 0.40, blue: 0.25, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Coral bits and shells
+            let coralColors: [UIColor] = [
+                UIColor(red: 0.90, green: 0.45, blue: 0.35, alpha: 0.8),
+                UIColor(red: 0.95, green: 0.70, blue: 0.50, alpha: 0.7),
+                UIColor(red: 0.80, green: 0.35, blue: 0.55, alpha: 0.7),
+                UIColor(red: 0.90, green: 0.85, blue: 0.75, alpha: 0.6),  // shell white
+            ]
+            var cx: CGFloat = CGFloat.random(in: 4...8) * ps
+            while cx < w {
+                c.setFillColor(coralColors[Int.random(in: 0..<coralColors.count)].cgColor)
+                let cy = CGFloat(Int.random(in: 1...4)) * ps
+                let cw = Int.random(in: 1...2)
+                for i in 0..<cw { c.fill(CGRect(x: cx + CGFloat(i) * ps, y: cy, width: ps, height: ps)) }
+                if Bool.random() { c.fill(CGRect(x: cx, y: cy + ps, width: ps, height: ps)) }
+                cx += CGFloat(Int.random(in: 5...10)) * ps
+            }
+
+            // Bubbles rising from floor
+            let bubble = UIColor(red: 0.70, green: 0.85, blue: 0.95, alpha: 0.4)
+            c.setFillColor(bubble.cgColor)
+            var bx: CGFloat = CGFloat.random(in: 10...20) * ps
+            while bx < w {
+                c.fill(CGRect(x: bx, y: coralH + ps, width: ps, height: ps))
+                if Bool.random() { c.fill(CGRect(x: bx + ps, y: coralH + ps * 3, width: ps, height: ps)) }
+                bx += CGFloat(Int.random(in: 15...25)) * ps
+            }
+        }
+    }
+
+    // MARK: Volcano Ground — dark rock with lava cracks and ember glow
+
+    private func renderVolcanoGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Dark volcanic rock base
+            c.setFillColor(UIColor(red: 0.12, green: 0.08, blue: 0.06, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Rock texture speckles
+            let rockVariants: [UIColor] = [
+                UIColor(red: 0.16, green: 0.10, blue: 0.08, alpha: 1),
+                UIColor(red: 0.10, green: 0.06, blue: 0.04, alpha: 1),
+            ]
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(rockVariants[Int.random(in: 0..<2)].cgColor)
+                c.fill(CGRect(x: sx, y: CGFloat(Int.random(in: 3...Int(h/ps)-1)) * ps, width: ps, height: ps))
+                sx += CGFloat(Int.random(in: 2...5)) * ps
+            }
+
+            // Lava cracks (jagged orange-red lines)
+            let crackH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.20, green: 0.12, blue: 0.08, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: crackH))
+
+            // Glowing lava top edge
+            c.setFillColor(UIColor(red: 0.85, green: 0.35, blue: 0.08, alpha: 0.9).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+            c.setFillColor(UIColor(red: 0.95, green: 0.55, blue: 0.12, alpha: 0.6).cgColor)
+            c.fill(CGRect(x: 0, y: ps, width: w, height: ps))
+
+            // Lava crack veins in the dirt
+            let lavaColors: [UIColor] = [
+                UIColor(red: 0.95, green: 0.40, blue: 0.08, alpha: 0.7),
+                UIColor(red: 0.90, green: 0.25, blue: 0.05, alpha: 0.6),
+                UIColor(red: 1.0, green: 0.65, blue: 0.15, alpha: 0.5),
+            ]
+            var lx: CGFloat = CGFloat.random(in: 6...12) * ps
+            while lx < w {
+                c.setFillColor(lavaColors[Int.random(in: 0..<lavaColors.count)].cgColor)
+                let ly = CGFloat(Int.random(in: 4...Int(h/ps)-1)) * ps
+                // Jagged horizontal crack
+                let len = Int.random(in: 2...5)
+                var cy = ly
+                for i in 0..<len {
+                    c.fill(CGRect(x: lx + CGFloat(i) * ps, y: cy, width: ps, height: ps))
+                    cy += (Bool.random() ? ps : -ps)
+                    cy = max(crackH, min(cy, h - ps * 2))
+                }
+                lx += CGFloat(Int.random(in: 8...16)) * ps
+            }
+
+            // Ember pixel dots
+            let ember = UIColor(red: 1.0, green: 0.50, blue: 0.10, alpha: 0.5)
+            c.setFillColor(ember.cgColor)
+            var ex: CGFloat = CGFloat.random(in: 8...14) * ps
+            while ex < w {
+                let ey = CGFloat(Int.random(in: 1...3)) * ps
+                c.fill(CGRect(x: ex, y: ey, width: ps, height: ps))
+                ex += CGFloat(Int.random(in: 12...20)) * ps
+            }
+        }
+    }
+
+    // MARK: Arctic Ground — snow and ice with frozen puddles
+
+    private func renderArcticGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Packed snow base
+            c.setFillColor(UIColor(red: 0.85, green: 0.88, blue: 0.92, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Icy blue undertone layer
+            let iceLayer = UIColor(red: 0.72, green: 0.82, blue: 0.90, alpha: 1)
+            c.setFillColor(iceLayer.cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.5, width: w, height: h * 0.5))
+
+            // Snow drift stripes
+            let drift = UIColor(red: 0.90, green: 0.92, blue: 0.95, alpha: 1)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(drift.cgColor)
+                c.fill(CGRect(x: sx, y: CGFloat(Int.random(in: 4...Int(h/ps)-2)) * ps, width: ps * 3, height: ps))
+                sx += CGFloat(Int.random(in: 4...8)) * ps
+            }
+
+            // Snow surface top
+            let snowH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.92, green: 0.94, blue: 0.97, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: snowH))
+
+            // Crystal ice edge
+            c.setFillColor(UIColor(red: 0.65, green: 0.78, blue: 0.92, alpha: 0.8).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Snow tufts (white bumps)
+            let tuft = UIColor(red: 0.96, green: 0.97, blue: 0.99, alpha: 1)
+            var tx: CGFloat = 0
+            while tx < w {
+                c.setFillColor(tuft.cgColor)
+                let tw = Int.random(in: 2...4)
+                for t in 0..<tw { c.fill(CGRect(x: tx + CGFloat(t) * ps, y: snowH, width: ps, height: ps)) }
+                c.fill(CGRect(x: tx + CGFloat(tw / 2) * ps, y: snowH + ps, width: ps, height: ps))
+                tx += CGFloat(Int.random(in: 3...6)) * ps
+            }
+
+            // Frozen puddle patches (ice blue)
+            let puddle = UIColor(red: 0.55, green: 0.72, blue: 0.88, alpha: 0.5)
+            c.setFillColor(puddle.cgColor)
+            var px: CGFloat = CGFloat.random(in: 8...15) * ps
+            while px < w {
+                let pw = Int.random(in: 3...6)
+                for i in 0..<pw { c.fill(CGRect(x: px + CGFloat(i) * ps, y: ps * 2, width: ps, height: ps)) }
+                px += CGFloat(Int.random(in: 12...22)) * ps
+            }
+        }
+    }
+
+    // MARK: Western Ground — dry cracked desert dirt with tumbleweeds
+
+    private func renderWesternGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Dusty tan base
+            c.setFillColor(UIColor(red: 0.72, green: 0.58, blue: 0.38, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Dry cracks pattern
+            let crack = UIColor(red: 0.60, green: 0.48, blue: 0.30, alpha: 1)
+            var cx: CGFloat = 0
+            while cx < w {
+                c.setFillColor(crack.cgColor)
+                for i in 0..<Int.random(in: 2...4) {
+                    let py = CGFloat(Int.random(in: 4...Int(h/ps)-1)) * ps
+                    c.fill(CGRect(x: cx + CGFloat(i) * ps, y: py, width: ps, height: ps))
+                }
+                cx += CGFloat(Int.random(in: 5...10)) * ps
+            }
+
+            // Dry scrub top strip
+            let scrubH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.68, green: 0.55, blue: 0.32, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: scrubH))
+
+            // Dark border line
+            c.setFillColor(UIColor(red: 0.55, green: 0.42, blue: 0.24, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Dead grass tufts (brown/yellow)
+            let deadGrass = UIColor(red: 0.75, green: 0.62, blue: 0.30, alpha: 0.8)
+            var tx: CGFloat = 0
+            while tx < w {
+                c.setFillColor(deadGrass.cgColor)
+                let tw = Int.random(in: 1...2)
+                for t in 0..<tw { c.fill(CGRect(x: tx + CGFloat(t) * ps, y: scrubH, width: ps, height: ps)) }
+                tx += CGFloat(Int.random(in: 4...8)) * ps
+            }
+
+            // Small rocks/pebbles
+            let pebble = UIColor(red: 0.52, green: 0.42, blue: 0.28, alpha: 0.7)
+            var px: CGFloat = CGFloat.random(in: 5...10) * ps
+            while px < w {
+                c.setFillColor(pebble.cgColor)
+                c.fill(CGRect(x: px, y: CGFloat(Int.random(in: 1...3)) * ps, width: ps, height: ps))
+                px += CGFloat(Int.random(in: 8...14)) * ps
+            }
+        }
+    }
+
+    // MARK: Jungle Ground — rich dark soil with moss, roots, and small flowers
+
+    private func renderJungleGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Rich dark soil
+            c.setFillColor(UIColor(red: 0.28, green: 0.20, blue: 0.12, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Root-like dark streaks
+            let root = UIColor(red: 0.22, green: 0.15, blue: 0.08, alpha: 1)
+            var rx: CGFloat = 0
+            while rx < w {
+                c.setFillColor(root.cgColor)
+                let ry = CGFloat(Int.random(in: 4...Int(h/ps)-1)) * ps
+                let rLen = Int.random(in: 3...6)
+                var cy = ry
+                for i in 0..<rLen {
+                    c.fill(CGRect(x: rx + CGFloat(i) * ps, y: cy, width: ps, height: ps))
+                    if Bool.random() { cy += ps }
+                }
+                rx += CGFloat(Int.random(in: 6...12)) * ps
+            }
+
+            // Mossy top strip
+            let mossH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.22, green: 0.45, blue: 0.15, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: mossH))
+
+            // Dark moss edge
+            c.setFillColor(UIColor(red: 0.15, green: 0.32, blue: 0.10, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Lush fern tufts
+            let fern = UIColor(red: 0.28, green: 0.55, blue: 0.18, alpha: 1)
+            var tx: CGFloat = 0
+            while tx < w {
+                c.setFillColor(fern.cgColor)
+                let tw = Int.random(in: 1...3)
+                for t in 0..<tw { c.fill(CGRect(x: tx + CGFloat(t) * ps, y: mossH, width: ps, height: ps)) }
+                c.fill(CGRect(x: tx + CGFloat(tw / 2) * ps, y: mossH + ps, width: ps, height: ps))
+                tx += CGFloat(Int.random(in: 3...5)) * ps
+            }
+
+            // Tropical flowers
+            let flowerColors: [UIColor] = [
+                UIColor(red: 0.95, green: 0.30, blue: 0.40, alpha: 0.8),
+                UIColor(red: 0.95, green: 0.75, blue: 0.15, alpha: 0.8),
+                UIColor(red: 0.85, green: 0.20, blue: 0.65, alpha: 0.7),
+                UIColor(red: 0.95, green: 0.55, blue: 0.20, alpha: 0.7),
+            ]
+            var fx: CGFloat = CGFloat.random(in: 4...8) * ps
+            while fx < w {
+                c.setFillColor(flowerColors[Int.random(in: 0..<flowerColors.count)].cgColor)
+                let fy = CGFloat(Int.random(in: 1...3)) * ps
+                c.fill(CGRect(x: fx, y: fy, width: ps, height: ps))
+                fx += CGFloat(Int.random(in: 5...10)) * ps
+            }
+
+            // Mushroom dots
+            let mush = UIColor(red: 0.85, green: 0.78, blue: 0.60, alpha: 0.6)
+            c.setFillColor(mush.cgColor)
+            var mx: CGFloat = CGFloat.random(in: 12...20) * ps
+            while mx < w {
+                c.fill(CGRect(x: mx, y: ps, width: ps * 2, height: ps))
+                c.fill(CGRect(x: mx + ps / 2, y: ps * 2, width: ps, height: ps))
+                mx += CGFloat(Int.random(in: 20...35)) * ps
+            }
+        }
+    }
+
+    // MARK: Egypt Ground — golden desert sand with hieroglyphic fragments
+
+    private func renderEgyptGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Golden sand base
+            c.setFillColor(UIColor(red: 0.82, green: 0.68, blue: 0.40, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Deeper sand layer
+            c.setFillColor(UIColor(red: 0.75, green: 0.60, blue: 0.32, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.55, width: w, height: h * 0.45))
+
+            // Sand ripple highlights
+            let highlight = UIColor(red: 0.88, green: 0.75, blue: 0.48, alpha: 1)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(highlight.cgColor)
+                c.fill(CGRect(x: sx, y: CGFloat(Int.random(in: 3...Int(h/ps)-2)) * ps, width: ps * 2, height: ps))
+                sx += CGFloat(Int.random(in: 4...7)) * ps
+            }
+
+            // Sandstone top strip
+            let stoneH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.78, green: 0.62, blue: 0.35, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: stoneH))
+
+            // Dark sandstone edge
+            c.setFillColor(UIColor(red: 0.65, green: 0.50, blue: 0.28, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Hieroglyphic fragments (tiny pixel patterns in the stone)
+            let hieroglyph = UIColor(red: 0.60, green: 0.45, blue: 0.22, alpha: 0.5)
+            c.setFillColor(hieroglyph.cgColor)
+            var hx: CGFloat = CGFloat.random(in: 8...15) * ps
+            while hx < w {
+                // Simple L or T shapes
+                let pattern = Int.random(in: 0...2)
+                if pattern == 0 {
+                    // L shape
+                    c.fill(CGRect(x: hx, y: ps * 2, width: ps, height: ps * 2))
+                    c.fill(CGRect(x: hx + ps, y: ps * 3, width: ps, height: ps))
+                } else if pattern == 1 {
+                    // T shape
+                    c.fill(CGRect(x: hx, y: ps * 2, width: ps * 3, height: ps))
+                    c.fill(CGRect(x: hx + ps, y: ps * 3, width: ps, height: ps))
+                } else {
+                    // Dot pair
+                    c.fill(CGRect(x: hx, y: ps * 2, width: ps, height: ps))
+                    c.fill(CGRect(x: hx + ps * 2, y: ps * 2, width: ps, height: ps))
+                }
+                hx += CGFloat(Int.random(in: 12...22)) * ps
+            }
+
+            // Scattered pottery shard pixels
+            let shard = UIColor(red: 0.70, green: 0.42, blue: 0.20, alpha: 0.6)
+            c.setFillColor(shard.cgColor)
+            var fx: CGFloat = CGFloat.random(in: 10...18) * ps
+            while fx < w {
+                c.fill(CGRect(x: fx, y: CGFloat(Int.random(in: 1...3)) * ps, width: ps, height: ps))
+                fx += CGFloat(Int.random(in: 14...24)) * ps
+            }
+        }
+    }
+
+    // MARK: Cave Ground — dark stone floor with crystal shards and glowing moss
+
+    private func renderCaveGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Dark stone base
+            c.setFillColor(UIColor(red: 0.10, green: 0.08, blue: 0.12, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Stone texture variation
+            let stoneVar: [UIColor] = [
+                UIColor(red: 0.12, green: 0.10, blue: 0.16, alpha: 1),
+                UIColor(red: 0.08, green: 0.06, blue: 0.10, alpha: 1),
+            ]
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(stoneVar[Int.random(in: 0..<2)].cgColor)
+                c.fill(CGRect(x: sx, y: CGFloat(Int.random(in: 2...Int(h/ps)-1)) * ps, width: ps, height: ps))
+                sx += CGFloat(Int.random(in: 2...4)) * ps
+            }
+
+            // Rocky ledge top
+            let ledgeH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.15, green: 0.12, blue: 0.20, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ledgeH))
+
+            c.setFillColor(UIColor(red: 0.20, green: 0.16, blue: 0.26, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Crystal shard protrusions
+            let crystalColors: [UIColor] = [
+                UIColor(red: 0.50, green: 0.30, blue: 0.80, alpha: 0.7),
+                UIColor(red: 0.30, green: 0.60, blue: 0.85, alpha: 0.6),
+                UIColor(red: 0.70, green: 0.40, blue: 0.90, alpha: 0.5),
+            ]
+            var cx: CGFloat = CGFloat.random(in: 8...14) * ps
+            while cx < w {
+                c.setFillColor(crystalColors[Int.random(in: 0..<crystalColors.count)].cgColor)
+                let ch = Int.random(in: 2...4)
+                for i in 0..<ch {
+                    c.fill(CGRect(x: cx, y: ledgeH + CGFloat(i) * ps, width: ps, height: ps))
+                }
+                // Point at top
+                c.fill(CGRect(x: cx - ps / 2, y: ledgeH + CGFloat(ch) * ps, width: ps, height: ps))
+                cx += CGFloat(Int.random(in: 14...25)) * ps
+            }
+
+            // Bioluminescent moss dots
+            let moss = UIColor(red: 0.30, green: 0.85, blue: 0.50, alpha: 0.4)
+            c.setFillColor(moss.cgColor)
+            var mx: CGFloat = CGFloat.random(in: 5...10) * ps
+            while mx < w {
+                c.fill(CGRect(x: mx, y: CGFloat(Int.random(in: 1...3)) * ps, width: ps, height: ps))
+                mx += CGFloat(Int.random(in: 8...15)) * ps
+            }
+        }
+    }
+
+    // MARK: Mountain Ground — rocky trail with alpine flowers and pebbles
+
+    private func renderMountainGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Rocky grey-brown base
+            c.setFillColor(UIColor(red: 0.48, green: 0.42, blue: 0.35, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Dirt/gravel variation
+            let gravel = UIColor(red: 0.42, green: 0.36, blue: 0.28, alpha: 1)
+            c.setFillColor(gravel.cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.5, width: w, height: h * 0.5))
+
+            // Stone speckles
+            let speck = UIColor(red: 0.55, green: 0.48, blue: 0.40, alpha: 1)
+            var sx: CGFloat = 0
+            while sx < w {
+                c.setFillColor(speck.cgColor)
+                c.fill(CGRect(x: sx, y: CGFloat(Int.random(in: 3...Int(h/ps)-2)) * ps, width: ps, height: ps))
+                sx += CGFloat(Int.random(in: 3...6)) * ps
+            }
+
+            // Grassy trail top strip
+            let trailH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.35, green: 0.50, blue: 0.28, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: trailH))
+
+            // Rocky edge
+            c.setFillColor(UIColor(red: 0.28, green: 0.40, blue: 0.22, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: ps))
+
+            // Sparse alpine grass tufts
+            let alpine = UIColor(red: 0.40, green: 0.58, blue: 0.30, alpha: 0.9)
+            var tx: CGFloat = 0
+            while tx < w {
+                c.setFillColor(alpine.cgColor)
+                let tw = Int.random(in: 1...2)
+                for t in 0..<tw { c.fill(CGRect(x: tx + CGFloat(t) * ps, y: trailH, width: ps, height: ps)) }
+                tx += CGFloat(Int.random(in: 4...7)) * ps
+            }
+
+            // Alpine wildflowers
+            let flowerColors: [UIColor] = [
+                UIColor(red: 0.90, green: 0.85, blue: 0.95, alpha: 0.8),  // edelweiss white
+                UIColor(red: 0.70, green: 0.50, blue: 0.85, alpha: 0.7),  // alpine violet
+                UIColor(red: 0.95, green: 0.80, blue: 0.20, alpha: 0.7),  // buttercup
+            ]
+            var fx: CGFloat = CGFloat.random(in: 6...12) * ps
+            while fx < w {
+                c.setFillColor(flowerColors[Int.random(in: 0..<flowerColors.count)].cgColor)
+                c.fill(CGRect(x: fx, y: CGFloat(Int.random(in: 1...3)) * ps, width: ps, height: ps))
+                fx += CGFloat(Int.random(in: 8...14)) * ps
+            }
+        }
+    }
+
+    // MARK: Space Ground — metal plating with rivets and status lights
+
+    private func renderSpaceGround() -> UIImage {
+        let w: CGFloat = GK.worldWidth * 2
+        let h: CGFloat = GK.groundHeight
+        let ps: CGFloat = 4
+        let size = CGSize(width: w, height: h)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+
+            // Dark metal hull base
+            c.setFillColor(UIColor(red: 0.10, green: 0.10, blue: 0.14, alpha: 1).cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            // Panel seam lines (horizontal)
+            let seam = UIColor(red: 0.06, green: 0.06, blue: 0.10, alpha: 1)
+            c.setFillColor(seam.cgColor)
+            c.fill(CGRect(x: 0, y: h * 0.35, width: w, height: 1))
+            c.fill(CGRect(x: 0, y: h * 0.65, width: w, height: 1))
+
+            // Vertical seams
+            var vx: CGFloat = 0
+            while vx < w {
+                c.fill(CGRect(x: vx, y: 0, width: 1, height: h))
+                vx += ps * 10
+            }
+
+            // Plating edge top
+            let edgeH: CGFloat = 22
+            c.setFillColor(UIColor(red: 0.14, green: 0.14, blue: 0.20, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: w, height: edgeH))
+
+            // Warning stripe (yellow/black hazard)
+            let stripeW: CGFloat = ps * 2
+            var stx: CGFloat = 0
+            var isYellow = true
+            while stx < w {
+                c.setFillColor(isYellow
+                    ? UIColor(red: 0.85, green: 0.75, blue: 0.15, alpha: 0.8).cgColor
+                    : UIColor(red: 0.08, green: 0.08, blue: 0.12, alpha: 0.8).cgColor)
+                c.fill(CGRect(x: stx, y: 0, width: stripeW, height: ps))
+                stx += stripeW
+                isYellow.toggle()
+            }
+
+            // Highlight edge line
+            c.setFillColor(UIColor(red: 0.22, green: 0.22, blue: 0.30, alpha: 1).cgColor)
+            c.fill(CGRect(x: 0, y: ps, width: w, height: 1))
+
+            // Rivet dots
+            let rivet = UIColor(red: 0.20, green: 0.20, blue: 0.28, alpha: 0.8)
+            c.setFillColor(rivet.cgColor)
+            var rx: CGFloat = ps * 4
+            while rx < w {
+                c.fill(CGRect(x: rx, y: edgeH - ps, width: ps, height: ps))
+                c.fill(CGRect(x: rx, y: h - ps * 2, width: ps, height: ps))
+                rx += ps * 10
+            }
+
+            // Small status lights
+            let lightColors: [UIColor] = [
+                UIColor(red: 0.20, green: 0.80, blue: 0.30, alpha: 0.7),
+                UIColor(red: 0.85, green: 0.25, blue: 0.20, alpha: 0.6),
+                UIColor(red: 0.30, green: 0.60, blue: 0.95, alpha: 0.6),
+            ]
+            var lx: CGFloat = CGFloat.random(in: 12...20) * ps
+            while lx < w {
+                c.setFillColor(lightColors[Int.random(in: 0..<lightColors.count)].cgColor)
+                c.fill(CGRect(x: lx, y: CGFloat(Int.random(in: 2...4)) * ps, width: ps, height: ps))
+                lx += CGFloat(Int.random(in: 15...25)) * ps
+            }
+        }
+    }
+
+    // MARK: - Themed Ground Detail Rendering
+    //
+    // Each theme gets unique surface decorations above the ground tile.
+
+    private func renderThemedGroundDetail(theme: BackgroundTheme, tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        switch theme {
+        case .day:         return renderGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .sunset:      return renderSunsetGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .night:       return renderNightGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .neonCity:    return renderNeonGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .pixelTokyo:  return renderTokyoGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .underwater:  return renderUnderwaterGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .volcano:     return renderVolcanoGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .arctic:      return renderArcticGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .western:     return renderWesternGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .jungle:      return renderJungleGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .egypt:       return renderEgyptGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .cave:        return renderCaveGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .mountain:    return renderMountainGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .space:       return renderSpaceGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        }
+    }
+
+    // MARK: Sunset Ground Detail — amber grass blades
+
+    private func renderSunsetGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            for _ in 0..<14 {
+                let x = CGFloat(drand48()) * tileWidth
+                let bladeH = CGFloat(drand48()) * 8 + 6
+                let halfW: CGFloat = 1.5
+                let r = 0.50 + CGFloat(drand48()) * 0.20
+                let g = 0.38 + CGFloat(drand48()) * 0.15
+                let b = 0.10 + CGFloat(drand48()) * 0.10
+                c.setFillColor(UIColor(red: r, green: g, blue: b, alpha: 1).cgColor)
+                let path = CGMutablePath()
+                path.move(to: CGPoint(x: x - halfW, y: baseY))
+                path.addLine(to: CGPoint(x: x, y: baseY - bladeH))
+                path.addLine(to: CGPoint(x: x + halfW, y: baseY))
+                path.closeSubpath()
+                c.addPath(path); c.fillPath()
+            }
+        }
+    }
+
+    // MARK: Night Ground Detail — dark grass with firefly specks
+
+    private func renderNightGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Dark grass blades
+            for _ in 0..<10 {
+                let x = CGFloat(drand48()) * tileWidth
+                let bladeH = CGFloat(drand48()) * 7 + 5
+                let halfW: CGFloat = 1.5
+                let r = 0.08 + CGFloat(drand48()) * 0.08
+                let g = 0.18 + CGFloat(drand48()) * 0.12
+                let b = 0.06 + CGFloat(drand48()) * 0.06
+                c.setFillColor(UIColor(red: r, green: g, blue: b, alpha: 0.8).cgColor)
+                let path = CGMutablePath()
+                path.move(to: CGPoint(x: x - halfW, y: baseY))
+                path.addLine(to: CGPoint(x: x, y: baseY - bladeH))
+                path.addLine(to: CGPoint(x: x + halfW, y: baseY))
+                path.closeSubpath()
+                c.addPath(path); c.fillPath()
+            }
+            // Firefly dots
+            for _ in 0..<4 {
+                let fx = CGFloat(drand48()) * tileWidth
+                let fy = baseY - CGFloat(drand48()) * 16
+                c.setFillColor(UIColor(red: 0.85, green: 0.90, blue: 0.30, alpha: 0.6).cgColor)
+                c.fill(CGRect(x: fx, y: fy, width: 2, height: 2))
+            }
+        }
+    }
+
+    // MARK: Neon Ground Detail — neon light reflections on wet asphalt
+
+    private func renderNeonGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            let neonColors: [UIColor] = [
+                UIColor(red: 0.80, green: 0.20, blue: 0.60, alpha: 0.3),
+                UIColor(red: 0.20, green: 0.80, blue: 0.95, alpha: 0.25),
+                UIColor(red: 0.95, green: 0.40, blue: 0.90, alpha: 0.20),
+            ]
+            for _ in 0..<6 {
+                let x = CGFloat(drand48()) * tileWidth
+                let w: CGFloat = CGFloat(drand48()) * 12 + 4
+                c.setFillColor(neonColors[Int(drand48() * Double(neonColors.count))].cgColor)
+                c.fill(CGRect(x: x, y: baseY - 2, width: w, height: 3))
+            }
+        }
+    }
+
+    // MARK: Tokyo Ground Detail — fallen cherry petals
+
+    private func renderTokyoGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            let petalColors: [UIColor] = [
+                UIColor(red: 1.0, green: 0.70, blue: 0.80, alpha: 0.6),
+                UIColor(red: 1.0, green: 0.80, blue: 0.85, alpha: 0.5),
+            ]
+            for _ in 0..<8 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 12
+                c.setFillColor(petalColors[Int(drand48() * Double(petalColors.count))].cgColor)
+                c.fill(CGRect(x: x, y: y, width: 3, height: 2))
+            }
+        }
+    }
+
+    // MARK: Underwater Ground Detail — rising bubbles
+
+    private func renderUnderwaterGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            for _ in 0..<6 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 18
+                let r = CGFloat(drand48()) * 2 + 1.5
+                c.setFillColor(UIColor(red: 0.65, green: 0.85, blue: 0.95, alpha: 0.35).cgColor)
+                c.fillEllipse(in: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
+            }
+            // Small seaweed strands
+            for _ in 0..<5 {
+                let x = CGFloat(drand48()) * tileWidth
+                let strandH = CGFloat(drand48()) * 10 + 6
+                c.setFillColor(UIColor(red: 0.15, green: 0.50, blue: 0.30, alpha: 0.5).cgColor)
+                let path = CGMutablePath()
+                path.move(to: CGPoint(x: x, y: baseY))
+                path.addLine(to: CGPoint(x: x + 2, y: baseY - strandH))
+                path.addLine(to: CGPoint(x: x + 3, y: baseY))
+                path.closeSubpath()
+                c.addPath(path); c.fillPath()
+            }
+        }
+    }
+
+    // MARK: Volcano Ground Detail — floating embers and ash
+
+    private func renderVolcanoGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Ember particles
+            for _ in 0..<8 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 16
+                let bright = drand48() > 0.5
+                c.setFillColor(bright
+                    ? UIColor(red: 1.0, green: 0.55, blue: 0.10, alpha: 0.6).cgColor
+                    : UIColor(red: 0.90, green: 0.30, blue: 0.08, alpha: 0.4).cgColor)
+                c.fill(CGRect(x: x, y: y, width: 2, height: 2))
+            }
+            // Ash flecks
+            for _ in 0..<6 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 14
+                c.setFillColor(UIColor(red: 0.30, green: 0.25, blue: 0.22, alpha: 0.4).cgColor)
+                c.fill(CGRect(x: x, y: y, width: 2, height: 1))
+            }
+        }
+    }
+
+    // MARK: Arctic Ground Detail — snowflake particles
+
+    private func renderArcticGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Snow particles
+            for _ in 0..<10 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 18
+                let r = CGFloat(drand48()) * 1.5 + 1
+                c.setFillColor(UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.5).cgColor)
+                c.fillEllipse(in: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
+            }
+            // Ice sparkle dots
+            for _ in 0..<4 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 8
+                c.setFillColor(UIColor(red: 0.70, green: 0.85, blue: 1.0, alpha: 0.5).cgColor)
+                c.fill(CGRect(x: x, y: y, width: 2, height: 2))
+            }
+        }
+    }
+
+    // MARK: Western Ground Detail — dust wisps and small rocks
+
+    private func renderWesternGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Dust wisps
+            for _ in 0..<5 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 10
+                let w: CGFloat = CGFloat(drand48()) * 8 + 4
+                c.setFillColor(UIColor(red: 0.75, green: 0.62, blue: 0.40, alpha: 0.25).cgColor)
+                c.fill(CGRect(x: x, y: y, width: w, height: 2))
+            }
+            // Pebbles
+            for _ in 0..<6 {
+                let x = CGFloat(drand48()) * tileWidth
+                let r = CGFloat(drand48()) * 2.0 + 1.5
+                let gray = CGFloat(drand48()) * 0.15 + 0.45
+                c.setFillColor(UIColor(red: gray, green: gray - 0.05, blue: gray - 0.12, alpha: 0.7).cgColor)
+                c.fillEllipse(in: CGRect(x: x - r, y: baseY + 2 - r, width: r * 2, height: r * 2))
+            }
+        }
+    }
+
+    // MARK: Jungle Ground Detail — fern fronds and butterflies
+
+    private func renderJungleGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Fern fronds
+            for _ in 0..<12 {
+                let x = CGFloat(drand48()) * tileWidth
+                let bladeH = CGFloat(drand48()) * 10 + 6
+                let halfW: CGFloat = 2.0
+                let r = 0.15 + CGFloat(drand48()) * 0.15
+                let g = 0.42 + CGFloat(drand48()) * 0.20
+                let b = 0.10 + CGFloat(drand48()) * 0.08
+                c.setFillColor(UIColor(red: r, green: g, blue: b, alpha: 0.8).cgColor)
+                let path = CGMutablePath()
+                path.move(to: CGPoint(x: x - halfW, y: baseY))
+                path.addLine(to: CGPoint(x: x, y: baseY - bladeH))
+                path.addLine(to: CGPoint(x: x + halfW, y: baseY))
+                path.closeSubpath()
+                c.addPath(path); c.fillPath()
+            }
+            // Butterfly
+            for _ in 0..<2 {
+                let bx = CGFloat(drand48()) * tileWidth
+                let by = baseY - CGFloat(drand48()) * 14 - 4
+                let colors: [UIColor] = [
+                    UIColor(red: 0.20, green: 0.60, blue: 0.90, alpha: 0.6),
+                    UIColor(red: 0.90, green: 0.40, blue: 0.20, alpha: 0.6),
+                ]
+                c.setFillColor(colors[Int(drand48() * Double(colors.count))].cgColor)
+                c.fill(CGRect(x: bx - 2, y: by, width: 2, height: 2))
+                c.fill(CGRect(x: bx + 1, y: by, width: 2, height: 2))
+            }
+        }
+    }
+
+    // MARK: Egypt Ground Detail — sand particles and scarab hint
+
+    private func renderEgyptGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Blowing sand particles
+            for _ in 0..<8 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 14
+                c.setFillColor(UIColor(red: 0.85, green: 0.72, blue: 0.45, alpha: 0.3).cgColor)
+                c.fill(CGRect(x: x, y: y, width: 3, height: 1))
+            }
+        }
+    }
+
+    // MARK: Cave Ground Detail — dripping water and glowing spores
+
+    private func renderCaveGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Glowing spore dots
+            for _ in 0..<6 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 16
+                let colors: [UIColor] = [
+                    UIColor(red: 0.30, green: 0.85, blue: 0.50, alpha: 0.4),
+                    UIColor(red: 0.50, green: 0.30, blue: 0.80, alpha: 0.3),
+                ]
+                c.setFillColor(colors[Int(drand48() * Double(colors.count))].cgColor)
+                c.fill(CGRect(x: x, y: y, width: 2, height: 2))
+            }
+            // Water drip streaks
+            for _ in 0..<3 {
+                let x = CGFloat(drand48()) * tileWidth
+                let dropH = CGFloat(drand48()) * 6 + 3
+                c.setFillColor(UIColor(red: 0.40, green: 0.55, blue: 0.75, alpha: 0.3).cgColor)
+                c.fill(CGRect(x: x, y: baseY - dropH, width: 1, height: dropH))
+            }
+        }
+    }
+
+    // MARK: Mountain Ground Detail — alpine grass and pebbles
+
+    private func renderMountainGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Sparse grass
+            for _ in 0..<10 {
+                let x = CGFloat(drand48()) * tileWidth
+                let bladeH = CGFloat(drand48()) * 6 + 4
+                let halfW: CGFloat = 1.5
+                c.setFillColor(UIColor(red: 0.30 + CGFloat(drand48()) * 0.15,
+                                        green: 0.48 + CGFloat(drand48()) * 0.15,
+                                        blue: 0.20 + CGFloat(drand48()) * 0.10,
+                                        alpha: 0.7).cgColor)
+                let path = CGMutablePath()
+                path.move(to: CGPoint(x: x - halfW, y: baseY))
+                path.addLine(to: CGPoint(x: x, y: baseY - bladeH))
+                path.addLine(to: CGPoint(x: x + halfW, y: baseY))
+                path.closeSubpath()
+                c.addPath(path); c.fillPath()
+            }
+            // Mountain pebbles
+            for _ in 0..<6 {
+                let x = CGFloat(drand48()) * tileWidth
+                let r = CGFloat(drand48()) * 2.0 + 1.5
+                let gray = CGFloat(drand48()) * 0.20 + 0.40
+                c.setFillColor(UIColor(red: gray, green: gray - 0.03, blue: gray - 0.08, alpha: 0.7).cgColor)
+                c.fillEllipse(in: CGRect(x: x - r, y: baseY + 2 - r, width: r * 2, height: r * 2))
+            }
+        }
+    }
+
+    // MARK: Space Ground Detail — sparks and steam vents
+
+    private func renderSpaceGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        srand48(seed)
+        let h: CGFloat = groundHeight + 20
+        let size = CGSize(width: tileWidth, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let baseY = h - groundHeight
+            // Steam vent plumes
+            for _ in 0..<3 {
+                let x = CGFloat(drand48()) * tileWidth
+                let ventH = CGFloat(drand48()) * 10 + 5
+                c.setFillColor(UIColor(red: 0.60, green: 0.65, blue: 0.75, alpha: 0.15).cgColor)
+                c.fill(CGRect(x: x - 2, y: baseY - ventH, width: 5, height: ventH))
+            }
+            // Electric spark dots
+            for _ in 0..<4 {
+                let x = CGFloat(drand48()) * tileWidth
+                let y = baseY - CGFloat(drand48()) * 12
+                c.setFillColor(UIColor(red: 0.40, green: 0.70, blue: 1.0, alpha: 0.5).cgColor)
+                c.fill(CGRect(x: x, y: y, width: 2, height: 2))
             }
         }
     }

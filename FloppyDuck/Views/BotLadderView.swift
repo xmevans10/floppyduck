@@ -78,7 +78,7 @@ struct BotLadderView: View {
                     .resizable()
                     .frame(width: 28, height: 28)
                     .padding(8)
-                    .background(Circle().fill(Color.black.opacity(0.15)))
+                    .background(PixelButtonBackground(style: .dark, size: 44))
             }
             .accessibilityLabel("Back")
 
@@ -260,9 +260,10 @@ struct BotLadderView: View {
 
     private func botPortrait(bot: BotCharacter, beaten: Bool, locked: Bool) -> some View {
         ZStack {
-            Circle()
-                .fill(locked ? Color.black.opacity(0.05) : bot.accentColor.opacity(0.15))
-                .frame(width: 44, height: 44)
+            PixelButtonBackground(
+                style: locked ? .dark : .accent(bot.accentColor),
+                size: 44
+            )
 
             Image(uiImage: factory.skinDuckUIImage(skin: bot.skin, pixelScale: 5.0))
                 .interpolation(.none)
@@ -282,7 +283,7 @@ struct BotLadderView: View {
                             .resizable()
                             .frame(width: 10, height: 10)
                             .background(
-                                Circle().fill(GK.Colors.buttonGreen)
+                                PixelRoundedRect().fill(GK.Colors.buttonGreen)
                                     .frame(width: 14, height: 14))
                     }
                 }

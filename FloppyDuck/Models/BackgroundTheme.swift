@@ -273,6 +273,46 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// Ground strip color for mini-scene preview cards in Collection / Shop.
+    var previewGroundColor: Color {
+        switch self {
+        case .day:         return Color(red: 0.35, green: 0.55, blue: 0.25)
+        case .sunset:      return Color(red: 0.62, green: 0.45, blue: 0.28)
+        case .night:       return Color(red: 0.10, green: 0.22, blue: 0.12)
+        case .neonCity:    return Color(red: 0.10, green: 0.08, blue: 0.14)
+        case .pixelTokyo:  return Color(red: 0.20, green: 0.16, blue: 0.25)
+        case .underwater:  return Color(red: 0.60, green: 0.52, blue: 0.35)
+        case .volcano:     return Color(red: 0.12, green: 0.08, blue: 0.06)
+        case .arctic:      return Color(red: 0.85, green: 0.88, blue: 0.92)
+        case .western:     return Color(red: 0.72, green: 0.58, blue: 0.38)
+        case .jungle:      return Color(red: 0.22, green: 0.45, blue: 0.15)
+        case .cave:        return Color(red: 0.10, green: 0.08, blue: 0.12)
+        case .mountain:    return Color(red: 0.48, green: 0.42, blue: 0.35)
+        case .space:       return Color(red: 0.10, green: 0.10, blue: 0.14)
+        case .egypt:       return Color(red: 0.82, green: 0.68, blue: 0.40)
+        }
+    }
+
+    /// Hill silhouette color for mini-scene preview cards.
+    var previewHillColor: Color {
+        switch self {
+        case .day:         return Color(red: 0.30, green: 0.50, blue: 0.22)
+        case .sunset:      return Color(red: 0.45, green: 0.30, blue: 0.18)
+        case .night:       return Color(red: 0.06, green: 0.14, blue: 0.08)
+        case .neonCity:    return Color(red: 0.08, green: 0.05, blue: 0.18)
+        case .pixelTokyo:  return Color(red: 0.15, green: 0.10, blue: 0.22)
+        case .underwater:  return Color(red: 0.08, green: 0.25, blue: 0.40)
+        case .volcano:     return Color(red: 0.25, green: 0.08, blue: 0.04)
+        case .arctic:      return Color(red: 0.72, green: 0.80, blue: 0.88)
+        case .western:     return Color(red: 0.60, green: 0.45, blue: 0.25)
+        case .jungle:      return Color(red: 0.12, green: 0.32, blue: 0.10)
+        case .cave:        return Color(red: 0.06, green: 0.05, blue: 0.08)
+        case .mountain:    return Color(red: 0.38, green: 0.48, blue: 0.32)
+        case .space:       return Color(red: 0.06, green: 0.06, blue: 0.10)
+        case .egypt:       return Color(red: 0.72, green: 0.55, blue: 0.30)
+        }
+    }
+
     /// Accent color for UI elements (shop cards, etc.)
     var accentColor: Color {
         switch self {
