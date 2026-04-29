@@ -137,14 +137,12 @@ jobs:
           # Single Python script that tries every extraction strategy with
           # per-step timeouts, graceful fallbacks, and clear logging.
           python3 << 'PYEOF'
-          import json, subprocess, os, re, sys, time
+          import json, subprocess, os, re, sys, glob, shutil
 
           RESULT_PATH = "TestResults.xcresult"
           OUT_DIR      = "screenshots"
-          CMD_TIMEOUT  = 30       # seconds per shell command
-          EXPORT_TIMEOUT = 15     # seconds per single file export
-
-          # ── helpers ────────────────────────────────────────────────
+          CMD_TIMEOUT  = 30
+          EXPORT_TIMEOUT = 15
 
           def run(cmd, timeout=CMD_TIMEOUT):
               """Run a command with a timeout; return (stdout, ok)."""
@@ -158,8 +156,8 @@ jobs:
                   print(f"  💥 {e}")
                   return "", False
 
-          def export_attachment(ref_id, out_path):
-              """Try exporting a single attachment with two strategies."""
+          def export_ref(ref_id, out_path):
+              """Try exporting a single ref with two xcresulttool strategies."""
               for cmd in [
                   ["xcrun", "xcresulttool", "export", "--type", "file",
                    "--path", RESULT_PATH, "--id", ref_id,
@@ -185,7 +183,6 @@ jobs:
                   if isinstance(name, dict):
                       name = name.get("_value", name.get("value", ""))
 
-                  # Check multiple possible ref keys
                   for ref_key in ("payloadRef", "payload"):
                       ref_obj = obj.get(ref_key)
                       if isinstance(ref_obj, dict):
@@ -194,11 +191,10 @@ jobs:
                               ref_id = ref_id.get("_value", ref_id.get("value", ""))
                           if ref_id:
                               attachments.append({"name": name, "ref": ref_id})
-                              return  # don't recurse into this node further
+                              return
 
                   for v in obj.values():
                       walk_json(v, attachments)
-
               elif isinstance(obj, list):
                   for item in obj:
                       walk_json(item, attachments)
@@ -208,85 +204,102 @@ jobs:
               for i, att in enumerate(attachments):
                   fname = safe_filename(att["name"], i)
                   out = os.path.join(OUT_DIR, f"{fname}.png")
-                  if export_attachment(att["ref"], out):
+                  if export_ref(att["ref"], out):
                       exported += 1
-                      sz = os.path.getsize(out)
-                      print(f"  ✅ {fname}.png ({sz:,} bytes)")
+                      print(f"  ✅ {fname}.png ({os.path.getsize(out):,} bytes)")
                   else:
                       print(f"  ❌ {fname}: export failed — skipping")
               return exported
 
-          # ── Strategy 1: Xcode 16+ test-results attachments API ────
+          exported_total = 0
 
+          # ── Strategy 1: Xcode 16+ test-results attachments (file output) ──
           print("━━━ Strategy 1: xcresulttool get test-results attachments ━━━")
-          stdout, ok = run(["xcrun", "xcresulttool", "get", "test-results",
-                            "attachments", "--path", RESULT_PATH])
+          tmp_att = "/tmp/xcresult_attachments.json"
+          _, ok = run(["xcrun", "xcresulttool", "get", "test-results",
+                       "attachments", "--path", RESULT_PATH,
+                       "--output-path", tmp_att])
+          if not ok:
+              # Also try stdout variant
+              stdout, ok = run(["xcrun", "xcresulttool", "get", "test-results",
+                                "attachments", "--path", RESULT_PATH])
+              if ok and stdout.strip():
+                  with open(tmp_att, "w") as f:
+                      f.write(stdout)
 
           attachments = []
-          if ok and stdout.strip():
+          if os.path.exists(tmp_att) and os.path.getsize(tmp_att) > 0:
+              try:
+                  with open(tmp_att) as f:
+                      data = json.load(f)
+                  walk_json(data, attachments)
+                  print(f"  Found {len(attachments)} attachments")
+              except (json.JSONDecodeError, Exception) as e:
+                  print(f"  Parse error: {e}")
+          else:
+              print("  Command produced no output")
+
+          if attachments:
+              exported_total = export_all(attachments)
+              print(f"\n📸 Strategy 1: {exported_total}/{len(attachments)} exported")
+              if exported_total > 0:
+                  sys.exit(0)
+
+          # ── Strategy 2: legacy JSON tree walk ─────────────────────
+          for label, cmd in [
+              ("2a: xcresulttool get", ["xcrun", "xcresulttool", "get", "--path", RESULT_PATH]),
+              ("2b: xcresulttool get --legacy", ["xcrun", "xcresulttool", "get", "--path", RESULT_PATH, "--format", "json", "--legacy"]),
+          ]:
+              print(f"━━━ Strategy {label} ━━━")
+              stdout, ok = run(cmd)
+              if not (ok and stdout.strip()):
+                  print("  Command produced no output")
+                  continue
+              attachments = []
               try:
                   data = json.loads(stdout)
                   walk_json(data, attachments)
                   print(f"  Found {len(attachments)} attachments")
+                  # Debug: dump top-level keys if 0 found
+                  if not attachments and isinstance(data, dict):
+                      top_keys = list(data.keys())[:10]
+                      print(f"  Top-level keys: {top_keys}")
               except json.JSONDecodeError as e:
                   print(f"  JSON parse failed: {e}")
+                  continue
+              if attachments:
+                  n = export_all(attachments)
+                  print(f"\n📸 Strategy {label}: {n}/{len(attachments)} exported")
+                  if n > 0:
+                      sys.exit(0)
 
-          if attachments:
-              exported = export_all(attachments)
-              print(f"\n📸 Strategy 1 result: {exported}/{len(attachments)} exported")
-              if exported > 0:
-                  sys.exit(0)
-              print("  Export succeeded 0 — falling through\n")
+          # ── Strategy 3: brute-force search inside xcresult bundle ─
+          print("━━━ Strategy 3: brute-force file search in xcresult bundle ━━━")
+          found_files = []
+          for root, dirs, files in os.walk(RESULT_PATH):
+              for f in files:
+                  fp = os.path.join(root, f)
+                  # Check if file looks like a PNG (magic bytes \x89PNG)
+                  try:
+                      with open(fp, "rb") as fh:
+                          header = fh.read(8)
+                      if header[:4] == b'\x89PNG' or header[:3] == b'\xff\xd8\xff':
+                          found_files.append(fp)
+                  except Exception:
+                      pass
 
-          # ── Strategy 2: xcresulttool get (new format) ─────────────
+          print(f"  Found {len(found_files)} image files inside xcresult bundle")
+          if found_files:
+              for i, fp in enumerate(found_files):
+                  dest = os.path.join(OUT_DIR, f"raw_{i:02d}.png")
+                  shutil.copy2(fp, dest)
+                  print(f"  ✅ raw_{i:02d}.png ({os.path.getsize(dest):,} bytes)")
+              exported_total = len(found_files)
 
-          print("━━━ Strategy 2: xcresulttool get (Xcode 16 JSON) ━━━")
-          stdout, ok = run(["xcrun", "xcresulttool", "get",
-                            "--path", RESULT_PATH])
-
-          attachments = []
-          if ok and stdout.strip():
-              try:
-                  data = json.loads(stdout)
-                  walk_json(data, attachments)
-                  print(f"  Found {len(attachments)} attachments")
-              except json.JSONDecodeError as e:
-                  print(f"  JSON parse failed: {e}")
-
-          if attachments:
-              exported = export_all(attachments)
-              print(f"\n📸 Strategy 2 result: {exported}/{len(attachments)} exported")
-              if exported > 0:
-                  sys.exit(0)
-              print("  Export succeeded 0 — falling through\n")
-
-          # ── Strategy 3: legacy format ─────────────────────────────
-
-          print("━━━ Strategy 3: xcresulttool get --format json --legacy ━━━")
-          stdout, ok = run(["xcrun", "xcresulttool", "get",
-                            "--path", RESULT_PATH,
-                            "--format", "json", "--legacy"])
-
-          attachments = []
-          if ok and stdout.strip():
-              try:
-                  data = json.loads(stdout)
-                  walk_json(data, attachments)
-                  print(f"  Found {len(attachments)} attachments")
-              except json.JSONDecodeError as e:
-                  print(f"  JSON parse failed: {e}")
-
-          if attachments:
-              exported = export_all(attachments)
-              print(f"\n📸 Strategy 3 result: {exported}/{len(attachments)} exported")
-              if exported > 0:
-                  sys.exit(0)
-
-          # ── All strategies exhausted ──────────────────────────────
-
-          print("\n⚠️  All extraction strategies found 0 exportable screenshots.")
-          print("    This usually means the UI test didn't capture any.")
-          print("    Check the build.log and test-results artifact for details.")
+          if exported_total == 0:
+              print("\n⚠️  All strategies found 0 screenshots.")
+              print("    This means either the UI test captured none, or")
+              print("    the xcresult format is unrecognized.")
           PYEOF
 
           echo ""

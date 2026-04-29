@@ -73,16 +73,17 @@ final class AuthManager: ObservableObject {
         defer { isBootstrapping = false }
 
         let deviceId = identityStore.getOrCreateDeviceId()
-        let token = identityStore.sessionToken
 
-        await client.setAuthContext(deviceId: deviceId, sessionToken: token)
-
-        // In UI-test mode, skip all auth/onboarding and go straight to guest.
-        // This avoids the multi-page onboarding flow blocking screenshot tests.
+        // In UI-test mode, skip ALL network calls and go straight to local
+        // guest auth.  This must happen before client.setAuthContext so CI
+        // (which has no Convex backend) never blocks on a network timeout.
         if isUITestMode {
             await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
             return
         }
+
+        let token = identityStore.sessionToken
+        await client.setAuthContext(deviceId: deviceId, sessionToken: token)
 
         if !authV1Enabled {
             await continueAsGuest(markOnboardingComplete: true, silentFailure: true)

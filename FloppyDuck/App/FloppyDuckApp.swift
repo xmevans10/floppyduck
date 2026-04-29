@@ -8,10 +8,14 @@ struct FloppyDuckApp: App {
     @StateObject private var authManager: AuthManager
     /// Skip splash entirely when launched in UI-test mode so screenshots
     /// don't waste time waiting 4+ seconds for the splash animation.
-    @State private var splashFinished = ProcessInfo.processInfo.arguments.contains("-UITestMode")
-        || ProcessInfo.processInfo.environment["UITEST_MODE"] == "1"
+    @State private var splashFinished: Bool
 
     init() {
+        // Set splash state first — use the canonical _State(initialValue:) so
+        // SwiftUI registers the value before the first render pass.
+        let isUITest = ProcessInfo.processInfo.arguments.contains("-UITestMode")
+            || ProcessInfo.processInfo.environment["UITEST_MODE"] == "1"
+        _splashFinished = State(initialValue: isUITest)
 
         // Verbose Sentry logs flood os_log on the main thread — only opt in
         // when the SENTRY_VERBOSE env var is set (e.g. in the scheme), not for
