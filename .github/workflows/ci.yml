@@ -194,27 +194,72 @@ jobs:
 
                       detail = json.loads(detail_out)
 
-                      # Recursively find all payloadRef in the detail tree
-                      refs = []
+                      # Debug: show structure of test detail
+                      def show_structure(obj, prefix="", depth=0):
+                          if depth > 3:
+                              return
+                          if isinstance(obj, dict):
+                              for k in list(obj.keys())[:8]:
+                                  v = obj[k]
+                                  if isinstance(v, dict):
+                                      print(f"  {prefix}{k}: dict({list(v.keys())[:5]})")
+                                      show_structure(v, prefix + "  ", depth+1)
+                                  elif isinstance(v, list):
+                                      print(f"  {prefix}{k}: list[{len(v)}]")
+                                      if v:
+                                          show_structure(v[0], prefix + "  ", depth+1)
+                                  else:
+                                      sv = str(v)[:50]
+                                      print(f"  {prefix}{k}: {sv}")
+                      show_structure(detail)
+
+                      # Collect ALL ref-like IDs (summaryRef, payloadRef, etc.)
+                      all_refs = []
+                      summary_refs = []
                       def walk(obj, depth=0):
                           if depth > 50:
                               return
                           if isinstance(obj, dict):
                               nm = obj.get("name", {})
                               nm = nm.get("_value", "") if isinstance(nm, dict) else str(nm)
+                              # Check for payloadRef
                               pr = obj.get("payloadRef", {})
                               if isinstance(pr, dict):
                                   rid = pr.get("id", {})
                                   rid = rid.get("_value", "") if isinstance(rid, dict) else str(rid)
                                   if rid:
-                                      refs.append((nm, rid))
+                                      all_refs.append((nm, rid))
+                              # Check for summaryRef (needs another fetch)
+                              sr = obj.get("summaryRef", {})
+                              if isinstance(sr, dict):
+                                  rid = sr.get("id", {})
+                                  rid = rid.get("_value", "") if isinstance(rid, dict) else str(rid)
+                                  if rid:
+                                      summary_refs.append((nm, rid))
                               for v in obj.values():
                                   walk(v, depth+1)
                           elif isinstance(obj, list):
                               for item in obj:
                                   walk(item, depth+1)
                       walk(detail)
-                      print(f"  Found {len(refs)} payloadRef(s) in test detail")
+                      print(f"  Found {len(all_refs)} payloadRef(s), {len(summary_refs)} summaryRef(s)")
+
+                      # Drill into summaryRefs to find attachments
+                      for sname, srid in summary_refs:
+                          print(f"  Fetching summaryRef: {sname} ({srid[:20]}...)")
+                          sum_out, src = run(["xcrun", "xcresulttool", "get",
+                                              "--path", RESULT, "--id", srid,
+                                              "--format", "json", "--legacy"])
+                          if src != 0 or not sum_out.strip():
+                              continue
+                          try:
+                              sum_data = json.loads(sum_out)
+                              walk(sum_data)
+                          except Exception:
+                              pass
+                      if summary_refs:
+                          print(f"  After summaryRef drill: {len(all_refs)} total payloadRef(s)")
+                      refs = all_refs
 
                       for i, (name, rid) in enumerate(refs):
                           fn = fname(name, i)
