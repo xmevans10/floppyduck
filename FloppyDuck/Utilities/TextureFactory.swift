@@ -1413,23 +1413,23 @@ final class TextureFactory {
 
     private func renderThemedHills(theme: BackgroundTheme) -> UIImage {
         switch theme {
-        case .day:                          return renderPixelHills()
-        case .sunset:                       return renderSunsetHills()
-        case .night:                        return renderNightHills()
-        case .neonCity:                     return renderCitySkylineHills(neon: true)
-        case .pixelTokyo:                   return renderCitySkylineHills(neon: false)
-        case .underwater:                   return renderCoralReefHills()
-        case .volcano:                      return renderVolcanoHills()
-        case .arctic:                       return renderArcticHills()
+        case .day:                          return loadBundledImage("day_hills") ?? renderPixelHills()
+        case .sunset:                       return loadBundledImage("sunset_hills") ?? renderSunsetHills()
+        case .night:                        return loadBundledImage("night_hills") ?? renderNightHills()
+        case .neonCity:                     return loadBundledImage("neonCity_hills") ?? renderCitySkylineHills(neon: true)
+        case .pixelTokyo:                   return loadBundledImage("pixelTokyo_hills") ?? renderCitySkylineHills(neon: false)
+        case .underwater:                   return loadBundledImage("underwater_hills") ?? renderCoralReefHills()
+        case .volcano:                      return loadBundledImage("volcano_hills") ?? renderVolcanoHills()
+        case .arctic:                       return loadBundledImage("arctic_hills") ?? renderArcticHills()
         case .western:                      return loadBundledImage("western_hills") ?? renderWesternMesaHills()
-        case .jungle:                       return renderJungleCanopyHills()
-        case .egypt:                        return renderEgyptPyramidHills()
-        case .cave:                         return renderCaveFormationHills()
-        case .mountain:                     return renderMountainPeakHills()
-        case .space:                        return renderSpaceTerrainHills()
-        case .lagoon:                       return renderLagoonIslandHills()
-        case .losAngeles:                   return renderLosAngelesHollywoodHills()
-        case .london:                       return renderLondonSkylineHills()
+        case .jungle:                       return loadBundledImage("jungle_hills") ?? renderJungleCanopyHills()
+        case .egypt:                        return loadBundledImage("egypt_hills") ?? renderEgyptPyramidHills()
+        case .cave:                         return loadBundledImage("cave_hills") ?? renderCaveFormationHills()
+        case .mountain:                     return loadBundledImage("mountain_hills") ?? renderMountainPeakHills()
+        case .space:                        return loadBundledImage("space_hills") ?? renderSpaceTerrainHills()
+        case .lagoon:                       return loadBundledImage("lagoon_hills") ?? renderLagoonIslandHills()
+        case .losAngeles:                   return loadBundledImage("losAngeles_hills") ?? renderLosAngelesHollywoodHills()
+        case .london:                       return loadBundledImage("london_hills") ?? renderLondonSkylineHills()
         }
     }
 
@@ -3420,23 +3420,23 @@ final class TextureFactory {
 
     private func renderThemedTrees(theme: BackgroundTheme) -> UIImage {
         switch theme {
-        case .day:                          return renderDayOrchardTrees()
-        case .sunset:                       return renderSunsetTrees()
-        case .night:                        return renderNightTrees()
-        case .neonCity:                     return renderNeonCityMidground()
-        case .pixelTokyo:                   return renderTokyoMidground()
-        case .underwater:                   return renderKelpForest()
-        case .volcano:                      return renderCharredTrees()
-        case .arctic:                       return renderSnowyPines()
+        case .day:                          return loadBundledImage("day_midground") ?? renderDayOrchardTrees()
+        case .sunset:                       return loadBundledImage("sunset_midground") ?? renderSunsetTrees()
+        case .night:                        return loadBundledImage("night_midground") ?? renderNightTrees()
+        case .neonCity:                     return loadBundledImage("neonCity_midground") ?? renderNeonCityMidground()
+        case .pixelTokyo:                   return loadBundledImage("pixelTokyo_midground") ?? renderTokyoMidground()
+        case .underwater:                   return loadBundledImage("underwater_midground") ?? renderKelpForest()
+        case .volcano:                      return loadBundledImage("volcano_midground") ?? renderCharredTrees()
+        case .arctic:                       return loadBundledImage("arctic_midground") ?? renderSnowyPines()
         case .western:                      return loadBundledImage("western_midground") ?? renderWesternCactiMidground()
-        case .jungle:                       return renderJungleTropicalTrees()
-        case .egypt:                        return renderEgyptPalmObelisks()
-        case .cave:                         return renderCaveCrystalPillars()
-        case .mountain:                     return renderMountainPineForest()
-        case .space:                        return renderSpaceStructures()
-        case .lagoon:                       return renderLagoonPalmsMidground()
-        case .losAngeles:                   return renderLosAngelesMidground()
-        case .london:                       return renderLondonMidground()
+        case .jungle:                       return loadBundledImage("jungle_midground") ?? renderJungleTropicalTrees()
+        case .egypt:                        return loadBundledImage("egypt_midground") ?? renderEgyptPalmObelisks()
+        case .cave:                         return loadBundledImage("cave_midground") ?? renderCaveCrystalPillars()
+        case .mountain:                     return loadBundledImage("mountain_midground") ?? renderMountainPineForest()
+        case .space:                        return loadBundledImage("space_midground") ?? renderSpaceStructures()
+        case .lagoon:                       return loadBundledImage("lagoon_midground") ?? renderLagoonPalmsMidground()
+        case .losAngeles:                   return loadBundledImage("losAngeles_midground") ?? renderLosAngelesMidground()
+        case .london:                       return loadBundledImage("london_midground") ?? renderLondonMidground()
         }
     }
 
@@ -4267,22 +4267,23 @@ final class TextureFactory {
 
     private func renderThemedBushes(theme: BackgroundTheme) -> UIImage {
         switch theme {
-        case .day:                          return renderDayBushStrip()
-        case .sunset:                       return renderSunsetBushStrip()
-        case .night:                        return renderNightBushStrip()
-        case .neonCity, .pixelTokyo:        return renderUrbanForegroundStrip(tokyo: theme == .pixelTokyo)
-        case .underwater:                   return renderBubbleFishStrip()
-        case .volcano:                      return renderLavaPoolStrip()
-        case .arctic:                       return renderIceCrystalStrip()
+        case .day:                          return loadBundledImage("day_bush") ?? renderDayBushStrip()
+        case .sunset:                       return loadBundledImage("sunset_bush") ?? renderSunsetBushStrip()
+        case .night:                        return loadBundledImage("night_bush") ?? renderNightBushStrip()
+        case .neonCity:                     return loadBundledImage("neonCity_bush") ?? renderUrbanForegroundStrip(tokyo: false)
+        case .pixelTokyo:                   return loadBundledImage("pixelTokyo_bush") ?? renderUrbanForegroundStrip(tokyo: true)
+        case .underwater:                   return loadBundledImage("underwater_bush") ?? renderBubbleFishStrip()
+        case .volcano:                      return loadBundledImage("volcano_bush") ?? renderLavaPoolStrip()
+        case .arctic:                       return loadBundledImage("arctic_bush") ?? renderIceCrystalStrip()
         case .western:                      return loadBundledImage("western_bush") ?? renderWesternScrubStrip()
-        case .jungle:                       return renderJungleFernStrip()
-        case .egypt:                        return renderEgyptDesertStrip()
-        case .cave:                         return renderCaveMossStrip()
-        case .mountain:                     return renderMountainMeadowStrip()
-        case .space:                        return renderSpaceDebrisStrip()
-        case .lagoon:                       return renderLagoonBeachStrip()
-        case .losAngeles:                   return renderLosAngelesStreetStrip()
-        case .london:                       return renderLondonPavementStrip()
+        case .jungle:                       return loadBundledImage("jungle_bush") ?? renderJungleFernStrip()
+        case .egypt:                        return loadBundledImage("egypt_bush") ?? renderEgyptDesertStrip()
+        case .cave:                         return loadBundledImage("cave_bush") ?? renderCaveMossStrip()
+        case .mountain:                     return loadBundledImage("mountain_bush") ?? renderMountainMeadowStrip()
+        case .space:                        return loadBundledImage("space_bush") ?? renderSpaceDebrisStrip()
+        case .lagoon:                       return loadBundledImage("lagoon_bush") ?? renderLagoonBeachStrip()
+        case .losAngeles:                   return loadBundledImage("losAngeles_bush") ?? renderLosAngelesStreetStrip()
+        case .london:                       return loadBundledImage("london_bush") ?? renderLondonPavementStrip()
         }
     }
 
@@ -6456,23 +6457,23 @@ final class TextureFactory {
 
     private func renderThemedGround(theme: BackgroundTheme) -> UIImage {
         switch theme {
-        case .day:          return renderGround()
-        case .sunset:       return renderSunsetGround()
-        case .night:        return renderNightGround()
-        case .neonCity:     return renderNeonCityGround()
-        case .pixelTokyo:   return renderTokyoGround()
-        case .underwater:   return renderUnderwaterGround()
-        case .volcano:      return renderVolcanoGround()
-        case .arctic:       return renderArcticGround()
+        case .day:          return loadBundledImage("day_ground") ?? renderGround()
+        case .sunset:       return loadBundledImage("sunset_ground") ?? renderSunsetGround()
+        case .night:        return loadBundledImage("night_ground") ?? renderNightGround()
+        case .neonCity:     return loadBundledImage("neonCity_ground") ?? renderNeonCityGround()
+        case .pixelTokyo:   return loadBundledImage("pixelTokyo_ground") ?? renderTokyoGround()
+        case .underwater:   return loadBundledImage("underwater_ground") ?? renderUnderwaterGround()
+        case .volcano:      return loadBundledImage("volcano_ground") ?? renderVolcanoGround()
+        case .arctic:       return loadBundledImage("arctic_ground") ?? renderArcticGround()
         case .western:      return loadBundledImage("western_ground") ?? renderWesternGround()
-        case .jungle:       return renderJungleGround()
-        case .egypt:        return renderEgyptGround()
-        case .cave:         return renderCaveGround()
-        case .mountain:     return renderMountainGround()
-        case .space:        return renderSpaceGround()
-        case .lagoon:       return renderLagoonGround()
-        case .losAngeles:   return renderLosAngelesGround()
-        case .london:       return renderLondonGround()
+        case .jungle:       return loadBundledImage("jungle_ground") ?? renderJungleGround()
+        case .egypt:        return loadBundledImage("egypt_ground") ?? renderEgyptGround()
+        case .cave:         return loadBundledImage("cave_ground") ?? renderCaveGround()
+        case .mountain:     return loadBundledImage("mountain_ground") ?? renderMountainGround()
+        case .space:        return loadBundledImage("space_ground") ?? renderSpaceGround()
+        case .lagoon:       return loadBundledImage("lagoon_ground") ?? renderLagoonGround()
+        case .losAngeles:   return loadBundledImage("losAngeles_ground") ?? renderLosAngelesGround()
+        case .london:       return loadBundledImage("london_ground") ?? renderLondonGround()
         }
     }
 
@@ -7458,6 +7459,28 @@ final class TextureFactory {
     // Each theme gets unique surface decorations above the ground tile.
 
     private func renderThemedGroundDetail(theme: BackgroundTheme, tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
+        let prefix: String = {
+            switch theme {
+            case .day: return "day"
+            case .sunset: return "sunset"
+            case .night: return "night"
+            case .neonCity: return "neonCity"
+            case .pixelTokyo: return "pixelTokyo"
+            case .underwater: return "underwater"
+            case .volcano: return "volcano"
+            case .arctic: return "arctic"
+            case .western: return "western"
+            case .jungle: return "jungle"
+            case .egypt: return "egypt"
+            case .cave: return "cave"
+            case .mountain: return "mountain"
+            case .space: return "space"
+            case .lagoon: return "lagoon"
+            case .losAngeles: return "losAngeles"
+            case .london: return "london"
+            }
+        }()
+        if let img = loadBundledImage("\(prefix)_ground_detail_\(seed)") { return img }
         switch theme {
         case .day:         return renderGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .sunset:      return renderSunsetGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
@@ -7467,9 +7490,7 @@ final class TextureFactory {
         case .underwater:  return renderUnderwaterGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .volcano:     return renderVolcanoGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .arctic:      return renderArcticGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
-        case .western:
-            if let img = loadBundledImage("western_ground_detail_\(seed)") { return img }
-            return renderWesternGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .western:     return renderWesternGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .jungle:      return renderJungleGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .egypt:       return renderEgyptGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .cave:        return renderCaveGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
