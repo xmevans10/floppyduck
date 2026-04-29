@@ -7,8 +7,9 @@ final class TextureFactory {
     static let shared = TextureFactory()
 
     /// Maximum textures to keep in cache before triggering eviction.
-    /// At ~2KB average per pixel-art texture, 200 entries ≈ 400KB — well within budget.
-    private static let maxCacheSize = 200
+    /// The themed background pass pre-warms substantially more large parallax textures,
+    /// so keep a little extra headroom to avoid churning the selected theme on first play.
+    private static let maxCacheSize = 260
 
     private init() {
         // Clear cache on memory warning (iOS background pressure)
@@ -85,6 +86,27 @@ final class TextureFactory {
                 _ = self.themedTreesTexture(theme: theme)
                 _ = self.themedBushTexture(theme: theme)
                 _ = self.themedGroundTexture(theme: theme)
+            }
+
+            for theme in BackgroundTheme.allCases {
+                _ = self.themedGroundDetailTexture(
+                    theme: theme,
+                    tileWidth: GK.worldWidth * 2,
+                    groundHeight: GK.groundHeight,
+                    seed: 0
+                )
+                _ = self.themedGroundDetailTexture(
+                    theme: theme,
+                    tileWidth: GK.worldWidth * 2,
+                    groundHeight: GK.groundHeight,
+                    seed: 1337
+                )
+                _ = self.themedGroundDetailTexture(
+                    theme: theme,
+                    tileWidth: GK.worldWidth * 2,
+                    groundHeight: GK.groundHeight,
+                    seed: 2674
+                )
             }
 
             // Performance textures (batched ground details, star field)
@@ -1550,6 +1572,7 @@ final class TextureFactory {
         let windowWarm  = UIColor(red: 0.95, green: 0.80, blue: 0.35, alpha: 0.90)
         let chimneyC    = UIColor(red: 0.30, green: 0.25, blue: 0.22, alpha: 0.88)
         let smokeC      = UIColor(red: 0.50, green: 0.50, blue: 0.55, alpha: 0.25)
+        let doorDark    = UIColor(red: 0.18, green: 0.12, blue: 0.05, alpha: 0.90)
         // Owl
         let owlBrown    = UIColor(red: 0.35, green: 0.22, blue: 0.12, alpha: 0.85)
         let owlLight    = UIColor(red: 0.50, green: 0.38, blue: 0.22, alpha: 0.80)
@@ -2341,19 +2364,23 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+            let fill: (Int, Int, Int, Int, UIColor) -> Void = { fx, fy, fw, fh, color in
                 guard fw > 0 && fh > 0 else { return }
                 c.setFillColor(color.cgColor)
                 c.fill(CGRect(x: CGFloat(fx) * ps, y: h - CGFloat(fy + fh) * ps,
                               width: CGFloat(fw) * ps, height: CGFloat(fh) * ps))
             }
-            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+            let dot: (Int, Int, UIColor) -> Void = { dx, dy, color in
+                fill(dx, dy, 1, 1, color)
+            }
 
             // ── AURORA BOREALIS ──
             let aurColors = [auroraG, auroraB, auroraP, auroraG, auroraB]
             for (i, ac) in aurColors.enumerated() {
                 for x in 0..<gridW {
-                    let wave = Int(sin(CGFloat(x) / CGFloat(gridW) * .pi * 3 + CGFloat(i) * 1.2) * 3)
+                    let progress = CGFloat(x) / CGFloat(gridW)
+                    let angle = progress * .pi * 3.0 + CGFloat(i) * 1.2
+                    let wave = Int(sin(angle) * 3.0)
                     fill(x, 66 + i * 2 + wave, 1, 2, ac)
                 }
             }
@@ -2367,7 +2394,7 @@ final class TextureFactory {
                     let color: UIColor
                     if ratio > 0.80 { color = snowTop }
                     else if ratio > 0.65 { color = snowMid }
-                    else if ratio > 0.35 { color = y % 2 == 0 ? rockMid : rockBase }
+                    else if ratio > 0.35 { color = (y % 2 == 0) ? rockMid : rockBase }
                     else { color = rockBase }
                     c.setFillColor(color.cgColor)
                     c.fill(CGRect(x: CGFloat(x) * ps, y: yPos, width: ps, height: ps))
@@ -2382,7 +2409,8 @@ final class TextureFactory {
             let igx = 40
             for dy in 0..<7 {
                 let dw = 7 - dy
-                fill(igx + 7 - dw, dy, dw * 2, 1, dy % 2 == 0 ? iglooW : iglooD)
+                let iglooColor = (dy % 2 == 0) ? iglooW : iglooD
+                fill(igx + 7 - dw, dy, dw * 2, 1, iglooColor)
             }
             // Door tunnel
             fill(igx - 3, 0, 4, 3, iglooD)
@@ -3384,7 +3412,7 @@ final class TextureFactory {
 
     private func renderThemedTrees(theme: BackgroundTheme) -> UIImage {
         switch theme {
-        case .day:                          return renderPixelTrees()
+        case .day:                          return renderDayOrchardTrees()
         case .sunset:                       return renderSunsetTrees()
         case .night:                        return renderNightTrees()
         case .neonCity:                     return renderNeonCityMidground()
@@ -3404,86 +3432,175 @@ final class TextureFactory {
         }
     }
 
-    // MARK: Sunset Trees — warm amber park trees
-
-    private func renderSunsetTrees() -> UIImage {
-        let w: CGFloat = GK.worldWidth * 2
-        let h: CGFloat = 160
-        let ps: CGFloat = 4
-
-        let tG = UIColor(red: 0.50, green: 0.35, blue: 0.15, alpha: 0.70)
-        let tg = UIColor(red: 0.62, green: 0.45, blue: 0.20, alpha: 0.65)
-        let tD = UIColor(red: 0.42, green: 0.28, blue: 0.12, alpha: 0.75)
-        let tT = UIColor(red: 0.35, green: 0.22, blue: 0.10, alpha: 0.70)
-        let tB = UIColor(red: 0.48, green: 0.32, blue: 0.14, alpha: 0.60)
-        let C  = UIColor.clear
-
-        let roundTree: [[UIColor]] = [
-            [C,C,C,tD,tD,tD,C,C,C],
-            [C,C,tD,tG,tG,tG,tD,C,C],
-            [C,tD,tG,tG,tg,tG,tG,tD,C],
-            [tD,tG,tG,tg,tg,tG,tG,tG,tD],
-            [tD,tG,tg,tG,tG,tG,tG,tG,tD],
-            [tD,tG,tG,tG,tG,tG,tG,tG,tD],
-            [C,tD,tG,tG,tG,tG,tG,tD,C],
-            [C,C,tD,tD,tG,tD,tD,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-        ]
-        let bush: [[UIColor]] = [
-            [C,C,tB,tB,tB,C,C],
-            [C,tB,tB,tg,tB,tB,C],
-            [tB,tB,tg,tB,tB,tB,tB],
-            [C,tB,tB,tB,tB,tB,C],
-        ]
-
-        return renderTreesFromTemplates(width: w, height: h, ps: ps,
-                                         roundTree: roundTree, pineTree: roundTree,
-                                         bush: bush, showBenches: true,
-                                         benchColor: UIColor(red: 0.35, green: 0.22, blue: 0.10, alpha: 0.45))
+    private enum PastoralStyle {
+        case day
+        case sunset
+        case night
     }
 
-    // MARK: Night Trees — dark silhouettes
+    // MARK: Day Trees — orchard rows, windbreaks, pond reeds
+
+    private func renderDayOrchardTrees() -> UIImage {
+        renderPastoralMidground(style: .day)
+    }
+
+    // MARK: Sunset Trees — warm pasture silhouettes and hayrack rhythm
+
+    private func renderSunsetTrees() -> UIImage {
+        renderPastoralMidground(style: .sunset)
+    }
+
+    // MARK: Night Trees — hedgerows, pines, lantern spill
 
     private func renderNightTrees() -> UIImage {
+        renderPastoralMidground(style: .night)
+    }
+
+    private func renderPastoralMidground(style: PastoralStyle) -> UIImage {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
+        return renderer.image { ctx in
+            let c = ctx.cgContext
 
-        let tG = UIColor(red: 0.06, green: 0.10, blue: 0.18, alpha: 0.80)
-        let tg = UIColor(red: 0.10, green: 0.14, blue: 0.24, alpha: 0.75)
-        let tD = UIColor(red: 0.04, green: 0.06, blue: 0.12, alpha: 0.85)
-        let tT = UIColor(red: 0.08, green: 0.08, blue: 0.14, alpha: 0.75)
-        let tB = UIColor(red: 0.06, green: 0.08, blue: 0.15, alpha: 0.75)
-        let C  = UIColor.clear
+            let leafDark: UIColor
+            let leafMid: UIColor
+            let leafLight: UIColor
+            let trunkDark: UIColor
+            let trunkLight: UIColor
+            let hedge: UIColor
+            let reed: UIColor
+            let accent: UIColor
 
-        let roundTree: [[UIColor]] = [
-            [C,C,C,tD,tD,tD,C,C,C],
-            [C,C,tD,tG,tG,tG,tD,C,C],
-            [C,tD,tG,tG,tg,tG,tG,tD,C],
-            [tD,tG,tG,tg,tg,tG,tG,tG,tD],
-            [tD,tG,tg,tG,tG,tG,tG,tG,tD],
-            [tD,tG,tG,tG,tG,tG,tG,tG,tD],
-            [C,tD,tG,tG,tG,tG,tG,tD,C],
-            [C,C,tD,tD,tG,tD,tD,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-            [C,C,C,C,tT,C,C,C,C],
-        ]
-        let bush: [[UIColor]] = [
-            [C,C,tB,tB,tB,C,C],
-            [C,tB,tB,tg,tB,tB,C],
-            [tB,tB,tg,tB,tB,tB,tB],
-            [C,tB,tB,tB,tB,tB,C],
-        ]
+            switch style {
+            case .day:
+                leafDark = UIColor(red: 0.18, green: 0.42, blue: 0.16, alpha: 0.80)
+                leafMid = UIColor(red: 0.28, green: 0.56, blue: 0.22, alpha: 0.76)
+                leafLight = UIColor(red: 0.40, green: 0.68, blue: 0.30, alpha: 0.70)
+                trunkDark = UIColor(red: 0.30, green: 0.20, blue: 0.10, alpha: 0.82)
+                trunkLight = UIColor(red: 0.45, green: 0.30, blue: 0.16, alpha: 0.78)
+                hedge = UIColor(red: 0.22, green: 0.48, blue: 0.18, alpha: 0.72)
+                reed = UIColor(red: 0.46, green: 0.62, blue: 0.28, alpha: 0.68)
+                accent = UIColor(red: 0.75, green: 0.32, blue: 0.18, alpha: 0.70)
+            case .sunset:
+                leafDark = UIColor(red: 0.18, green: 0.12, blue: 0.08, alpha: 0.84)
+                leafMid = UIColor(red: 0.32, green: 0.20, blue: 0.10, alpha: 0.80)
+                leafLight = UIColor(red: 0.48, green: 0.30, blue: 0.14, alpha: 0.74)
+                trunkDark = UIColor(red: 0.24, green: 0.14, blue: 0.08, alpha: 0.84)
+                trunkLight = UIColor(red: 0.38, green: 0.22, blue: 0.12, alpha: 0.78)
+                hedge = UIColor(red: 0.36, green: 0.22, blue: 0.10, alpha: 0.72)
+                reed = UIColor(red: 0.70, green: 0.56, blue: 0.28, alpha: 0.64)
+                accent = UIColor(red: 0.82, green: 0.66, blue: 0.28, alpha: 0.72)
+            case .night:
+                leafDark = UIColor(red: 0.03, green: 0.08, blue: 0.06, alpha: 0.88)
+                leafMid = UIColor(red: 0.07, green: 0.14, blue: 0.10, alpha: 0.84)
+                leafLight = UIColor(red: 0.12, green: 0.20, blue: 0.18, alpha: 0.74)
+                trunkDark = UIColor(red: 0.06, green: 0.07, blue: 0.10, alpha: 0.86)
+                trunkLight = UIColor(red: 0.12, green: 0.12, blue: 0.16, alpha: 0.78)
+                hedge = UIColor(red: 0.06, green: 0.12, blue: 0.10, alpha: 0.80)
+                reed = UIColor(red: 0.18, green: 0.24, blue: 0.18, alpha: 0.68)
+                accent = UIColor(red: 0.92, green: 0.78, blue: 0.40, alpha: 0.76)
+            }
 
-        return renderTreesFromTemplates(width: w, height: h, ps: ps,
-                                         roundTree: roundTree, pineTree: roundTree,
-                                         bush: bush, showBenches: true,
-                                         benchColor: UIColor(red: 0.06, green: 0.06, blue: 0.12, alpha: 0.55))
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            func drawOrchardTree(_ x: Int, _ baseY: Int, _ trunkH: Int, _ canopyW: Int, _ canopyH: Int) {
+                fill(x + canopyW / 2 - 1, baseY, 2, trunkH, trunkDark)
+                fill(x + canopyW / 2, baseY + 1, 1, trunkH - 2, trunkLight)
+                for row in 0..<canopyH {
+                    let pad = abs(row - canopyH / 2) / 2
+                    let rowW = canopyW - pad * 2
+                    let rowX = x + pad
+                    let color = row < canopyH / 3 ? leafLight : (row < canopyH * 2 / 3 ? leafMid : leafDark)
+                    fill(rowX, baseY + trunkH + row, rowW, 1, color)
+                    if row % 3 == 1 { dot(rowX + rowW / 2, baseY + trunkH + row, leafLight) }
+                }
+            }
+
+            func drawPoplar(_ x: Int, _ baseY: Int, _ height: Int) {
+                fill(x + 1, baseY, 1, height, trunkDark)
+                for row in 0..<height {
+                    let taper = max(1, 4 - abs(row - height / 2) / 3)
+                    let color = row % 2 == 0 ? leafMid : leafDark
+                    fill(x + 2 - taper / 2, baseY + row, taper, 1, color)
+                }
+            }
+
+            func drawFence(_ x: Int, _ y: Int, _ posts: Int) {
+                for i in 0..<posts {
+                    fill(x + i * 4, y, 1, 4, trunkDark)
+                    dot(x + i * 4, y - 1, trunkLight)
+                }
+                fill(x, y + 1, max(1, posts * 4 - 3), 1, trunkLight)
+                fill(x, y + 3, max(1, posts * 4 - 3), 1, trunkDark)
+            }
+
+            func drawReeds(_ x: Int, _ y: Int, _ count: Int) {
+                for i in 0..<count {
+                    let stemH = 4 + (i % 3)
+                    fill(x + i * 2, y, 1, stemH, reed)
+                    if i % 2 == 0 { dot(x + i * 2 + 1, y + stemH - 1, accent) }
+                }
+            }
+
+            // Hedge / windbreak depth
+            fill(0, 34, 200, 4, hedge)
+            for hx in stride(from: 0, to: 200, by: 7) {
+                fill(hx, 33 - (hx / 7) % 2, 4, 1, leafDark)
+            }
+
+            // Composition anchors
+            drawOrchardTree(10, 18, 6, 14, 10)
+            drawPoplar(40, 17, 14)
+            drawOrchardTree(55, 20, 5, 12, 8)
+            drawFence(72, 31, 6)
+            drawOrchardTree(100, 19, 6, 14, 10)
+            drawPoplar(130, 16, 15)
+            drawFence(146, 30, 5)
+            drawOrchardTree(160, 18, 5, 13, 8)
+            drawOrchardTree(184, 20, 5, 12, 8)
+
+            switch style {
+            case .day:
+                // Pond edge reeds and a hay cart fragment
+                drawReeds(82, 34, 7)
+                drawReeds(118, 34, 5)
+                fill(146, 27, 6, 3, trunkDark)
+                fill(147, 28, 4, 1, accent)
+                fill(145, 30, 1, 2, trunkDark)
+                fill(152, 30, 1, 2, trunkDark)
+            case .sunset:
+                // Hayrack silhouette and denser rail rhythm
+                fill(88, 27, 10, 4, trunkDark)
+                fill(87, 26, 12, 1, trunkLight)
+                for slat in stride(from: 89, to: 97, by: 2) {
+                    fill(slat, 27, 1, 3, accent)
+                }
+                drawFence(20, 30, 5)
+                drawFence(118, 31, 4)
+            case .night:
+                // Outbuilding and lamp spill near ground
+                fill(86, 26, 10, 6, trunkDark)
+                fill(87, 27, 8, 4, trunkLight)
+                fill(89, 28, 2, 2, accent)
+                dot(90, 30, accent)
+                fill(88, 32, 6, 1, trunkDark)
+                drawFence(22, 31, 4)
+                drawFence(150, 31, 4)
+                for glowX in [89, 91, 93] {
+                    dot(glowX, 33, accent.withAlphaComponent(0.28))
+                }
+            }
+        }
     }
 
     // MARK: Neon City Midground — shorter buildings, neon signs
@@ -3677,66 +3794,77 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
-        let C  = UIColor.clear
-
-        let kD = UIColor(red: 0.10, green: 0.42, blue: 0.25, alpha: 0.70)
-        let kL = UIColor(red: 0.18, green: 0.58, blue: 0.35, alpha: 0.65)
-        let kT = UIColor(red: 0.15, green: 0.50, blue: 0.30, alpha: 0.55)
-
-        // Tall kelp strand (3 wide × 16 tall, swaying)
-        let kelpA: [[UIColor]] = [
-            [C,kT,C], [C,kL,C], [kL,kD,C], [C,kD,C],
-            [C,kD,kL], [C,kL,C], [kL,kD,C], [C,kD,C],
-            [C,kD,kL], [C,kL,C], [kL,kD,C], [C,kD,C],
-            [C,kL,C], [C,kD,C], [C,kD,C], [C,kD,C],
-        ]
-        // Short kelp strand (3 wide × 10 tall)
-        let kelpB: [[UIColor]] = [
-            [C,kT,C], [kL,kD,C], [C,kD,C], [C,kD,kL],
-            [C,kL,C], [kL,kD,C], [C,kD,C], [C,kD,C],
-            [C,kD,C], [C,kD,C],
-        ]
-
-        // Small coral cluster (5 wide × 4 tall)
-        let coralR = UIColor(red: 0.85, green: 0.30, blue: 0.35, alpha: 0.60)
-        let coralO = UIColor(red: 0.90, green: 0.55, blue: 0.20, alpha: 0.55)
-        let coral: [[UIColor]] = [
-            [C,coralR,C,coralO,C],
-            [coralR,coralR,coralO,coralO,C],
-            [coralR,coralR,coralO,coralO,coralR],
-            [C,coralR,coralO,coralR,C],
-        ]
-
-        let positions: [(x: CGFloat, type: Int)] = [
-            (20, 0), (80, 1), (130, 2), (180, 0), (240, 1), (300, 0),
-            (360, 2), (420, 0), (470, 1), (530, 0), (580, 2), (640, 0),
-            (700, 1), (750, 0),
-        ]
-
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for pos in positions {
-                let template: [[UIColor]]
-                switch pos.type {
-                case 0: template = kelpA
-                case 1: template = kelpB
-                default: template = coral
-                }
-                let tH = template.count
-                let tW = template[0].count
-                let baseY = h - CGFloat(tH) * ps
 
-                for row in 0..<tH {
-                    for col in 0..<tW {
-                        let color = template[row][col]
-                        guard color != UIColor.clear else { continue }
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
-                                      y: baseY + CGFloat(row) * ps,
-                                      width: ps, height: ps))
+            let kelpDark = UIColor(red: 0.08, green: 0.34, blue: 0.18, alpha: 0.74)
+            let kelpMid = UIColor(red: 0.12, green: 0.48, blue: 0.24, alpha: 0.70)
+            let kelpLight = UIColor(red: 0.22, green: 0.62, blue: 0.34, alpha: 0.62)
+            let reefRock = UIColor(red: 0.12, green: 0.24, blue: 0.28, alpha: 0.70)
+            let reefLight = UIColor(red: 0.18, green: 0.34, blue: 0.38, alpha: 0.62)
+            let coralPink = UIColor(red: 0.88, green: 0.34, blue: 0.55, alpha: 0.72)
+            let coralOrange = UIColor(red: 0.92, green: 0.58, blue: 0.22, alpha: 0.72)
+            let coralCyan = UIColor(red: 0.28, green: 0.80, blue: 0.86, alpha: 0.68)
+            let bubble = UIColor(red: 0.74, green: 0.90, blue: 0.96, alpha: 0.40)
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            func drawKelpCurtain(_ x: Int, _ baseY: Int, _ stalks: Int, _ height: Int) {
+                for stalk in 0..<stalks {
+                    for row in 0..<height {
+                        let sway = Int(sin(CGFloat(row) * 0.35 + CGFloat(stalk)) * 1.8)
+                        let color = row % 3 == 0 ? kelpLight : (row % 2 == 0 ? kelpMid : kelpDark)
+                        dot(x + stalk * 3 + sway, baseY + row, color)
+                        if row > 4 && row % 4 == 0 {
+                            dot(x + stalk * 3 + sway + 1, baseY + row, kelpLight)
+                            dot(x + stalk * 3 + sway - 1, baseY + row + 1, kelpMid)
+                        }
                     }
                 }
+            }
+
+            // Reef arch and shelves
+            fill(72, 26, 18, 3, reefRock)
+            fill(74, 23, 4, 3, reefRock)
+            fill(84, 23, 4, 3, reefRock)
+            fill(76, 22, 10, 1, reefLight)
+            fill(142, 24, 14, 4, reefRock)
+            fill(146, 22, 6, 2, reefLight)
+            fill(178, 27, 10, 3, reefRock)
+
+            drawKelpCurtain(8, 16, 4, 18)
+            drawKelpCurtain(50, 18, 3, 15)
+            drawKelpCurtain(110, 15, 5, 20)
+            drawKelpCurtain(164, 17, 4, 17)
+
+            // Coral columns / fans
+            for (cx, cy, col) in [(30, 30, coralPink), (64, 32, coralOrange), (122, 29, coralCyan), (170, 31, coralPink)] as [(Int, Int, UIColor)] {
+                fill(cx, cy, 2, 6, col)
+                fill(cx - 1, cy + 2, 1, 3, col)
+                fill(cx + 2, cy + 1, 1, 4, col)
+                dot(cx, cy - 1, col)
+            }
+
+            // Bubbles and fish hints
+            for (bx, by) in [(18, 14), (38, 10), (98, 12), (136, 8), (186, 11)] {
+                dot(bx, by, bubble)
+                dot(bx + 1, by - 2, bubble)
+                dot(bx - 1, by - 4, bubble)
+            }
+            for (fx, fy) in [(44, 22), (92, 20), (158, 18)] {
+                dot(fx, fy, coralOrange)
+                dot(fx + 1, fy, coralOrange)
+                dot(fx + 2, fy - 1, coralPink)
+                dot(fx + 2, fy + 1, coralPink)
             }
         }
     }
@@ -3747,67 +3875,60 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
-        let C = UIColor.clear
-
-        let tD = UIColor(red: 0.12, green: 0.08, blue: 0.06, alpha: 0.80)
-        let tM = UIColor(red: 0.18, green: 0.12, blue: 0.08, alpha: 0.75)
-        let eG = UIColor(red: 0.95, green: 0.40, blue: 0.10, alpha: 0.45) // ember glow
-
-        // Dead tree silhouette (7 wide × 14 tall)
-        let deadTree: [[UIColor]] = [
-            [C,C,C,tD,C,C,C],
-            [C,tD,C,tD,C,tD,C],
-            [tD,tD,C,tD,C,tD,tD],
-            [C,tM,tD,tD,tD,tM,C],
-            [C,C,tD,tD,tD,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-            [C,C,C,tD,C,C,C],
-        ]
-
-        // Small charred stump (5 wide × 5 tall)
-        let stump: [[UIColor]] = [
-            [C,tD,tD,tD,C],
-            [C,tM,tD,tM,C],
-            [C,C,tD,C,C],
-            [C,C,tD,C,C],
-            [C,C,tD,C,C],
-        ]
-
-        let positions: [(x: CGFloat, type: Int)] = [
-            (40, 0), (120, 1), (190, 0), (260, 1), (330, 0),
-            (400, 1), (470, 0), (540, 1), (620, 0), (700, 1), (760, 0),
-        ]
-
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for pos in positions {
-                let template = pos.type == 0 ? deadTree : stump
-                let tH = template.count
-                let tW = template[0].count
-                let baseY = h - CGFloat(tH) * ps
-                for row in 0..<tH {
-                    for col in 0..<tW {
-                        let color = template[row][col]
-                        guard color != UIColor.clear else { continue }
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
-                                      y: baseY + CGFloat(row) * ps,
-                                      width: ps, height: ps))
-                    }
+
+            let rockDark = UIColor(red: 0.12, green: 0.08, blue: 0.06, alpha: 0.82)
+            let rockMid = UIColor(red: 0.22, green: 0.14, blue: 0.08, alpha: 0.78)
+            let rockLight = UIColor(red: 0.35, green: 0.20, blue: 0.10, alpha: 0.70)
+            let ember = UIColor(red: 1.0, green: 0.48, blue: 0.14, alpha: 0.50)
+            let smoke = UIColor(red: 0.28, green: 0.18, blue: 0.12, alpha: 0.28)
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            func drawSpire(_ x: Int, _ baseY: Int, _ width: Int, _ height: Int) {
+                for row in 0..<height {
+                    let taper = max(1, width - row / 3)
+                    let offset = (width - taper) / 2
+                    let color = row < height / 3 ? rockLight : (row < height * 2 / 3 ? rockMid : rockDark)
+                    fill(x + offset, baseY + row, taper, 1, color)
                 }
-                // Ember glow at base of full trees
-                if pos.type == 0 {
-                    c.setFillColor(eG.cgColor)
-                    c.fill(CGRect(x: pos.x + 2 * ps, y: h - ps, width: ps * 3, height: ps))
-                }
+            }
+
+            func drawDeadTrunk(_ x: Int, _ baseY: Int, _ height: Int) {
+                fill(x, baseY, 2, height, rockDark)
+                fill(x + 1, baseY + 2, 1, height - 3, rockMid)
+                fill(x - 2, baseY + height / 2, 2, 1, rockDark)
+                fill(x + 2, baseY + height / 2 + 2, 2, 1, rockDark)
+            }
+
+            drawSpire(12, 18, 8, 16)
+            drawDeadTrunk(36, 20, 11)
+            drawSpire(58, 19, 10, 18)
+            drawSpire(88, 21, 7, 13)
+            drawDeadTrunk(114, 22, 10)
+            drawSpire(136, 17, 11, 20)
+            drawDeadTrunk(166, 21, 12)
+            drawSpire(184, 19, 9, 17)
+
+            // Lava seams and smoke vents
+            for seam in [20, 48, 78, 126, 154, 190] {
+                fill(seam, 36, 3, 1, ember)
+                dot(seam + 1, 35, rockLight)
+            }
+            for (sx, sy) in [(39, 13), (116, 14), (170, 12)] {
+                dot(sx, sy, smoke)
+                dot(sx + 1, sy - 2, smoke)
+                dot(sx - 1, sy - 4, smoke)
             }
         }
     }
@@ -3818,62 +3939,54 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
-        let C = UIColor.clear
-
-        let tG = UIColor(red: 0.15, green: 0.35, blue: 0.20, alpha: 0.70)
-        let tD = UIColor(red: 0.10, green: 0.28, blue: 0.15, alpha: 0.75)
-        let sW = UIColor(red: 0.92, green: 0.95, blue: 1.0, alpha: 0.80) // snow white
-        let sL = UIColor(red: 0.80, green: 0.88, blue: 0.95, alpha: 0.65) // snow shadow
-        let tT = UIColor(red: 0.35, green: 0.25, blue: 0.15, alpha: 0.70)
-
-        // Snowy pine (7 wide × 14 tall — snow-tipped)
-        let snowPine: [[UIColor]] = [
-            [C,C,C,sW,C,C,C],
-            [C,C,sW,sW,sW,C,C],
-            [C,C,tD,tG,tD,C,C],
-            [C,sW,tG,tG,tG,sW,C],
-            [C,sL,tG,tG,tG,sL,C],
-            [sW,tG,tG,tG,tG,tG,sW],
-            [sL,tG,tG,tG,tG,tG,sL],
-            [C,C,sW,tG,sW,C,C],
-            [C,sW,tG,tG,tG,sW,C],
-            [sW,tG,tG,tG,tG,tG,sW],
-            [sL,tG,tG,tG,tG,tG,sL],
-            [C,C,C,tT,C,C,C],
-            [C,C,C,tT,C,C,C],
-            [C,C,C,tT,C,C,C],
-        ]
-
-        // Snow drift (7 wide × 3 tall)
-        let drift: [[UIColor]] = [
-            [C,C,sW,sW,sW,C,C],
-            [C,sW,sW,sW,sW,sW,C],
-            [sL,sW,sW,sW,sW,sW,sL],
-        ]
-
-        let positions: [(x: CGFloat, type: Int)] = [
-            (30, 0), (100, 1), (160, 0), (220, 1), (290, 0), (350, 1),
-            (420, 0), (480, 1), (540, 0), (610, 1), (680, 0), (740, 1), (790, 0),
-        ]
-
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for pos in positions {
-                let template = pos.type == 0 ? snowPine : drift
-                let tH = template.count
-                let tW = template[0].count
-                let baseY = h - CGFloat(tH) * ps
-                for row in 0..<tH {
-                    for col in 0..<tW {
-                        let color = template[row][col]
-                        guard color != UIColor.clear else { continue }
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
-                                      y: baseY + CGFloat(row) * ps,
-                                      width: ps, height: ps))
-                    }
+
+            let iceDark = UIColor(red: 0.44, green: 0.58, blue: 0.72, alpha: 0.72)
+            let iceMid = UIColor(red: 0.62, green: 0.80, blue: 0.90, alpha: 0.68)
+            let snow = UIColor(red: 0.92, green: 0.96, blue: 1.0, alpha: 0.82)
+            let pineDark = UIColor(red: 0.16, green: 0.26, blue: 0.18, alpha: 0.72)
+            let pineLight = UIColor(red: 0.24, green: 0.38, blue: 0.24, alpha: 0.66)
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
+            }
+
+            func drawIcePillar(_ x: Int, _ y: Int, _ width: Int, _ height: Int) {
+                for row in 0..<height {
+                    let taper = max(1, width - row / 3)
+                    fill(x + (width - taper) / 2, y + row, taper, 1, row < height / 3 ? snow : (row < height * 2 / 3 ? iceMid : iceDark))
                 }
+            }
+
+            func drawPine(_ x: Int, _ y: Int, _ height: Int) {
+                fill(x + 1, y, 1, 3, pineDark)
+                for row in 0..<height {
+                    let spread = max(1, 4 - row / 3)
+                    fill(x + 1 - spread / 2, y + 3 + row, spread, 1, row % 2 == 0 ? pineDark : pineLight)
+                    if row % 4 == 0 { fill(x + 1 - spread / 2, y + 3 + row, spread, 1, snow) }
+                }
+            }
+
+            drawIcePillar(12, 18, 8, 16)
+            drawPine(36, 24, 10)
+            drawIcePillar(58, 20, 10, 18)
+            drawIcePillar(88, 22, 6, 11)
+            drawPine(110, 23, 9)
+            drawIcePillar(134, 18, 12, 20)
+            drawPine(164, 24, 8)
+            drawIcePillar(182, 20, 8, 14)
+
+            // Snow drifts between structures
+            for drift in [24, 72, 120, 174] {
+                fill(drift, 36, 6, 1, snow)
+                fill(drift + 1, 35, 4, 1, iceMid)
             }
         }
     }
@@ -3884,77 +3997,55 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
-        let C = UIColor.clear
-
-        let sM = UIColor(red: 0.30, green: 0.32, blue: 0.38, alpha: 0.65) // metal gray
-        let sD = UIColor(red: 0.18, green: 0.20, blue: 0.25, alpha: 0.70) // dark frame
-        let sL = UIColor(red: 0.45, green: 0.48, blue: 0.55, alpha: 0.55) // light panel
-        let gR = UIColor(red: 0.20, green: 0.80, blue: 0.30, alpha: 0.70) // green status light
-        // Satellite dish (9 wide × 10 tall)
-        let dish: [[UIColor]] = [
-            [C,C,C,C,sD,C,C,C,C],
-            [C,C,C,sD,sM,sD,C,C,C],
-            [C,C,sD,sM,sL,sM,sD,C,C],
-            [C,sD,sM,sL,sL,sL,sM,sD,C],
-            [sD,sM,sL,sL,sL,sL,sM,sD,C],
-            [C,C,C,C,sD,C,C,C,C],
-            [C,C,C,C,sD,C,C,C,C],
-            [C,C,C,sD,sM,sD,C,C,C],
-            [C,C,sD,C,sD,C,sD,C,C],
-            [C,sD,C,C,sD,C,C,sD,C],
-        ]
-
-        // Small space module (7 wide × 8 tall)
-        let module: [[UIColor]] = [
-            [C,C,sD,sD,sD,C,C],
-            [C,sD,sM,sM,sM,sD,C],
-            [sD,sM,sL,gR,sL,sM,sD],
-            [sD,sM,sM,sM,sM,sM,sD],
-            [sD,sM,sL,sL,sL,sM,sD],
-            [C,sD,sM,sM,sM,sD,C],
-            [C,C,sD,sD,sD,C,C],
-            [C,C,C,sD,C,C,C],
-        ]
-
-        // Floating asteroid (5 wide × 4 tall)
-        let aD = UIColor(red: 0.28, green: 0.25, blue: 0.22, alpha: 0.60)
-        let aL = UIColor(red: 0.40, green: 0.36, blue: 0.32, alpha: 0.50)
-        let asteroid: [[UIColor]] = [
-            [C,aD,aD,aD,C],
-            [aD,aD,aL,aD,aD],
-            [aD,aL,aD,aD,aD],
-            [C,aD,aD,aD,C],
-        ]
-
-        let positions: [(x: CGFloat, type: Int)] = [
-            (30, 0), (110, 2), (180, 1), (260, 2), (340, 0), (420, 2),
-            (500, 1), (580, 2), (650, 0), (720, 2), (780, 1),
-        ]
-
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for pos in positions {
-                let template: [[UIColor]]
-                switch pos.type {
-                case 0: template = dish
-                case 1: template = module
-                default: template = asteroid
-                }
-                let tH = template.count
-                let tW = template[0].count
-                let baseY = h - CGFloat(tH) * ps
 
-                for row in 0..<tH {
-                    for col in 0..<tW {
-                        let color = template[row][col]
-                        guard color != UIColor.clear else { continue }
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps,
-                                      y: baseY + CGFloat(row) * ps,
-                                      width: ps, height: ps))
-                    }
+            let metalDark = UIColor(red: 0.18, green: 0.20, blue: 0.26, alpha: 0.78)
+            let metalMid = UIColor(red: 0.30, green: 0.34, blue: 0.42, alpha: 0.72)
+            let metalLight = UIColor(red: 0.46, green: 0.52, blue: 0.62, alpha: 0.62)
+            let crystalA = UIColor(red: 0.34, green: 0.78, blue: 0.95, alpha: 0.72)
+            let crystalB = UIColor(red: 0.85, green: 0.34, blue: 0.92, alpha: 0.70)
+            let glow = UIColor(red: 0.54, green: 0.90, blue: 0.52, alpha: 0.54)
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
+            }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            // Outpost mast and antenna array
+            fill(18, 22, 2, 12, metalDark)
+            fill(12, 24, 14, 2, metalMid)
+            fill(16, 20, 6, 2, metalLight)
+            dot(19, 21, glow)
+
+            // Crystalline towers
+            for (x, y, hgt, col) in [(46, 20, 12, crystalA), (58, 18, 16, crystalB), (142, 19, 14, crystalA), (172, 21, 11, crystalB)] as [(Int, Int, Int, UIColor)] {
+                for row in 0..<hgt {
+                    let taper = max(1, 4 - row / 4)
+                    fill(x + (4 - taper) / 2, y + row, taper, 1, row < hgt / 3 ? col : (row < hgt * 2 / 3 ? metalLight : metalDark))
                 }
+                dot(x + 2, y + hgt - 1, glow)
+            }
+
+            // Habitat modules / rover silhouettes
+            fill(88, 24, 10, 5, metalDark)
+            fill(90, 25, 6, 3, metalMid)
+            fill(92, 26, 2, 1, glow)
+            fill(116, 30, 8, 3, metalMid)
+            fill(118, 29, 4, 1, metalLight)
+            fill(118, 33, 1, 2, metalDark)
+            fill(122, 33, 1, 2, metalDark)
+
+            // Asteroid hints
+            for (ax, ay) in [(34, 14), (128, 12), (186, 16)] {
+                fill(ax, ay, 3, 2, metalDark)
+                dot(ax + 1, ay + 1, metalLight)
             }
         }
     }
@@ -4015,65 +4106,53 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
-        let C = UIColor.clear
-
-        let trunk = UIColor(red: 0.45, green: 0.30, blue: 0.18, alpha: 0.65)
-        let trunkL = UIColor(red: 0.55, green: 0.38, blue: 0.22, alpha: 0.60)
-        let leaf  = UIColor(red: 0.20, green: 0.55, blue: 0.28, alpha: 0.65)
-        let leafL = UIColor(red: 0.30, green: 0.65, blue: 0.35, alpha: 0.55)
-        let coco  = UIColor(red: 0.45, green: 0.30, blue: 0.15, alpha: 0.70)
-        let flower = UIColor(red: 0.95, green: 0.45, blue: 0.55, alpha: 0.60)
-
-        // Palm tree (6w × 16h)
-        let palm: [[UIColor]] = [
-            [C,C,leaf,C,C,C],
-            [C,leaf,leafL,leaf,C,C],
-            [leaf,C,leafL,C,leaf,C],
-            [C,C,trunk,C,C,C],
-            [C,C,coco,trunk,coco,C],
-            [C,C,trunk,C,C,C],
-            [C,C,trunk,C,C,C],
-            [C,C,trunkL,C,C,C],
-            [C,C,trunk,C,C,C],
-            [C,C,trunk,C,C,C],
-            [C,C,trunkL,C,C,C],
-            [C,C,trunk,C,C,C],
-            [C,C,trunk,C,C,C],
-            [C,C,trunk,C,C,C],
-            [C,C,trunkL,C,C,C],
-            [C,C,trunk,C,C,C],
-        ]
-
-        // Tropical flower cluster (3w × 3h)
-        let flowerCluster: [[UIColor]] = [
-            [C, flower, C],
-            [flower, leafL, flower],
-            [C, leaf, C],
-        ]
-
-        let positions: [(x: CGFloat, type: Int)] = [
-            (30, 0), (130, 1), (220, 0), (340, 1), (420, 0),
-            (520, 1), (610, 0), (700, 1), (780, 0),
-        ]
-
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for pos in positions {
-                let template = pos.type == 0 ? palm : flowerCluster
-                let tH = template.count
-                let tW = template[0].count
-                let baseY = h - CGFloat(tH) * ps
-                for row in 0..<tH {
-                    for col in 0..<tW {
-                        let color = template[row][col]
-                        guard color != C else { continue }
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps, y: baseY + CGFloat(row) * ps,
-                                      width: ps, height: ps))
-                    }
-                }
+
+            let trunkDark = UIColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 0.72)
+            let trunkLight = UIColor(red: 0.56, green: 0.38, blue: 0.20, alpha: 0.66)
+            let palmDark = UIColor(red: 0.18, green: 0.46, blue: 0.24, alpha: 0.74)
+            let palmLight = UIColor(red: 0.30, green: 0.64, blue: 0.34, alpha: 0.68)
+            let rock = UIColor(red: 0.34, green: 0.30, blue: 0.28, alpha: 0.62)
+            let surf = UIColor(red: 0.82, green: 0.94, blue: 0.98, alpha: 0.42)
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
             }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            func drawPalm(_ x: Int, _ baseY: Int, _ height: Int, lean: Int) {
+                for row in 0..<height {
+                    let offset = lean * row / max(1, height)
+                    dot(x + offset, baseY + row, row % 2 == 0 ? trunkDark : trunkLight)
+                }
+                let topX = x + lean
+                fill(topX - 3, baseY + height - 1, 7, 1, palmDark)
+                fill(topX - 2, baseY + height - 3, 5, 1, palmLight)
+                fill(topX - 1, baseY + height - 5, 3, 1, palmDark)
+                dot(topX - 1, baseY + height - 1, trunkDark)
+                dot(topX + 1, baseY + height - 1, trunkDark)
+            }
+
+            drawPalm(20, 18, 15, lean: -2)
+            drawPalm(48, 20, 12, lean: 1)
+            drawPalm(96, 19, 16, lean: 2)
+            drawPalm(152, 18, 13, lean: -1)
+            drawPalm(178, 20, 11, lean: 1)
+
+            // Dock remains / rocks / surf line
+            fill(62, 31, 8, 2, trunkDark)
+            fill(64, 29, 1, 4, trunkDark)
+            fill(69, 29, 1, 4, trunkDark)
+            fill(114, 33, 10, 3, rock)
+            fill(140, 34, 14, 1, surf)
+            fill(142, 33, 10, 1, surf)
         }
     }
 
@@ -4083,70 +4162,48 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
-        let C = UIColor.clear
-
-        let trunk = UIColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 0.65)
-        let leafD = UIColor(red: 0.22, green: 0.45, blue: 0.22, alpha: 0.60)
-        let leafL = UIColor(red: 0.35, green: 0.58, blue: 0.30, alpha: 0.50)
-        let bldg  = UIColor(red: 0.65, green: 0.55, blue: 0.48, alpha: 0.40)
-        let bldgD = UIColor(red: 0.50, green: 0.42, blue: 0.35, alpha: 0.45)
-        let glass = UIColor(red: 0.55, green: 0.72, blue: 0.85, alpha: 0.35)
-
-        // Tall palm (4w × 16h)
-        let tallPalm: [[UIColor]] = [
-            [C,leafD,leafL,C],
-            [leafD,C,C,leafL],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-            [C,C,trunk,C],
-        ]
-
-        // Low-rise building (8w × 8h)
-        let building: [[UIColor]] = [
-            [bldgD,bldgD,bldgD,bldgD,bldgD,bldgD,bldgD,bldgD],
-            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
-            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
-            [bldg,bldg,bldg,bldg,bldg,bldg,bldg,bldg],
-            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
-            [bldg,glass,bldg,glass,bldg,glass,bldg,bldg],
-            [bldg,bldg,bldg,bldg,bldg,bldg,bldg,bldg],
-            [bldg,bldg,bldg,bldg,bldg,bldg,bldg,bldg],
-        ]
-
-        let positions: [(x: CGFloat, type: Int)] = [
-            (30, 0), (100, 1), (210, 0), (300, 0), (380, 1),
-            (490, 0), (580, 0), (660, 1), (760, 0),
-        ]
-
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for pos in positions {
-                let template = pos.type == 0 ? tallPalm : building
-                let tH = template.count
-                let tW = template[0].count
-                let baseY = h - CGFloat(tH) * ps
-                for row in 0..<tH {
-                    for col in 0..<tW {
-                        let color = template[row][col]
-                        guard color != C else { continue }
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps, y: baseY + CGFloat(row) * ps,
-                                      width: ps, height: ps))
-                    }
-                }
+
+            let trunk = UIColor(red: 0.40, green: 0.26, blue: 0.14, alpha: 0.72)
+            let palmDark = UIColor(red: 0.18, green: 0.40, blue: 0.20, alpha: 0.68)
+            let palmLight = UIColor(red: 0.28, green: 0.56, blue: 0.28, alpha: 0.62)
+            let wall = UIColor(red: 0.58, green: 0.48, blue: 0.42, alpha: 0.60)
+            let wallDark = UIColor(red: 0.42, green: 0.35, blue: 0.30, alpha: 0.66)
+            let sign = UIColor(red: 0.86, green: 0.72, blue: 0.28, alpha: 0.66)
+            let glass = UIColor(red: 0.60, green: 0.76, blue: 0.88, alpha: 0.46)
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
             }
+            func dot(_ dx: Int, _ dy: Int, _ color: UIColor) { fill(dx, dy, 1, 1, color) }
+
+            func drawPalm(_ x: Int, _ y: Int, _ height: Int) {
+                for row in 0..<height { dot(x, y + row, trunk) }
+                fill(x - 2, y + height - 1, 5, 1, palmDark)
+                fill(x - 1, y + height - 3, 3, 1, palmLight)
+            }
+
+            drawPalm(16, 18, 15)
+            drawPalm(42, 22, 11)
+            drawPalm(112, 18, 16)
+            drawPalm(166, 20, 13)
+
+            // Boulevard motel + billboard
+            fill(58, 28, 18, 6, wallDark)
+            fill(60, 29, 14, 4, wall)
+            for wx in stride(from: 62, to: 72, by: 3) { fill(wx, 30, 1, 1, glass) }
+            fill(82, 24, 10, 6, wall)
+            fill(83, 22, 8, 2, sign)
+            fill(85, 23, 4, 1, wallDark)
+            fill(134, 30, 16, 4, wallDark)
+            fill(138, 28, 8, 2, glass)
         }
     }
 
@@ -4156,69 +4213,45 @@ final class TextureFactory {
         let w: CGFloat = GK.worldWidth * 2
         let h: CGFloat = 160
         let ps: CGFloat = 4
-        let C = UIColor.clear
-
-        let redBus = UIColor(red: 0.78, green: 0.15, blue: 0.12, alpha: 0.65)
-        let redDark = UIColor(red: 0.60, green: 0.10, blue: 0.08, alpha: 0.70)
-        let glass = UIColor(red: 0.55, green: 0.65, blue: 0.75, alpha: 0.50)
-        let lampBlack = UIColor(red: 0.15, green: 0.15, blue: 0.18, alpha: 0.65)
-        let lampGlow = UIColor(red: 1.0, green: 0.90, blue: 0.60, alpha: 0.50)
-
-        // Red telephone box (4w × 10h)
-        let phoneBox: [[UIColor]] = [
-            [C,redDark,redDark,C],
-            [redBus,glass,glass,redBus],
-            [redBus,glass,glass,redBus],
-            [redBus,glass,glass,redBus],
-            [redBus,glass,glass,redBus],
-            [redBus,redBus,redBus,redBus],
-            [redBus,glass,glass,redBus],
-            [redBus,glass,glass,redBus],
-            [redBus,redBus,redBus,redBus],
-            [redBus,redBus,redBus,redBus],
-        ]
-
-        // Lamp post (2w × 14h)
-        let lamp: [[UIColor]] = [
-            [lampGlow, lampGlow],
-            [lampBlack, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [C, lampBlack],
-            [lampBlack, lampBlack],
-        ]
-
-        let positions: [(x: CGFloat, type: Int)] = [
-            (40, 1), (130, 0), (220, 1), (340, 0), (430, 1),
-            (530, 0), (620, 1), (720, 0), (790, 1),
-        ]
-
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            for pos in positions {
-                let template = pos.type == 0 ? phoneBox : lamp
-                let tH = template.count
-                let tW = template[0].count
-                let baseY = h - CGFloat(tH) * ps
-                for row in 0..<tH {
-                    for col in 0..<tW {
-                        let color = template[row][col]
-                        guard color != C else { continue }
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: pos.x + CGFloat(col) * ps, y: baseY + CGFloat(row) * ps,
-                                      width: ps, height: ps))
-                    }
-                }
+
+            let stone = UIColor(red: 0.34, green: 0.34, blue: 0.36, alpha: 0.70)
+            let stoneLight = UIColor(red: 0.48, green: 0.48, blue: 0.52, alpha: 0.64)
+            let lamp = UIColor(red: 0.14, green: 0.14, blue: 0.18, alpha: 0.74)
+            let glow = UIColor(red: 0.96, green: 0.86, blue: 0.58, alpha: 0.52)
+            let red = UIColor(red: 0.78, green: 0.18, blue: 0.14, alpha: 0.72)
+            let glass = UIColor(red: 0.62, green: 0.72, blue: 0.82, alpha: 0.52)
+            let hedge = UIColor(red: 0.16, green: 0.22, blue: 0.16, alpha: 0.64)
+
+            func fill(_ fx: Int, _ fy: Int, _ fw: Int, _ fh: Int, _ color: UIColor) {
+                guard fw > 0 && fh > 0 else { return }
+                c.setFillColor(color.cgColor)
+                c.fill(CGRect(x: CGFloat(fx) * ps,
+                              y: h - CGFloat(fy + fh) * ps,
+                              width: CGFloat(fw) * ps,
+                              height: CGFloat(fh) * ps))
             }
+
+            // Embankment wall and bridge arch rhythm
+            fill(0, 33, 200, 3, stone)
+            for ax in stride(from: 10, to: 190, by: 28) {
+                fill(ax, 30, 12, 3, stoneLight)
+                fill(ax + 2, 29, 8, 1, stone)
+            }
+
+            // Lamps and phone box accents
+            for lx in [18, 64, 118, 166] {
+                fill(lx, 20, 1, 13, lamp)
+                fill(lx - 1, 19, 3, 1, glow)
+            }
+            fill(84, 24, 4, 9, red)
+            fill(85, 25, 2, 5, glass)
+            fill(136, 25, 7, 5, red)
+            fill(137, 24, 5, 1, stoneLight)
+            fill(138, 26, 3, 1, glass)
+            fill(150, 31, 8, 2, hedge)
         }
     }
 
@@ -4248,97 +4281,90 @@ final class TextureFactory {
     // MARK: Day Bushes — same as the original GameScene renderBushTexture
 
     private func renderDayBushStrip() -> UIImage {
-        let w = Int(GK.worldWidth * 2)
-        let h = 36
-        let size = CGSize(width: w, height: h)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { ctx in
-            let c = ctx.cgContext
-            var x = 0
-            while x < w {
-                let bushW = Int.random(in: 18...32)
-                let bushH = Int.random(in: 14...24)
-                let gap = Int.random(in: 20...40)
-                let ps = 4
-                let bodyColor = UIColor(red: 0.20, green: 0.48, blue: 0.14, alpha: 0.8)
-                c.setFillColor(bodyColor.cgColor)
-                let topY = h - bushH
-                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
-                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
-                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
-                c.fill(CGRect(x: x + ps, y: h - ps, width: bushW - ps * 2, height: ps))
-                let hlColor = UIColor(red: 0.32, green: 0.62, blue: 0.20, alpha: 0.6)
-                c.setFillColor(hlColor.cgColor)
-                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
-                if Int.random(in: 0...2) == 0 {
-                    let flowerColors: [UIColor] = [
-                        UIColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 1.0),
-                        UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1.0),
-                        UIColor(red: 0.80, green: 0.40, blue: 0.85, alpha: 1.0),
-                    ]
-                    c.setFillColor(flowerColors.randomElement()!.cgColor)
-                    let fx = x + Int.random(in: ps...(max(ps + 1, bushW - ps * 2)))
-                    c.fill(CGRect(x: fx, y: topY - ps, width: ps + 2, height: ps + 2))
-                }
-                x += bushW + gap
-            }
-        }
+        renderPastoralBushStrip(style: .day)
     }
 
     // MARK: Sunset Bushes
 
     private func renderSunsetBushStrip() -> UIImage {
-        let w = Int(GK.worldWidth * 2)
-        let h = 36
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
-        return renderer.image { ctx in
-            let c = ctx.cgContext
-            var x = 0
-            while x < w {
-                let bushW = Int.random(in: 18...32)
-                let bushH = Int.random(in: 14...24)
-                let gap = Int.random(in: 20...40)
-                let ps = 4
-                let bodyColor = UIColor(red: 0.40, green: 0.28, blue: 0.12, alpha: 0.75)
-                c.setFillColor(bodyColor.cgColor)
-                let topY = h - bushH
-                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
-                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
-                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
-                c.fill(CGRect(x: x + ps, y: h - ps, width: bushW - ps * 2, height: ps))
-                let hlColor = UIColor(red: 0.55, green: 0.38, blue: 0.18, alpha: 0.55)
-                c.setFillColor(hlColor.cgColor)
-                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
-                x += bushW + gap
-            }
-        }
+        renderPastoralBushStrip(style: .sunset)
     }
 
     // MARK: Night Bushes
 
     private func renderNightBushStrip() -> UIImage {
+        renderPastoralBushStrip(style: .night)
+    }
+
+    private func renderPastoralBushStrip(style: PastoralStyle) -> UIImage {
         let w = Int(GK.worldWidth * 2)
         let h = 36
+        let ps = 4
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
+
+            let body: UIColor
+            let highlight: UIColor
+            let accent: UIColor
+
+            switch style {
+            case .day:
+                body = UIColor(red: 0.20, green: 0.48, blue: 0.14, alpha: 0.82)
+                highlight = UIColor(red: 0.34, green: 0.64, blue: 0.22, alpha: 0.72)
+                accent = UIColor(red: 0.92, green: 0.78, blue: 0.22, alpha: 0.78)
+            case .sunset:
+                body = UIColor(red: 0.36, green: 0.24, blue: 0.12, alpha: 0.82)
+                highlight = UIColor(red: 0.56, green: 0.38, blue: 0.18, alpha: 0.68)
+                accent = UIColor(red: 0.85, green: 0.62, blue: 0.22, alpha: 0.72)
+            case .night:
+                body = UIColor(red: 0.05, green: 0.08, blue: 0.14, alpha: 0.86)
+                highlight = UIColor(red: 0.10, green: 0.15, blue: 0.24, alpha: 0.74)
+                accent = UIColor(red: 0.92, green: 0.80, blue: 0.38, alpha: 0.56)
+            }
+
+            // Hedge rhythm
             var x = 0
             while x < w {
-                let bushW = Int.random(in: 18...32)
-                let bushH = Int.random(in: 14...24)
-                let gap = Int.random(in: 20...40)
-                let ps = 4
-                let bodyColor = UIColor(red: 0.05, green: 0.07, blue: 0.14, alpha: 0.80)
-                c.setFillColor(bodyColor.cgColor)
+                let bushW = Int.random(in: 18...28)
+                let bushH = Int.random(in: 12...20)
+                let gap = Int.random(in: 12...24)
                 let topY = h - bushH
-                c.fill(CGRect(x: x + ps * 2, y: topY, width: bushW - ps * 4, height: ps))
-                c.fill(CGRect(x: x + ps, y: topY + ps, width: bushW - ps * 2, height: ps))
-                c.fill(CGRect(x: x, y: topY + ps * 2, width: bushW, height: bushH - ps * 3))
-                c.fill(CGRect(x: x + ps, y: h - ps, width: bushW - ps * 2, height: ps))
-                let hlColor = UIColor(red: 0.08, green: 0.12, blue: 0.22, alpha: 0.60)
-                c.setFillColor(hlColor.cgColor)
-                c.fill(CGRect(x: x + ps * 2, y: topY + ps, width: bushW - ps * 4, height: ps))
+                c.setFillColor(body.cgColor)
+                c.fill(CGRect(x: x + ps, y: topY, width: bushW - ps * 2, height: ps))
+                c.fill(CGRect(x: x, y: topY + ps, width: bushW, height: bushH - ps))
+                c.setFillColor(highlight.cgColor)
+                c.fill(CGRect(x: x + ps * 2, y: topY + ps * 2, width: max(ps, bushW - ps * 4), height: ps))
+
+                if style == .day {
+                    if x % 80 == 0 {
+                        c.setFillColor(accent.cgColor)
+                        c.fill(CGRect(x: x + bushW / 2, y: topY - ps, width: ps, height: ps))
+                    }
+                } else if style == .sunset {
+                    c.setFillColor(accent.withAlphaComponent(0.35).cgColor)
+                    c.fill(CGRect(x: x + bushW / 3, y: h - ps * 2, width: ps * 2, height: ps))
+                } else if x % 96 == 0 {
+                    c.setFillColor(accent.cgColor)
+                    c.fill(CGRect(x: x + bushW / 2, y: h - ps * 2, width: ps, height: ps))
+                }
+
                 x += bushW + gap
+            }
+
+            // Cattails / weed clusters nearest the player
+            var stemX = 8
+            while stemX < w {
+                let stemCount = 2 + (stemX / 40) % 2
+                for i in 0..<stemCount {
+                    c.setFillColor(highlight.cgColor)
+                    c.fill(CGRect(x: stemX + i * ps, y: h - ps * 4, width: ps / 2, height: ps * 3))
+                    if style != .night {
+                        c.setFillColor(accent.cgColor)
+                        c.fill(CGRect(x: stemX + i * ps, y: h - ps * 5, width: ps / 2, height: ps))
+                    }
+                }
+                stemX += 56
             }
         }
     }
@@ -4396,40 +4422,40 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            let bubble = UIColor(red: 0.60, green: 0.85, blue: 1.0, alpha: 0.40)
-            let bubbleH = UIColor(red: 0.80, green: 0.95, blue: 1.0, alpha: 0.55)
-            let fishBody = UIColor(red: 1.0, green: 0.55, blue: 0.25, alpha: 0.65)
-            let fishTail = UIColor(red: 1.0, green: 0.40, blue: 0.20, alpha: 0.60)
+            let seagrass = UIColor(red: 0.14, green: 0.50, blue: 0.24, alpha: 0.70)
+            let seagrassLight = UIColor(red: 0.22, green: 0.66, blue: 0.34, alpha: 0.64)
+            let shell = UIColor(red: 0.88, green: 0.78, blue: 0.62, alpha: 0.58)
+            let urchin = UIColor(red: 0.42, green: 0.22, blue: 0.56, alpha: 0.62)
+            let coral = UIColor(red: 0.88, green: 0.42, blue: 0.36, alpha: 0.68)
+            let bubble = UIColor(red: 0.74, green: 0.90, blue: 0.96, alpha: 0.40)
 
-            // Scatter bubbles
             var x = 4
             while x < w {
-                let size = Int.random(in: 1...3)
-                let y = Int.random(in: 4...(h - size * ps - 4))
-                c.setFillColor(bubble.cgColor)
-                for row in 0..<size {
-                    for col in 0..<size {
-                        c.fill(CGRect(x: x + col * ps, y: y + row * ps, width: ps, height: ps))
+                let kind = Int.random(in: 0...3)
+                if kind == 0 {
+                    for row in 0..<5 {
+                        let sway = row % 2 == 0 ? 0 : 1
+                        c.setFillColor((row % 2 == 0 ? seagrass : seagrassLight).cgColor)
+                        c.fill(CGRect(x: x + sway * ps, y: h - ps * (row + 2), width: ps / 2, height: ps))
+                        c.fill(CGRect(x: x + ps + (1 - sway) * ps / 2, y: h - ps * (row + 2), width: ps / 2, height: ps))
                     }
+                } else if kind == 1 {
+                    c.setFillColor(coral.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps * 2, height: ps))
+                    c.fill(CGRect(x: x + ps / 2, y: h - ps * 4, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps * 2, y: h - ps * 4, width: ps, height: ps))
+                } else if kind == 2 {
+                    c.setFillColor(urchin.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 3, width: ps, height: ps))
+                    c.fill(CGRect(x: x, y: h - ps * 2, width: ps * 3, height: ps / 2))
+                } else {
+                    c.setFillColor(shell.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 2, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps, y: h - ps * 2, width: ps, height: ps))
+                    c.setFillColor(bubble.cgColor)
+                    c.fill(CGRect(x: x + ps / 2, y: h - ps * 5, width: ps, height: ps))
                 }
-                // Highlight pixel
-                c.setFillColor(bubbleH.cgColor)
-                c.fill(CGRect(x: x, y: y, width: ps, height: ps))
-
-                // Every 3rd element is a small fish instead
-                if x % (ps * 18) < ps * 3 {
-                    let fy = Int.random(in: 8...(h - 12))
-                    c.setFillColor(fishBody.cgColor)
-                    c.fill(CGRect(x: x, y: fy, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: fy, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: fy - ps, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: fy + ps, width: ps, height: ps))
-                    c.setFillColor(fishTail.cgColor)
-                    c.fill(CGRect(x: x + ps * 2, y: fy - ps, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps * 2, y: fy + ps, width: ps, height: ps))
-                }
-
-                x += Int.random(in: 20...40)
+                x += Int.random(in: 18...34)
             }
         }
     }
@@ -4444,45 +4470,34 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            let lavaOuter = UIColor(red: 0.80, green: 0.25, blue: 0.05, alpha: 0.70)
-            let lavaInner = UIColor(red: 1.0, green: 0.65, blue: 0.15, alpha: 0.65)
-            let lavaHot   = UIColor(red: 1.0, green: 0.90, blue: 0.40, alpha: 0.55)
-            let ember      = UIColor(red: 1.0, green: 0.50, blue: 0.10, alpha: 0.50)
-            let rock       = UIColor(red: 0.22, green: 0.14, blue: 0.10, alpha: 0.75)
+            let rock = UIColor(red: 0.18, green: 0.12, blue: 0.09, alpha: 0.80)
+            let crack = UIColor(red: 0.95, green: 0.46, blue: 0.10, alpha: 0.70)
+            let hot = UIColor(red: 1.0, green: 0.80, blue: 0.28, alpha: 0.58)
+            let ember = UIColor(red: 1.0, green: 0.54, blue: 0.16, alpha: 0.48)
 
             var x = 0
             while x < w {
-                let poolW = Int.random(in: 16...28)
-                let poolH = Int.random(in: 6...12)
-                let gap = Int.random(in: 20...35)
-                let topY = h - poolH
-
-                // Rock border
-                c.setFillColor(rock.cgColor)
-                c.fill(CGRect(x: x, y: topY, width: poolW, height: ps))
-                c.fill(CGRect(x: x, y: h - ps, width: poolW, height: ps))
-
-                // Lava fill
-                c.setFillColor(lavaOuter.cgColor)
-                c.fill(CGRect(x: x + ps, y: topY + ps, width: poolW - ps * 2, height: poolH - ps * 2))
-                // Hot center
-                c.setFillColor(lavaInner.cgColor)
-                c.fill(CGRect(x: x + ps * 2, y: topY + ps * 2, width: max(ps, poolW - ps * 4), height: max(ps, poolH - ps * 4)))
-                // Bright pixel
-                if poolW > 16 {
-                    c.setFillColor(lavaHot.cgColor)
-                    c.fill(CGRect(x: x + poolW / 2, y: topY + poolH / 2, width: ps, height: ps))
-                }
-
-                // Floating ember above
-                if Int.random(in: 0...2) == 0 {
+                let kind = Int.random(in: 0...2)
+                if kind == 0 {
+                    c.setFillColor(rock.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 2, width: ps * 4, height: ps * 2))
+                    c.setFillColor(crack.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 2, width: ps, height: ps))
+                    c.setFillColor(hot.cgColor)
+                    c.fill(CGRect(x: x + ps * 2, y: h - ps, width: ps, height: ps / 2))
+                } else if kind == 1 {
+                    c.setFillColor(rock.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps * 3, height: ps))
+                    c.fill(CGRect(x: x + ps, y: h - ps * 4, width: ps, height: ps))
                     c.setFillColor(ember.cgColor)
-                    c.fill(CGRect(x: x + Int.random(in: 2...max(3, poolW - 4)),
-                                  y: topY - Int.random(in: ps...(ps * 3)),
-                                  width: ps - 1, height: ps - 1))
+                    c.fill(CGRect(x: x + ps, y: h - ps * 5, width: ps / 2, height: ps / 2))
+                } else {
+                    c.setFillColor(crack.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 2, width: ps * 2, height: ps))
+                    c.setFillColor(hot.cgColor)
+                    c.fill(CGRect(x: x + ps / 2, y: h - ps * 2 + ps / 2, width: ps, height: ps / 2))
                 }
-
-                x += poolW + gap
+                x += Int.random(in: 18...30)
             }
         }
     }
@@ -4497,31 +4512,31 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            let iceLight = UIColor(red: 0.80, green: 0.92, blue: 1.0, alpha: 0.65)
-            let iceMid   = UIColor(red: 0.60, green: 0.78, blue: 0.92, alpha: 0.55)
-            let iceShine = UIColor(red: 0.95, green: 0.98, blue: 1.0, alpha: 0.80)
+            let snow = UIColor(red: 0.92, green: 0.96, blue: 1.0, alpha: 0.78)
+            let ice = UIColor(red: 0.64, green: 0.82, blue: 0.92, alpha: 0.68)
+            let iceLight = UIColor(red: 0.82, green: 0.94, blue: 1.0, alpha: 0.78)
 
             var x = 0
             while x < w {
-                let crystalH = Int.random(in: 10...22)
-                let gap = Int.random(in: 18...36)
-                let topY = h - crystalH
-
-                // Diamond / crystal shape — narrow at top, wider middle, narrow base
-                let midRow = crystalH / 2
-                for row in 0..<crystalH {
-                    let dist = abs(row - midRow)
-                    let halfW = max(1, midRow - dist + 1)
-                    let cx = x + ps   // center offset
-                    for col in -halfW..<halfW {
-                        let color = col == 0 && row < midRow ? iceShine
-                                  : row < midRow ? iceLight : iceMid
-                        c.setFillColor(color.cgColor)
-                        c.fill(CGRect(x: cx + col * ps, y: topY + row * ps, width: ps, height: ps))
-                    }
+                let kind = Int.random(in: 0...2)
+                if kind == 0 {
+                    c.setFillColor(snow.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 2, width: ps * 4, height: ps))
+                    c.fill(CGRect(x: x + ps, y: h - ps * 3, width: ps * 2, height: ps))
+                } else if kind == 1 {
+                    c.setFillColor(ice.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 4, width: ps, height: ps * 2))
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps * 2, y: h - ps * 3, width: ps, height: ps))
+                    c.setFillColor(iceLight.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 5, width: ps / 2, height: ps))
+                } else {
+                    c.setFillColor(iceLight.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 2, width: ps * 2, height: ps / 2))
+                    c.setFillColor(snow.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 3, width: ps, height: ps))
                 }
-
-                x += ps * 4 + gap
+                x += Int.random(in: 18...30)
             }
         }
     }
@@ -4536,41 +4551,30 @@ final class TextureFactory {
         return renderer.image { ctx in
             let c = ctx.cgContext
 
-            let rockD = UIColor(red: 0.25, green: 0.22, blue: 0.20, alpha: 0.60)
-            let rockL = UIColor(red: 0.38, green: 0.35, blue: 0.30, alpha: 0.50)
-            let metalA = UIColor(red: 0.40, green: 0.42, blue: 0.48, alpha: 0.55)
-            let metalB = UIColor(red: 0.55, green: 0.58, blue: 0.62, alpha: 0.45)
+            let dust = UIColor(red: 0.26, green: 0.24, blue: 0.28, alpha: 0.62)
+            let crystal = UIColor(red: 0.34, green: 0.80, blue: 0.96, alpha: 0.70)
+            let crystalB = UIColor(red: 0.84, green: 0.34, blue: 0.88, alpha: 0.66)
+            let panel = UIColor(red: 0.48, green: 0.52, blue: 0.60, alpha: 0.56)
 
             var x = 0
             while x < w {
-                let gap = Int.random(in: 24...44)
-                let y = Int.random(in: 4...(h - 16))
-
-                // Alternate small asteroids and debris
-                if x % (ps * 14) < ps * 5 {
-                    // Small asteroid (3×2 px)
-                    c.setFillColor(rockD.cgColor)
-                    c.fill(CGRect(x: x, y: y, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: y, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps * 2, y: y, width: ps, height: ps))
-                    c.fill(CGRect(x: x, y: y + ps, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: y + ps, width: ps, height: ps))
-                    c.setFillColor(rockL.cgColor)
-                    c.fill(CGRect(x: x + ps * 2, y: y + ps, width: ps, height: ps))
+                let kind = Int.random(in: 0...2)
+                if kind == 0 {
+                    c.setFillColor(dust.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 2, width: ps * 3, height: ps))
+                    c.fill(CGRect(x: x + ps, y: h - ps * 3, width: ps, height: ps))
+                } else if kind == 1 {
+                    c.setFillColor(panel.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps * 2, height: ps))
+                    c.fill(CGRect(x: x + ps / 2, y: h - ps * 4, width: ps, height: ps))
                 } else {
-                    // Metal debris panel (2×3 px)
-                    c.setFillColor(metalA.cgColor)
-                    c.fill(CGRect(x: x, y: y, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: y, width: ps, height: ps))
-                    c.setFillColor(metalB.cgColor)
-                    c.fill(CGRect(x: x, y: y + ps, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: y + ps, width: ps, height: ps))
-                    c.setFillColor(metalA.cgColor)
-                    c.fill(CGRect(x: x, y: y + ps * 2, width: ps, height: ps))
-                    c.fill(CGRect(x: x + ps, y: y + ps * 2, width: ps, height: ps))
+                    let col = x % 40 == 0 ? crystalB : crystal
+                    c.setFillColor(col.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 4, width: ps, height: ps * 2))
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps, height: ps))
+                    c.fill(CGRect(x: x + ps * 2, y: h - ps * 3, width: ps, height: ps))
                 }
-
-                x += gap
+                x += Int.random(in: 18...32)
             }
         }
     }
@@ -6332,29 +6336,44 @@ final class TextureFactory {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            // Foam line
+            let foam = UIColor(red: 0.90, green: 0.95, blue: 0.98, alpha: 0.6)
+            let shell1 = UIColor(red: 0.92, green: 0.82, blue: 0.68, alpha: 0.55)
+            let shell2 = UIColor(red: 0.88, green: 0.72, blue: 0.60, alpha: 0.50)
+            let driftwood = UIColor(red: 0.55, green: 0.40, blue: 0.24, alpha: 0.58)
+            let duneGrass = UIColor(red: 0.52, green: 0.70, blue: 0.34, alpha: 0.56)
+            let star = UIColor(red: 0.90, green: 0.50, blue: 0.30, alpha: 0.50)
+
             var fx = 0
             while fx < w {
                 let foamW = Int.random(in: 2...5) * ps
-                c.setFillColor(UIColor(red: 0.90, green: 0.95, blue: 0.98, alpha: 0.6).cgColor)
+                c.setFillColor(foam.cgColor)
                 c.fill(CGRect(x: fx, y: h - ps * 2, width: foamW, height: ps))
                 fx += foamW + Int.random(in: 3...8) * ps
             }
-            // Seashells
-            let shell1 = UIColor(red: 0.92, green: 0.82, blue: 0.68, alpha: 0.55)
-            let shell2 = UIColor(red: 0.88, green: 0.72, blue: 0.60, alpha: 0.50)
-            var sx = Int.random(in: 3...8) * ps
-            while sx < w {
-                c.setFillColor(sx % (ps * 10) < ps * 5 ? shell1.cgColor : shell2.cgColor)
-                c.fill(CGRect(x: sx, y: h - ps * 3, width: ps, height: ps))
-                c.fill(CGRect(x: sx + ps, y: h - ps * 3, width: ps, height: ps))
-                sx += Int.random(in: 10...18) * ps
+
+            var x = 8
+            while x < w {
+                let kind = Int.random(in: 0...3)
+                if kind == 0 {
+                    c.setFillColor(shell1.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps, height: ps))
+                    c.setFillColor(shell2.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 3, width: ps, height: ps))
+                } else if kind == 1 {
+                    c.setFillColor(driftwood.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps * 3, height: ps))
+                    c.fill(CGRect(x: x + ps, y: h - ps * 4, width: ps, height: ps / 2))
+                } else if kind == 2 {
+                    c.setFillColor(duneGrass.cgColor)
+                    c.fill(CGRect(x: x, y: h - ps * 4, width: ps / 2, height: ps * 2))
+                    c.fill(CGRect(x: x + ps, y: h - ps * 3, width: ps / 2, height: ps))
+                } else {
+                    c.setFillColor(star.cgColor)
+                    c.fill(CGRect(x: x + ps, y: h - ps * 4, width: ps, height: ps * 2))
+                    c.fill(CGRect(x: x, y: h - ps * 3, width: ps * 3, height: ps))
+                }
+                x += Int.random(in: 20...36)
             }
-            // Starfish
-            let star = UIColor(red: 0.90, green: 0.50, blue: 0.30, alpha: 0.50)
-            c.setFillColor(star.cgColor)
-            c.fill(CGRect(x: w / 3, y: h - ps * 4, width: ps, height: ps * 3))
-            c.fill(CGRect(x: w / 3 - ps, y: h - ps * 3, width: ps * 3, height: ps))
         }
     }
 
@@ -6367,22 +6386,22 @@ final class TextureFactory {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            // Road markings
             let marking = UIColor(red: 0.85, green: 0.75, blue: 0.45, alpha: 0.30)
+            let curb = UIColor(red: 0.56, green: 0.50, blue: 0.44, alpha: 0.46)
+            let grass = UIColor(red: 0.34, green: 0.52, blue: 0.24, alpha: 0.40)
+            let shadow = UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 0.12)
+
+            c.setFillColor(curb.cgColor)
+            c.fill(CGRect(x: 0, y: h - ps * 2, width: w, height: ps))
             c.setFillColor(marking.cgColor)
-            var mx = ps * 4
-            while mx < w {
+            for mx in stride(from: ps * 4, to: w, by: ps * 12) {
                 c.fill(CGRect(x: mx, y: h / 2, width: ps * 3, height: ps))
-                mx += ps * 12
             }
-            // Scattered palm fronds
-            let frond = UIColor(red: 0.30, green: 0.48, blue: 0.22, alpha: 0.35)
-            c.setFillColor(frond.cgColor)
-            var px = Int.random(in: 5...12) * ps
-            while px < w {
-                c.fill(CGRect(x: px, y: h - ps * 3, width: ps * 4, height: ps))
-                c.fill(CGRect(x: px + ps, y: h - ps * 2, width: ps * 2, height: ps))
-                px += Int.random(in: 15...25) * ps
+            for gx in stride(from: ps * 3, to: w, by: ps * 18) {
+                c.setFillColor(grass.cgColor)
+                c.fill(CGRect(x: gx, y: h - ps * 4, width: ps, height: ps * 2))
+                c.setFillColor(shadow.cgColor)
+                c.fill(CGRect(x: gx + ps, y: h - ps * 2, width: ps * 3, height: ps / 2))
             }
         }
     }
@@ -6396,41 +6415,29 @@ final class TextureFactory {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h))
         return renderer.image { ctx in
             let c = ctx.cgContext
-            // Cobblestone grid lines
             let cobble = UIColor(red: 0.35, green: 0.34, blue: 0.33, alpha: 0.30)
-            c.setFillColor(cobble.cgColor)
-            var gx = 0
-            while gx < w {
-                c.fill(CGRect(x: gx, y: 0, width: 1, height: h))
-                gx += ps * 4
-            }
-            var gy = 0
-            while gy < h {
-                c.fill(CGRect(x: 0, y: gy, width: w, height: 1))
-                gy += ps * 3
-            }
-            // Rain puddles (small reflective patches)
             let puddle = UIColor(red: 0.40, green: 0.45, blue: 0.55, alpha: 0.30)
-            var pdx = Int.random(in: 5...10) * ps
-            while pdx < w {
-                c.setFillColor(puddle.cgColor)
-                let pw = Int.random(in: 3...6) * ps
-                c.fill(CGRect(x: pdx, y: h - ps * 2, width: pw, height: ps))
-                pdx += Int.random(in: 12...22) * ps
+            let planter = UIColor(red: 0.20, green: 0.22, blue: 0.18, alpha: 0.42)
+            let shrub = UIColor(red: 0.18, green: 0.28, blue: 0.20, alpha: 0.40)
+
+            for gx in stride(from: 0, to: w, by: ps * 4) {
+                c.setFillColor(cobble.cgColor)
+                c.fill(CGRect(x: gx, y: 0, width: 1, height: h))
             }
-            // Fallen leaves (autumn)
-            let leafColors = [
-                UIColor(red: 0.70, green: 0.40, blue: 0.15, alpha: 0.40),
-                UIColor(red: 0.65, green: 0.30, blue: 0.10, alpha: 0.35),
-                UIColor(red: 0.80, green: 0.55, blue: 0.20, alpha: 0.35),
-            ]
-            var lx = Int.random(in: 3...8) * ps
-            var li = 0
-            while lx < w {
-                c.setFillColor(leafColors[li % leafColors.count].cgColor)
-                c.fill(CGRect(x: lx, y: h - ps * 3, width: ps, height: ps))
-                lx += Int.random(in: 8...16) * ps
-                li += 1
+            for gy in stride(from: 0, to: h, by: ps * 3) {
+                c.setFillColor(cobble.cgColor)
+                c.fill(CGRect(x: 0, y: gy, width: w, height: 1))
+            }
+
+            for pdx in stride(from: ps * 6, to: w, by: ps * 20) {
+                c.setFillColor(puddle.cgColor)
+                c.fill(CGRect(x: pdx, y: h - ps * 2, width: ps * 4, height: ps))
+            }
+            for bx in stride(from: ps * 10, to: w, by: ps * 32) {
+                c.setFillColor(planter.cgColor)
+                c.fill(CGRect(x: bx, y: h - ps * 3, width: ps * 2, height: ps))
+                c.setFillColor(shrub.cgColor)
+                c.fill(CGRect(x: bx, y: h - ps * 4, width: ps * 2, height: ps))
             }
         }
     }

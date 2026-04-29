@@ -269,7 +269,9 @@ private func drawMyTheme(ctx: inout GraphicsContext, w: CGFloat, h: CGFloat) {
 - Cave/indoor themes: skip `skyGradient()`, draw your own dark background
 - Include 2–3 signature elements (e.g., Western = mesa + cactus + saloon)
 - Use `theme.previewGroundColor` for the ground strip
-- Keep it simple but distinctive at small sizes
+- Match the actual gameplay composition, not just the palette
+- Use the same hero read as gameplay whenever possible
+- Keep enclosed scenes logical: cave ceilings belong at the top of frame, underwater scenes should feel submerged, city scenes should use horizon architecture instead of generic hills
 
 ---
 
@@ -293,6 +295,7 @@ If you return `nil` from `gameplayMusicFile`, the default action music plays.
 - [ ] Gameplay shows correct sky gradient, hills, trees, bushes, ground
 - [ ] Ground detail tiles render without visual glitches
 - [ ] Preview card is visually distinct and recognizable
+- [ ] Preview card matches the in-game landmark/composition for that theme
 - [ ] Music plays (or falls through to default gracefully)
 - [ ] Cloud sprites look correct with your `cloudTint`
 
@@ -364,13 +367,36 @@ These `fill()` and `dot()` helpers use bottom-left origin (y=0 is ground level, 
 
 ### Quality Expectations
 
-The current quality bar for hill renderers is **high-detail pixel art**. Each theme should have:
+The quality bar applies to **all five gameplay layers plus the preview card**, not just hills.
 
-1. **Terrain heightmap** — rolling hills, mountains, mesa formations, or reef shapes appropriate to the theme
-2. **3–5 major landmark elements** — recognizable structures drawn pixel-by-pixel (buildings, ships, monuments, large trees)
-3. **5–10 secondary details** — smaller environmental elements (fences, plants, animals, vehicles)
-4. **Atmospheric effects** — glow auras, fog, light rays, reflections where appropriate
-5. **Color depth** — each element should use 2–4 shades (dark/mid/light/highlight) for visual depth
+1. **Hills / far layer** — terrain heightmap plus 3–5 recognizable landmarks and 5–10 secondary details
+2. **Trees / midground** — medium-scale composition that complements the hills instead of duplicating them
+3. **Bushes / foreground** — dense, theme-specific edge treatment closest to the player
+4. **Ground / ground detail** — surface texture and random props that reinforce the theme rather than defaulting to generic grass pebbles
+5. **Preview card** — a small but accurate read of the actual in-game scene
+6. **Color depth** — each element should use 2–4 shades (dark/mid/light/highlight) for visual depth
+7. **Atmospheric effects** — glow auras, fog, light rays, reflections where appropriate, but avoid washing out whole layers with unnecessary alpha
+
+### Layer-Specific Bar
+
+- **Hills:** biggest hero landmarks, perspective framing, skyline or ceiling logic
+- **Trees / midground:** 3–5 major elements, 5–10 supporting details, stronger silhouettes than generic sprite strips
+- **Bushes / foreground:** simpler shapes than hills, but more contrast and richer density than the tree layer
+- **Ground detail:** seeded randomness via `drand48()` only; props should read as part of the same world
+- **Preview cards:** should show the same landmark language the player will actually see in gameplay
+
+### Composition Rules
+
+- Indoor or enclosed themes should use the full vertical frame logically. If the cave ceiling defines the scene, it should reach the top of the screen instead of floating in the middle.
+- Underwater, cave, and space themes should never inherit outdoor framing by accident.
+- Do not fall back to “clouds + generic hills + ground strip” unless that is genuinely the right composition for the theme.
+- Each layer should add new information at its depth. Avoid reusing the exact same landmark in hills, trees, and bushes.
+
+### Editing Workflow For Large Renderers
+
+- `TextureFactory.swift` is large enough that manual search-and-edit is fragile. Prefer scripted function replacement when replacing whole renderer bodies.
+- A safe pattern is: locate the function signature, find bounds by counting `{` / `}`, then splice the new body.
+- After each batch, compile immediately. One stray brace can push later renderers out of `TextureFactory` scope and create misleading follow-on errors.
 
 ### Examples of What "Good" Looks Like
 

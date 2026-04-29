@@ -177,13 +177,14 @@ final class ParallaxManager {
     private func setupHills() {
         let hillTex = factory.themedHillsTexture(theme: theme)
         hillTex.filteringMode = .nearest
+        let hillHeight = hillDisplayHeight
+        let hillY = hillBaseY
         for i in 0..<2 {
             let hillNode = SKSpriteNode(texture: hillTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 300))
+                                         size: CGSize(width: GK.worldWidth * 2, height: hillHeight))
             hillNode.anchorPoint = CGPoint(x: 0, y: 0)
-            hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight + 10)
+            hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: hillY)
             hillNode.zPosition = -60
-            hillNode.alpha = 0.8
             backgroundLayer.addChild(hillNode)
             hills.append(hillNode)
         }
@@ -196,13 +197,14 @@ final class ParallaxManager {
         // Nearest-neighbor filtering keeps pixel art crisp when texture (160px)
         // is displayed at 300px (1.875× upscale).
         treeTex.filteringMode = .nearest
+        let treeHeight = treeDisplayHeight
+        let treeY = treeBaseY
         for i in 0..<2 {
             let treeNode = SKSpriteNode(texture: treeTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 300))
+                                         size: CGSize(width: GK.worldWidth * 2, height: treeHeight))
             treeNode.anchorPoint = CGPoint(x: 0, y: 0)
-            treeNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 5)
+            treeNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: treeY)
             treeNode.zPosition = -50
-            treeNode.alpha = 0.7
             backgroundLayer.addChild(treeNode)
             trees.append(treeNode)
         }
@@ -219,15 +221,70 @@ final class ParallaxManager {
         // Nearest-neighbor filtering keeps pixel art crisp when texture (36px)
         // is displayed at 60px (1.67× upscale).
         bushTex.filteringMode = .nearest
+        let bushHeight = bushDisplayHeight
+        let bushY = bushBaseY
         for i in 0..<2 {
             let bushNode = SKSpriteNode(texture: bushTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: 60))
+                                         size: CGSize(width: GK.worldWidth * 2, height: bushHeight))
             bushNode.anchorPoint = CGPoint(x: 0, y: 0)
-            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: GK.groundHeight - 2)
+            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: bushY)
             bushNode.zPosition = -40
-            bushNode.alpha = 0.85
             backgroundLayer.addChild(bushNode)
             bushes.append(bushNode)
+        }
+    }
+
+    private var hillDisplayHeight: CGFloat {
+        switch theme {
+        case .cave:
+            return 420
+        default:
+            return 300
+        }
+    }
+
+    private var hillBaseY: CGFloat {
+        switch theme {
+        case .cave:
+            return GK.worldHeight - hillDisplayHeight
+        default:
+            return GK.groundHeight + 10
+        }
+    }
+
+    private var treeDisplayHeight: CGFloat {
+        switch theme {
+        case .cave:
+            return 360
+        default:
+            return 300
+        }
+    }
+
+    private var treeBaseY: CGFloat {
+        switch theme {
+        case .cave:
+            return GK.groundHeight + 22
+        default:
+            return GK.groundHeight - 5
+        }
+    }
+
+    private var bushDisplayHeight: CGFloat {
+        switch theme {
+        case .cave:
+            return 72
+        default:
+            return 60
+        }
+    }
+
+    private var bushBaseY: CGFloat {
+        switch theme {
+        case .cave:
+            return GK.groundHeight - 6
+        default:
+            return GK.groundHeight - 2
         }
     }
 

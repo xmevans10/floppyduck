@@ -1715,7 +1715,6 @@ struct ThemePreviewView: View {
         // Space station (small, boxy)
         let stationX = w * 0.22, stationY = h * 0.28
         let metal = Color(red: 0.35, green: 0.35, blue: 0.40)
-        let metalL = Color(red: 0.50, green: 0.50, blue: 0.55)
         // Main module
         fill(&ctx, x: stationX, y: stationY, w: px * 4, h: px * 2, metal.opacity(0.5))
         // Solar panels
@@ -1742,7 +1741,6 @@ struct ThemePreviewView: View {
 
         // Cratered moon surface
         let terrain = Color(red: 0.12, green: 0.10, blue: 0.18)
-        let terrainL = Color(red: 0.18, green: 0.15, blue: 0.25)
         let terrainY = h * 0.72
         for x in stride(from: CGFloat(0), to: w, by: px) {
             let tH = (sin(x / w * .pi * 4) * 0.4 + 0.6) * h * 0.08
@@ -1845,17 +1843,9 @@ struct ThemePreviewView: View {
     private func drawLagoon(ctx: inout GraphicsContext, w: CGFloat, h: CGFloat) {
         skyGradient(&ctx, w: w, h: h)
 
-        // Wispy clouds
-        for i in 0..<2 {
-            let cx = w * (0.2 + CGFloat(i) * 0.5)
-            let cy = h * 0.10 + CGFloat(i) * px * 2
-            fill(&ctx, x: cx, y: cy, w: px * 10, h: px, .white.opacity(0.6))
-            fill(&ctx, x: cx + px * 2, y: cy + px, w: px * 7, h: px, .white.opacity(0.4))
-        }
-
-        // Ocean water band
-        let waterTop = h * 0.40
-        let waterH = h * 0.38
+        // Hero pirate ship composition with islands and surf
+        let waterTop = h * 0.42
+        let waterH = h * 0.34
         let waterDeep = Color(red: 0.12, green: 0.50, blue: 0.65)
         let waterMid = Color(red: 0.18, green: 0.62, blue: 0.75)
         let waterShallow = Color(red: 0.35, green: 0.78, blue: 0.85)
@@ -1863,44 +1853,37 @@ struct ThemePreviewView: View {
         fill(&ctx, x: 0, y: waterTop + waterH * 0.3, w: w, h: waterH * 0.4, waterMid)
         fill(&ctx, x: 0, y: waterTop + waterH * 0.7, w: w, h: waterH * 0.3, waterShallow)
 
-        // Wave sparkles on water
-        for i in 0..<6 {
-            let wx = prng(31, i) * w
-            let wy = waterTop + prng(31, i + 10) * waterH
-            fill(&ctx, x: wx, y: wy, w: px * 2, h: px, .white.opacity(0.25))
+        // Island silhouettes
+        let island = Color(red: 0.30, green: 0.42, blue: 0.26)
+        drawSineHills(&ctx, w: w, baseY: h * 0.55, amplitude: h * 0.05, freq: 2.6, phase: 0.9, color: island.opacity(0.65))
+
+        // Pirate ship
+        let shipX = w * 0.56
+        let shipY = waterTop + px * 3
+        let hull = Color(red: 0.24, green: 0.14, blue: 0.08)
+        let sail = Color(red: 0.88, green: 0.84, blue: 0.74)
+        fill(&ctx, x: shipX, y: shipY, w: px * 10, h: px * 2, hull)
+        fill(&ctx, x: shipX + px, y: shipY - px, w: px * 8, h: px, hull.opacity(0.8))
+        for mast in [1, 4, 7] {
+            fill(&ctx, x: shipX + px * CGFloat(mast), y: shipY - px * 6, w: px * 0.6, h: px * 6, hull)
         }
+        fill(&ctx, x: shipX + px * 2, y: shipY - px * 5, w: px * 2, h: px * 3, sail)
+        fill(&ctx, x: shipX + px * 5, y: shipY - px * 5, w: px * 2, h: px * 4, sail)
+        fill(&ctx, x: shipX + px * 8, y: shipY - px * 4, w: px * 1.5, h: px * 2.5, sail)
+        pixel(&ctx, x: shipX + px * 5.5, y: shipY - px * 3.5, Color.black.opacity(0.6))
 
-        // Pirate ship on horizon
-        let shipX = w * 0.70
-        let shipY = waterTop + px * 2
-        let shipDark = Color(red: 0.20, green: 0.12, blue: 0.06)
-        let sailColor = Color(red: 0.85, green: 0.80, blue: 0.70)
-        // Hull
-        fill(&ctx, x: shipX, y: shipY, w: px * 6, h: px * 2, shipDark)
-        fill(&ctx, x: shipX + px, y: shipY + px * 2, w: px * 4, h: px, shipDark)
-        // Mast
-        fill(&ctx, x: shipX + px * 2, y: shipY - px * 5, w: px, h: px * 5, shipDark)
-        // Sails
-        fill(&ctx, x: shipX + px * 3, y: shipY - px * 4, w: px * 2, h: px * 3, sailColor)
-        // Skull flag
-        pixel(&ctx, x: shipX + px * 2, y: shipY - px * 6, Color(red: 0.1, green: 0.1, blue: 0.1))
-
-        // Beach island mound
+        // Sandbar and palms
         let sand = Color(red: 0.90, green: 0.82, blue: 0.60)
         let sandDark = Color(red: 0.80, green: 0.72, blue: 0.50)
-        drawSineHills(&ctx, w: w, baseY: h * 0.72, amplitude: h * 0.08, freq: 1.5, phase: 0.3, color: sandDark.opacity(0.6))
-
-        // Palm trees on beach
+        drawSineHills(&ctx, w: w, baseY: h * 0.72, amplitude: h * 0.08, freq: 1.5, phase: 0.3, color: sandDark.opacity(0.7))
         let palmTrunk = Color(red: 0.45, green: 0.30, blue: 0.15)
         let palmLeaf = Color(red: 0.22, green: 0.55, blue: 0.25)
         let palmLeafL = Color(red: 0.30, green: 0.65, blue: 0.32)
-        // Palm 1
-        let p1x = w * 0.22
+        let p1x = w * 0.16
         for i in 0..<7 {
             let sway = sin(CGFloat(i) * 0.3) * px
             pixel(&ctx, x: p1x + sway, y: h * 0.78 - CGFloat(i) * px * 1.5, palmTrunk)
         }
-        // Fronds
         pixel(&ctx, x: p1x - px * 3, y: h * 0.78 - 11 * px, palmLeaf)
         pixel(&ctx, x: p1x - px * 2, y: h * 0.78 - 12 * px, palmLeaf)
         pixel(&ctx, x: p1x - px, y: h * 0.78 - 12 * px, palmLeafL)
@@ -1910,8 +1893,7 @@ struct ThemePreviewView: View {
         // Coconuts
         pixel(&ctx, x: p1x - px, y: h * 0.78 - 10.5 * px, Color(red: 0.50, green: 0.35, blue: 0.18))
 
-        // Palm 2 (smaller)
-        let p2x = w * 0.50
+        let p2x = w * 0.86
         for i in 0..<5 {
             pixel(&ctx, x: p2x, y: h * 0.78 - CGFloat(i) * px * 1.5, palmTrunk)
         }
@@ -1924,6 +1906,7 @@ struct ThemePreviewView: View {
         fill(&ctx, x: 0, y: h * 0.78, w: w, h: h * 0.22, sand)
         // Foam line at water edge
         fill(&ctx, x: 0, y: h * 0.78 - px, w: w, h: px, .white.opacity(0.4))
+        pixel(&ctx, x: w * 0.75, y: h * 0.88, Color(red: 0.85, green: 0.55, blue: 0.30).opacity(0.6))
     }
 
     // MARK: - LOS ANGELES — palm boulevard, Hollywood hills, sunset haze, city glow
@@ -1931,27 +1914,22 @@ struct ThemePreviewView: View {
     private func drawLosAngeles(ctx: inout GraphicsContext, w: CGFloat, h: CGFloat) {
         skyGradient(&ctx, w: w, h: h)
 
-        // Sun haze near horizon
         let sunHaze = Color(red: 1.0, green: 0.75, blue: 0.35)
         fill(&ctx, x: 0, y: h * 0.35, w: w, h: h * 0.12, sunHaze.opacity(0.15))
 
-        // Hollywood hills silhouette
         let hillDark = Color(red: 0.30, green: 0.20, blue: 0.15)
         let hillMid = Color(red: 0.42, green: 0.30, blue: 0.22)
         drawSineHills(&ctx, w: w, baseY: h * 0.48, amplitude: h * 0.15, freq: 2.0, phase: 0.5, color: hillDark.opacity(0.6))
         drawSineHills(&ctx, w: w, baseY: h * 0.55, amplitude: h * 0.10, freq: 3.0, phase: 1.8, color: hillMid.opacity(0.5))
 
-        // HOLLYWOOD sign hint (tiny white letters on hill)
         let signY = h * 0.40
         let signX = w * 0.35
         let signColor = Color.white.opacity(0.45)
         for i in 0..<9 {
-            // Each "letter" is just a tiny pixel column
             pixel(&ctx, x: signX + CGFloat(i) * px * 1.5, y: signY, signColor)
             pixel(&ctx, x: signX + CGFloat(i) * px * 1.5, y: signY + px, signColor)
         }
 
-        // Tall palm trees lining boulevard
         let palmTrunk = Color(red: 0.35, green: 0.22, blue: 0.12)
         let palmLeaf = Color(red: 0.20, green: 0.42, blue: 0.18)
         let palmLeafL = Color(red: 0.28, green: 0.52, blue: 0.25)
@@ -1968,7 +1946,7 @@ struct ThemePreviewView: View {
             pixel(&ctx, x: px2 + px * 2, y: topY, palmLeaf)
         }
 
-        // Low-rise buildings silhouette
+        // Motel strip + observatory dome read
         let bldg = Color(red: 0.55, green: 0.48, blue: 0.42)
         let bldgDark = Color(red: 0.40, green: 0.35, blue: 0.30)
         let window = Color(red: 1.0, green: 0.88, blue: 0.55).opacity(0.4)
@@ -1993,6 +1971,11 @@ struct ThemePreviewView: View {
                 wy += px * 3
             }
         }
+        // Observatory dome
+        fill(&ctx, x: w * 0.28, y: h * 0.56, w: px * 6, h: px * 2, bldgDark)
+        fill(&ctx, x: w * 0.30, y: h * 0.54, w: px * 2, h: px * 2, sunHaze.opacity(0.35))
+        // Boardwalk rail
+        fill(&ctx, x: 0, y: h * 0.74, w: w, h: px * 0.8, Color(red: 0.35, green: 0.24, blue: 0.16).opacity(0.6))
 
         // Road / ground
         fill(&ctx, x: 0, y: h * 0.78, w: w, h: h * 0.22, theme.previewGroundColor)
@@ -2007,7 +1990,6 @@ struct ThemePreviewView: View {
     private func drawLondon(ctx: inout GraphicsContext, w: CGFloat, h: CGFloat) {
         skyGradient(&ctx, w: w, h: h)
 
-        // Rain streaks
         let rain = Color(red: 0.60, green: 0.65, blue: 0.70).opacity(0.2)
         for i in 0..<12 {
             let rx = prng(19, i * 2) * w
@@ -2015,33 +1997,25 @@ struct ThemePreviewView: View {
             fill(&ctx, x: rx, y: ry, w: px * 0.5, h: px * 3, rain)
         }
 
-        // River Thames band
         let river = Color(red: 0.30, green: 0.38, blue: 0.45)
         fill(&ctx, x: 0, y: h * 0.62, w: w, h: h * 0.08, river)
-        // River reflections
         for i in 0..<4 {
             let rx = prng(23, i) * w
             fill(&ctx, x: rx, y: h * 0.64, w: px * 3, h: px, Color(red: 0.40, green: 0.48, blue: 0.55).opacity(0.3))
         }
 
-        // Big Ben / Elizabeth Tower
         let brickDark = Color(red: 0.32, green: 0.28, blue: 0.24)
         let brickMid = Color(red: 0.42, green: 0.38, blue: 0.32)
         let clockGold = Color(red: 1.0, green: 0.88, blue: 0.50)
         let benX = w * 0.20
-        // Tower body
         fill(&ctx, x: benX, y: h * 0.18, w: px * 4, h: h * 0.42, brickDark)
         fill(&ctx, x: benX + px, y: h * 0.18, w: px * 2, h: h * 0.42, brickMid)
-        // Spire
         fill(&ctx, x: benX + px, y: h * 0.08, w: px * 2, h: h * 0.10, brickDark)
-        pixel(&ctx, x: benX + px * 1.5, y: h * 0.05, clockGold) // gold tip
-        // Clock face
+        pixel(&ctx, x: benX + px * 1.5, y: h * 0.05, clockGold)
         fill(&ctx, x: benX + px, y: h * 0.22, w: px * 2, h: px * 2, clockGold)
 
-        // Parliament building
         fill(&ctx, x: benX + px * 5, y: h * 0.38, w: px * 12, h: h * 0.22, brickDark)
         fill(&ctx, x: benX + px * 5, y: h * 0.38, w: px * 12, h: px, brickMid)
-        // Parliament windows
         var pwx = benX + px * 6
         while pwx < benX + px * 16 {
             pixel(&ctx, x: pwx, y: h * 0.42, Color(red: 0.80, green: 0.75, blue: 0.55).opacity(0.4))
@@ -2049,50 +2023,40 @@ struct ThemePreviewView: View {
             pwx += px * 3
         }
 
-        // London Eye (simplified Ferris wheel)
-        let eyeX = w * 0.65
-        let eyeY = h * 0.32
-        let eyeR: CGFloat = 8
+        // Bridge towers / eye silhouette
+        let eyeX = w * 0.68
+        let eyeY = h * 0.34
+        let eyeR: CGFloat = 7
         let metal = Color(red: 0.52, green: 0.55, blue: 0.58)
-        // Circle outline
         for angle in stride(from: 0.0, to: Double.pi * 2, by: 0.3) {
             let dx = cos(angle) * Double(eyeR)
             let dy = sin(angle) * Double(eyeR)
             pixel(&ctx, x: eyeX + CGFloat(dx) * px, y: eyeY + CGFloat(dy) * px, metal)
         }
-        // Support pole
         fill(&ctx, x: eyeX - px * 0.5, y: eyeY, w: px, h: h * 0.60 - eyeY, metal.opacity(0.6))
-        // Pods (small dots)
         for angle in stride(from: 0.0, to: Double.pi * 2, by: Double.pi / 4) {
             let dx = cos(angle) * Double(eyeR)
             let dy = sin(angle) * Double(eyeR)
             pixel(&ctx, x: eyeX + CGFloat(dx) * px, y: eyeY + CGFloat(dy) * px, .white.opacity(0.5))
         }
+        fill(&ctx, x: w * 0.52, y: h * 0.46, w: px * 3, h: h * 0.14, brickDark)
+        fill(&ctx, x: w * 0.58, y: h * 0.46, w: px * 3, h: h * 0.14, brickDark)
+        fill(&ctx, x: w * 0.52, y: h * 0.52, w: px * 9, h: px, metal.opacity(0.6))
 
-        // Red double-decker bus
         let busX = w * 0.78
         let busY = h * 0.72
         let busRed = Color(red: 0.80, green: 0.15, blue: 0.12)
         let busRedDark = Color(red: 0.60, green: 0.10, blue: 0.08)
-        // Body
         fill(&ctx, x: busX, y: busY - px * 4, w: px * 6, h: px * 4, busRed)
-        // Top deck
         fill(&ctx, x: busX, y: busY - px * 7, w: px * 6, h: px * 3, busRedDark)
-        // Windows
         fill(&ctx, x: busX + px, y: busY - px * 6, w: px * 4, h: px, Color(red: 0.65, green: 0.72, blue: 0.80).opacity(0.5))
         fill(&ctx, x: busX + px, y: busY - px * 3, w: px * 4, h: px, Color(red: 0.65, green: 0.72, blue: 0.80).opacity(0.5))
-        // Wheels
         pixel(&ctx, x: busX + px, y: busY, Color(red: 0.15, green: 0.15, blue: 0.15))
         pixel(&ctx, x: busX + px * 4, y: busY, Color(red: 0.15, green: 0.15, blue: 0.15))
-
-        // Generic rooftops
-        let roofColor = Color(red: 0.28, green: 0.25, blue: 0.22)
-        fill(&ctx, x: w * 0.42, y: h * 0.45, w: px * 8, h: h * 0.15, roofColor)
-        fill(&ctx, x: w * 0.86, y: h * 0.50, w: px * 6, h: h * 0.10, roofColor)
+        fill(&ctx, x: w * 0.10, y: h * 0.70, w: w * 0.80, h: px * 0.8, metal.opacity(0.45))
 
         // Ground — wet cobblestone
         fill(&ctx, x: 0, y: h * 0.78, w: w, h: h * 0.22, theme.previewGroundColor)
-        // Puddle reflections
         for i in 0..<3 {
             let pdx = prng(41, i) * w
             fill(&ctx, x: pdx, y: h * 0.82, w: px * 4, h: px, Color(red: 0.40, green: 0.45, blue: 0.55).opacity(0.25))
