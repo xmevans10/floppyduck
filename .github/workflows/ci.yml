@@ -111,6 +111,7 @@ jobs:
             -scheme FloppyDuck \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=${{ steps.xcode.outputs.ios_version }}' \
             -only-testing:FloppyDuckUITests/ScreenshotTests \
+            -skip-testing:FloppyDuckTests \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -121,6 +122,7 @@ jobs:
       - name: Extract Screenshots
         if: always()
         run: |
+          set +e  # Don't fail on individual command errors
           mkdir -p screenshots
 
           echo "=== Checking TestResults.xcresult ==="
@@ -135,8 +137,23 @@ jobs:
           du -sh TestResults.xcresult
 
           # ── Xcode 16+ attachment extraction ──
-          # 1. Dump the top-level xcresult JSON (new format, no --format flag)
-          xcrun xcresulttool get --path TestResults.xcresult > /tmp/xcresult.json 2>&1
+          # 1. Dump the top-level xcresult JSON
+          #    Try new format first (no --format), then legacy
+          xcrun xcresulttool get --path TestResults.xcresult > /tmp/xcresult.json 2>/tmp/xcresult_err.txt
+          if [ $? -ne 0 ] || [ ! -s /tmp/xcresult.json ]; then
+            echo "New-format xcresulttool failed ($(cat /tmp/xcresult_err.txt)), trying legacy..."
+            xcrun xcresulttool get --path TestResults.xcresult --format json --legacy > /tmp/xcresult.json 2>/tmp/xcresult_err.txt || true
+          fi
+
+          if [ ! -s /tmp/xcresult.json ]; then
+            echo "⚠️ Could not extract JSON from xcresult bundle"
+            cat /tmp/xcresult_err.txt 2>/dev/null
+            echo "=== Build log tail ==="
+            tail -30 build.log 2>/dev/null || true
+            exit 0
+          fi
+
+          echo "xcresult JSON extracted ($(wc -c < /tmp/xcresult.json) bytes)"
 
           # 2. Parse JSON to find all attachment reference IDs and their names
           python3 << 'PYEOF'

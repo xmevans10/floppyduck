@@ -80,12 +80,7 @@ final class BotCharacterTests: XCTestCase {
         trigger.position = CGPoint(x: 0, y: 340)
         pipe.addChild(trigger)
 
-        controller.update(
-            dt: 0,
-            pipeNodes: [pipe],
-            activePowerUps: [],
-            effectivePipeGap: GK.pipeGap
-        )
+        controller.update(pipeNodes: [pipe])
 
         XCTAssertTrue(
             controller.isDead,
