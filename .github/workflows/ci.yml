@@ -264,15 +264,35 @@ jobs:
                       for i, (name, rid) in enumerate(refs):
                           fn = fname(name, i)
                           dest = os.path.join(OUT, f"{fn}.png")
-                          _, erc = run(["xcrun", "xcresulttool", "export",
-                                        "--path", RESULT, "--id", rid,
-                                        "--output-path", dest, "--type", "file"],
-                                       timeout=15)
-                          if erc == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0:
+                          ok = False
+                          # Try multiple export command variants
+                          for export_cmd in [
+                              ["xcrun", "xcresulttool", "export",
+                               "--path", RESULT, "--id", rid,
+                               "--output-path", dest],
+                              ["xcrun", "xcresulttool", "export",
+                               "--path", RESULT, "--id", rid,
+                               "--output-path", dest, "--type", "file"],
+                              ["xcrun", "xcresulttool", "export",
+                               "--path", RESULT, "--id", rid,
+                               "--output-path", dest, "--legacy"],
+                              ["xcrun", "xcresulttool", "export",
+                               "--path", RESULT, "--id", rid,
+                               "--output-path", dest, "--type", "file",
+                               "--legacy"],
+                          ]:
+                              _, erc = run(export_cmd, timeout=15)
+                              if erc == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0:
+                                  ok = True
+                                  break
+                              # Clean up failed attempt
+                              if os.path.exists(dest):
+                                  os.remove(dest)
+                          if ok:
                               exported += 1
                               print(f"  ✅ {fn}.png ({os.path.getsize(dest):,}b)")
                           else:
-                              print(f"  ❌ {fn} (ref {rid[:16]})")
+                              print(f"  ❌ {fn} (ref {rid[:24]})")
               except (json.JSONDecodeError, Exception) as e:
                   print(f"  Error: {e}")
 
