@@ -359,6 +359,7 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .opacity(locked ? 0.5 : 1.0)
+        .accessibilityIdentifier("\(title), \(subtitle)")
         .accessibilityLabel(locked ? "\(title), sign in to unlock" : "\(title), \(subtitle)")
     }
 
@@ -430,6 +431,7 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .opacity(locked ? 0.45 : 1.0)
+        .accessibilityIdentifier(label)
         .accessibilityLabel(locked ? "\(label), sign in to unlock" : label)
     }
 

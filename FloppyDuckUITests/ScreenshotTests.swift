@@ -41,7 +41,12 @@ final class ScreenshotTests: XCTestCase {
 
     func testCaptureFullAppFlow() throws {
         // ── Home (required gate — if this fails, nothing else will work) ──
-        let shopButton = app.buttons["SHOP"]
+        // Use accessibilityIdentifier (always "SHOP") instead of the
+        // accessibility *label*, which changes to "SHOP, sign in to unlock"
+        // when the user is a guest — the root cause of the 15-s timeout.
+        let shopButton = app.buttons.matching(
+            NSPredicate(format: "identifier == 'SHOP'")
+        ).firstMatch
         guard shopButton.waitForExistence(timeout: 15) else {
             // Capture whatever is on screen for diagnosis
             capture("FAIL_no_home_screen")
@@ -68,7 +73,9 @@ final class ScreenshotTests: XCTestCase {
 
         // ── Collection ──────────────────────────────────────────────
         tryScreen("04_collection") {
-            let btn = app.buttons["COLLECTION"]
+            let btn = app.buttons.matching(
+                NSPredicate(format: "identifier == 'COLLECTION'")
+            ).firstMatch
             guard btn.waitForExistence(timeout: 5) else { return }
             btn.tap()
             waitForAnimation()
@@ -85,7 +92,9 @@ final class ScreenshotTests: XCTestCase {
 
         // ── Stats + Leaderboard ─────────────────────────────────────
         tryScreen("06_stats") {
-            let btn = app.buttons["STATS"]
+            let btn = app.buttons.matching(
+                NSPredicate(format: "identifier == 'STATS'")
+            ).firstMatch
             guard btn.waitForExistence(timeout: 5) else { return }
             btn.tap()
             waitForAnimation()
@@ -103,7 +112,9 @@ final class ScreenshotTests: XCTestCase {
 
         // ── Settings ────────────────────────────────────────────────
         tryScreen("08_settings") {
-            let btn = app.buttons["SETTINGS"]
+            let btn = app.buttons.matching(
+                NSPredicate(format: "identifier == 'SETTINGS'")
+            ).firstMatch
             guard btn.waitForExistence(timeout: 5) else { return }
             btn.tap()
             waitForAnimation()
@@ -113,7 +124,9 @@ final class ScreenshotTests: XCTestCase {
 
         // ── Gameplay ────────────────────────────────────────────────
         tryScreen("09_gameplay") {
-            let btn = app.buttons["Classic, Solo Run"]
+            let btn = app.buttons.matching(
+                NSPredicate(format: "identifier == 'CLASSIC, Solo Run'")
+            ).firstMatch
             guard btn.waitForExistence(timeout: 5) else { return }
             btn.tap()
             Thread.sleep(forTimeInterval: 1.0)
