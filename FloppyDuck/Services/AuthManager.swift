@@ -77,6 +77,13 @@ final class AuthManager: ObservableObject {
 
         await client.setAuthContext(deviceId: deviceId, sessionToken: token)
 
+        // In UI-test mode, skip all auth/onboarding and go straight to guest.
+        // This avoids the multi-page onboarding flow blocking screenshot tests.
+        if isUITestMode {
+            await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+            return
+        }
+
         if !authV1Enabled {
             await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
             return

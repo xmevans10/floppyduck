@@ -6,7 +6,10 @@ import Sentry
 struct FloppyDuckApp: App {
     @StateObject private var gameManager: GameManager
     @StateObject private var authManager: AuthManager
-    @State private var splashFinished = false
+    /// Skip splash entirely when launched in UI-test mode so screenshots
+    /// don't waste time waiting 4+ seconds for the splash animation.
+    @State private var splashFinished = ProcessInfo.processInfo.arguments.contains("-UITestMode")
+        || ProcessInfo.processInfo.environment["UITEST_MODE"] == "1"
 
     init() {
 

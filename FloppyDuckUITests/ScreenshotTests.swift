@@ -1,15 +1,17 @@
 import XCTest
 
 /// Automated screenshot flow — launches the app, navigates through key screens,
-/// and captures screenshots at each step. Screenshots are saved to
-/// `SCREENSHOT_DIR` (set by CI) or a temp directory.
+/// and captures screenshots at each step.
 ///
-/// Run with:
-///   xcodebuild test -scheme FloppyDuck -target FloppyDuckUITests \
+/// The app skips splash + onboarding when `-UITestMode` is set, so CI lands
+/// directly on the home screen.  Screenshots are saved as XCTAttachments inside
+/// the xcresult bundle and extracted by the CI workflow.
+///
+/// Run locally:
+///   xcodebuild test -scheme FloppyDuck \
+///     -only-testing:FloppyDuckUITests/ScreenshotTests \
 ///     -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
 ///     -resultBundlePath TestResults
-///
-/// Screenshots end up in the xcresult bundle and are extracted by CI.
 final class ScreenshotTests: XCTestCase {
 
     private var app: XCUIApplication!
@@ -29,104 +31,83 @@ final class ScreenshotTests: XCTestCase {
     // MARK: - Full Flow Screenshots
 
     func testCaptureFullAppFlow() throws {
-        // 1. Splash screen — capture immediately on launch
-        //    The splash is ~1.9s, so just wait briefly and capture
-        Thread.sleep(forTimeInterval: 0.5)
-        capture("01_splash")
-
-        // 2. On a clean simulator we may land in auth onboarding before Home.
-        let guestButton = app.buttons["CONTINUE AS GUEST"]
-        if guestButton.waitForExistence(timeout: 5) {
-            capture("02_auth_onboarding")
-            tapCentered(guestButton)
-            waitForAnimation(duration: 0.8)
-        }
-
-        // 3. Wait for splash / onboarding to finish → home screen.
-        //    Button labels are ALL-CAPS in the UI (e.g. "SHOP"), so match exactly.
+        // UITestMode skips splash + onboarding → lands on home screen.
         let shopButton = app.buttons["SHOP"]
-        XCTAssertTrue(shopButton.waitForExistence(timeout: 10), "Home screen did not appear in time")
-        capture("03_home")
+        XCTAssertTrue(shopButton.waitForExistence(timeout: 15),
+                       "Home screen did not appear in time")
+        capture("01_home")
 
-        // 4. Shop — tap shop button
+        // ── Shop ────────────────────────────────────────────────────
         if shopButton.exists {
             shopButton.tap()
             waitForAnimation()
-            capture("04_shop_ducks")
+            capture("02_shop_ducks")
 
-            // Tap BACKGROUNDS tab if visible
             let bgTab = app.buttons["BACKGROUNDS"]
-            if bgTab.waitForExistence(timeout: 2) {
+            if bgTab.waitForExistence(timeout: 3) {
                 bgTab.tap()
                 waitForAnimation()
-                capture("05_shop_backgrounds")
+                capture("03_shop_backgrounds")
             }
-
             goBackToPreviousScreen()
         }
 
-        // 5. Collection (skins + backgrounds closet)
+        // ── Collection ──────────────────────────────────────────────
         let collectionButton = app.buttons["COLLECTION"]
-        if collectionButton.waitForExistence(timeout: 2) {
+        if collectionButton.waitForExistence(timeout: 3) {
             collectionButton.tap()
             waitForAnimation()
-            capture("06_collection_skins")
+            capture("04_collection_skins")
 
-            // Tap BACKGROUNDS tab
             let bgTab = app.buttons["BACKGROUNDS"]
-            if bgTab.waitForExistence(timeout: 2) {
+            if bgTab.waitForExistence(timeout: 3) {
                 bgTab.tap()
                 waitForAnimation()
-                capture("07_collection_backgrounds")
+                capture("05_collection_backgrounds")
             }
-
             goBackToPreviousScreen()
         }
 
-        // 6. Stats
+        // ── Stats ───────────────────────────────────────────────────
         let statsButton = app.buttons["STATS"]
-        if statsButton.waitForExistence(timeout: 2) {
+        if statsButton.waitForExistence(timeout: 3) {
             statsButton.tap()
             waitForAnimation()
-            capture("08_stats")
+            capture("06_stats")
 
             let leaderboardButton = app.buttons["LEADERBOARD"]
-            if leaderboardButton.waitForExistence(timeout: 2) {
+            if leaderboardButton.waitForExistence(timeout: 3) {
                 leaderboardButton.tap()
                 waitForAnimation(duration: 1.0)
-                capture("09_leaderboard")
+                capture("07_leaderboard")
                 goBackToPreviousScreen()
             }
-
             goBackToPreviousScreen()
         }
 
-        // 7. Settings
+        // ── Settings ────────────────────────────────────────────────
         let settingsButton = app.buttons["SETTINGS"]
-        if settingsButton.waitForExistence(timeout: 2) {
+        if settingsButton.waitForExistence(timeout: 3) {
             settingsButton.tap()
             waitForAnimation()
-            capture("10_settings")
-
+            capture("08_settings")
             goBackToPreviousScreen()
         }
 
-        // 8. Start Classic game → gameplay.
-        //    The play-mode button label is "Classic, Solo Run" (from accessibilityLabel).
+        // ── Gameplay ────────────────────────────────────────────────
         let classicButton = app.buttons["Classic, Solo Run"]
-        if classicButton.waitForExistence(timeout: 2) {
+        if classicButton.waitForExistence(timeout: 3) {
             classicButton.tap()
             Thread.sleep(forTimeInterval: 1.0)
-            capture("11_gameplay_ready")
+            capture("09_gameplay_ready")
 
-            // Tap to start playing
             app.tap()
             waitForAnimation()
-            capture("12_gameplay_playing")
+            capture("10_gameplay_playing")
 
-            // Wait for death (don't tap, duck will fall into ground)
+            // Wait for death (duck falls)
             Thread.sleep(forTimeInterval: 4.0)
-            capture("13_game_over")
+            capture("11_game_over")
         }
     }
 
@@ -144,13 +125,11 @@ final class ScreenshotTests: XCTestCase {
         Thread.sleep(forTimeInterval: duration)
     }
 
-    private func tapCentered(_ element: XCUIElement) {
-        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-    }
-
     private func goBackToPreviousScreen() {
-        let backButton = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'back' OR label CONTAINS[c] 'home'")).firstMatch
-        if backButton.waitForExistence(timeout: 2) {
+        let backButton = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'back' OR label CONTAINS[c] 'home'")
+        ).firstMatch
+        if backButton.waitForExistence(timeout: 3) {
             backButton.tap()
             waitForAnimation(duration: 0.3)
         }
