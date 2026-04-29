@@ -103,6 +103,7 @@ jobs:
             --cellularBars 4 --wifiBars 3 2>/dev/null || true
 
       - name: Run Screenshot Tests
+        id: run_tests
         run: |
           set -o pipefail
           xcodebuild test \
@@ -123,60 +124,112 @@ jobs:
           mkdir -p screenshots
 
           echo "=== Checking TestResults.xcresult ==="
-          if [ -d "TestResults.xcresult" ]; then
-            echo "xcresult bundle found"
-            du -sh TestResults.xcresult
-
-            # Method 1: xcresulttool (Xcode 16+)
-            echo "--- Trying xcresulttool export ---"
-            xcrun xcresulttool export \
-              --type file \
-              --path TestResults.xcresult \
-              --output-path screenshots/ 2>&1 || true
-
-            # Method 2: find png/jpg directly inside the bundle
-            echo "--- Searching for images in bundle ---"
-            find TestResults.xcresult -name "*.png" -exec cp {} screenshots/ \; 2>/dev/null || true
-            find TestResults.xcresult -name "*.jpg" -exec cp {} screenshots/ \; 2>/dev/null || true
-
-            # Method 3: Use xcresulttool to get attachment refs and export them
-            echo "--- Trying attachment extraction via xcresulttool ---"
-            xcrun xcresulttool get --path TestResults.xcresult --format json 2>/dev/null | \
-              python3 -c "
-          import json, sys, subprocess, os
-          try:
-              data = json.load(sys.stdin)
-              def find_refs(obj, refs=[]):
-                  if isinstance(obj, dict):
-                      if obj.get('_type', {}).get('_name') == 'Reference':
-                          ref_id = obj.get('id', {}).get('_value', '')
-                          if ref_id:
-                              refs.append(ref_id)
-                      for v in obj.values():
-                          find_refs(v, refs)
-                  elif isinstance(obj, list):
-                      for item in obj:
-                          find_refs(item, refs)
-                  return refs
-              refs = find_refs(data)
-              print(f'Found {len(refs)} refs')
-              for i, ref in enumerate(refs):
-                  try:
-                      subprocess.run([
-                          'xcrun', 'xcresulttool', 'get',
-                          '--path', 'TestResults.xcresult',
-                          '--id', ref,
-                          '--output-path', f'screenshots/attachment_{i}.png'
-                      ], timeout=10, capture_output=True)
-                  except: pass
-          except Exception as e:
-              print(f'Extraction error: {e}')
-          " 2>/dev/null || true
-          else
+          if [ ! -d "TestResults.xcresult" ]; then
             echo "⚠️ No TestResults.xcresult found"
             echo "=== Build log tail ==="
             tail -50 build.log 2>/dev/null || true
+            exit 0
           fi
+
+          echo "xcresult bundle found"
+          du -sh TestResults.xcresult
+
+          # ── Xcode 16+ attachment extraction ──
+          # 1. Dump the top-level xcresult JSON (new format, no --format flag)
+          xcrun xcresulttool get --path TestResults.xcresult > /tmp/xcresult.json 2>&1
+
+          # 2. Parse JSON to find all attachment reference IDs and their names
+          python3 << 'PYEOF'
+          import json, subprocess, sys, os, re
+
+          RESULT_PATH = "TestResults.xcresult"
+          OUT_DIR = "screenshots"
+
+          def load_json(path):
+              try:
+                  with open(path) as f:
+                      return json.load(f)
+              except Exception as e:
+                  print(f"Failed to parse xcresult JSON: {e}")
+                  return None
+
+          def find_attachments(obj, attachments=None, current_name=""):
+              """Recursively walk the xcresult JSON to find test attachment payloads."""
+              if attachments is None:
+                  attachments = []
+              if isinstance(obj, dict):
+                  obj_type = obj.get("_type", {}).get("_name", "")
+
+                  # Capture attachment name for file naming
+                  name = ""
+                  if "name" in obj and isinstance(obj["name"], dict):
+                      name = obj["name"].get("_value", "")
+
+                  # ActionTestAttachment contains the payload reference
+                  if obj_type == "ActionTestAttachment":
+                      payload_ref = (obj.get("payloadRef", {})
+                                        .get("id", {})
+                                        .get("_value", ""))
+                      if payload_ref:
+                          attachments.append({"name": name, "ref": payload_ref})
+
+                  for v in obj.values():
+                      find_attachments(v, attachments, name or current_name)
+
+              elif isinstance(obj, list):
+                  for item in obj:
+                      find_attachments(item, attachments, current_name)
+
+              return attachments
+
+          data = load_json("/tmp/xcresult.json")
+          if not data:
+              # Fallback: try legacy format
+              print("Trying legacy xcresulttool format...")
+              result = subprocess.run(
+                  ["xcrun", "xcresulttool", "get", "--path", RESULT_PATH, "--format", "json", "--legacy"],
+                  capture_output=True, text=True
+              )
+              if result.returncode == 0 and result.stdout.strip():
+                  data = json.loads(result.stdout)
+
+          if not data:
+              print("Could not parse xcresult bundle with any method.")
+              sys.exit(0)
+
+          attachments = find_attachments(data)
+          print(f"Found {len(attachments)} attachments")
+
+          exported = 0
+          for i, att in enumerate(attachments):
+              # Use the attachment name if available, otherwise a numbered fallback
+              safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', att["name"]) if att["name"] else f"attachment_{i}"
+              out_path = os.path.join(OUT_DIR, f"{safe_name}.png")
+
+              result = subprocess.run(
+                  ["xcrun", "xcresulttool", "export", "--type", "file",
+                   "--path", RESULT_PATH, "--id", att["ref"],
+                   "--output-path", out_path],
+                  capture_output=True, text=True, timeout=15
+              )
+
+              if result.returncode != 0:
+                  # Try with --legacy flag
+                  result = subprocess.run(
+                      ["xcrun", "xcresulttool", "export", "object", "--legacy",
+                       "--path", RESULT_PATH, "--id", att["ref"],
+                       "--type", "file", "--output-path", out_path],
+                      capture_output=True, text=True, timeout=15
+                  )
+
+              if result.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                  exported += 1
+                  print(f"  ✅ {safe_name}.png ({os.path.getsize(out_path)} bytes)")
+              else:
+                  print(f"  ❌ {safe_name}: export failed - {result.stderr.strip()}")
+
+          print(f"\n📸 Exported {exported}/{len(attachments)} screenshots")
+          PYEOF
 
           echo ""
           echo "📸 Screenshots captured:"
@@ -202,6 +255,34 @@ jobs:
             build.log
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Post Screenshots to Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "⚠️ SLACK_WEBHOOK_URL secret not set — skipping Slack notification"
+            exit 0
+          fi
+
+          SCREENSHOT_COUNT=$(find screenshots -name '*.png' -o -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ')
+          COMMIT_MSG=$(git log -1 --pretty=format:'%s' | head -c 80)
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ "$SCREENSHOT_COUNT" -gt "0" ]; then
+            STATUS="✅ $SCREENSHOT_COUNT screenshots captured"
+          else
+            STATUS="⚠️ No screenshots captured — check CI logs"
+          fi
+
+          # Post summary to Slack
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"text\": \"📸 *Screenshot CI* — \`${COMMIT_SHA}\` ${COMMIT_MSG}\n${STATUS}\n<${RUN_URL}|View Run> · <${RUN_URL}#artifacts|Download Screenshots>\"
+            }" || echo "Slack notification failed"
 
       - name: Post Screenshot Summary
         if: always() && github.event_name == 'pull_request'
