@@ -11,40 +11,38 @@ struct FloppyDuckApp: App {
     @State private var splashFinished: Bool
 
     init() {
-        // Set splash state first — use the canonical _State(initialValue:) so
-        // SwiftUI registers the value before the first render pass.
         let isUITest = ProcessInfo.processInfo.arguments.contains("-UITestMode")
             || ProcessInfo.processInfo.environment["UITEST_MODE"] == "1"
         _splashFinished = State(initialValue: isUITest)
 
-        // Verbose Sentry logs flood os_log on the main thread — only opt in
-        // when the SENTRY_VERBOSE env var is set (e.g. in the scheme), not for
-        // every debug run. Debug logging itself can cause slow frames during
-        // gameplay.
-        let sentryVerbose = ProcessInfo.processInfo.environment["SENTRY_VERBOSE"] != nil
+        // In UI-test mode, skip ALL third-party SDK init (Sentry, PostHog,
+        // SoundManager) to avoid network calls and main-thread blocking in CI.
+        if !isUITest {
+            let sentryVerbose = ProcessInfo.processInfo.environment["SENTRY_VERBOSE"] != nil
 
-        SentrySDK.start { options in
-            options.dsn = "https://e7671e36f866d70b8620cf0d6ba9d847@o4510732962037760.ingest.us.sentry.io/4511135319719936"
-            options.enableAutoSessionTracking = true
+            SentrySDK.start { options in
+                options.dsn = "https://e7671e36f866d70b8620cf0d6ba9d847@o4510732962037760.ingest.us.sentry.io/4511135319719936"
+                options.enableAutoSessionTracking = true
 
-            #if DEBUG
-            options.environment = "development"
-            options.debug = sentryVerbose
-            options.tracesSampleRate = 0.2
-            options.attachScreenshot = false
-            options.enableUserInteractionTracing = false
-            #else
-            options.environment = "production"
-            options.debug = false
-            options.tracesSampleRate = 0.1
-            options.attachScreenshot = true
-            options.enableUserInteractionTracing = true
-            #endif
+                #if DEBUG
+                options.environment = "development"
+                options.debug = sentryVerbose
+                options.tracesSampleRate = 0.2
+                options.attachScreenshot = false
+                options.enableUserInteractionTracing = false
+                #else
+                options.environment = "production"
+                options.debug = false
+                options.tracesSampleRate = 0.1
+                options.attachScreenshot = true
+                options.enableUserInteractionTracing = true
+                #endif
+            }
+
+            AnalyticsManager.configure()
+            AnalyticsManager.shared.trackAppOpen()
+            SoundManager.shared.prepare()
         }
-
-        AnalyticsManager.configure()
-        AnalyticsManager.shared.trackAppOpen()
-        SoundManager.shared.prepare()
 
         let manager = GameManager()
         let auth = AuthManager(gameManager: manager)
@@ -74,8 +72,6 @@ struct FloppyDuckApp: App {
             }
             .animation(.easeOut(duration: 0.2), value: splashFinished)
             .onAppear {
-                // PERF: Prevent auto-lock during gameplay — keeps the screen on
-                // and avoids the system transitioning to background mid-session.
                 UIApplication.shared.isIdleTimerDisabled = true
             }
         }
