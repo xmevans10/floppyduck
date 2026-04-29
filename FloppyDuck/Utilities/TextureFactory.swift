@@ -136,6 +136,14 @@ final class TextureFactory {
         }
     }
 
+    // MARK: - Bundled Asset Loading
+
+    /// Attempts to load a pre-made pixel art image from the asset catalog.
+    /// Returns nil if the named image doesn't exist, allowing fallback to procedural rendering.
+    private func loadBundledImage(_ name: String) -> UIImage? {
+        return UIImage(named: name)
+    }
+
     // MARK: - Public API
 
     /// Pixel-art mallard duck (wing up, mid, down)
@@ -1413,7 +1421,7 @@ final class TextureFactory {
         case .underwater:                   return renderCoralReefHills()
         case .volcano:                      return renderVolcanoHills()
         case .arctic:                       return renderArcticHills()
-        case .western:                      return renderWesternMesaHills()
+        case .western:                      return loadBundledImage("western_hills") ?? renderWesternMesaHills()
         case .jungle:                       return renderJungleCanopyHills()
         case .egypt:                        return renderEgyptPyramidHills()
         case .cave:                         return renderCaveFormationHills()
@@ -3420,7 +3428,7 @@ final class TextureFactory {
         case .underwater:                   return renderKelpForest()
         case .volcano:                      return renderCharredTrees()
         case .arctic:                       return renderSnowyPines()
-        case .western:                      return renderWesternCactiMidground()
+        case .western:                      return loadBundledImage("western_midground") ?? renderWesternCactiMidground()
         case .jungle:                       return renderJungleTropicalTrees()
         case .egypt:                        return renderEgyptPalmObelisks()
         case .cave:                         return renderCaveCrystalPillars()
@@ -4266,7 +4274,7 @@ final class TextureFactory {
         case .underwater:                   return renderBubbleFishStrip()
         case .volcano:                      return renderLavaPoolStrip()
         case .arctic:                       return renderIceCrystalStrip()
-        case .western:                      return renderWesternScrubStrip()
+        case .western:                      return loadBundledImage("western_bush") ?? renderWesternScrubStrip()
         case .jungle:                       return renderJungleFernStrip()
         case .egypt:                        return renderEgyptDesertStrip()
         case .cave:                         return renderCaveMossStrip()
@@ -6456,7 +6464,7 @@ final class TextureFactory {
         case .underwater:   return renderUnderwaterGround()
         case .volcano:      return renderVolcanoGround()
         case .arctic:       return renderArcticGround()
-        case .western:      return renderWesternGround()
+        case .western:      return loadBundledImage("western_ground") ?? renderWesternGround()
         case .jungle:       return renderJungleGround()
         case .egypt:        return renderEgyptGround()
         case .cave:         return renderCaveGround()
@@ -7459,7 +7467,9 @@ final class TextureFactory {
         case .underwater:  return renderUnderwaterGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .volcano:     return renderVolcanoGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .arctic:      return renderArcticGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
-        case .western:     return renderWesternGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
+        case .western:
+            if let img = loadBundledImage("western_ground_detail_\(seed)") { return img }
+            return renderWesternGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .jungle:      return renderJungleGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .egypt:       return renderEgyptGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
         case .cave:        return renderCaveGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed)
