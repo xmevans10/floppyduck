@@ -134,187 +134,183 @@ jobs:
 
           echo "xcresult bundle found ($(du -sh TestResults.xcresult | cut -f1))"
 
-          # Extraction script — tries multiple strategies with full error logging.
+          # Extraction script — Xcode 16+ format 3.53 (zstd-compressed xcresult).
           python3 << 'PYEOF'
           import json, subprocess, os, re, sys, shutil
 
-          RESULT_PATH = "TestResults.xcresult"
-          OUT_DIR      = "screenshots"
-          CMD_TIMEOUT  = 30
-          EXPORT_TIMEOUT = 15
+          RESULT = "TestResults.xcresult"
+          OUT    = "screenshots"
+          T      = 30   # command timeout
 
-          def run(cmd, timeout=CMD_TIMEOUT):
-              """Run a command; return (stdout, stderr, returncode)."""
+          def run(cmd, timeout=T):
               try:
                   r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
                   if r.returncode != 0 and r.stderr.strip():
                       print(f"  stderr: {r.stderr.strip()[:200]}")
-                  return r.stdout, r.stderr, r.returncode
+                  return r.stdout, r.returncode
               except subprocess.TimeoutExpired:
-                  print(f"  ⏱️  Timed out after {timeout}s: {' '.join(cmd[:5])}...")
-                  return "", "", -1
+                  print(f"  ⏱️  timeout: {' '.join(cmd[:5])}")
+                  return "", -1
               except Exception as e:
                   print(f"  💥 {e}")
-                  return "", "", -1
+                  return "", -1
 
-          def safe_name(name, i):
+          def fname(name, i):
               return re.sub(r'[^a-zA-Z0-9_\-]', '_', name) if name else f"att_{i}"
 
-          # Show xcresulttool version for debugging
-          out, _, _ = run(["xcrun", "xcresulttool", "version"])
-          print(f"xcresulttool version: {out.strip()}")
+          out, _ = run(["xcrun", "xcresulttool", "version"])
+          print(f"xcresulttool: {out.strip()}")
 
-          # ── Strategy 1: Xcode 16+ test-results tests JSON ─────────
-          # Parse the test-results JSON for attachment references, then
-          # export each one by its UUID/ref.
-          print("\n━━━ Strategy 1: test-results tests + export ━━━")
-          out, err, rc = run(["xcrun", "xcresulttool", "get", "test-results",
-                              "tests", "--path", RESULT_PATH])
           exported = 0
+
+          # ── Strategy 1: legacy 2-step drill-down ───────────────────
+          # Top-level JSON → find testsRef → fetch test details → attachments
+          print("\n━━━ Strategy 1: legacy 2-step (top → testsRef → attachments) ━━━")
+          out, rc = run(["xcrun", "xcresulttool", "get", "--path", RESULT,
+                         "--format", "json", "--legacy"])
           if rc == 0 and out.strip():
               try:
-                  data = json.loads(out)
-                  # Walk test nodes looking for attachments with payloadRef
-                  refs = []
-                  def walk(obj):
-                      if isinstance(obj, dict):
-                          # Xcode 16 test-results format: attachments have
-                          # "payloadRef" with "id" inside
-                          name = obj.get("name", "")
-                          ref = obj.get("payloadRef", {})
-                          rid = ref.get("id", "") if isinstance(ref, dict) else ""
-                          if rid:
-                              refs.append((name, rid))
-                          for v in obj.values():
-                              walk(v)
-                      elif isinstance(obj, list):
-                          for item in obj:
-                              walk(item)
-                  walk(data)
-                  print(f"  Found {len(refs)} attachment refs")
-                  for i, (name, rid) in enumerate(refs):
-                      fname = safe_name(name, i)
-                      dest = os.path.join(OUT_DIR, f"{fname}.png")
-                      _, _, erc = run(["xcrun", "xcresulttool", "export",
-                                       "--path", RESULT_PATH, "--id", rid,
-                                       "--output-path", dest, "--type", "file"],
-                                      timeout=EXPORT_TIMEOUT)
-                      if erc == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0:
-                          exported += 1
-                          print(f"  ✅ {fname}.png ({os.path.getsize(dest):,} bytes)")
-                      else:
-                          print(f"  ❌ {fname} (ref {rid[:12]}): export failed")
-              except json.JSONDecodeError as e:
-                  print(f"  JSON parse error: {e}")
-                  print(f"  First 300 chars: {out[:300]}")
-          else:
-              print(f"  Command failed (rc={rc})")
-              if err.strip():
-                  print(f"  {err.strip()[:300]}")
+                  top = json.loads(out)
+                  # Drill: actions[*].actionResult.testsRef.id._value
+                  actions = top.get("actions", {}).get("_values", [])
+                  print(f"  Found {len(actions)} action(s)")
+                  for ai, action in enumerate(actions):
+                      tests_ref = (action.get("actionResult", {})
+                                         .get("testsRef", {})
+                                         .get("id", {})
+                                         .get("_value", ""))
+                      if not tests_ref:
+                          print(f"  Action {ai}: no testsRef")
+                          continue
+                      print(f"  Action {ai}: testsRef={tests_ref[:20]}...")
+
+                      # Fetch the tests detail object
+                      detail_out, drc = run(["xcrun", "xcresulttool", "get",
+                                             "--path", RESULT, "--id", tests_ref,
+                                             "--format", "json", "--legacy"])
+                      if drc != 0 or not detail_out.strip():
+                          print(f"  Could not fetch testsRef detail")
+                          continue
+
+                      detail = json.loads(detail_out)
+
+                      # Recursively find all payloadRef in the detail tree
+                      refs = []
+                      def walk(obj, depth=0):
+                          if depth > 50:
+                              return
+                          if isinstance(obj, dict):
+                              nm = obj.get("name", {})
+                              nm = nm.get("_value", "") if isinstance(nm, dict) else str(nm)
+                              pr = obj.get("payloadRef", {})
+                              if isinstance(pr, dict):
+                                  rid = pr.get("id", {})
+                                  rid = rid.get("_value", "") if isinstance(rid, dict) else str(rid)
+                                  if rid:
+                                      refs.append((nm, rid))
+                              for v in obj.values():
+                                  walk(v, depth+1)
+                          elif isinstance(obj, list):
+                              for item in obj:
+                                  walk(item, depth+1)
+                      walk(detail)
+                      print(f"  Found {len(refs)} payloadRef(s) in test detail")
+
+                      for i, (name, rid) in enumerate(refs):
+                          fn = fname(name, i)
+                          dest = os.path.join(OUT, f"{fn}.png")
+                          _, erc = run(["xcrun", "xcresulttool", "export",
+                                        "--path", RESULT, "--id", rid,
+                                        "--output-path", dest, "--type", "file"],
+                                       timeout=15)
+                          if erc == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0:
+                              exported += 1
+                              print(f"  ✅ {fn}.png ({os.path.getsize(dest):,}b)")
+                          else:
+                              print(f"  ❌ {fn} (ref {rid[:16]})")
+              except (json.JSONDecodeError, Exception) as e:
+                  print(f"  Error: {e}")
 
           if exported > 0:
               print(f"\n📸 Strategy 1: {exported} screenshots exported")
               sys.exit(0)
 
-          # ── Strategy 2: legacy JSON format ─────────────────────────
-          print("\n━━━ Strategy 2: legacy JSON ━━━")
-          out, err, rc = run(["xcrun", "xcresulttool", "get", "--path",
-                              RESULT_PATH, "--format", "json", "--legacy"])
+          # ── Strategy 2: Xcode 16+ test-results attachments ─────────
+          print("\n━━━ Strategy 2: test-results attachments ━━━")
+          out, rc = run(["xcrun", "xcresulttool", "get", "test-results",
+                         "attachments", "--path", RESULT])
           if rc == 0 and out.strip():
               try:
                   data = json.loads(out)
+                  print(f"  JSON type: {type(data).__name__}, keys: {list(data.keys())[:5] if isinstance(data, dict) else 'N/A'}")
+                  # Walk for any id/ref/path references
                   refs = []
-                  def walk_legacy(obj):
+                  def walk2(obj):
                       if isinstance(obj, dict):
-                          name_obj = obj.get("name", obj.get("filename", ""))
-                          name = name_obj.get("_value", "") if isinstance(name_obj, dict) else str(name_obj)
-                          for rk in ("payloadRef", "payload"):
-                              ref_obj = obj.get(rk, {})
-                              if isinstance(ref_obj, dict):
-                                  rid_obj = ref_obj.get("id", "")
-                                  rid = rid_obj.get("_value", "") if isinstance(rid_obj, dict) else str(rid_obj)
-                                  if rid:
-                                      refs.append((name, rid))
-                                      return
+                          nm = obj.get("name", obj.get("filename", ""))
+                          for k in ("payloadRef", "payload", "id", "path"):
+                              v = obj.get(k)
+                              if isinstance(v, dict) and "id" in v:
+                                  refs.append((str(nm), v["id"]))
+                              elif isinstance(v, str) and len(v) > 10:
+                                  refs.append((str(nm), v))
                           for v in obj.values():
-                              walk_legacy(v)
+                              walk2(v)
                       elif isinstance(obj, list):
                           for item in obj:
-                              walk_legacy(item)
-                  walk_legacy(data)
-                  print(f"  Found {len(refs)} attachment refs")
-                  if not refs:
-                      # Debug: show structure
-                      top = list(data.keys())[:8] if isinstance(data, dict) else f"type={type(data).__name__}"
-                      print(f"  Top-level: {top}")
-                  for i, (name, rid) in enumerate(refs):
-                      fname = safe_name(name, i)
-                      dest = os.path.join(OUT_DIR, f"{fname}.png")
-                      for export_cmd in [
-                          ["xcrun", "xcresulttool", "export", "--path",
-                           RESULT_PATH, "--id", rid, "--output-path", dest,
-                           "--type", "file"],
-                          ["xcrun", "xcresulttool", "export", "--path",
-                           RESULT_PATH, "--id", rid, "--output-path", dest,
-                           "--type", "file", "--legacy"],
-                      ]:
-                          _, _, erc = run(export_cmd, timeout=EXPORT_TIMEOUT)
-                          if erc == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0:
-                              exported += 1
-                              print(f"  ✅ {fname}.png ({os.path.getsize(dest):,} bytes)")
-                              break
-                      else:
-                          print(f"  ❌ {fname}: export failed")
-              except json.JSONDecodeError as e:
-                  print(f"  JSON parse error: {e}")
+                              walk2(item)
+                  walk2(data)
+                  print(f"  Found {len(refs)} refs")
+              except Exception as e:
+                  print(f"  Error: {e}")
           else:
-              print(f"  Command failed (rc={rc})")
+              print(f"  rc={rc}, output={'empty' if not out.strip() else f'{len(out)} chars'}")
 
-          if exported > 0:
-              print(f"\n📸 Strategy 2: {exported} screenshots exported")
-              sys.exit(0)
-
-          # ── Strategy 3: brute-force binary search ──────────────────
-          print("\n━━━ Strategy 3: brute-force file search in xcresult bundle ━━━")
-          # List all files in xcresult for debugging
-          all_files = []
-          for root, dirs, files in os.walk(RESULT_PATH):
-              for f in files:
-                  fp = os.path.join(root, f)
-                  sz = os.path.getsize(fp) if os.path.exists(fp) else 0
-                  all_files.append((fp, sz))
-          all_files.sort(key=lambda x: -x[1])
-          print(f"  Total files in bundle: {len(all_files)}")
-          for fp, sz in all_files[:10]:
-              rel = fp.replace(RESULT_PATH + "/", "")
-              # Read magic bytes
+          # ── Strategy 3: zstd decompress + PNG search ───────────────
+          print("\n━━━ Strategy 3: zstd decompress + PNG search ━━━")
+          try:
+              import zstandard
+              HAS_ZSTD = True
+          except ImportError:
+              # Try to install
+              subprocess.run([sys.executable, "-m", "pip", "install", "zstandard", "-q"],
+                           capture_output=True)
               try:
-                  with open(fp, "rb") as fh:
-                      magic = fh.read(8)
-                  print(f"  {rel} ({sz:,}b) magic={magic[:4].hex()}")
-              except Exception:
-                  print(f"  {rel} ({sz:,}b)")
+                  import zstandard
+                  HAS_ZSTD = True
+              except ImportError:
+                  HAS_ZSTD = False
 
-          found = []
-          for fp, sz in all_files:
-              try:
-                  with open(fp, "rb") as fh:
-                      header = fh.read(8)
-                  if header[:4] == b'\x89PNG' or header[:3] == b'\xff\xd8\xff':
-                      found.append(fp)
-              except Exception:
-                  pass
-
-          print(f"  Image files found: {len(found)}")
-          for i, fp in enumerate(found):
-              dest = os.path.join(OUT_DIR, f"raw_{i:02d}.png")
-              shutil.copy2(fp, dest)
-              print(f"  ✅ raw_{i:02d}.png ({os.path.getsize(dest):,} bytes)")
-              exported += 1
+          if HAS_ZSTD:
+              dctx = zstandard.ZstdDecompressor()
+              found = 0
+              for root, dirs, files in os.walk(RESULT):
+                  for f in files:
+                      fp = os.path.join(root, f)
+                      try:
+                          with open(fp, "rb") as fh:
+                              magic = fh.read(4)
+                          if magic != b'\x28\xb5\x2f\xfd':
+                              continue
+                          with open(fp, "rb") as fh:
+                              raw = dctx.decompress(fh.read(), max_output_size=50*1024*1024)
+                          if raw[:4] == b'\x89PNG' or raw[:3] == b'\xff\xd8\xff':
+                              dest = os.path.join(OUT, f"zstd_{found:02d}.png")
+                              with open(dest, "wb") as out_f:
+                                  out_f.write(raw)
+                              exported += 1
+                              found += 1
+                              print(f"  ✅ zstd_{found-1:02d}.png ({len(raw):,}b)")
+                      except Exception:
+                          pass
+              print(f"  Found {found} images in zstd-compressed files")
+          else:
+              print("  zstandard not available — skipping")
 
           if exported == 0:
               print("\n⚠️  All strategies found 0 screenshots.")
-              print("    Check build.log and test-results artifact for details.")
+          else:
+              print(f"\n📸 Total: {exported} screenshots exported")
           PYEOF
 
           echo ""
