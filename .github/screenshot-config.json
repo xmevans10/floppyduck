@@ -1,0 +1,68 @@
+{
+  "_comment": "Maps file-path glob patterns to the screenshot groups they affect. CI uses this to run only relevant screenshot tests on each push.",
+  "screens": {
+    "splash":      ["01_splash"],
+    "auth":        ["02_auth_onboarding"],
+    "home":        ["03_home"],
+    "shop":        ["04_shop_ducks", "05_shop_backgrounds"],
+    "collection":  ["06_collection_skins", "07_collection_backgrounds"],
+    "stats":       ["08_stats"],
+    "leaderboard": ["09_leaderboard"],
+    "settings":    ["10_settings"],
+    "gameplay":    ["11_gameplay_ready", "12_gameplay_playing", "13_game_over"]
+  },
+  "rules": [
+    { "pattern": "Views/SplashView.swift",            "screens": ["splash"] },
+    { "pattern": "Views/AuthOnboardingView.swift",     "screens": ["auth"] },
+    { "pattern": "Views/HomeView.swift",               "screens": ["home"] },
+    { "pattern": "Views/ShopView.swift",               "screens": ["shop"] },
+    { "pattern": "Views/CollectionView.swift",         "screens": ["collection"] },
+    { "pattern": "Views/StatsView.swift",              "screens": ["stats"] },
+    { "pattern": "Views/LeaderboardView.swift",        "screens": ["leaderboard"] },
+    { "pattern": "Views/SettingsView.swift",           "screens": ["settings"] },
+    { "pattern": "Views/GameContainerView.swift",      "screens": ["gameplay"] },
+    { "pattern": "Views/AchievementsView.swift",       "screens": ["stats"] },
+    { "pattern": "Views/BotLadderView.swift",          "screens": ["gameplay"] },
+    { "pattern": "Views/MatchmakingView.swift",        "screens": ["gameplay"] },
+    { "pattern": "Views/ThemePreviewView.swift",       "screens": ["shop", "collection"] },
+    { "pattern": "Views/PixelTextField.swift",         "screens": ["auth", "settings"] },
+    { "pattern": "Views/Components/*",                 "screens": ["gameplay"] },
+
+    { "pattern": "Game/*",                             "screens": ["gameplay"] },
+
+    { "pattern": "Models/SkinManager.swift",           "screens": ["home", "shop", "collection"] },
+    { "pattern": "Models/ThemeManager.swift",          "screens": ["shop", "collection"] },
+    { "pattern": "Models/BannerManager.swift",         "screens": ["shop", "collection"] },
+    { "pattern": "Models/PipeSkinManager.swift",       "screens": ["shop", "collection"] },
+    { "pattern": "Models/DuckSkin.swift",              "screens": ["home", "shop", "collection", "gameplay"] },
+    { "pattern": "Models/BackgroundTheme.swift",       "screens": ["shop", "collection", "gameplay"] },
+    { "pattern": "Models/PipeSkin.swift",              "screens": ["shop", "collection", "gameplay"] },
+    { "pattern": "Models/BattleBanner.swift",          "screens": ["shop", "collection"] },
+    { "pattern": "Models/BotCharacter.swift",          "screens": ["gameplay"] },
+    { "pattern": "Models/Achievement.swift",           "screens": ["stats"] },
+    { "pattern": "Models/GameManager.swift",           "screens": ["_all"] },
+    { "pattern": "Models/GameModels.swift",            "screens": ["_all"] },
+
+    { "pattern": "Services/AuthManager.swift",         "screens": ["auth", "home", "settings"] },
+    { "pattern": "Services/ConvexClient.swift",        "screens": ["leaderboard", "stats"] },
+    { "pattern": "Services/IdentityStore.swift",       "screens": ["auth"] },
+    { "pattern": "Services/AppleSignInCoordinator.swift", "screens": ["auth"] },
+    { "pattern": "Services/AnalyticsManager.swift",    "screens": [] },
+
+    { "pattern": "Utilities/PixelIconFactory.swift",   "screens": ["_all"] },
+    { "pattern": "Utilities/PixelIconView.swift",      "screens": ["_all"] },
+    { "pattern": "Utilities/PixelButtonBackground.swift", "screens": ["_all"] },
+    { "pattern": "Utilities/TextureFactory.swift",     "screens": ["gameplay"] },
+    { "pattern": "Utilities/SoundManager.swift",       "screens": [] },
+    { "pattern": "Utilities/HapticManager.swift",      "screens": [] },
+    { "pattern": "Utilities/PRNG.swift",               "screens": ["gameplay"] },
+
+    { "pattern": "App/*",                              "screens": ["_all"] },
+    { "pattern": "Assets.xcassets/*",                   "screens": ["_all"] },
+    { "pattern": "Info.plist",                          "screens": ["_all"] },
+
+    { "pattern": ".github/workflows/ci.yml",           "screens": ["_all"] },
+    { "pattern": ".github/screenshot-config.json",     "screens": ["_all"] },
+    { "pattern": "FloppyDuckUITests/ScreenshotTests.swift", "screens": ["_all"] }
+  ]
+}

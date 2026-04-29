@@ -77,8 +77,84 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history needed for diff
+
+      - name: Determine affected screens
+        id: screens
+        run: |
+          set +e
+
+          # ── Collect changed files ──
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null)
+          else
+            # push: diff against parent commit
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null)
+          fi
+
+          if [ -z "$CHANGED" ]; then
+            echo "Could not determine changed files — running ALL screenshots"
+            echo "screens=" >> "$GITHUB_OUTPUT"
+            echo "label=all screens (diff unavailable)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "=== Changed files ==="
+          echo "$CHANGED"
+
+          # ── Map changed files → screen groups via screenshot-config.json ──
+          SCREENS=$(python3 << 'PYEOF'
+          import json, fnmatch, sys
+
+          with open(".github/screenshot-config.json") as f:
+              config = json.load(f)
+
+          changed_files = """$CHANGED""".strip().splitlines()
+          hit_screens = set()
+
+          for filepath in changed_files:
+              filepath = filepath.strip()
+              if not filepath:
+                  continue
+              matched = False
+              for rule in config["rules"]:
+                  # Match against the pattern (anchored to end of path)
+                  pattern = rule["pattern"]
+                  if fnmatch.fnmatch(filepath, f"*/{pattern}") or \
+                     fnmatch.fnmatch(filepath, pattern) or \
+                     fnmatch.fnmatch(filepath, f"*{pattern}"):
+                      for s in rule["screens"]:
+                          hit_screens.add(s)
+                      matched = True
+                      break  # first match wins for this file
+              if not matched:
+                  # Unknown file changed — safe fallback: run everything
+                  print("_all")
+                  sys.exit(0)
+
+          if "_all" in hit_screens:
+              print("_all")
+          else:
+              print(",".join(sorted(hit_screens)) if hit_screens else "_none")
+          PYEOF
+          )
+
+          echo "Resolved screens: $SCREENS"
+
+          if [ "$SCREENS" = "_all" ]; then
+            echo "screens=" >> "$GITHUB_OUTPUT"
+            echo "label=all screens" >> "$GITHUB_OUTPUT"
+          elif [ "$SCREENS" = "_none" ]; then
+            echo "screens=_none" >> "$GITHUB_OUTPUT"
+            echo "label=none (no visual changes)" >> "$GITHUB_OUTPUT"
+          else
+            echo "screens=$SCREENS" >> "$GITHUB_OUTPUT"
+            echo "label=$SCREENS" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Select Xcode & find simulator
+        if: steps.screens.outputs.screens != '_none'
         id: xcode
         run: |
           XCODE_PATH=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
@@ -95,6 +171,7 @@ jobs:
           echo "iOS Simulator version: $IOS_VERSION"
 
       - name: Boot Simulator
+        if: steps.screens.outputs.screens != '_none'
         run: |
           xcrun simctl boot "iPhone 16 Pro" 2>/dev/null || true
           sleep 5
@@ -103,8 +180,12 @@ jobs:
             --cellularBars 4 --wifiBars 3 2>/dev/null || true
 
       - name: Run Screenshot Tests
+        if: steps.screens.outputs.screens != '_none'
         id: run_tests
+        env:
+          SCREENSHOT_SCREENS: ${{ steps.screens.outputs.screens }}
         run: |
+          echo "📸 Screen filter: ${SCREENSHOT_SCREENS:-all}"
           set -o pipefail
           xcodebuild test \
             -project FloppyDuck.xcodeproj \
@@ -120,42 +201,30 @@ jobs:
         continue-on-error: true
 
       - name: Extract Screenshots
-        if: always()
+        if: always() && steps.screens.outputs.screens != '_none'
         run: |
-          set +e  # Don't fail on individual command errors
+          set +e
           mkdir -p screenshots
 
-          echo "=== Checking TestResults.xcresult ==="
           if [ ! -d "TestResults.xcresult" ]; then
             echo "⚠️ No TestResults.xcresult found"
-            echo "=== Build log tail ==="
             tail -50 build.log 2>/dev/null || true
             exit 0
           fi
 
-          echo "xcresult bundle found"
-          du -sh TestResults.xcresult
+          echo "xcresult bundle found ($(du -sh TestResults.xcresult | cut -f1))"
 
-          # ── Xcode 16+ attachment extraction ──
-          # 1. Dump the top-level xcresult JSON
-          #    Try new format first (no --format), then legacy
+          # ── Extract using Xcode 16 xcresulttool ──
+          # Dump the xcresult JSON (new format for Xcode 16+)
           xcrun xcresulttool get --path TestResults.xcresult > /tmp/xcresult.json 2>/tmp/xcresult_err.txt
-          if [ $? -ne 0 ] || [ ! -s /tmp/xcresult.json ]; then
-            echo "New-format xcresulttool failed ($(cat /tmp/xcresult_err.txt)), trying legacy..."
-            xcrun xcresulttool get --path TestResults.xcresult --format json --legacy > /tmp/xcresult.json 2>/tmp/xcresult_err.txt || true
-          fi
 
           if [ ! -s /tmp/xcresult.json ]; then
-            echo "⚠️ Could not extract JSON from xcresult bundle"
-            cat /tmp/xcresult_err.txt 2>/dev/null
-            echo "=== Build log tail ==="
-            tail -30 build.log 2>/dev/null || true
+            echo "xcresulttool get failed: $(cat /tmp/xcresult_err.txt)"
             exit 0
           fi
 
           echo "xcresult JSON extracted ($(wc -c < /tmp/xcresult.json) bytes)"
 
-          # 2. Parse JSON to find all attachment reference IDs and their names
           python3 << 'PYEOF'
           import json, subprocess, sys, os, re
 
@@ -163,26 +232,49 @@ jobs:
           OUT_DIR = "screenshots"
 
           def load_json(path):
-              try:
-                  with open(path) as f:
-                      return json.load(f)
-              except Exception as e:
-                  print(f"Failed to parse xcresult JSON: {e}")
-                  return None
+              with open(path) as f:
+                  return json.load(f)
 
-          def find_attachments(obj, attachments=None, current_name=""):
-              """Recursively walk the xcresult JSON to find test attachment payloads."""
+          def find_attachments_xcode16(obj, attachments=None):
+              """Walk the Xcode 16+ xcresult JSON (flat keys, no _type wrappers)."""
+              if attachments is None:
+                  attachments = []
+              if isinstance(obj, dict):
+                  # Xcode 16 format: attachments have "name" (string) and
+                  # "payloadRef" with "id" (string) directly — no _value wrappers
+                  has_payload = "payloadRef" in obj
+                  att_name = obj.get("name", "")
+                  # Handle both wrapped and unwrapped name
+                  if isinstance(att_name, dict):
+                      att_name = att_name.get("_value", att_name.get("value", ""))
+
+                  if has_payload:
+                      ref = obj["payloadRef"]
+                      ref_id = ref.get("id", "")
+                      # Unwrap if nested
+                      if isinstance(ref_id, dict):
+                          ref_id = ref_id.get("_value", ref_id.get("value", ""))
+                      if ref_id:
+                          attachments.append({"name": att_name, "ref": ref_id})
+
+                  for v in obj.values():
+                      find_attachments_xcode16(v, attachments)
+
+              elif isinstance(obj, list):
+                  for item in obj:
+                      find_attachments_xcode16(item, attachments)
+              return attachments
+
+          def find_attachments_legacy(obj, attachments=None):
+              """Walk the legacy xcresult JSON (_type/_name/_value wrappers)."""
               if attachments is None:
                   attachments = []
               if isinstance(obj, dict):
                   obj_type = obj.get("_type", {}).get("_name", "")
-
-                  # Capture attachment name for file naming
                   name = ""
                   if "name" in obj and isinstance(obj["name"], dict):
                       name = obj["name"].get("_value", "")
 
-                  # ActionTestAttachment contains the payload reference
                   if obj_type == "ActionTestAttachment":
                       payload_ref = (obj.get("payloadRef", {})
                                         .get("id", {})
@@ -191,38 +283,56 @@ jobs:
                           attachments.append({"name": name, "ref": payload_ref})
 
                   for v in obj.values():
-                      find_attachments(v, attachments, name or current_name)
-
+                      find_attachments_legacy(v, attachments)
               elif isinstance(obj, list):
                   for item in obj:
-                      find_attachments(item, attachments, current_name)
-
+                      find_attachments_legacy(item, attachments)
               return attachments
 
+          # Load and parse
           data = load_json("/tmp/xcresult.json")
-          if not data:
-              # Fallback: try legacy format
-              print("Trying legacy xcresulttool format...")
+
+          # Detect format: legacy has "_type" at root, new format doesn't
+          is_legacy = isinstance(data, dict) and "_type" in data
+          print(f"Detected format: {'legacy' if is_legacy else 'Xcode 16+'}")
+
+          if is_legacy:
+              attachments = find_attachments_legacy(data)
+          else:
+              attachments = find_attachments_xcode16(data)
+
+          # If primary parser found nothing, try the other one as fallback
+          if not attachments:
+              print("Primary parser found 0 attachments — trying fallback parser...")
+              if is_legacy:
+                  attachments = find_attachments_xcode16(data)
+              else:
+                  attachments = find_attachments_legacy(data)
+
+          # Last resort: try legacy --format flag
+          if not attachments:
+              print("Both parsers found 0 — trying legacy xcresulttool format...")
               result = subprocess.run(
                   ["xcrun", "xcresulttool", "get", "--path", RESULT_PATH, "--format", "json", "--legacy"],
                   capture_output=True, text=True
               )
               if result.returncode == 0 and result.stdout.strip():
-                  data = json.loads(result.stdout)
+                  try:
+                      legacy_data = json.loads(result.stdout)
+                      attachments = find_attachments_legacy(legacy_data)
+                      if not attachments:
+                          attachments = find_attachments_xcode16(legacy_data)
+                  except json.JSONDecodeError:
+                      print("Legacy format returned invalid JSON")
 
-          if not data:
-              print("Could not parse xcresult bundle with any method.")
-              sys.exit(0)
-
-          attachments = find_attachments(data)
           print(f"Found {len(attachments)} attachments")
 
           exported = 0
           for i, att in enumerate(attachments):
-              # Use the attachment name if available, otherwise a numbered fallback
               safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', att["name"]) if att["name"] else f"attachment_{i}"
               out_path = os.path.join(OUT_DIR, f"{safe_name}.png")
 
+              # Try standard export
               result = subprocess.run(
                   ["xcrun", "xcresulttool", "export", "--type", "file",
                    "--path", RESULT_PATH, "--id", att["ref"],
@@ -230,8 +340,8 @@ jobs:
                   capture_output=True, text=True, timeout=15
               )
 
+              # Fallback: legacy export syntax
               if result.returncode != 0:
-                  # Try with --legacy flag
                   result = subprocess.run(
                       ["xcrun", "xcresulttool", "export", "object", "--legacy",
                        "--path", RESULT_PATH, "--id", att["ref"],
@@ -243,7 +353,7 @@ jobs:
                   exported += 1
                   print(f"  ✅ {safe_name}.png ({os.path.getsize(out_path)} bytes)")
               else:
-                  print(f"  ❌ {safe_name}: export failed - {result.stderr.strip()}")
+                  print(f"  ❌ {safe_name}: {result.stderr.strip()}")
 
           print(f"\n📸 Exported {exported}/{len(attachments)} screenshots")
           PYEOF
@@ -254,7 +364,7 @@ jobs:
           echo "Total image files: $(find screenshots -name '*.png' -o -name '*.jpg' 2>/dev/null | wc -l)"
 
       - name: Upload Screenshots
-        if: always()
+        if: always() && steps.screens.outputs.screens != '_none'
         uses: actions/upload-artifact@v4
         with:
           name: app-screenshots
@@ -263,7 +373,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Full Test Results
-        if: always()
+        if: always() && steps.screens.outputs.screens != '_none'
         uses: actions/upload-artifact@v4
         with:
           name: test-results
@@ -283,22 +393,26 @@ jobs:
             exit 0
           fi
 
-          SCREENSHOT_COUNT=$(find screenshots -name '*.png' -o -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ')
+          SCREEN_LABEL="${{ steps.screens.outputs.label }}"
           COMMIT_MSG=$(git log -1 --pretty=format:'%s' | head -c 80)
           COMMIT_SHA=$(git rev-parse --short HEAD)
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          if [ "$SCREENSHOT_COUNT" -gt "0" ]; then
-            STATUS="✅ $SCREENSHOT_COUNT screenshots captured"
+          if [ "${{ steps.screens.outputs.screens }}" = "_none" ]; then
+            STATUS="⏭️ No visual changes — screenshots skipped"
           else
-            STATUS="⚠️ No screenshots captured — check CI logs"
+            SCREENSHOT_COUNT=$(find screenshots -name '*.png' -o -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$SCREENSHOT_COUNT" -gt "0" ]; then
+              STATUS="✅ $SCREENSHOT_COUNT screenshots captured ($SCREEN_LABEL)"
+            else
+              STATUS="⚠️ No screenshots captured — check CI logs"
+            fi
           fi
 
-          # Post summary to Slack
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "{
-              \"text\": \"📸 *Screenshot CI* — \`${COMMIT_SHA}\` ${COMMIT_MSG}\n${STATUS}\n<${RUN_URL}|View Run> · <${RUN_URL}#artifacts|Download Screenshots>\"
+              \"text\": \":camera_with_flash: *Screenshot CI* — \`${COMMIT_SHA}\` ${COMMIT_MSG}\n${STATUS}\n<${RUN_URL}|View Run> · <${RUN_URL}#artifacts|Download Screenshots>\"
             }" || echo "Slack notification failed"
 
       - name: Post Screenshot Summary
@@ -309,26 +423,32 @@ jobs:
           script: |
             const fs = require('fs');
             const screenshotDir = 'screenshots';
+            const screenLabel = '${{ steps.screens.outputs.label }}';
 
             let body = '## 📸 Screenshot Test Results\n\n';
+            body += `**Scope:** ${screenLabel}\n\n`;
 
-            try {
-              const files = fs.readdirSync(screenshotDir)
-                .filter(f => f.endsWith('.png') || f.endsWith('.jpg'))
-                .sort();
+            if ('${{ steps.screens.outputs.screens }}' === '_none') {
+              body += '⏭️ No visual changes detected — screenshot tests were skipped.\n';
+            } else {
+              try {
+                const files = fs.readdirSync(screenshotDir)
+                  .filter(f => f.endsWith('.png') || f.endsWith('.jpg'))
+                  .sort();
 
-              if (files.length > 0) {
-                body += `✅ **${files.length} screenshots captured** — download the \`app-screenshots\` artifact to review.\n\n`;
-                body += '| Screenshot | File |\n|---|---|\n';
-                files.forEach(f => {
-                  const name = f.replace(/\.(png|jpg)$/, '').replace(/_/g, ' ');
-                  body += `| ${name} | \`${f}\` |\n`;
-                });
-              } else {
-                body += '⚠️ No screenshots were captured. Check the test logs and `test-results` artifact.\n';
+                if (files.length > 0) {
+                  body += `✅ **${files.length} screenshots captured** — download the \`app-screenshots\` artifact to review.\n\n`;
+                  body += '| Screenshot | File |\n|---|---|\n';
+                  files.forEach(f => {
+                    const name = f.replace(/\.(png|jpg)$/, '').replace(/_/g, ' ');
+                    body += `| ${name} | \`${f}\` |\n`;
+                  });
+                } else {
+                  body += '⚠️ No screenshots were captured. Check the test logs and `test-results` artifact.\n';
+                }
+              } catch (e) {
+                body += '⚠️ Could not read screenshots directory.\n';
               }
-            } catch (e) {
-              body += '⚠️ Could not read screenshots directory.\n';
             }
 
             await github.rest.issues.createComment({
