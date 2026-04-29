@@ -155,6 +155,14 @@ jobs:
                   print(f"  💥 {e}")
                   return "", -1
 
+          def run_quiet(cmd, timeout=T):
+              """Like run() but suppresses stderr (for expected fallback failures)."""
+              try:
+                  r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+                  return r.stdout, r.returncode
+              except Exception:
+                  return "", -1
+
           def fname(name, i):
               return re.sub(r'[^a-zA-Z0-9_\-]', '_', name) if name else f"att_{i}"
 
@@ -193,25 +201,6 @@ jobs:
                           continue
 
                       detail = json.loads(detail_out)
-
-                      # Debug: show structure of test detail
-                      def show_structure(obj, prefix="", depth=0):
-                          if depth > 3:
-                              return
-                          if isinstance(obj, dict):
-                              for k in list(obj.keys())[:8]:
-                                  v = obj[k]
-                                  if isinstance(v, dict):
-                                      print(f"  {prefix}{k}: dict({list(v.keys())[:5]})")
-                                      show_structure(v, prefix + "  ", depth+1)
-                                  elif isinstance(v, list):
-                                      print(f"  {prefix}{k}: list[{len(v)}]")
-                                      if v:
-                                          show_structure(v[0], prefix + "  ", depth+1)
-                                  else:
-                                      sv = str(v)[:50]
-                                      print(f"  {prefix}{k}: {sv}")
-                      show_structure(detail)
 
                       # Collect ALL ref-like IDs (summaryRef, payloadRef, etc.)
                       all_refs = []
@@ -265,27 +254,20 @@ jobs:
                           fn = fname(name, i)
                           dest = os.path.join(OUT, f"{fn}.png")
                           ok = False
-                          # Try multiple export command variants
+                          # Try export variants — --legacy first (works for format 3.53)
                           for export_cmd in [
-                              ["xcrun", "xcresulttool", "export",
-                               "--path", RESULT, "--id", rid,
-                               "--output-path", dest],
-                              ["xcrun", "xcresulttool", "export",
-                               "--path", RESULT, "--id", rid,
-                               "--output-path", dest, "--type", "file"],
-                              ["xcrun", "xcresulttool", "export",
-                               "--path", RESULT, "--id", rid,
-                               "--output-path", dest, "--legacy"],
                               ["xcrun", "xcresulttool", "export",
                                "--path", RESULT, "--id", rid,
                                "--output-path", dest, "--type", "file",
                                "--legacy"],
+                              ["xcrun", "xcresulttool", "export",
+                               "--path", RESULT, "--id", rid,
+                               "--output-path", dest, "--type", "file"],
                           ]:
-                              _, erc = run(export_cmd, timeout=15)
+                              _, erc = run_quiet(export_cmd, timeout=15)
                               if erc == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0:
                                   ok = True
                                   break
-                              # Clean up failed attempt
                               if os.path.exists(dest):
                                   os.remove(dest)
                           if ok:
