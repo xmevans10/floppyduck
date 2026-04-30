@@ -1,10 +1,18 @@
 import SpriteKit
 import SwiftUI
 
-// MARK: - ParallaxManager
+// MARK: - ParallaxManager (9-Layer System)
 
-/// Owns all background/foreground parallax layers: sky gradient, clouds, hills,
-/// trees, ground tiles, ground-detail decorations, and stars.
+/// Owns all parallax layers: sky gradient + 9 themed sprite layers.
+///
+/// Layer architecture (back → front):
+///   bg1, bg2, bg3      — background (furthest, slowest)
+///   mid1, mid2, mid3   — midground
+///   fg1, fg2, fg3      — foreground (closest, fastest)
+///
+/// bg1–fg1 are full above-ground panels (200×155 pixel art → 800×620 game).
+/// fg2 is the ground surface tile (200×20 → 800×80).
+/// fg3 is the ground overlay (200×25 → 800×100).
 ///
 /// Usage:
 ///   1. Create in `didMove(to:)`:
@@ -18,45 +26,45 @@ import SwiftUI
 ///   2. Call `parallax.update(dt:)` every frame from the game's `update(_:)`.
 final class ParallaxManager {
 
-    // MARK: - Layers (unowned – the scene's worldNode keeps them alive)
+    // MARK: - Layer Definition
+
+    /// Describes one parallax layer's rendering parameters.
+    private struct LayerDef {
+        let suffix: String      // asset catalog suffix, e.g. "background1"
+        let speed: CGFloat      // scroll speed (pts/sec)
+        let zPosition: CGFloat  // depth ordering
+        let tileCount: Int      // number of tiles for seamless wrap
+        let height: CGFloat     // display height in game points
+        let yPosition: CGFloat  // bottom edge Y in game coordinates
+        let isGround: Bool      // true = always scrolls (gameplay-relevant)
+    }
+
+    // MARK: - Properties
 
     private let backgroundLayer: SKNode
     private let groundLayer: SKNode
     private let foregroundLayer: SKNode
-
-    // MARK: - Theme / Textures
-
     private let theme: BackgroundTheme
-    private let factory: TextureFactory
 
-    // MARK: - Parallax Sprites
+    /// All 9 layer tile arrays, keyed by suffix for O(1) lookup.
+    private var layerTiles: [String: [SKSpriteNode]] = [:]
 
-    private var clouds: [SKSpriteNode] = []
-    private var hills: [SKSpriteNode] = []
-    private var trees: [SKSpriteNode] = []
-    private var bushes: [SKSpriteNode] = []
+    /// Layer definitions (computed once at setup).
+    private var layerDefs: [LayerDef] = []
 
-    // MARK: - Ground Scrolling
+    /// Cached accessibility state (avoid per-frame system queries).
+    private var reduceMotionEnabled: Bool = false
 
-    private var groundTiles: [SKSpriteNode] = []
+    // MARK: - Tile widths
+
+    /// Above-ground layers tile at 2× world width for seamless wrap.
+    private let aboveGroundTileWidth: CGFloat = GK.worldWidth * 2
+
+    /// Ground layers tile at 2× world width for seamless wrap.
     private let groundTileWidth: CGFloat = GK.worldWidth * 2
-
-    // MARK: - Ground Detail (grass blades, pebbles)
-
-    private var groundDetailTiles: [SKNode] = []
-
-    // MARK: - Stars (night / space themes) — single batched sprite
-
-    private var starSprite: SKSpriteNode?
 
     // MARK: - Init
 
-    /// - Parameters:
-    ///   - backgroundLayer: Node for far-distance elements (sky, clouds, hills, trees, stars).
-    ///   - groundLayer: Node for ground tiles.
-    ///   - foregroundLayer: Node for decorative ground details (grass blades, pebbles).
-    ///   - theme: The active `BackgroundTheme` for palette/tinting.
-    ///   - factory: Texture factory instance (defaults to `.shared`).
     init(backgroundLayer: SKNode,
          groundLayer: SKNode,
          foregroundLayer: SKNode,
@@ -66,67 +74,122 @@ final class ParallaxManager {
         self.groundLayer = groundLayer
         self.foregroundLayer = foregroundLayer
         self.theme = theme
-        self.factory = factory
     }
 
     // MARK: - Public API
 
-    /// Call once during `didMove(to:)` after layers are added to the scene.
     func setup() {
-        // Cache accessibility state once to avoid per-frame system queries
         reduceMotionEnabled = UIAccessibility.isReduceMotionEnabled
 
-        setupBackground()
-        if theme.showClouds {
-            setupClouds()
-        }
-        setupHills()
-        setupTrees()
-        setupBushes()
-        setupGroundTiles()
-        setupGroundDetails()
+        // Sky gradient (procedural — always present)
+        setupSkyGradient()
 
-        if theme.showStars {
-            setupStars()
+        // Define the 9 layers
+        let groundH = GK.groundHeight  // 80
+
+        layerDefs = [
+            // Background layers — full above-ground panels
+            LayerDef(suffix: "background1", speed: GK.bg1Speed, zPosition: -80,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "background2", speed: GK.bg2Speed, zPosition: -70,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "background3", speed: GK.bg3Speed, zPosition: -60,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+
+            // Midground layers — full above-ground panels
+            LayerDef(suffix: "midground1", speed: GK.mid1Speed, zPosition: -50,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "midground2", speed: GK.mid2Speed, zPosition: -40,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "midground3", speed: GK.mid3Speed, zPosition: -30,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+
+            // Foreground 1 — full above-ground panel (closest scenery)
+            LayerDef(suffix: "foreground1", speed: GK.fg1Speed, zPosition: -20,
+                     tileCount: 3, height: 620, yPosition: groundH, isGround: false),
+
+            // Foreground 2 — ground surface
+            LayerDef(suffix: "foreground2", speed: GK.fg2Speed, zPosition: 50,
+                     tileCount: 3, height: GK.groundHeight, yPosition: 0, isGround: true),
+
+            // Foreground 3 — ground overlay / detail
+            LayerDef(suffix: "foreground3", speed: GK.fg3Speed, zPosition: 55,
+                     tileCount: 3, height: GK.groundHeight + 20, yPosition: 0, isGround: true),
+        ]
+
+        // Create sprite tiles for each layer
+        for def in layerDefs {
+            let assetName = "\(theme.rawValue)_\(def.suffix)"
+            guard let image = UIImage(named: assetName) else {
+                print("⚠️ ParallaxManager: missing asset \(assetName)")
+                continue
+            }
+            let tex = SKTexture(image: image)
+            tex.filteringMode = .nearest
+
+            let tileWidth = def.isGround ? groundTileWidth : aboveGroundTileWidth
+            var tiles: [SKSpriteNode] = []
+
+            for i in 0..<def.tileCount {
+                let sprite = SKSpriteNode(texture: tex,
+                                           size: CGSize(width: tileWidth, height: def.height))
+                sprite.anchorPoint = CGPoint(x: 0, y: 0)
+                sprite.position = CGPoint(x: CGFloat(i) * tileWidth, y: def.yPosition)
+                sprite.zPosition = def.zPosition
+
+                // Ground surface is fully opaque — skip alpha blending for GPU savings
+                if def.suffix == "foreground2" {
+                    sprite.blendMode = .replace
+                }
+
+                // Choose appropriate parent layer
+                let parentNode: SKNode
+                if def.isGround {
+                    parentNode = def.suffix == "foreground3" ? foregroundLayer : groundLayer
+                } else {
+                    parentNode = backgroundLayer
+                }
+                parentNode.addChild(sprite)
+                tiles.append(sprite)
+            }
+
+            layerTiles[def.suffix] = tiles
         }
     }
-
-    // MARK: - Cached Accessibility State
-
-    /// Cached at setup() time to avoid querying UIAccessibility every frame.
-    private var reduceMotionEnabled: Bool = false
 
     /// Drive all scrolling. Call every frame from `update(_:)` while the game is playing.
     ///
     /// When Reduce Motion is enabled (Settings → Accessibility → Motion), decorative
-    /// parallax layers (clouds, hills, trees) stop scrolling. Ground tiles and details
-    /// always scroll because they provide gameplay-relevant motion cues.
+    /// parallax layers (bg1–fg1) stop scrolling. Ground layers (fg2, fg3) always scroll
+    /// because they provide gameplay-relevant motion cues.
     func update(dt: TimeInterval) {
         let dtF = CGFloat(dt)
 
-        // Ground is gameplay-relevant — always scrolls
-        scrollGroundTiles(dtF)
-        scrollGroundDetails(dtF)
+        for def in layerDefs {
+            // Ground layers always scroll; decorative layers respect Reduce Motion
+            guard def.isGround || !reduceMotionEnabled else { continue }
+            guard let tiles = layerTiles[def.suffix] else { continue }
 
-        // Decorative layers respect Reduce Motion preference (cached at setup)
-        if !reduceMotionEnabled {
-            if !clouds.isEmpty { scrollClouds(dtF) }
-            scrollHills(dtF)
-            scrollTrees(dtF)
-            scrollBushes(dtF)
+            let tileWidth = def.isGround ? groundTileWidth : aboveGroundTileWidth
+            let totalWidth = tileWidth * CGFloat(tiles.count)
+
+            for tile in tiles {
+                tile.position.x -= def.speed * dtF
+                if tile.position.x <= -tileWidth {
+                    tile.position.x += totalWidth
+                }
+            }
         }
     }
 
-    // MARK: - Sky Gradient
+    // MARK: - Sky Gradient (procedural)
 
-    private func setupBackground() {
+    private func setupSkyGradient() {
         let skyNode = SKSpriteNode(color: .clear,
                                     size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         skyNode.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight / 2)
         skyNode.zPosition = -100
-
         skyNode.texture = createSkyGradientTexture()
-        // PERF: Sky is fully opaque — skip alpha blending to save GPU fill-rate.
         skyNode.blendMode = .replace
         backgroundLayer.addChild(skyNode)
     }
@@ -140,283 +203,13 @@ final class ParallaxManager {
             guard let gradient = CGGradient(colorsSpace: space, colors: colors, locations: nil) else { return }
             ctx.cgContext.drawLinearGradient(
                 gradient,
-                start: CGPoint(x: 0, y: size.height),   // top
-                end:   CGPoint(x: 0, y: 0),              // bottom
+                start: CGPoint(x: 0, y: size.height),
+                end:   CGPoint(x: 0, y: 0),
                 options: []
             )
         }
         let tex = SKTexture(image: image)
         tex.filteringMode = .linear
         return tex
-    }
-
-    // MARK: - Clouds
-
-    private func setupClouds() {
-        let cloudTex = factory.cloudTexture()
-        let tint = theme.cloudTint
-        for _ in 0..<5 {
-            let scale = CGFloat.random(in: 0.6...1.2)
-            let cloud = SKSpriteNode(texture: cloudTex,
-                                      size: CGSize(width: 80 * scale, height: 35 * scale))
-            cloud.position = CGPoint(
-                x: CGFloat.random(in: 0...GK.worldWidth),
-                y: CGFloat.random(in: (GK.worldHeight * 0.55)...(GK.worldHeight - 40))
-            )
-            cloud.color = tint
-            cloud.colorBlendFactor = 0.6
-            cloud.alpha = CGFloat.random(in: 0.5...0.8)
-            cloud.zPosition = -90
-            backgroundLayer.addChild(cloud)
-            clouds.append(cloud)
-        }
-    }
-
-    // MARK: - Hills
-
-    private func setupHills() {
-        let hillTex = factory.themedHillsTexture(theme: theme)
-        hillTex.filteringMode = .nearest
-        let hillHeight = hillDisplayHeight
-        let hillY = hillBaseY
-        for i in 0..<2 {
-            let hillNode = SKSpriteNode(texture: hillTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: hillHeight))
-            hillNode.anchorPoint = CGPoint(x: 0, y: 0)
-            hillNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: hillY)
-            hillNode.zPosition = -60
-            backgroundLayer.addChild(hillNode)
-            hills.append(hillNode)
-        }
-    }
-
-    // MARK: - Trees
-
-    private func setupTrees() {
-        let treeTex = factory.themedTreesTexture(theme: theme)
-        // Nearest-neighbor filtering keeps pixel art crisp when texture (160px)
-        // is displayed at 300px (1.875× upscale).
-        treeTex.filteringMode = .nearest
-        let treeHeight = treeDisplayHeight
-        let treeY = treeBaseY
-        for i in 0..<2 {
-            let treeNode = SKSpriteNode(texture: treeTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: treeHeight))
-            treeNode.anchorPoint = CGPoint(x: 0, y: 0)
-            treeNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: treeY)
-            treeNode.zPosition = -50
-            backgroundLayer.addChild(treeNode)
-            trees.append(treeNode)
-        }
-    }
-
-    // MARK: - Bushes / Foreground Strip
-    //
-    // Themed bush/fern/debris strip rendered by TextureFactory.  Sits between
-    // the tree layer and the ground, scrolling at bush speed to add an extra
-    // layer of parallax depth.
-
-    private func setupBushes() {
-        let bushTex = factory.themedBushTexture(theme: theme)
-        // Nearest-neighbor filtering keeps pixel art crisp when texture (36px)
-        // is displayed at 60px (1.67× upscale).
-        bushTex.filteringMode = .nearest
-        let bushHeight = bushDisplayHeight
-        let bushY = bushBaseY
-        for i in 0..<2 {
-            let bushNode = SKSpriteNode(texture: bushTex,
-                                         size: CGSize(width: GK.worldWidth * 2, height: bushHeight))
-            bushNode.anchorPoint = CGPoint(x: 0, y: 0)
-            bushNode.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 2, y: bushY)
-            bushNode.zPosition = -40
-            backgroundLayer.addChild(bushNode)
-            bushes.append(bushNode)
-        }
-    }
-
-    private var hillDisplayHeight: CGFloat {
-        switch theme {
-        case .cave:
-            return 420
-        default:
-            return 300
-        }
-    }
-
-    private var hillBaseY: CGFloat {
-        switch theme {
-        case .cave:
-            return GK.worldHeight - hillDisplayHeight
-        default:
-            return GK.groundHeight + 10
-        }
-    }
-
-    private var treeDisplayHeight: CGFloat {
-        switch theme {
-        case .cave:
-            return 360
-        default:
-            return 300
-        }
-    }
-
-    private var treeBaseY: CGFloat {
-        switch theme {
-        case .cave:
-            return GK.groundHeight + 22
-        default:
-            return GK.groundHeight - 5
-        }
-    }
-
-    private var bushDisplayHeight: CGFloat {
-        switch theme {
-        case .cave:
-            return 72
-        default:
-            return 60
-        }
-    }
-
-    private var bushBaseY: CGFloat {
-        switch theme {
-        case .cave:
-            return GK.groundHeight - 6
-        default:
-            return GK.groundHeight - 2
-        }
-    }
-
-    // MARK: - Ground Tiles (visual only — physics stays in GameScene)
-
-    private func setupGroundTiles() {
-        let groundTex = factory.themedGroundTexture(theme: theme)
-        let tilesNeeded = 3
-        for i in 0..<tilesNeeded {
-            let tile = SKSpriteNode(texture: groundTex,
-                                     size: CGSize(width: groundTileWidth, height: GK.groundHeight))
-            tile.anchorPoint = CGPoint(x: 0, y: 0)
-            tile.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
-            tile.zPosition = 50
-            // PERF: Ground tiles are fully opaque — skip alpha blending.
-            tile.blendMode = .replace
-            groundLayer.addChild(tile)
-            groundTiles.append(tile)
-        }
-    }
-
-    // MARK: - Ground Details (grass blades & pebbles)
-    //
-    // PERF: Replaced 66 individual SKShapeNodes (42 grass + 24 pebbles) with 3
-    //       pre-rendered SKSpriteNodes.  Each tile's grass and pebbles are baked
-    //       into a single texture via TextureFactory.groundDetailTexture().
-    //       Eliminates 66 CPU-rendered draw calls and 42 sway SKActions per frame.
-
-    private func setupGroundDetails() {
-        let factory = TextureFactory.shared
-        for i in 0..<3 {
-            let tex = factory.themedGroundDetailTexture(
-                theme: theme,
-                tileWidth: groundTileWidth,
-                groundHeight: GK.groundHeight,
-                seed: i * 1337  // deterministic, visually distinct per tile
-            )
-            let sprite = SKSpriteNode(texture: tex)
-            sprite.anchorPoint = CGPoint(x: 0, y: 0)
-            sprite.position = CGPoint(x: CGFloat(i) * groundTileWidth, y: 0)
-            sprite.zPosition = 55
-            foregroundLayer.addChild(sprite)
-            groundDetailTiles.append(sprite)
-        }
-    }
-
-    // MARK: - Stars (night / space themes)
-    //
-    // PERF: Replaced 40 individual SKShapeNodes (each with its own twinkle
-    //       SKAction) with a single pre-rendered SKSpriteNode.  A single subtle
-    //       twinkle action on the whole sprite keeps the visual effect while
-    //       eliminating 40 draw calls and 40 action evaluations per frame.
-
-    private func setupStars() {
-        let factory = TextureFactory.shared
-        let starH = GK.worldHeight * 0.6  // stars cover top 60%
-        let tex = factory.starFieldTexture(
-            width: GK.worldWidth,
-            height: starH,
-            count: 40,
-            seed: 42
-        )
-        let sprite = SKSpriteNode(texture: tex)
-        sprite.anchorPoint = CGPoint(x: 0, y: 0)
-        sprite.position = CGPoint(x: 0, y: GK.worldHeight * 0.4)
-        sprite.zPosition = -95
-
-        // Single gentle twinkle on the whole star field (replaces 40 individual actions)
-        let twinkle = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.65, duration: 2.0),
-            SKAction.fadeAlpha(to: 1.0, duration: 2.0),
-        ])
-        sprite.run(SKAction.repeatForever(twinkle))
-
-        backgroundLayer.addChild(sprite)
-        starSprite = sprite
-    }
-
-    // MARK: - Scroll Updates (private)
-
-    private func scrollGroundTiles(_ dt: CGFloat) {
-        for tile in groundTiles {
-            tile.position.x -= GK.groundSpeed * dt
-            if tile.position.x <= -groundTileWidth {
-                tile.position.x += groundTileWidth * CGFloat(groundTiles.count)
-            }
-        }
-    }
-
-    private func scrollGroundDetails(_ dt: CGFloat) {
-        for tile in groundDetailTiles {
-            tile.position.x -= GK.groundSpeed * dt
-            if tile.position.x <= -groundTileWidth {
-                tile.position.x += groundTileWidth * CGFloat(groundDetailTiles.count)
-            }
-        }
-    }
-
-    private func scrollClouds(_ dt: CGFloat) {
-        for cloud in clouds {
-            cloud.position.x -= GK.cloudSpeed * dt
-            if cloud.position.x < -80 {
-                cloud.position.x = GK.worldWidth + 80
-                cloud.position.y = CGFloat.random(in: (GK.worldHeight * 0.55)...(GK.worldHeight - 40))
-            }
-        }
-    }
-
-    private func scrollHills(_ dt: CGFloat) {
-        for hill in hills {
-            hill.position.x -= GK.hillSpeed * dt
-            if hill.position.x < -(GK.worldWidth * 2) {
-                hill.position.x += GK.worldWidth * 4
-            }
-        }
-    }
-
-    private func scrollTrees(_ dt: CGFloat) {
-        for tree in trees {
-            tree.position.x -= GK.treeSpeed * dt
-            if tree.position.x < -(GK.worldWidth * 2) {
-                tree.position.x += GK.worldWidth * 4
-            }
-        }
-    }
-
-    private func scrollBushes(_ dt: CGFloat) {
-        for bush in bushes {
-            bush.position.x -= GK.bushSpeed * dt
-            if bush.position.x < -(GK.worldWidth * 2) {
-                bush.position.x += GK.worldWidth * 4
-            }
-        }
     }
 }

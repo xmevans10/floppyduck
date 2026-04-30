@@ -76,28 +76,19 @@ final class TextureFactory {
             _ = cloudTexture()
             _ = breadTexture()
 
-            // Theme textures are now pre-generated PNGs loaded from the asset catalog.
+            // Theme textures: 9 pre-generated PNG layers per theme from asset catalog.
             // UIImage(named:) uses memory-mapped files — fast and cache-friendly.
-            // We still warm them into SKTexture cache to avoid first-frame hitches.
+            // Warm into SKTexture cache to avoid first-frame hitches.
+            let layerSuffixes = [
+                "background1", "background2", "background3",
+                "midground1", "midground2", "midground3",
+                "foreground1", "foreground2", "foreground3"
+            ]
             for theme in BackgroundTheme.allCases {
-                _ = self.themedHillsTexture(theme: theme)
-                _ = self.themedTreesTexture(theme: theme)
-                _ = self.themedBushTexture(theme: theme)
-                _ = self.themedGroundTexture(theme: theme)
-                for seed in [0, 1337, 2674] {
-                    _ = self.themedGroundDetailTexture(
-                        theme: theme,
-                        tileWidth: GK.worldWidth * 2,
-                        groundHeight: GK.groundHeight,
-                        seed: seed
-                    )
+                for suffix in layerSuffixes {
+                    _ = self.themedLayerTexture(theme: theme, layer: suffix)
                 }
             }
-
-            // Star field (still procedural — cheap and data-driven)
-            _ = self.starFieldTexture(width: GK.worldWidth,
-                                       height: GK.worldHeight * 0.6,
-                                       count: 40, seed: 42)
 
             DispatchQueue.main.async {
                 self.isPreWarmed = true
@@ -194,15 +185,7 @@ final class TextureFactory {
         return tex
     }
 
-    /// Theme-aware scrolling ground tile. Each theme gets a unique ground surface.
-    func themedGroundTexture(theme: BackgroundTheme) -> SKTexture {
-        let key = "ground_\(theme.rawValue)"
-        if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderThemedGround(theme: theme))
-        tex.filteringMode = .nearest
-        cacheStore(key, tex)
-        return tex
-    }
+    // (themedGroundTexture removed — ground is now foreground2 in 9-layer system)
 
     /// Sky gradient background
     func skyTexture() -> SKTexture {
@@ -264,40 +247,7 @@ final class TextureFactory {
         return renderPipeCap(skin: skin)
     }
 
-    // MARK: - Performance Textures (batched replacements for SKShapeNodes)
-
-    /// Pre-rendered ground detail tile (grass blades + pebbles) — replaces 22
-    /// individual SKShapeNodes per tile with a single SKSpriteNode.
-    func groundDetailTexture(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int = 0) -> SKTexture {
-        let key = "groundDetail_\(Int(tileWidth))_\(seed)"
-        if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderGroundDetail(tileWidth: tileWidth, groundHeight: groundHeight, seed: seed))
-        tex.filteringMode = .nearest
-        cacheStore(key, tex)
-        return tex
-    }
-
-    /// Theme-aware ground detail tile — each theme gets unique surface decorations
-    /// instead of the generic grass blades + pebbles.
-    func themedGroundDetailTexture(theme: BackgroundTheme, tileWidth: CGFloat, groundHeight: CGFloat, seed: Int = 0) -> SKTexture {
-        let key = "groundDetail_\(theme.rawValue)_\(Int(tileWidth))_\(seed)"
-        if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderThemedGroundDetail(theme: theme, tileWidth: tileWidth, groundHeight: groundHeight, seed: seed))
-        tex.filteringMode = .nearest
-        cacheStore(key, tex)
-        return tex
-    }
-
-    /// Pre-rendered star field — replaces 40 individual SKShapeNodes with a
-    /// single SKSpriteNode.
-    func starFieldTexture(width: CGFloat, height: CGFloat, count: Int = 40, seed: Int = 42) -> SKTexture {
-        let key = "starField_\(Int(width))_\(Int(height))_\(count)"
-        if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderStarField(width: width, height: height, count: count, seed: seed))
-        tex.filteringMode = .nearest
-        cacheStore(key, tex)
-        return tex
-    }
+    // MARK: - Performance Textures
 
     /// Pre-rendered glow circle — replaces SKShapeNode glow rings on power-ups
     /// and shields.  Returns a soft radial glow texture.
@@ -309,71 +259,6 @@ final class TextureFactory {
         tex.filteringMode = .linear
         cacheStore(key, tex)
         return tex
-    }
-
-    // MARK: - Ground Detail Rendering
-
-    private func renderGroundDetail(tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
-        // Deterministic PRNG for consistent tiles
-        srand48(seed)
-        let h: CGFloat = groundHeight + 20  // extra room for grass tips above groundHeight
-        let size = CGSize(width: tileWidth, height: h)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { ctx in
-            let c = ctx.cgContext
-            // Grass blades — 14 per tile
-            for _ in 0..<14 {
-                let x = CGFloat(drand48()) * tileWidth
-                let bladeH = CGFloat(drand48()) * 8 + 6  // 6…14
-                let halfW: CGFloat = 1.5
-                let baseY = h - groundHeight  // ground top, in image coords top-down → this is the Y where grass starts
-
-                // Grass color
-                let r = 0.25 + CGFloat(drand48()) * 0.20
-                let g = 0.55 + CGFloat(drand48()) * 0.20
-                let b = 0.10 + CGFloat(drand48()) * 0.12
-                c.setFillColor(UIColor(red: r, green: g, blue: b, alpha: 1).cgColor)
-
-                // Triangle blade (rendered upward from ground top)
-                let path = CGMutablePath()
-                path.move(to: CGPoint(x: x - halfW, y: baseY))
-                path.addLine(to: CGPoint(x: x, y: baseY - bladeH))
-                path.addLine(to: CGPoint(x: x + halfW, y: baseY))
-                path.closeSubpath()
-                c.addPath(path)
-                c.fillPath()
-            }
-
-            // Pebbles — 8 per tile
-            for _ in 0..<8 {
-                let x = CGFloat(drand48()) * tileWidth
-                let radius = CGFloat(drand48()) * 2.0 + 1.5  // 1.5…3.5
-                let gray = CGFloat(drand48()) * 0.20 + 0.45
-                c.setFillColor(UIColor(red: gray, green: gray - 0.05, blue: gray - 0.10, alpha: 0.8).cgColor)
-                let pebbleY = h - groundHeight + 2  // just below ground line
-                c.fillEllipse(in: CGRect(x: x - radius, y: pebbleY - radius, width: radius * 2, height: radius * 2))
-            }
-        }
-    }
-
-    // MARK: - Star Field Rendering
-
-    private func renderStarField(width: CGFloat, height: CGFloat, count: Int, seed: Int) -> UIImage {
-        srand48(seed)
-        let size = CGSize(width: width, height: height)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { ctx in
-            let c = ctx.cgContext
-            for _ in 0..<count {
-                let x = CGFloat(drand48()) * width
-                let y = CGFloat(drand48()) * height
-                let radius = CGFloat(drand48()) * 1.5 + 1.0  // 1…2.5
-                let alpha = CGFloat(drand48()) * 0.6 + 0.3   // 0.3…0.9
-                c.setFillColor(UIColor.white.withAlphaComponent(alpha).cgColor)
-                c.fillEllipse(in: CGRect(x: x - radius, y: y - radius,
-                                          width: radius * 2, height: radius * 2))
-            }
-        }
     }
 
     // MARK: - Glow Circle Rendering
@@ -434,34 +319,17 @@ final class TextureFactory {
         return renderPixelHills()
     }
 
-    // MARK: - Themed Parallax Textures
+    // MARK: - Themed Parallax Textures (9-Layer System)
 
-    /// Theme-aware hills texture. Free themes reuse the classic park hills
-    /// with palette shifts; paid themes get unique silhouettes.
-    func themedHillsTexture(theme: BackgroundTheme) -> SKTexture {
-        let key = "hills_\(theme.rawValue)"
+    /// Load any themed layer texture from the asset catalog.
+    /// Layer suffixes: background1–3, midground1–3, foreground1–3.
+    func themedLayerTexture(theme: BackgroundTheme, layer: String) -> SKTexture {
+        let key = "\(theme.rawValue)_\(layer)"
         if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderThemedHills(theme: theme))
-        tex.filteringMode = .nearest
-        cacheStore(key, tex)
-        return tex
-    }
-
-    /// Theme-aware trees / midground texture.
-    func themedTreesTexture(theme: BackgroundTheme) -> SKTexture {
-        let key = "trees_\(theme.rawValue)"
-        if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderThemedTrees(theme: theme))
-        tex.filteringMode = .nearest
-        cacheStore(key, tex)
-        return tex
-    }
-
-    /// Theme-aware foreground bush / element strip.
-    func themedBushTexture(theme: BackgroundTheme) -> SKTexture {
-        let key = "bushes_\(theme.rawValue)"
-        if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderThemedBushes(theme: theme))
+        guard let image = UIImage(named: key) else {
+            fatalError("Missing asset: \(key)")
+        }
+        let tex = SKTexture(image: image)
         tex.filteringMode = .nearest
         cacheStore(key, tex)
         return tex
@@ -1384,25 +1252,4 @@ final class TextureFactory {
     }
 
 
-    // MARK: - Themed Asset Dispatchers (pre-generated PNGs from asset catalog)
-
-    private func renderThemedHills(theme: BackgroundTheme) -> UIImage {
-        UIImage(named: "\(theme.rawValue)_hills")!
-    }
-
-    private func renderThemedTrees(theme: BackgroundTheme) -> UIImage {
-        UIImage(named: "\(theme.rawValue)_midground")!
-    }
-
-    private func renderThemedBushes(theme: BackgroundTheme) -> UIImage {
-        UIImage(named: "\(theme.rawValue)_bush")!
-    }
-
-    private func renderThemedGround(theme: BackgroundTheme) -> UIImage {
-        UIImage(named: "\(theme.rawValue)_ground")!
-    }
-
-    private func renderThemedGroundDetail(theme: BackgroundTheme, tileWidth: CGFloat, groundHeight: CGFloat, seed: Int) -> UIImage {
-        UIImage(named: "\(theme.rawValue)_ground_detail_\(seed)")!
-    }
 }

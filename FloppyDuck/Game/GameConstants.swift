@@ -33,12 +33,19 @@ enum GK {
     static let medalGold:     Int = 30
     static let medalPlatinum: Int = 50
 
-    // MARK: - Speeds
-    static let groundSpeed:   CGFloat = 150
-    static let cloudSpeed:    CGFloat = 20
-    static let hillSpeed:     CGFloat = 15
-    static let treeSpeed:     CGFloat = 40
-    static let bushSpeed:     CGFloat = 60
+    // MARK: - Parallax Speeds (9-layer system: bg1 slowest → fg3 fastest)
+    static let bg1Speed: CGFloat = 8
+    static let bg2Speed: CGFloat = 15
+    static let bg3Speed: CGFloat = 25
+    static let mid1Speed: CGFloat = 38
+    static let mid2Speed: CGFloat = 52
+    static let mid3Speed: CGFloat = 68
+    static let fg1Speed: CGFloat = 90
+    static let fg2Speed: CGFloat = 150   // ground surface — matches pipe speed
+    static let fg3Speed: CGFloat = 150   // ground overlay — matches pipe speed
+
+    // Legacy aliases (pipes, ground physics still reference groundSpeed)
+    static let groundSpeed: CGFloat = 150
 
     // MARK: - Duck positioning
     static let duckStartY:  CGFloat = 400

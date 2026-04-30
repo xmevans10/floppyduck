@@ -83,10 +83,16 @@ final class GameConstantsTests: XCTestCase {
     // MARK: - Speeds
 
     func testSpeedHierarchy() {
-        // Ground scrolls fastest (closest), clouds slowest (furthest)
-        XCTAssertGreaterThan(GK.groundSpeed, GK.treeSpeed)
-        XCTAssertGreaterThan(GK.treeSpeed, GK.cloudSpeed)
-        XCTAssertGreaterThan(GK.treeSpeed, GK.hillSpeed)
+        // 9-layer parallax: bg1 slowest → fg3 fastest
+        XCTAssertLessThan(GK.bg1Speed, GK.bg2Speed)
+        XCTAssertLessThan(GK.bg2Speed, GK.bg3Speed)
+        XCTAssertLessThan(GK.bg3Speed, GK.mid1Speed)
+        XCTAssertLessThan(GK.mid1Speed, GK.mid2Speed)
+        XCTAssertLessThan(GK.mid2Speed, GK.mid3Speed)
+        XCTAssertLessThan(GK.mid3Speed, GK.fg1Speed)
+        XCTAssertLessThanOrEqual(GK.fg1Speed, GK.fg2Speed)
+        XCTAssertEqual(GK.fg2Speed, GK.fg3Speed)  // both match ground/pipe speed
+        XCTAssertEqual(GK.fg2Speed, GK.groundSpeed)
     }
 
     // MARK: - Medal Thresholds
