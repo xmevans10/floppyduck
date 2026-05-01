@@ -18,9 +18,9 @@ from pathlib import Path
 from PIL import Image, ImageEnhance
 
 
-OUT_W = 800
-OUT_H = 620
-TARGET_ASPECT = OUT_W / OUT_H
+BASE_W = 800
+BASE_H = 620
+TARGET_ASPECT = BASE_W / BASE_H
 
 
 def center_crop_to_aspect(img: Image.Image, aspect: float) -> Image.Image:
@@ -37,18 +37,20 @@ def center_crop_to_aspect(img: Image.Image, aspect: float) -> Image.Image:
     return img.crop((0, top, width, top + new_height))
 
 
-def process_image(source: Path, colors: int, darken_center: float) -> Image.Image:
+def process_image(source: Path, colors: int, darken_center: float, scale: int) -> Image.Image:
+    out_w = BASE_W * scale
+    out_h = BASE_H * scale
     img = Image.open(source).convert("RGBA")
     img = center_crop_to_aspect(img, TARGET_ASPECT)
-    img = img.resize((OUT_W, OUT_H), Image.Resampling.LANCZOS)
+    img = img.resize((out_w, out_h), Image.Resampling.LANCZOS)
 
     if darken_center > 0:
         overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
         pixels = overlay.load()
-        cx0 = int(OUT_W * 0.24)
-        cx1 = int(OUT_W * 0.62)
-        cy0 = int(OUT_H * 0.18)
-        cy1 = int(OUT_H * 0.78)
+        cx0 = int(out_w * 0.24)
+        cx1 = int(out_w * 0.62)
+        cy0 = int(out_h * 0.18)
+        cy1 = int(out_h * 0.78)
         alpha = int(max(0, min(0.4, darken_center)) * 255)
         for y in range(cy0, cy1):
             for x in range(cx0, cx1):
@@ -65,12 +67,17 @@ def process_image(source: Path, colors: int, darken_center: float) -> Image.Imag
     return rgb.convert("RGBA")
 
 
-def write_imageset(root: Path, theme: str, image: Image.Image) -> Path:
+def write_imageset(root: Path, theme: str, image_1x: Image.Image, image_2x: Image.Image | None) -> Path:
     imageset = root / "FloppyDuck" / "Assets.xcassets" / f"{theme}_hero.imageset"
     imageset.mkdir(parents=True, exist_ok=True)
 
     filename = f"{theme}_hero.png"
-    image.save(imageset / filename)
+    image_1x.save(imageset / filename)
+
+    filename_2x = None
+    if image_2x is not None:
+        filename_2x = f"{theme}_hero@2x.png"
+        image_2x.save(imageset / filename_2x)
 
     contents = {
         "images": [
@@ -80,6 +87,7 @@ def write_imageset(root: Path, theme: str, image: Image.Image) -> Path:
                 "scale": "1x",
             },
             {
+                **({"filename": filename_2x} if filename_2x else {}),
                 "idiom": "universal",
                 "scale": "2x",
             },
@@ -103,6 +111,7 @@ def main() -> None:
     parser.add_argument("source", type=Path, help="Generated source PNG/JPG")
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--colors", type=int, default=128, help="0 disables quantization")
+    parser.add_argument("--scale", type=int, choices=[1, 2], default=1, help="Write 1x only, or 1x + @2x")
     parser.add_argument(
         "--darken-center",
         type=float,
@@ -111,8 +120,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    image = process_image(args.source.expanduser(), args.colors, args.darken_center)
-    output = write_imageset(args.repo.resolve(), args.theme, image)
+    source = args.source.expanduser()
+    image_1x = process_image(source, args.colors, args.darken_center, scale=1)
+    image_2x = process_image(source, args.colors, args.darken_center, scale=2) if args.scale == 2 else None
+    output = write_imageset(args.repo.resolve(), args.theme, image_1x, image_2x)
     print(output)
 
 

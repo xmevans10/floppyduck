@@ -36,3 +36,15 @@ convex/.convex/
 convex/node_modules/
 convex/convex/_generated/
 FloppyDuck/Audio/Music/_originals/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+tools/hero_art/.env
+tools/hero_art/.env.*
+!tools/hero_art/.env.example
+tools/hero_art/.venv/
+__pycache__/
+**/__pycache__/
+artifacts/hero_sources/

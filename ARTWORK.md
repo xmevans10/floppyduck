@@ -104,20 +104,19 @@ asset folder even when attribution is not required.
 
 ## Hugging Face Generation Path
 
-Achieve generation with a Hugging Face Job that reads one prompt file, generates
-the `hero` image, and writes the source PNG to a durable output location instead
-of relying on job logs.
+Achieve generation with Hugging Face Inference Providers or a Hugging Face Job
+that reads one prompt file, generates the `hero` image, and writes the source
+PNG to a durable local output path.
 
 Recommended path:
 - Read `prompts/{theme}.md` and extract the fenced prompt under `hero`.
-- Use a low-step image model first to control cost. Preferred order for cheap
-  production attempts is `black-forest-labs/FLUX.1-schnell` when available, then
-  `stabilityai/sdxl-turbo` or `stabilityai/sd-turbo` for very low-cost retries.
-- Generate at a wide source size, ideally `1536x864` or larger.
+- Use `black-forest-labs/FLUX.2-dev` for high-quality production attempts after
+  accepting the model's Hugging Face terms. For cheaper iteration, use
+  `black-forest-labs/FLUX.1-schnell`, `stabilityai/sdxl-turbo`, or
+  `stabilityai/sd-turbo`.
+- Generate at `1600x1240` when the provider supports it. This is exactly 2x the
+  runtime hero panel (`800x620`) and avoids aspect-ratio cropping.
 - Save source files as `{theme}_hero_source.png`.
-- Upload outputs to a small HF dataset or model repo artifact path, for example
-  `xmevans/floppyduck-theme-assets`, then download them into the repo for
-  processing.
 - Record the chosen model, dimensions, seed, steps, and guidance in the theme
   prompt file or commit notes when final assets are accepted.
 
@@ -136,6 +135,19 @@ Use the hero import tool:
 ```bash
 python3 tools/hero_art/import_hero.py pixelTokyo ~/Downloads/pixel-tokyo.png
 ```
+
+Or generate through Hugging Face and import in one pass:
+
+```bash
+python3 -m pip install -r tools/hero_art/requirements.txt
+cp tools/hero_art/.env.example tools/hero_art/.env
+# edit tools/hero_art/.env and set HF_TOKEN
+python3 tools/hero_art/generate_hf_hero.py pixelTokyo --import
+```
+
+`generate_hf_hero.py` reads the `## hero` prompt from `prompts/{theme}.md`.
+The HF token must come from `HF_TOKEN` or `tools/hero_art/.env`; never commit
+real tokens.
 
 For a busy image, lightly dim the central flight corridor:
 
