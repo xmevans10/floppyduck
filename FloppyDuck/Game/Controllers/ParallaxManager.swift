@@ -1,14 +1,17 @@
 import SpriteKit
 import SwiftUI
 
-// MARK: - ParallaxManager (9-Layer System)
+// MARK: - ParallaxManager
 
-/// Owns all parallax layers: sky gradient + 9 themed sprite layers.
+/// Owns parallax layers: sky gradient + themed sprite layers.
 ///
 /// Layer architecture (back → front):
 ///   bg1, bg2, bg3      — background (furthest, slowest)
 ///   mid1, mid2, mid3   — midground
 ///   fg1, fg2, fg3      — foreground (closest, fastest)
+///
+/// Newer themes may use a compact 3-layer architecture:
+///   background, midground, foreground
 ///
 /// bg1–fg1 are full above-ground panels (200×155 pixel art → 800×620 game).
 /// fg2 is the ground surface tile (200×20 → 800×80).
@@ -55,6 +58,8 @@ final class ParallaxManager {
     /// Cached accessibility state (avoid per-frame system queries).
     private var reduceMotionEnabled: Bool = false
 
+    private var overlayParticles: [OverlayParticle] = []
+
     // MARK: - Tile widths
 
     /// Above-ground layers tile at 2× world width for seamless wrap.
@@ -62,6 +67,13 @@ final class ParallaxManager {
 
     /// Ground layers tile at 2× world width for seamless wrap.
     private let groundTileWidth: CGFloat = GK.worldWidth * 2
+
+    private struct OverlayParticle {
+        let node: SKSpriteNode
+        let effect: ThemeOverlayEffect
+        let speed: CGVector
+        let spin: CGFloat
+    }
 
     // MARK: - Init
 
@@ -81,41 +93,15 @@ final class ParallaxManager {
     func setup() {
         reduceMotionEnabled = UIAccessibility.isReduceMotionEnabled
 
-        // Sky gradient (procedural — always present)
-        setupSkyGradient()
-
-        // Define the 9 layers
         let groundH = GK.groundHeight  // 80
+        let hasHero = UIImage(named: "\(theme.rawValue)_hero") != nil
 
-        layerDefs = [
-            // Background layers — full above-ground panels
-            LayerDef(suffix: "background1", speed: GK.bg1Speed, zPosition: -80,
-                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
-            LayerDef(suffix: "background2", speed: GK.bg2Speed, zPosition: -70,
-                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
-            LayerDef(suffix: "background3", speed: GK.bg3Speed, zPosition: -60,
-                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+        if !hasHero {
+            // Sky gradient sits behind legacy transparent parallax layers.
+            setupSkyGradient()
+        }
 
-            // Midground layers — full above-ground panels
-            LayerDef(suffix: "midground1", speed: GK.mid1Speed, zPosition: -50,
-                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
-            LayerDef(suffix: "midground2", speed: GK.mid2Speed, zPosition: -40,
-                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
-            LayerDef(suffix: "midground3", speed: GK.mid3Speed, zPosition: -30,
-                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
-
-            // Foreground 1 — full above-ground panel (closest scenery)
-            LayerDef(suffix: "foreground1", speed: GK.fg1Speed, zPosition: -20,
-                     tileCount: 3, height: 620, yPosition: groundH, isGround: false),
-
-            // Foreground 2 — ground surface
-            LayerDef(suffix: "foreground2", speed: GK.fg2Speed, zPosition: 50,
-                     tileCount: 3, height: GK.groundHeight, yPosition: 0, isGround: true),
-
-            // Foreground 3 — ground overlay / detail
-            LayerDef(suffix: "foreground3", speed: GK.fg3Speed, zPosition: 55,
-                     tileCount: 3, height: GK.groundHeight + 20, yPosition: 0, isGround: true),
-        ]
+        layerDefs = makeLayerDefs(groundH: groundH, hasHero: hasHero)
 
         // Create sprite tiles for each layer
         for def in layerDefs {
@@ -155,6 +141,49 @@ final class ParallaxManager {
 
             layerTiles[def.suffix] = tiles
         }
+
+        setupRuntimeOverlays()
+    }
+
+    private func makeLayerDefs(groundH: CGFloat, hasHero: Bool) -> [LayerDef] {
+        if hasHero {
+            return [
+                LayerDef(suffix: "hero", speed: GK.bg1Speed, zPosition: -85,
+                         tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            ]
+        }
+
+        if theme == .roughOcean {
+            return [
+                LayerDef(suffix: "background", speed: GK.bg1Speed, zPosition: -80,
+                         tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+                LayerDef(suffix: "midground", speed: GK.bg3Speed, zPosition: -55,
+                         tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+                LayerDef(suffix: "foreground", speed: GK.fg1Speed, zPosition: -20,
+                         tileCount: 3, height: 620, yPosition: groundH, isGround: false),
+            ]
+        }
+
+        return [
+            LayerDef(suffix: "background1", speed: GK.bg1Speed, zPosition: -80,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "background2", speed: GK.bg2Speed, zPosition: -70,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "background3", speed: GK.bg3Speed, zPosition: -60,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "midground1", speed: GK.mid1Speed, zPosition: -50,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "midground2", speed: GK.mid2Speed, zPosition: -40,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "midground3", speed: GK.mid3Speed, zPosition: -30,
+                     tileCount: 2, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "foreground1", speed: GK.fg1Speed, zPosition: -20,
+                     tileCount: 3, height: 620, yPosition: groundH, isGround: false),
+            LayerDef(suffix: "foreground2", speed: GK.fg2Speed, zPosition: 50,
+                     tileCount: 3, height: GK.groundHeight, yPosition: 0, isGround: true),
+            LayerDef(suffix: "foreground3", speed: GK.fg3Speed, zPosition: 55,
+                     tileCount: 3, height: GK.groundHeight + 20, yPosition: 0, isGround: true),
+        ]
     }
 
     /// Drive all scrolling. Call every frame from `update(_:)` while the game is playing.
@@ -180,6 +209,208 @@ final class ParallaxManager {
                 }
             }
         }
+
+        updateRuntimeOverlays(dt: dtF)
+    }
+
+    // MARK: - Runtime Overlays
+
+    private func setupRuntimeOverlays() {
+        guard !theme.overlayEffects.isEmpty else { return }
+
+        for effect in theme.overlayEffects {
+            if effect == .mist {
+                setupMistBands()
+                continue
+            }
+
+            for i in 0..<particleCount(for: effect) {
+                let node = makeParticleNode(effect: effect, index: i)
+                node.position = initialParticlePosition(effect: effect, index: i)
+                node.zPosition = zPosition(for: effect)
+                backgroundLayer.addChild(node)
+
+                overlayParticles.append(OverlayParticle(
+                    node: node,
+                    effect: effect,
+                    speed: velocity(for: effect, index: i),
+                    spin: spin(for: effect, index: i)
+                ))
+            }
+        }
+    }
+
+    private func updateRuntimeOverlays(dt: CGFloat) {
+        guard !overlayParticles.isEmpty, !reduceMotionEnabled else { return }
+
+        for particle in overlayParticles {
+            particle.node.position.x += particle.speed.dx * dt
+            particle.node.position.y += particle.speed.dy * dt
+            particle.node.zRotation += particle.spin * dt
+
+            if shouldRecycle(particle.node, effect: particle.effect) {
+                recycle(particle.node, effect: particle.effect)
+            }
+        }
+    }
+
+    private func particleCount(for effect: ThemeOverlayEffect) -> Int {
+        switch effect {
+        case .rain: return 44
+        case .snow: return 34
+        case .embers: return 26
+        case .bubbles: return 24
+        case .dust: return 18
+        case .petals: return 16
+        case .seaSpray: return 22
+        case .stars: return 28
+        case .mist: return 0
+        }
+    }
+
+    private func makeParticleNode(effect: ThemeOverlayEffect, index: Int) -> SKSpriteNode {
+        let size: CGSize
+        let color: UIColor
+
+        switch effect {
+        case .rain:
+            size = CGSize(width: 1, height: 18)
+            color = UIColor(red: 0.65, green: 0.80, blue: 0.88, alpha: 0.35)
+        case .snow:
+            size = CGSize(width: 3, height: 3)
+            color = UIColor(white: 1.0, alpha: 0.75)
+        case .embers:
+            size = CGSize(width: 3, height: 3)
+            color = UIColor(red: 1.0, green: 0.45, blue: 0.12, alpha: 0.75)
+        case .bubbles:
+            size = CGSize(width: 4, height: 4)
+            color = UIColor(red: 0.75, green: 0.95, blue: 1.0, alpha: 0.45)
+        case .dust:
+            size = CGSize(width: 2, height: 2)
+            color = UIColor(red: 0.95, green: 0.78, blue: 0.45, alpha: 0.35)
+        case .petals:
+            size = CGSize(width: 5, height: 3)
+            color = index % 3 == 0
+                ? UIColor(red: 1.0, green: 0.55, blue: 0.72, alpha: 0.85)
+                : UIColor(red: 1.0, green: 0.70, blue: 0.82, alpha: 0.75)
+        case .seaSpray:
+            size = CGSize(width: 2, height: 2)
+            color = UIColor(red: 0.75, green: 0.92, blue: 0.95, alpha: 0.45)
+        case .stars:
+            size = CGSize(width: 2, height: 2)
+            color = UIColor(white: 1.0, alpha: 0.65)
+        case .mist:
+            size = .zero
+            color = .clear
+        }
+
+        let node = SKSpriteNode(color: color, size: size)
+        node.blendMode = .alpha
+        return node
+    }
+
+    private func initialParticlePosition(effect: ThemeOverlayEffect, index: Int) -> CGPoint {
+        CGPoint(
+            x: seeded01(effect: effect, index: index, salt: 1) * GK.worldWidth,
+            y: GK.groundHeight + seeded01(effect: effect, index: index, salt: 2) * (GK.worldHeight - GK.groundHeight)
+        )
+    }
+
+    private func velocity(for effect: ThemeOverlayEffect, index: Int) -> CGVector {
+        switch effect {
+        case .rain:
+            return CGVector(dx: -20, dy: -210 - seeded01(effect: effect, index: index, salt: 3) * 70)
+        case .snow:
+            return CGVector(dx: -8 + seeded01(effect: effect, index: index, salt: 4) * 16, dy: -24)
+        case .embers:
+            return CGVector(dx: -8 + seeded01(effect: effect, index: index, salt: 5) * 16, dy: 30)
+        case .bubbles:
+            return CGVector(dx: -6 + seeded01(effect: effect, index: index, salt: 6) * 12, dy: 28)
+        case .dust:
+            return CGVector(dx: -16, dy: 3)
+        case .petals:
+            return CGVector(dx: -28 - seeded01(effect: effect, index: index, salt: 7) * 18, dy: -8)
+        case .seaSpray:
+            return CGVector(dx: -35, dy: 14 + seeded01(effect: effect, index: index, salt: 8) * 20)
+        case .stars:
+            return CGVector(dx: -2, dy: 0)
+        case .mist:
+            return .zero
+        }
+    }
+
+    private func spin(for effect: ThemeOverlayEffect, index: Int) -> CGFloat {
+        effect == .petals ? (-1.2 + seeded01(effect: effect, index: index, salt: 9) * 2.4) : 0
+    }
+
+    private func shouldRecycle(_ node: SKSpriteNode, effect: ThemeOverlayEffect) -> Bool {
+        switch effect {
+        case .rain, .snow, .petals:
+            return node.position.y < GK.groundHeight - 30 || node.position.x < -30
+        case .embers, .bubbles, .seaSpray:
+            return node.position.y > GK.worldHeight + 30 || node.position.x < -30
+        case .dust, .stars:
+            return node.position.x < -30
+        case .mist:
+            return false
+        }
+    }
+
+    private func recycle(_ node: SKSpriteNode, effect: ThemeOverlayEffect) {
+        switch effect {
+        case .rain, .snow, .petals:
+            node.position = CGPoint(
+                x: seeded01(effect: effect, index: Int(node.position.x), salt: 10) * GK.worldWidth,
+                y: GK.worldHeight + 20
+            )
+        case .embers, .bubbles, .seaSpray:
+            node.position = CGPoint(
+                x: seeded01(effect: effect, index: Int(node.position.y), salt: 11) * GK.worldWidth,
+                y: GK.groundHeight + 5
+            )
+        case .dust, .stars:
+            node.position = CGPoint(
+                x: GK.worldWidth + 20,
+                y: GK.groundHeight + seeded01(effect: effect, index: Int(node.position.y), salt: 12) * (GK.worldHeight - GK.groundHeight)
+            )
+        case .mist:
+            break
+        }
+    }
+
+    private func setupMistBands() {
+        for i in 0..<3 {
+            let band = SKSpriteNode(color: UIColor(white: 0.75, alpha: 0.08),
+                                    size: CGSize(width: GK.worldWidth * 1.4, height: 46))
+            band.anchorPoint = CGPoint(x: 0, y: 0.5)
+            band.position = CGPoint(x: CGFloat(i) * GK.worldWidth * 0.55,
+                                    y: GK.groundHeight + 150 + CGFloat(i) * 70)
+            band.zPosition = -18
+            backgroundLayer.addChild(band)
+
+            let move = SKAction.moveBy(x: -GK.worldWidth * 0.55, y: 0, duration: 12 + Double(i) * 4)
+            let reset = SKAction.moveBy(x: GK.worldWidth * 0.55, y: 0, duration: 0)
+            band.run(.repeatForever(.sequence([move, reset])))
+        }
+    }
+
+    private func zPosition(for effect: ThemeOverlayEffect) -> CGFloat {
+        switch effect {
+        case .stars:
+            return -75
+        case .mist:
+            return -18
+        default:
+            return -10
+        }
+    }
+
+    private func seeded01(effect: ThemeOverlayEffect, index: Int, salt: Int) -> CGFloat {
+        var value = UInt64(abs(effect.rawValue.hashValue &+ index &* 1_103_515_245 &+ salt &* 12_345))
+        value ^= value >> 13
+        value &*= 0xff51afd7ed558ccd
+        value ^= value >> 33
+        return CGFloat(value % 10_000) / 10_000
     }
 
     // MARK: - Sky Gradient (procedural)

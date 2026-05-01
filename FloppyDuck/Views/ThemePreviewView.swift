@@ -38,6 +38,7 @@ struct ThemePreviewView: View {
         case .lagoon:     drawLagoon(ctx: &ctx, w: w, h: h)
         case .losAngeles: drawLosAngeles(ctx: &ctx, w: w, h: h)
         case .london:     drawLondon(ctx: &ctx, w: w, h: h)
+        case .roughOcean: drawRoughOcean(ctx: &ctx, w: w, h: h)
         }
     }
 
@@ -2060,6 +2061,44 @@ struct ThemePreviewView: View {
         for i in 0..<3 {
             let pdx = prng(41, i) * w
             fill(&ctx, x: pdx, y: h * 0.82, w: px * 4, h: px, Color(red: 0.40, green: 0.45, blue: 0.55).opacity(0.25))
+        }
+    }
+
+    private func drawRoughOcean(ctx: inout GraphicsContext, w: CGFloat, h: CGFloat) {
+        skyGradient(&ctx, w: w, h: h)
+
+        let cloud = Color(red: 0.04, green: 0.08, blue: 0.10).opacity(0.45)
+        fill(&ctx, x: 0, y: h * 0.08, w: w, h: h * 0.10, cloud)
+        fill(&ctx, x: w * 0.10, y: h * 0.18, w: w * 0.82, h: h * 0.06, cloud.opacity(0.65))
+
+        let rain = Color(red: 0.72, green: 0.86, blue: 0.86).opacity(0.25)
+        for i in 0..<9 {
+            let x = prng(53, i) * w
+            let y = h * (0.16 + prng(59, i) * 0.30)
+            fill(&ctx, x: x, y: y, w: px, h: px * 8, rain)
+        }
+
+        let farSea = Color(red: 0.08, green: 0.25, blue: 0.29).opacity(0.86)
+        let midSea = Color(red: 0.04, green: 0.32, blue: 0.38)
+        let darkSea = Color(red: 0.02, green: 0.14, blue: 0.18)
+        let foam = Color(red: 0.82, green: 0.95, blue: 0.91).opacity(0.78)
+
+        fill(&ctx, x: 0, y: h * 0.56, w: w, h: h * 0.14, farSea)
+        for i in 0..<8 {
+            let x = CGFloat(i) * w / 7 - px * 4
+            fill(&ctx, x: x, y: h * 0.54 + prng(61, i) * px * 4, w: px * 8, h: px * 2, foam.opacity(0.42))
+        }
+
+        fill(&ctx, x: 0, y: h * 0.66, w: w, h: h * 0.17, midSea)
+        for i in 0..<6 {
+            let crestX = CGFloat(i) * w / 5 - px * 2
+            fill(&ctx, x: crestX, y: h * 0.64 + prng(67, i) * px * 3, w: px * 10, h: px * 2, foam)
+        }
+
+        fill(&ctx, x: 0, y: h * 0.80, w: w, h: h * 0.20, darkSea)
+        for i in 0..<10 {
+            let x = prng(71, i) * w
+            fill(&ctx, x: x, y: h * (0.82 + prng(73, i) * 0.12), w: px * CGFloat(2 + i % 4), h: px, foam.opacity(0.70))
         }
     }
 }

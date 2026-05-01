@@ -1,36 +1,11 @@
-# jungle Theme Prompts
+# jungle Theme Prompt
 
-## background1
+## hero
 ```
-A pixel art tropical jungle sky. Seamless horizontal tile.
-Hazy warm green-tinted sky — soft yellow-green at the top fading to misty pale green near the bottom. Humid, tropical atmosphere. Sunlight filtering through — a bright warm glow in the upper area. Soft misty clouds.
-Smooth gradient. Fully opaque. No terrain — SKY ONLY.
-```
-
-## background3
-```
-A pixel art jungle — DISTANT terrain. Seamless horizontal tile. White background above terrain.
-Content fills from THE VERY BOTTOM EDGE upward. Distant jungle canopy — layered tree silhouettes in PALE hazy green, receding into misty distance. Soft rounded treetop shapes. Morning mist makes everything dreamy and desaturated.
-- BOTTOM ROW must be solid jungle floor, NOT white
-- Canopy reaches about 55-60% of image height
-- Above canopy: pure white (#FFFFFF)
-- Colors: very pale sage green, misty blue-green, heavily desaturated
+16-bit pixel art hero background for a side-scrolling arcade flying game, dense jungle theme, wide 16:9 composition.
+Humid tropical jungle with layered green canopy, misty blue-green depth, soft sun shafts, distant trees, broad leaves and ferns along the bottom edge, small tropical flower accents. Detailed pixel clusters, rich greens, strong atmospheric depth, readable silhouettes.
+Keep the central flight corridor clean and readable. Keep vines, trunks, and leaf masses low or on the far edges. No animals, no characters, no UI, no text, no pipes, no vines crossing the play path, no painterly/vector/3D style.
 ```
 
-## foreground1
-```
-A pixel art jungle — CLOSE terrain. Seamless horizontal tile. White background above terrain.
-Content fills from THE VERY BOTTOM EDGE upward. Lush tropical vegetation — large broad-leaf plants, a thick vine-wrapped tree trunk on the left, a cluster of ferns and exotic flowers on the right. Jungle floor with mossy rocks. RICH, DEEP greens with tropical flower color pops.
-- BOTTOM ROW must be solid jungle floor, NOT white
-- Tallest element reaches about 40-45% of image height
-- Above tallest element: pure white (#FFFFFF)
-- Colors: deep rich emerald green, dark brown bark, bright tropical flower accents (red, yellow)
-```
-
-## foreground2
-```
-A pixel art jungle floor ground strip. Seamless horizontal tile.
-Dark rich earth with moss, fallen leaves, small ferns. Wet, tropical. Deep brown-green.
-Fully opaque. No transparency.
-```
-
+## runtime overlays
+- Mist particles, drifting leaf sprites, low fern/leaf ground trim, vine/wood obstacle skin.

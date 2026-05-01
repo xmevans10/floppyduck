@@ -1,5 +1,19 @@
 import SwiftUI
 
+// MARK: - Theme Overlay Effect
+
+enum ThemeOverlayEffect: String, Codable, Hashable {
+    case rain
+    case snow
+    case embers
+    case bubbles
+    case dust
+    case petals
+    case mist
+    case seaSpray
+    case stars
+}
+
 // MARK: - Purchase Kind (shared with DuckSkin)
 
 enum ThemePurchaseKind: String, Codable, Hashable {
@@ -37,6 +51,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     case lagoon
     case losAngeles
     case london
+    case roughOcean
 
     var id: String { rawValue }
 
@@ -61,6 +76,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "LAGOON"
         case .losAngeles:  return "LOS ANGELES"
         case .london:      return "LONDON"
+        case .roughOcean:  return "ROUGH OCEAN"
         }
     }
 
@@ -83,6 +99,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "Pirate Paradise"
         case .losAngeles:  return "City of Angels"
         case .london:      return "Cheerio!"
+        case .roughOcean:  return "Storm Swell"
         }
     }
 
@@ -97,7 +114,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return .normal
         case .space, .pixelTokyo, .egypt:
             return .premium
-        case .lagoon, .losAngeles, .london:
+        case .lagoon, .losAngeles, .london, .roughOcean:
             return .normal
         }
     }
@@ -119,6 +136,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return 225
         case .losAngeles:  return 250
         case .london:      return 200
+        case .roughOcean:  return 225
         default:           return nil
         }
     }
@@ -257,6 +275,13 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.62, green: 0.64, blue: 0.66),
                 Color(red: 0.72, green: 0.73, blue: 0.74),
             ]
+        case .roughOcean:
+            return [
+                Color(red: 0.04, green: 0.10, blue: 0.14),
+                Color(red: 0.08, green: 0.20, blue: 0.24),
+                Color(red: 0.14, green: 0.32, blue: 0.36),
+                Color(red: 0.32, green: 0.48, blue: 0.50),
+            ]
         }
     }
 
@@ -280,6 +305,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return UIColor(red: 0.50, green: 0.82, blue: 0.95, alpha: 1)
         case .losAngeles:  return UIColor(red: 0.70, green: 0.40, blue: 0.35, alpha: 1)
         case .london:      return UIColor(red: 0.42, green: 0.45, blue: 0.48, alpha: 1)
+        case .roughOcean:  return UIColor(red: 0.08, green: 0.20, blue: 0.24, alpha: 1)
         }
     }
 
@@ -303,6 +329,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return UIColor(red: 0.95, green: 0.98, blue: 1.0, alpha: 0.85)
         case .losAngeles:  return UIColor(red: 0.90, green: 0.70, blue: 0.55, alpha: 0.5)
         case .london:      return UIColor(red: 0.60, green: 0.62, blue: 0.65, alpha: 0.7)
+        case .roughOcean:  return UIColor(red: 0.55, green: 0.70, blue: 0.72, alpha: 0.25)
         }
     }
 
@@ -319,10 +346,52 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     /// Whether to show floating cloud sprites (false for enclosed / non-sky themes).
     var showClouds: Bool {
         switch self {
-        case .cave, .underwater, .space:
+        case .cave, .underwater, .space, .roughOcean:
             return false
         default:
             return true
+        }
+    }
+
+    /// Lightweight SpriteKit effects layered above hero backgrounds.
+    var overlayEffects: [ThemeOverlayEffect] {
+        switch self {
+        case .day:
+            return []
+        case .sunset:
+            return [.dust]
+        case .night:
+            return [.stars]
+        case .neonCity:
+            return [.rain]
+        case .underwater:
+            return [.bubbles]
+        case .volcano:
+            return [.embers]
+        case .arctic:
+            return [.snow]
+        case .western:
+            return [.dust]
+        case .jungle:
+            return [.mist, .petals]
+        case .cave:
+            return [.mist]
+        case .mountain:
+            return [.snow]
+        case .space:
+            return [.stars]
+        case .pixelTokyo:
+            return [.rain, .petals]
+        case .egypt:
+            return [.dust]
+        case .lagoon:
+            return [.mist]
+        case .losAngeles:
+            return [.dust]
+        case .london:
+            return [.rain, .mist]
+        case .roughOcean:
+            return [.rain, .seaSpray]
         }
     }
 
@@ -346,6 +415,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.85, green: 0.78, blue: 0.60)
         case .losAngeles:  return Color(red: 0.35, green: 0.35, blue: 0.38)
         case .london:      return Color(red: 0.30, green: 0.30, blue: 0.32)
+        case .roughOcean:  return Color(red: 0.05, green: 0.18, blue: 0.22)
         }
     }
 
@@ -369,6 +439,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.20, green: 0.55, blue: 0.40)
         case .losAngeles:  return Color(red: 0.30, green: 0.22, blue: 0.15)
         case .london:      return Color(red: 0.25, green: 0.25, blue: 0.28)
+        case .roughOcean:  return Color(red: 0.10, green: 0.28, blue: 0.32)
         }
     }
 
@@ -392,6 +463,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.25, green: 0.80, blue: 0.85)
         case .losAngeles:  return Color(red: 0.90, green: 0.50, blue: 0.30)
         case .london:      return Color(red: 0.75, green: 0.20, blue: 0.20)
+        case .roughOcean:  return Color(red: 0.20, green: 0.62, blue: 0.68)
         }
     }
 
@@ -419,6 +491,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return nil   // TODO: add theme_lagoon.m4a
         case .losAngeles:  return nil   // TODO: add theme_losAngeles.m4a
         case .london:      return nil   // TODO: add theme_london.m4a
+        case .roughOcean:  return nil   // TODO: add theme_roughOcean.m4a
         }
     }
 
@@ -429,4 +502,19 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
 
     /// Identifier for synthesized per-theme music (used by SoundManager).
     var themeID: String { rawValue }
+
+    /// Asset suffixes used by the SpriteKit parallax loader.
+    var parallaxLayerSuffixes: [String] {
+        switch self {
+        case .roughOcean:
+            return ["hero", "background", "midground", "foreground"]
+        default:
+            return [
+                "hero",
+                "background1", "background2", "background3",
+                "midground1", "midground2", "midground3",
+                "foreground1", "foreground2", "foreground3"
+            ]
+        }
+    }
 }

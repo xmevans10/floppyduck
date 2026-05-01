@@ -1,36 +1,11 @@
-# mountain Theme Prompts
+# mountain Theme Prompt
 
-## background1
+## hero
 ```
-A pixel art mountain sky. Seamless horizontal tile.
-Clear cool blue at the top fading to soft pale blue-grey near the bottom. Crisp mountain air feel. A bright white sun. Clean white clouds — a few cumulus puffs.
-Smooth gradient. Fully opaque. No terrain — SKY ONLY.
-```
-
-## background3
-```
-A pixel art mountain range — DISTANT terrain. Seamless horizontal tile. White background above terrain.
-Content fills from THE VERY BOTTOM EDGE upward. Distant snow-capped mountain peaks in PALE hazy blue-grey — atmospheric distance makes them soft and desaturated. Multiple overlapping peak silhouettes at different depths. Forests as dark patches on lower slopes.
-- BOTTOM ROW must be solid ground, NOT white
-- Peaks reach about 55-60% of image height
-- Above peaks: pure white (#FFFFFF)
-- Colors: pale blue-grey, soft lavender, desaturated — very hazy
+16-bit pixel art hero background for a side-scrolling arcade flying game, alpine mountain theme, wide 16:9 composition.
+Crisp blue alpine sky, distant layered snow-capped mountains, pine forest bands near the horizon, rocky meadow edge in the lower third, tiny wildflowers, cool atmospheric haze. Detailed pixel art, strong depth, clean silhouettes, natural blue/green/brown palette.
+Keep the central flight corridor clear and readable. Keep trees, boulders, and cliffs low or at far edges. No characters, no UI, no text, no pipes, no giant foreground pine trunk, no mountain peak dominating the center, no painterly/vector/3D style.
 ```
 
-## foreground1
-```
-A pixel art mountain trail — CLOSE terrain. Seamless horizontal tile. White background above terrain.
-Content fills from THE VERY BOTTOM EDGE upward. Rocky mountain trail with a tall pine tree on the left, a large boulder with moss on the right. Alpine wildflowers, rocky ground with grass tufts. Clear, crisp detail — this is close to the viewer.
-- BOTTOM ROW must be solid rocky ground, NOT white
-- Tallest element reaches about 40-45% of image height
-- Above tallest element: pure white (#FFFFFF)
-- Colors: deep pine green, warm grey-brown rock, earthy tones, colorful wildflower accents
-```
-
-## foreground2
-```
-A pixel art mountain trail ground strip. Seamless horizontal tile.
-Rocky dirt path — grey-brown earth with small stones, grass patches at edges. Alpine.
-Fully opaque. No transparency.
-```
-
+## runtime overlays
+- Light cloud drift, occasional snow sparkle at high altitude, low rock/grass trim, pine/stone obstacle skin.

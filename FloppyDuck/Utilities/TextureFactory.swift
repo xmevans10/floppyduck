@@ -76,17 +76,15 @@ final class TextureFactory {
             _ = cloudTexture()
             _ = breadTexture()
 
-            // Theme textures: 9 pre-generated PNG layers per theme from asset catalog.
+            // Theme textures: pre-generated PNG layers per theme from asset catalog.
             // UIImage(named:) uses memory-mapped files — fast and cache-friendly.
             // Warm into SKTexture cache to avoid first-frame hitches.
-            let layerSuffixes = [
-                "background1", "background2", "background3",
-                "midground1", "midground2", "midground3",
-                "foreground1", "foreground2", "foreground3"
-            ]
             for theme in BackgroundTheme.allCases {
-                for suffix in layerSuffixes {
-                    _ = self.themedLayerTexture(theme: theme, layer: suffix)
+                for suffix in theme.parallaxLayerSuffixes {
+                    let assetName = "\(theme.rawValue)_\(suffix)"
+                    if UIImage(named: assetName) != nil {
+                        _ = self.themedLayerTexture(theme: theme, layer: suffix)
+                    }
                 }
             }
 
@@ -319,10 +317,10 @@ final class TextureFactory {
         return renderPixelHills()
     }
 
-    // MARK: - Themed Parallax Textures (9-Layer System)
+    // MARK: - Themed Parallax Textures
 
     /// Load any themed layer texture from the asset catalog.
-    /// Layer suffixes: background1–3, midground1–3, foreground1–3.
+    /// Layer suffixes are defined by `BackgroundTheme.parallaxLayerSuffixes`.
     func themedLayerTexture(theme: BackgroundTheme, layer: String) -> SKTexture {
         let key = "\(theme.rawValue)_\(layer)"
         if let cached = cachedTexture(forKey: key) { return cached }
