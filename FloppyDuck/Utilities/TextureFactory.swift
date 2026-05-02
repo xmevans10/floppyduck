@@ -79,11 +79,11 @@ final class TextureFactory {
             // Theme textures: pre-generated PNG layers per theme from asset catalog.
             // UIImage(named:) uses memory-mapped files — fast and cache-friendly.
             // Warm into SKTexture cache to avoid first-frame hitches.
+            // Asset names are derived from the recipe catalog — no hardcoded suffixes.
             for theme in BackgroundTheme.allCases {
-                for suffix in theme.parallaxLayerSuffixes {
-                    let assetName = "\(theme.rawValue)_\(suffix)"
+                for assetName in theme.recipeAssetNames {
                     if UIImage(named: assetName) != nil {
-                        _ = self.themedLayerTexture(theme: theme, layer: suffix)
+                        _ = self.themedLayerTexture(theme: theme, assetName: assetName)
                     }
                 }
             }
@@ -320,16 +320,15 @@ final class TextureFactory {
     // MARK: - Themed Parallax Textures
 
     /// Load any themed layer texture from the asset catalog.
-    /// Layer suffixes are defined by `BackgroundTheme.parallaxLayerSuffixes`.
-    func themedLayerTexture(theme: BackgroundTheme, layer: String) -> SKTexture {
-        let key = "\(theme.rawValue)_\(layer)"
-        if let cached = cachedTexture(forKey: key) { return cached }
-        guard let image = UIImage(named: key) else {
-            fatalError("Missing asset: \(key)")
+    /// Asset names are derived from `ThemeRecipeCatalog`.
+    func themedLayerTexture(theme: BackgroundTheme, assetName: String) -> SKTexture {
+        if let cached = cachedTexture(forKey: assetName) { return cached }
+        guard let image = UIImage(named: assetName) else {
+            fatalError("Missing asset: \(assetName)")
         }
         let tex = SKTexture(image: image)
         tex.filteringMode = .nearest
-        cacheStore(key, tex)
+        cacheStore(assetName, tex)
         return tex
     }
 

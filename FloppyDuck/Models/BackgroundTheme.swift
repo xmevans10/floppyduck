@@ -503,18 +503,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     /// Identifier for synthesized per-theme music (used by SoundManager).
     var themeID: String { rawValue }
 
-    /// Asset suffixes used by the SpriteKit parallax loader.
-    var parallaxLayerSuffixes: [String] {
-        switch self {
-        case .roughOcean:
-            return ["hero", "background", "midground", "foreground"]
-        default:
-            return [
-                "hero",
-                "background1", "background2", "background3",
-                "midground1", "midground2", "midground3",
-                "foreground1", "foreground2", "foreground3"
-            ]
-        }
+    /// Asset names used by the recipe-driven parallax system (for texture prewarming).
+    var recipeAssetNames: [String] {
+        ThemeRecipeCatalog.recipe(for: self).spriteLayers().map { $0.assetName }
     }
 }
