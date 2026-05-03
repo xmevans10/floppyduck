@@ -145,9 +145,9 @@ enum ThemeRecipeCatalog {
             tiles: true
         ),
         midground: LayerRecipe(
-            assetName: "night_midground_trees",
+            assetName: "night_midground_buildings",
             scrollSpeed: 0.35,
-            heightPoints: 300,
+            heightPoints: 293,
             yAnchor: .ground,
             tiles: true
         ),
@@ -225,7 +225,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "underwater_midground_coral",
             scrollSpeed: 0.35,
-            heightPoints: 400,
+            heightPoints: 426,
             yAnchor: .ground,
             tiles: true
         ),
@@ -266,7 +266,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "volcano_midground_rocks",
             scrollSpeed: 0.35,
-            heightPoints: 250,
+            heightPoints: 267,
             yAnchor: .top,
             tiles: true
         ),
@@ -311,7 +311,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "arctic_midground_trees",
             scrollSpeed: 0.35,
-            heightPoints: 200,
+            heightPoints: 300,
             yAnchor: .top,
             tiles: true
         ),
@@ -393,7 +393,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "jungle_midground_trees",
             scrollSpeed: 0.35,
-            heightPoints: 250,
+            heightPoints: 300,
             yAnchor: .top,
             tiles: true
         ),
@@ -510,7 +510,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "lagoon_midground_palms",
             scrollSpeed: 0.35,
-            heightPoints: 200,
+            heightPoints: 300,
             yAnchor: .top,
             tiles: true
         ),
@@ -551,7 +551,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "losAngeles_midground_palms",
             scrollSpeed: 0.35,
-            heightPoints: 200,
+            heightPoints: 300,
             yAnchor: .top,
             tiles: true
         ),
@@ -592,7 +592,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "london_midground_buildings",
             scrollSpeed: 0.35,
-            heightPoints: 400,
+            heightPoints: 350,
             yAnchor: .ground,
             tiles: true
         ),
@@ -633,7 +633,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "roughOcean_midground_shore",
             scrollSpeed: 0.35,
-            heightPoints: 250,
+            heightPoints: 300,
             yAnchor: .top,
             tiles: true
         ),
@@ -699,7 +699,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "pixelTokyo_midground_buildings",
             scrollSpeed: 0.35,
-            heightPoints: 400,
+            heightPoints: 350,
             yAnchor: .ground,
             tiles: true
         ),
@@ -740,7 +740,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "egypt_midground_ruins",
             scrollSpeed: 0.35,
-            heightPoints: 250,
+            heightPoints: 350,
             yAnchor: .top,
             tiles: true
         ),
