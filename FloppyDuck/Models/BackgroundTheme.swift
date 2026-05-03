@@ -309,47 +309,18 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// Tint for cloud sprites. Lighter on dark themes for visibility.
-    var cloudTint: UIColor {
-        switch self {
-        case .day:         return .white
-        case .sunset:      return UIColor(red: 0.95, green: 0.75, blue: 0.65, alpha: 0.8)
-        case .night:       return UIColor(red: 0.25, green: 0.28, blue: 0.40, alpha: 0.5)
-        case .neonCity:    return UIColor(red: 0.60, green: 0.20, blue: 0.80, alpha: 0.4)
-        case .underwater:  return UIColor(red: 0.30, green: 0.60, blue: 0.80, alpha: 0.3)
-        case .volcano:     return UIColor(red: 0.50, green: 0.25, blue: 0.15, alpha: 0.6)
-        case .arctic:      return UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 0.9)
-        case .western:     return UIColor(red: 0.90, green: 0.80, blue: 0.60, alpha: 0.5)
-        case .jungle:      return UIColor(red: 0.50, green: 0.70, blue: 0.40, alpha: 0.4)
-        case .cave:        return UIColor(red: 0.20, green: 0.18, blue: 0.25, alpha: 0.3)
-        case .mountain:    return UIColor(red: 0.85, green: 0.88, blue: 0.95, alpha: 0.7)
-        case .space:       return UIColor(red: 0.15, green: 0.10, blue: 0.30, alpha: 0.3)
-        case .pixelTokyo:  return UIColor(red: 0.70, green: 0.25, blue: 0.50, alpha: 0.4)
-        case .egypt:       return UIColor(red: 0.90, green: 0.75, blue: 0.50, alpha: 0.4)
-        case .lagoon:      return UIColor(red: 0.95, green: 0.98, blue: 1.0, alpha: 0.85)
-        case .losAngeles:  return UIColor(red: 0.90, green: 0.70, blue: 0.55, alpha: 0.5)
-        case .london:      return UIColor(red: 0.60, green: 0.62, blue: 0.65, alpha: 0.7)
-        case .roughOcean:  return UIColor(red: 0.55, green: 0.70, blue: 0.72, alpha: 0.25)
-        }
+    /// Whether the theme has a cloud layer (derived from recipe — no manual sync needed).
+    var showClouds: Bool {
+        ThemeRecipeCatalog.recipe(for: self).clouds != nil
     }
 
-    /// Whether to show star particles (night/space themes).
+    /// Whether the sky background has visible stars (night-sky themes).
     var showStars: Bool {
         switch self {
         case .night, .space, .neonCity, .pixelTokyo, .cave:
             return true
         default:
             return false
-        }
-    }
-
-    /// Whether to show floating cloud sprites (false for enclosed / non-sky themes).
-    var showClouds: Bool {
-        switch self {
-        case .cave, .underwater, .space, .roughOcean:
-            return false
-        default:
-            return true
         }
     }
 

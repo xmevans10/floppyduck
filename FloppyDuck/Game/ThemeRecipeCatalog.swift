@@ -45,127 +45,75 @@ enum ThemeRecipeCatalog {
         corridorHeightFraction: 0.55
     )
 
+    // MARK: - Layer Factories
+
+    /// Hero layer — always full-height, anchored top. scrollSpeed is handled by
+    /// `spriteLayers()` via `ThemeRecipe.heroScrollFraction`, so we pass 0 here.
+    private static func hero(_ name: String) -> LayerRecipe {
+        LayerRecipe(assetName: name, scrollSpeed: 0, heightPoints: 620, yAnchor: .top)
+    }
+
+    /// Standard cloud layer — 150pt tall, 15% ground speed, sits above midground.
+    private static func clouds(_ name: String) -> LayerRecipe {
+        LayerRecipe(assetName: name, scrollSpeed: 0.15, heightPoints: 150, yAnchor: .horizon(offset: 350))
+    }
+
+    /// Ground surface tile (grass, road, etc.) — 80pt, full speed, anchored to ground.
+    private static func ground(_ name: String) -> LayerRecipe {
+        LayerRecipe(assetName: name, scrollSpeed: 1.0, heightPoints: GK.groundHeight, yAnchor: .ground)
+    }
+
+    /// Ground base layer (dirt, rocks) — 100pt, full speed, anchored to ground.
+    private static func groundBase(_ name: String) -> LayerRecipe {
+        LayerRecipe(assetName: name, scrollSpeed: 1.0, heightPoints: 100, yAnchor: .ground)
+    }
+
     // MARK: - Free Themes
 
     static let day = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "day_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "day_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("day_hero"),
+        clouds: clouds("day_clouds"),
         midground: LayerRecipe(
             assetName: "day_midground_trees",
             scrollSpeed: 0.35,
             heightPoints: 350,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "day_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "day_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("day_foreground2"),
+        groundBase: groundBase("day_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let sunset = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "sunset_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "sunset_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("sunset_hero"),
+        clouds: clouds("sunset_clouds"),
         midground: LayerRecipe(
             assetName: "sunset_midground_trees",
             scrollSpeed: 0.35,
             heightPoints: 200,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "sunset_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "sunset_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("sunset_foreground2"),
+        groundBase: groundBase("sunset_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let night = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "night_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "night_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("night_hero"),
+        clouds: clouds("night_clouds"),
         midground: LayerRecipe(
             assetName: "night_midground_buildings",
             scrollSpeed: 0.35,
             heightPoints: 293,
-            yAnchor: .ground,
-            tiles: true
+            yAnchor: .ground
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "night_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "night_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("night_foreground2"),
+        groundBase: groundBase("night_foreground3"),
         overlays: [],
         contrastBudget: darkBudget
     )
@@ -173,118 +121,49 @@ enum ThemeRecipeCatalog {
     // MARK: - Normal Themes (Bread Currency)
 
     static let neonCity = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "neonCity_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "neonCity_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("neonCity_hero"),
+        clouds: clouds("neonCity_clouds"),
         midground: LayerRecipe(
             assetName: "neonCity_midground_buildings",
             scrollSpeed: 0.35,
             heightPoints: 400,
-            yAnchor: .ground,
-            tiles: true
+            yAnchor: .ground
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "neonCity_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "neonCity_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("neonCity_foreground2"),
+        groundBase: groundBase("neonCity_foreground3"),
         overlays: [],
         contrastBudget: darkBudget
     )
 
     static let underwater = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "underwater_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
+        hero: hero("underwater_hero"),
         clouds: nil,
         midground: LayerRecipe(
             assetName: "underwater_midground_coral",
             scrollSpeed: 0.35,
             heightPoints: 426,
-            yAnchor: .ground,
-            tiles: true
+            yAnchor: .ground
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "underwater_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "underwater_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("underwater_foreground2"),
+        groundBase: groundBase("underwater_foreground3"),
         overlays: [],
         contrastBudget: darkBudget
     )
 
     static let volcano = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "volcano_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "volcano_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("volcano_hero"),
+        clouds: clouds("volcano_clouds"),
         midground: LayerRecipe(
             assetName: "volcano_midground_rocks",
             scrollSpeed: 0.35,
             heightPoints: 267,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "volcano_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "volcano_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("volcano_foreground2"),
+        groundBase: groundBase("volcano_foreground3"),
         overlays: [],
         contrastBudget: ContrastBudget(
             maxLuminanceVariance: 0.20,
@@ -294,348 +173,141 @@ enum ThemeRecipeCatalog {
     )
 
     static let arctic = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "arctic_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "arctic_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("arctic_hero"),
+        clouds: clouds("arctic_clouds"),
         midground: LayerRecipe(
             assetName: "arctic_midground_trees",
             scrollSpeed: 0.35,
             heightPoints: 300,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "arctic_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "arctic_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("arctic_foreground2"),
+        groundBase: groundBase("arctic_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let western = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "western_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "western_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("western_hero"),
+        clouds: clouds("western_clouds"),
         midground: LayerRecipe(
             assetName: "western_midground_rocks",
             scrollSpeed: 0.35,
             heightPoints: 250,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "western_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "western_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("western_foreground2"),
+        groundBase: groundBase("western_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let jungle = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "jungle_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "jungle_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("jungle_hero"),
+        clouds: clouds("jungle_clouds"),
         midground: LayerRecipe(
             assetName: "jungle_midground_trees",
             scrollSpeed: 0.35,
             heightPoints: 300,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "jungle_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "jungle_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("jungle_foreground2"),
+        groundBase: groundBase("jungle_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let cave = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "cave_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
+        hero: hero("cave_hero"),
         clouds: nil,
         midground: LayerRecipe(
             assetName: "cave_midground_rocks",
             scrollSpeed: 0.35,
             heightPoints: 400,
-            yAnchor: .ground,
-            tiles: true
+            yAnchor: .ground
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "cave_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "cave_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("cave_foreground2"),
+        groundBase: groundBase("cave_foreground3"),
         overlays: [],
         contrastBudget: darkBudget
     )
 
     static let mountain = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "mountain_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "mountain_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("mountain_hero"),
+        clouds: clouds("mountain_clouds"),
         midground: LayerRecipe(
             assetName: "mountain_midground_trees",
             scrollSpeed: 0.35,
             heightPoints: 200,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "mountain_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "mountain_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("mountain_foreground2"),
+        groundBase: groundBase("mountain_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let lagoon = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "lagoon_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "lagoon_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("lagoon_hero"),
+        clouds: clouds("lagoon_clouds"),
         midground: LayerRecipe(
             assetName: "lagoon_midground_palms",
             scrollSpeed: 0.35,
             heightPoints: 300,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "lagoon_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "lagoon_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("lagoon_foreground2"),
+        groundBase: groundBase("lagoon_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let losAngeles = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "losAngeles_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "losAngeles_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("losAngeles_hero"),
+        clouds: clouds("losAngeles_clouds"),
         midground: LayerRecipe(
             assetName: "losAngeles_midground_palms",
             scrollSpeed: 0.35,
             heightPoints: 300,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "losAngeles_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "losAngeles_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("losAngeles_foreground2"),
+        groundBase: groundBase("losAngeles_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let london = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "london_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "london_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("london_hero"),
+        clouds: clouds("london_clouds"),
         midground: LayerRecipe(
             assetName: "london_midground_buildings",
             scrollSpeed: 0.35,
             heightPoints: 350,
-            yAnchor: .ground,
-            tiles: true
+            yAnchor: .ground
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "london_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "london_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("london_foreground2"),
+        groundBase: groundBase("london_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let roughOcean = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "roughOcean_hero",
-            scrollSpeed: 0.01,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "roughOcean_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("roughOcean_hero"),
+        clouds: clouds("roughOcean_clouds"),
         midground: LayerRecipe(
             assetName: "roughOcean_midground_shore",
             scrollSpeed: 0.35,
             heightPoints: 300,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
         ground: nil,
@@ -647,118 +319,49 @@ enum ThemeRecipeCatalog {
     // MARK: - Premium Themes (IAP)
 
     static let space = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "space_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
+        hero: hero("space_hero"),
         clouds: nil,
         midground: LayerRecipe(
             assetName: "space_midground_rocks",
             scrollSpeed: 0.35,
             heightPoints: 250,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "space_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "space_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("space_foreground2"),
+        groundBase: groundBase("space_foreground3"),
         overlays: [],
         contrastBudget: darkBudget
     )
 
     static let pixelTokyo = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "pixelTokyo_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "pixelTokyo_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("pixelTokyo_hero"),
+        clouds: clouds("pixelTokyo_clouds"),
         midground: LayerRecipe(
             assetName: "pixelTokyo_midground_buildings",
             scrollSpeed: 0.35,
             heightPoints: 350,
-            yAnchor: .ground,
-            tiles: true
+            yAnchor: .ground
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "pixelTokyo_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "pixelTokyo_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("pixelTokyo_foreground2"),
+        groundBase: groundBase("pixelTokyo_foreground3"),
         overlays: [],
         contrastBudget: darkBudget
     )
 
     static let egypt = ThemeRecipe(
-        hero: LayerRecipe(
-            assetName: "egypt_hero",
-            scrollSpeed: 0.03,
-            heightPoints: 620,
-            yAnchor: .top,
-            tiles: true
-        ),
-        clouds: LayerRecipe(
-            assetName: "egypt_clouds",
-            scrollSpeed: 0.15,
-            heightPoints: 150,
-            yAnchor: .horizon(offset: 350),
-            tiles: true
-        ),
+        hero: hero("egypt_hero"),
+        clouds: clouds("egypt_clouds"),
         midground: LayerRecipe(
             assetName: "egypt_midground_ruins",
             scrollSpeed: 0.35,
             heightPoints: 350,
-            yAnchor: .top,
-            tiles: true
+            yAnchor: .top
         ),
         horizon: nil,
-        ground: LayerRecipe(
-            assetName: "egypt_foreground2",
-            scrollSpeed: 1.0,
-            heightPoints: GK.groundHeight,
-            yAnchor: .ground,
-            tiles: true
-        ),
-        groundBase: LayerRecipe(
-            assetName: "egypt_foreground3",
-            scrollSpeed: 1.0,
-            heightPoints: 100,
-            yAnchor: .ground,
-            tiles: true
-        ),
+        ground: ground("egypt_foreground2"),
+        groundBase: groundBase("egypt_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )

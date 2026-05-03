@@ -28,6 +28,18 @@ struct LayerRecipe {
     let yAnchor: LayerYAnchor
     /// Whether this layer tiles horizontally for seamless wrap.
     let tiles: Bool
+
+    init(assetName: String,
+         scrollSpeed: CGFloat,
+         heightPoints: CGFloat,
+         yAnchor: LayerYAnchor,
+         tiles: Bool = true) {
+        self.assetName = assetName
+        self.scrollSpeed = scrollSpeed
+        self.heightPoints = heightPoints
+        self.yAnchor = yAnchor
+        self.tiles = tiles
+    }
 }
 
 /// Vertical anchor strategy for a layer.
@@ -74,6 +86,11 @@ struct ContrastBudget {
 
 extension ThemeRecipe {
 
+    // MARK: - Defaults
+
+    /// All heroes crawl at the same slow speed for subtle parallax.
+    static let heroScrollFraction: CGFloat = 0.03
+
     /// Compile the recipe into an array of `SpriteLayerDef` that `ParallaxManager`
     /// can iterate without any theme-specific conditionals.
     func spriteLayers() -> [SpriteLayerDef] {
@@ -83,7 +100,7 @@ extension ThemeRecipe {
         let heroY = yPosition(for: hero.yAnchor)
         defs.append(SpriteLayerDef(
             assetName: hero.assetName,
-            speed: hero.scrollSpeed * GK.groundSpeed,
+            speed: Self.heroScrollFraction * GK.groundSpeed,
             zPosition: -85,
             tileCount: hero.tiles ? 2 : 1,
             height: hero.heightPoints,
