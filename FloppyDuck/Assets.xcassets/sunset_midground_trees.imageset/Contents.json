@@ -1,16 +1,17 @@
 {
   "images": [
     {
-      "filename": "underwater_foreground2.png",
+      "filename": "sunset_midground_trees@1x.png",
       "idiom": "universal",
       "scale": "1x"
     },
     {
-      "filename": "underwater_foreground2@2x.png",
+      "filename": "sunset_midground_trees@2x.png",
       "idiom": "universal",
       "scale": "2x"
     },
     {
+      "filename": "sunset_midground_trees@2x.png",
       "idiom": "universal",
       "scale": "3x"
     }

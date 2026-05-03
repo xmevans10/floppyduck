@@ -1,16 +1,17 @@
 {
   "images": [
     {
-      "filename": "underwater_foreground2.png",
+      "filename": "pixelTokyo_midground_buildings@1x.png",
       "idiom": "universal",
       "scale": "1x"
     },
     {
-      "filename": "underwater_foreground2@2x.png",
+      "filename": "pixelTokyo_midground_buildings@2x.png",
       "idiom": "universal",
       "scale": "2x"
     },
     {
+      "filename": "pixelTokyo_midground_buildings@2x.png",
       "idiom": "universal",
       "scale": "3x"
     }
