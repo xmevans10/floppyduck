@@ -47,23 +47,18 @@ enum ThemeRecipeCatalog {
 
     // MARK: - Layer Factories
 
-    /// Hero layer — always full-height, anchored top. scrollSpeed is handled by
-    /// `spriteLayers()` via `ThemeRecipe.heroScrollFraction`, so we pass 0 here.
     private static func hero(_ name: String) -> LayerRecipe {
         LayerRecipe(assetName: name, scrollSpeed: 0, heightPoints: 620, yAnchor: .top)
     }
 
-    /// Standard cloud layer — 150pt tall, 15% ground speed, sits above midground.
     private static func clouds(_ name: String) -> LayerRecipe {
         LayerRecipe(assetName: name, scrollSpeed: 0.15, heightPoints: 150, yAnchor: .horizon(offset: 350))
     }
 
-    /// Ground surface tile (grass, road, etc.) — 80pt, full speed, anchored to ground.
     private static func ground(_ name: String) -> LayerRecipe {
         LayerRecipe(assetName: name, scrollSpeed: 1.0, heightPoints: GK.groundHeight, yAnchor: .ground)
     }
 
-    /// Ground base layer (dirt, rocks) — 100pt, full speed, anchored to ground.
     private static func groundBase(_ name: String) -> LayerRecipe {
         LayerRecipe(assetName: name, scrollSpeed: 1.0, heightPoints: 100, yAnchor: .ground)
     }
@@ -73,13 +68,14 @@ enum ThemeRecipeCatalog {
     static let day = ThemeRecipe(
         hero: hero("day_hero"),
         clouds: clouds("day_clouds"),
-        midground: LayerRecipe(
-            assetName: "day_midground_trees",
-            scrollSpeed: 0.35,
-            heightPoints: 350,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "day_sprite_oak_tree",  heightPoints: 130, weight: 3, scaleRange: 0.7...1.2),
+                MidgroundProp(assetName: "day_sprite_bush",      heightPoints: 50,  weight: 3, scaleRange: 0.6...1.0),
+                MidgroundProp(assetName: "day_sprite_flowers",   heightPoints: 35,  weight: 2, scaleRange: 0.5...0.9),
+                MidgroundProp(assetName: "day_sprite_rock",      heightPoints: 40,  weight: 2, scaleRange: 0.7...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("day_foreground2"),
         groundBase: groundBase("day_foreground3"),
         overlays: [],
@@ -89,13 +85,14 @@ enum ThemeRecipeCatalog {
     static let sunset = ThemeRecipe(
         hero: hero("sunset_hero"),
         clouds: clouds("sunset_clouds"),
-        midground: LayerRecipe(
-            assetName: "sunset_midground_trees",
-            scrollSpeed: 0.35,
-            heightPoints: 200,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "sunset_sprite_palm_silhouette", heightPoints: 150, weight: 3, scaleRange: 0.6...1.2),
+                MidgroundProp(assetName: "sunset_sprite_tall_grass",     heightPoints: 60,  weight: 3, scaleRange: 0.5...0.9),
+                MidgroundProp(assetName: "sunset_sprite_fence_post",     heightPoints: 70,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "sunset_sprite_hay_bale",       heightPoints: 50,  weight: 2, scaleRange: 0.7...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("sunset_foreground2"),
         groundBase: groundBase("sunset_foreground3"),
         overlays: [],
@@ -105,13 +102,14 @@ enum ThemeRecipeCatalog {
     static let night = ThemeRecipe(
         hero: hero("night_hero"),
         clouds: clouds("night_clouds"),
-        midground: LayerRecipe(
-            assetName: "night_midground_buildings",
-            scrollSpeed: 0.35,
-            heightPoints: 293,
-            yAnchor: .ground
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "night_sprite_lamp_post", heightPoints: 140, weight: 3, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "night_sprite_bench",     heightPoints: 40,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "night_sprite_tree_dark", heightPoints: 130, weight: 2, scaleRange: 0.6...1.1),
+                MidgroundProp(assetName: "night_sprite_mailbox",   heightPoints: 50,  weight: 1, scaleRange: 0.8...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("night_foreground2"),
         groundBase: groundBase("night_foreground3"),
         overlays: [],
@@ -123,13 +121,14 @@ enum ThemeRecipeCatalog {
     static let neonCity = ThemeRecipe(
         hero: hero("neonCity_hero"),
         clouds: clouds("neonCity_clouds"),
-        midground: LayerRecipe(
-            assetName: "neonCity_midground_buildings",
-            scrollSpeed: 0.35,
-            heightPoints: 400,
-            yAnchor: .ground
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "neonCity_sprite_neon_sign",       heightPoints: 70,  weight: 3, scaleRange: 0.7...1.1, yOffset: 20),
+                MidgroundProp(assetName: "neonCity_sprite_trash_can",       heightPoints: 50,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "neonCity_sprite_street_lamp_neon", heightPoints: 140, weight: 3, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "neonCity_sprite_vending_machine", heightPoints: 80,  weight: 2, scaleRange: 0.8...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("neonCity_foreground2"),
         groundBase: groundBase("neonCity_foreground3"),
         overlays: [],
@@ -139,13 +138,14 @@ enum ThemeRecipeCatalog {
     static let underwater = ThemeRecipe(
         hero: hero("underwater_hero"),
         clouds: nil,
-        midground: LayerRecipe(
-            assetName: "underwater_midground_coral",
-            scrollSpeed: 0.35,
-            heightPoints: 426,
-            yAnchor: .ground
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "underwater_sprite_coral",   heightPoints: 80,  weight: 3, scaleRange: 0.6...1.1),
+                MidgroundProp(assetName: "underwater_sprite_seaweed", heightPoints: 100, weight: 3, scaleRange: 0.5...1.0),
+                MidgroundProp(assetName: "underwater_sprite_anemone", heightPoints: 50,  weight: 2, scaleRange: 0.6...1.0),
+                MidgroundProp(assetName: "underwater_sprite_treasure", heightPoints: 40, weight: 1, scaleRange: 0.8...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("underwater_foreground2"),
         groundBase: groundBase("underwater_foreground3"),
         overlays: [],
@@ -155,13 +155,14 @@ enum ThemeRecipeCatalog {
     static let volcano = ThemeRecipe(
         hero: hero("volcano_hero"),
         clouds: clouds("volcano_clouds"),
-        midground: LayerRecipe(
-            assetName: "volcano_midground_rocks",
-            scrollSpeed: 0.35,
-            heightPoints: 267,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "volcano_sprite_lava_rock",        heightPoints: 70,  weight: 3, scaleRange: 0.7...1.1),
+                MidgroundProp(assetName: "volcano_sprite_dead_tree_charred", heightPoints: 110, weight: 2, scaleRange: 0.6...1.0),
+                MidgroundProp(assetName: "volcano_sprite_crystal_ember",    heightPoints: 65,  weight: 2, scaleRange: 0.6...1.0),
+                MidgroundProp(assetName: "volcano_sprite_hot_spring",       heightPoints: 35,  weight: 1, scaleRange: 0.7...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("volcano_foreground2"),
         groundBase: groundBase("volcano_foreground3"),
         overlays: [],
@@ -175,13 +176,14 @@ enum ThemeRecipeCatalog {
     static let arctic = ThemeRecipe(
         hero: hero("arctic_hero"),
         clouds: clouds("arctic_clouds"),
-        midground: LayerRecipe(
-            assetName: "arctic_midground_trees",
-            scrollSpeed: 0.35,
-            heightPoints: 300,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "arctic_sprite_pine_snow",   heightPoints: 130, weight: 3, scaleRange: 0.6...1.2),
+                MidgroundProp(assetName: "arctic_sprite_ice_crystal", heightPoints: 75,  weight: 2, scaleRange: 0.6...1.0),
+                MidgroundProp(assetName: "arctic_sprite_snowman",     heightPoints: 75,  weight: 1, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "arctic_sprite_snow_rock",   heightPoints: 50,  weight: 2, scaleRange: 0.7...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("arctic_foreground2"),
         groundBase: groundBase("arctic_foreground3"),
         overlays: [],
@@ -199,24 +201,24 @@ enum ThemeRecipeCatalog {
                 MidgroundProp(assetName: "western_sprite_tumbleweed", heightPoints: 40,  weight: 2, scaleRange: 0.5...0.9),
                 MidgroundProp(assetName: "western_sprite_skull",      heightPoints: 30,  weight: 1, scaleRange: 0.8...1.1),
                 MidgroundProp(assetName: "western_sprite_barrel",     heightPoints: 50,  weight: 1, scaleRange: 0.7...1.0),
-            ],
-            spacingRange: 80...200
+            ]
         ),
         ground: ground("western_foreground2"),
         groundBase: groundBase("western_foreground3"),
+        overlays: [],
         contrastBudget: defaultBudget
     )
 
     static let jungle = ThemeRecipe(
         hero: hero("jungle_hero"),
         clouds: clouds("jungle_clouds"),
-        midground: LayerRecipe(
-            assetName: "jungle_midground_trees",
-            scrollSpeed: 0.35,
-            heightPoints: 300,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "jungle_sprite_palm_tree",    heightPoints: 160, weight: 3, scaleRange: 0.6...1.2),
+                MidgroundProp(assetName: "jungle_sprite_fern",         heightPoints: 60,  weight: 3, scaleRange: 0.5...1.0),
+                MidgroundProp(assetName: "jungle_sprite_mushroom_big", heightPoints: 65,  weight: 2, scaleRange: 0.6...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("jungle_foreground2"),
         groundBase: groundBase("jungle_foreground3"),
         overlays: [],
@@ -226,13 +228,13 @@ enum ThemeRecipeCatalog {
     static let cave = ThemeRecipe(
         hero: hero("cave_hero"),
         clouds: nil,
-        midground: LayerRecipe(
-            assetName: "cave_midground_rocks",
-            scrollSpeed: 0.35,
-            heightPoints: 400,
-            yAnchor: .ground
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "cave_sprite_stalagmite",    heightPoints: 100, weight: 3, scaleRange: 0.6...1.1),
+                MidgroundProp(assetName: "cave_sprite_crystal_blue",  heightPoints: 75,  weight: 3, scaleRange: 0.5...1.0),
+                MidgroundProp(assetName: "cave_sprite_mushroom_glow", heightPoints: 50,  weight: 2, scaleRange: 0.6...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("cave_foreground2"),
         groundBase: groundBase("cave_foreground3"),
         overlays: [],
@@ -242,13 +244,14 @@ enum ThemeRecipeCatalog {
     static let mountain = ThemeRecipe(
         hero: hero("mountain_hero"),
         clouds: clouds("mountain_clouds"),
-        midground: LayerRecipe(
-            assetName: "mountain_midground_trees",
-            scrollSpeed: 0.35,
-            heightPoints: 200,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "mountain_sprite_pine_tree",  heightPoints: 140, weight: 3, scaleRange: 0.6...1.2),
+                MidgroundProp(assetName: "mountain_sprite_boulder",    heightPoints: 55,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "mountain_sprite_log",        heightPoints: 30,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "mountain_sprite_snow_bush",  heightPoints: 50,  weight: 2, scaleRange: 0.6...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("mountain_foreground2"),
         groundBase: groundBase("mountain_foreground3"),
         overlays: [],
@@ -258,13 +261,14 @@ enum ThemeRecipeCatalog {
     static let lagoon = ThemeRecipe(
         hero: hero("lagoon_hero"),
         clouds: clouds("lagoon_clouds"),
-        midground: LayerRecipe(
-            assetName: "lagoon_midground_palms",
-            scrollSpeed: 0.35,
-            heightPoints: 300,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "lagoon_sprite_palm_tropical", heightPoints: 140, weight: 3, scaleRange: 0.6...1.2),
+                MidgroundProp(assetName: "lagoon_sprite_beach_rock",    heightPoints: 35,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "lagoon_sprite_seashell",      heightPoints: 30,  weight: 2, scaleRange: 0.6...0.9),
+                MidgroundProp(assetName: "lagoon_sprite_tropical_bush", heightPoints: 60,  weight: 2, scaleRange: 0.6...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("lagoon_foreground2"),
         groundBase: groundBase("lagoon_foreground3"),
         overlays: [],
@@ -274,13 +278,13 @@ enum ThemeRecipeCatalog {
     static let losAngeles = ThemeRecipe(
         hero: hero("losAngeles_hero"),
         clouds: clouds("losAngeles_clouds"),
-        midground: LayerRecipe(
-            assetName: "losAngeles_midground_palms",
-            scrollSpeed: 0.35,
-            heightPoints: 300,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "losAngeles_sprite_palm_la",      heightPoints: 160, weight: 3, scaleRange: 0.6...1.1),
+                MidgroundProp(assetName: "losAngeles_sprite_fire_hydrant", heightPoints: 35,  weight: 2, scaleRange: 0.8...1.0),
+                MidgroundProp(assetName: "losAngeles_sprite_bush_trimmed", heightPoints: 50,  weight: 2, scaleRange: 0.6...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("losAngeles_foreground2"),
         groundBase: groundBase("losAngeles_foreground3"),
         overlays: [],
@@ -290,13 +294,13 @@ enum ThemeRecipeCatalog {
     static let london = ThemeRecipe(
         hero: hero("london_hero"),
         clouds: clouds("london_clouds"),
-        midground: LayerRecipe(
-            assetName: "london_midground_buildings",
-            scrollSpeed: 0.35,
-            heightPoints: 350,
-            yAnchor: .ground
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "london_sprite_phone_booth", heightPoints: 80,  weight: 2, scaleRange: 0.8...1.0),
+                MidgroundProp(assetName: "london_sprite_mailbox_red", heightPoints: 50,  weight: 2, scaleRange: 0.8...1.0),
+                MidgroundProp(assetName: "london_sprite_bench_park",  heightPoints: 40,  weight: 2, scaleRange: 0.7...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("london_foreground2"),
         groundBase: groundBase("london_foreground3"),
         overlays: [],
@@ -306,13 +310,14 @@ enum ThemeRecipeCatalog {
     static let roughOcean = ThemeRecipe(
         hero: hero("roughOcean_hero"),
         clouds: clouds("roughOcean_clouds"),
-        midground: LayerRecipe(
-            assetName: "roughOcean_midground_shore",
-            scrollSpeed: 0.35,
-            heightPoints: 300,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "roughOcean_sprite_buoy",      heightPoints: 60,  weight: 3, scaleRange: 0.7...1.0, yOffset: 10),
+                MidgroundProp(assetName: "roughOcean_sprite_rock_sea",  heightPoints: 55,  weight: 3, scaleRange: 0.7...1.1),
+                MidgroundProp(assetName: "roughOcean_sprite_driftwood", heightPoints: 25,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "roughOcean_sprite_seagull",   heightPoints: 35,  weight: 1, scaleRange: 0.7...1.0, yOffset: 15),
+            ]
         ),
-        horizon: nil,
         ground: nil,
         groundBase: nil,
         overlays: [],
@@ -324,13 +329,14 @@ enum ThemeRecipeCatalog {
     static let space = ThemeRecipe(
         hero: hero("space_hero"),
         clouds: nil,
-        midground: LayerRecipe(
-            assetName: "space_midground_rocks",
-            scrollSpeed: 0.35,
-            heightPoints: 250,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "space_sprite_asteroid",       heightPoints: 65,  weight: 3, scaleRange: 0.5...1.2, yOffset: 20),
+                MidgroundProp(assetName: "space_sprite_crystal_alien",  heightPoints: 75,  weight: 2, scaleRange: 0.5...1.0),
+                MidgroundProp(assetName: "space_sprite_satellite_dish", heightPoints: 65,  weight: 1, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "space_sprite_alien_plant",    heightPoints: 75,  weight: 2, scaleRange: 0.5...0.9),
+            ]
         ),
-        horizon: nil,
         ground: ground("space_foreground2"),
         groundBase: groundBase("space_foreground3"),
         overlays: [],
@@ -340,13 +346,14 @@ enum ThemeRecipeCatalog {
     static let pixelTokyo = ThemeRecipe(
         hero: hero("pixelTokyo_hero"),
         clouds: clouds("pixelTokyo_clouds"),
-        midground: LayerRecipe(
-            assetName: "pixelTokyo_midground_buildings",
-            scrollSpeed: 0.35,
-            heightPoints: 350,
-            yAnchor: .ground
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "pixelTokyo_sprite_vending_machine_jp", heightPoints: 80,  weight: 3, scaleRange: 0.8...1.0),
+                MidgroundProp(assetName: "pixelTokyo_sprite_lantern",            heightPoints: 65,  weight: 3, scaleRange: 0.6...1.0, yOffset: 15),
+                MidgroundProp(assetName: "pixelTokyo_sprite_cherry_blossom",     heightPoints: 140, weight: 2, scaleRange: 0.6...1.1),
+                MidgroundProp(assetName: "pixelTokyo_sprite_torii_gate",         heightPoints: 110, weight: 1, scaleRange: 0.8...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("pixelTokyo_foreground2"),
         groundBase: groundBase("pixelTokyo_foreground3"),
         overlays: [],
@@ -356,13 +363,14 @@ enum ThemeRecipeCatalog {
     static let egypt = ThemeRecipe(
         hero: hero("egypt_hero"),
         clouds: clouds("egypt_clouds"),
-        midground: LayerRecipe(
-            assetName: "egypt_midground_ruins",
-            scrollSpeed: 0.35,
-            heightPoints: 350,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "egypt_sprite_palm_desert",  heightPoints: 140, weight: 3, scaleRange: 0.6...1.2),
+                MidgroundProp(assetName: "egypt_sprite_clay_pot",     heightPoints: 45,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "egypt_sprite_obelisk",      heightPoints: 100, weight: 2, scaleRange: 0.8...1.0),
+                MidgroundProp(assetName: "egypt_sprite_sphinx_small", heightPoints: 55,  weight: 1, scaleRange: 0.8...1.0),
+            ]
         ),
-        horizon: nil,
         ground: ground("egypt_foreground2"),
         groundBase: groundBase("egypt_foreground3"),
         overlays: [],
