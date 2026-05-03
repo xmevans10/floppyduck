@@ -1,22 +1,18 @@
 {
-  "images": [
+  "images" : [
     {
-      "filename": "london_hero.png",
-      "idiom": "universal",
-      "scale": "1x"
+      "filename" : "london_hero.png",
+      "idiom" : "universal",
+      "scale" : "1x"
     },
     {
-      "filename": "london_hero@2x.png",
-      "idiom": "universal",
-      "scale": "2x"
-    },
-    {
-      "idiom": "universal",
-      "scale": "3x"
+      "filename" : "london_hero@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
     }
   ],
-  "info": {
-    "author": "xcode",
-    "version": 1
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
   }
 }
