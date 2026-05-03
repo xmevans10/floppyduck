@@ -144,7 +144,13 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
-        clouds: nil,
+        clouds: LayerRecipe(
+            assetName: "neonCity_clouds",
+            scrollSpeed: 0.15,
+            heightPoints: 150,
+            yAnchor: .horizon(offset: 350),
+            tiles: true
+        ),
         midground: LayerRecipe(
             assetName: "neonCity_midground_buildings",
             scrollSpeed: 0.35,
