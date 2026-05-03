@@ -9,11 +9,32 @@ struct ThemeRecipe {
     let hero: LayerRecipe
     let clouds: LayerRecipe?
     let midground: LayerRecipe?
+    let midgroundSprites: MidgroundSpawnConfig?
     let horizon: LayerRecipe?
     let ground: LayerRecipe?
-    let groundBase: LayerRecipe?     // dirt / rocks layer below the ground surface
+    let groundBase: LayerRecipe?
     let overlays: [OverlayRecipe]
     let contrastBudget: ContrastBudget
+
+    init(hero: LayerRecipe,
+         clouds: LayerRecipe? = nil,
+         midground: LayerRecipe? = nil,
+         midgroundSprites: MidgroundSpawnConfig? = nil,
+         horizon: LayerRecipe? = nil,
+         ground: LayerRecipe? = nil,
+         groundBase: LayerRecipe? = nil,
+         overlays: [OverlayRecipe] = [],
+         contrastBudget: ContrastBudget) {
+        self.hero = hero
+        self.clouds = clouds
+        self.midground = midground
+        self.midgroundSprites = midgroundSprites
+        self.horizon = horizon
+        self.ground = ground
+        self.groundBase = groundBase
+        self.overlays = overlays
+        self.contrastBudget = contrastBudget
+    }
 }
 
 /// Describes one parallax layer's rendering parameters.
@@ -50,6 +71,48 @@ enum LayerYAnchor {
     case horizon(offset: CGFloat)
     /// Anchored at y = 0 (ground layers).
     case ground
+}
+
+// MARK: - Scattered Midground
+
+/// An individual sprite prop that can be scattered in the midground layer at runtime.
+struct MidgroundProp {
+    /// Asset catalog name for this individual sprite.
+    let assetName: String
+    /// Display height in game points at scale 1.0.
+    let heightPoints: CGFloat
+    /// Relative spawn frequency weight (higher = more common).
+    let weight: Int
+    /// Random scale multiplier range for depth variation.
+    let scaleRange: ClosedRange<CGFloat>
+    /// Y offset from ground top (0 = sitting right on the ground surface).
+    let yOffset: CGFloat
+
+    init(assetName: String, heightPoints: CGFloat, weight: Int = 1,
+         scaleRange: ClosedRange<CGFloat> = 0.7...1.0, yOffset: CGFloat = 0) {
+        self.assetName = assetName
+        self.heightPoints = heightPoints
+        self.weight = weight
+        self.scaleRange = scaleRange
+        self.yOffset = yOffset
+    }
+}
+
+/// Configuration for spawning scattered individual sprites in the midground.
+struct MidgroundSpawnConfig {
+    /// Available props to spawn.
+    let props: [MidgroundProp]
+    /// Scroll speed as a fraction of ground speed.
+    let scrollSpeed: CGFloat
+    /// Horizontal spacing range between sprite centers (in game points).
+    let spacingRange: ClosedRange<CGFloat>
+
+    init(props: [MidgroundProp], scrollSpeed: CGFloat = 0.35,
+         spacingRange: ClosedRange<CGFloat> = 80...200) {
+        self.props = props
+        self.scrollSpeed = scrollSpeed
+        self.spacingRange = spacingRange
+    }
 }
 
 /// Describes a sprite-sheet overlay (clouds, birds, etc.).
@@ -136,8 +199,9 @@ extension ThemeRecipe {
             ))
         }
 
-        // Midground — optional trees/foliage layer
-        if let mg = midground {
+        // Midground — tiled strip (skipped when midgroundSprites is set;
+        // the spawner handles those separately in ParallaxManager)
+        if midgroundSprites == nil, let mg = midground {
             let mgY = yPosition(for: mg.yAnchor)
             defs.append(SpriteLayerDef(
                 assetName: mg.assetName,
@@ -190,7 +254,18 @@ extension ThemeRecipe {
             return 0
         }
     }
+
+    /// All asset names needed by this recipe (tiled layers + scattered sprites).
+    var allAssetNames: [String] {
+        var names = spriteLayers().map(\.assetName)
+        if let sprites = midgroundSprites {
+            names += sprites.props.map(\.assetName)
+        }
+        return names
+    }
 }
+
+// MARK: - SpriteLayerDef
 
 /// Flattened layer definition consumed by `ParallaxManager` at runtime.
 /// No theme-specific information — purely rendering data.

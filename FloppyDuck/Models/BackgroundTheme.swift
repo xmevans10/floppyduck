@@ -476,6 +476,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
 
     /// Asset names used by the recipe-driven parallax system (for texture prewarming).
     var recipeAssetNames: [String] {
-        ThemeRecipeCatalog.recipe(for: self).spriteLayers().map { $0.assetName }
+        ThemeRecipeCatalog.recipe(for: self).allAssetNames
     }
 }

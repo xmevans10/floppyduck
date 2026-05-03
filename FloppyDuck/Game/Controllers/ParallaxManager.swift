@@ -37,6 +37,17 @@ final class ParallaxManager {
     /// Cached accessibility state (avoid per-frame system queries).
     private var reduceMotionEnabled: Bool = false
 
+    // MARK: - Scattered Midground
+
+    /// Config for the scattered midground spawner (nil = use tiled strip instead).
+    private var midgroundSpawnConfig: MidgroundSpawnConfig?
+    /// Active scattered midground sprites.
+    private var scatteredSprites: [SKSpriteNode] = []
+    /// Cached midground scroll speed in pts/sec.
+    private var midgroundSpeed: CGFloat = 0
+    /// Distance remaining before next spawn (in pts).
+    private var nextSpawnDistance: CGFloat = 0
+
     private var overlayParticles: [OverlayParticle] = []
 
     // MARK: - Tile widths
@@ -113,6 +124,11 @@ final class ParallaxManager {
             layerTiles[def.assetName] = tiles
         }
 
+        // Set up scattered midground sprites (if the recipe uses them)
+        if let spawnConfig = recipe.midgroundSprites {
+            setupScatteredMidground(spawnConfig)
+        }
+
         setupRuntimeOverlays()
     }
 
@@ -142,7 +158,84 @@ final class ParallaxManager {
             }
         }
 
+        updateScatteredMidground(dt: dtF)
         updateRuntimeOverlays(dt: dtF)
+    }
+
+    // MARK: - Scattered Midground
+
+    private func setupScatteredMidground(_ config: MidgroundSpawnConfig) {
+        midgroundSpawnConfig = config
+        midgroundSpeed = config.scrollSpeed * GK.groundSpeed
+
+        // Fill the visible screen + a little extra with initial sprites
+        var x: CGFloat = CGFloat.random(in: 30...80)
+        while x < GK.worldWidth + 100 {
+            spawnScatteredProp(at: x, config: config)
+            x += CGFloat.random(in: config.spacingRange)
+        }
+        nextSpawnDistance = CGFloat.random(in: config.spacingRange)
+    }
+
+    private func spawnScatteredProp(at x: CGFloat, config: MidgroundSpawnConfig) {
+        let prop = weightedRandomProp(config.props)
+        let scale = CGFloat.random(in: prop.scaleRange)
+
+        let texture = SKTexture(imageNamed: prop.assetName)
+        texture.filteringMode = .nearest
+
+        let aspectRatio = texture.size().width / texture.size().height
+        let height = prop.heightPoints * scale
+        let width = height * aspectRatio
+
+        let sprite = SKSpriteNode(texture: texture,
+                                   size: CGSize(width: width, height: height))
+        sprite.anchorPoint = CGPoint(x: 0.5, y: 0)
+        sprite.position = CGPoint(x: x, y: GK.groundHeight + prop.yOffset)
+        // Smaller scale → further back → lower z; larger → closer → higher z
+        sprite.zPosition = -42 + scale * 4
+
+        backgroundLayer.addChild(sprite)
+        scatteredSprites.append(sprite)
+    }
+
+    private func updateScatteredMidground(dt: CGFloat) {
+        guard let config = midgroundSpawnConfig else { return }
+        guard !reduceMotionEnabled else { return }
+
+        let dx = midgroundSpeed * dt
+
+        // Move all sprites left
+        for sprite in scatteredSprites {
+            sprite.position.x -= dx
+        }
+
+        // Remove sprites that have scrolled fully off the left edge
+        scatteredSprites.removeAll { sprite in
+            if sprite.position.x < -(sprite.size.width / 2) - 10 {
+                sprite.removeFromParent()
+                return true
+            }
+            return false
+        }
+
+        // Spawn new sprites from the right as needed
+        nextSpawnDistance -= dx
+        if nextSpawnDistance <= 0 {
+            let spawnX = GK.worldWidth + 50
+            spawnScatteredProp(at: spawnX, config: config)
+            nextSpawnDistance = CGFloat.random(in: config.spacingRange)
+        }
+    }
+
+    private func weightedRandomProp(_ props: [MidgroundProp]) -> MidgroundProp {
+        let totalWeight = props.reduce(0) { $0 + $1.weight }
+        var roll = Int.random(in: 0..<totalWeight)
+        for prop in props {
+            roll -= prop.weight
+            if roll < 0 { return prop }
+        }
+        return props.last!
     }
 
     // MARK: - Runtime Overlays

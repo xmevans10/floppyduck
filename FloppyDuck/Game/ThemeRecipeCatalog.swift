@@ -191,16 +191,19 @@ enum ThemeRecipeCatalog {
     static let western = ThemeRecipe(
         hero: hero("western_hero"),
         clouds: clouds("western_clouds"),
-        midground: LayerRecipe(
-            assetName: "western_midground_rocks",
-            scrollSpeed: 0.35,
-            heightPoints: 250,
-            yAnchor: .top
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "western_sprite_cactus",     heightPoints: 120, weight: 3, scaleRange: 0.6...1.0),
+                MidgroundProp(assetName: "western_sprite_mesa",       heightPoints: 160, weight: 1, scaleRange: 0.8...1.2),
+                MidgroundProp(assetName: "western_sprite_dead_tree",  heightPoints: 100, weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "western_sprite_tumbleweed", heightPoints: 40,  weight: 2, scaleRange: 0.5...0.9),
+                MidgroundProp(assetName: "western_sprite_skull",      heightPoints: 30,  weight: 1, scaleRange: 0.8...1.1),
+                MidgroundProp(assetName: "western_sprite_barrel",     heightPoints: 50,  weight: 1, scaleRange: 0.7...1.0),
+            ],
+            spacingRange: 80...200
         ),
-        horizon: nil,
         ground: ground("western_foreground2"),
         groundBase: groundBase("western_foreground3"),
-        overlays: [],
         contrastBudget: defaultBudget
     )
 
