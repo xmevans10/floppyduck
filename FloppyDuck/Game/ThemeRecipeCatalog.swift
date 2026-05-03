@@ -50,7 +50,7 @@ enum ThemeRecipeCatalog {
     static let day = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "day_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -65,7 +65,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "day_midground_trees",
             scrollSpeed: 0.35,
-            heightPoints: 250,
+            heightPoints: 350,
             yAnchor: .top,
             tiles: true
         ),
@@ -91,7 +91,7 @@ enum ThemeRecipeCatalog {
     static let sunset = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "sunset_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -132,7 +132,7 @@ enum ThemeRecipeCatalog {
     static let night = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "night_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -175,7 +175,7 @@ enum ThemeRecipeCatalog {
     static let neonCity = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "neonCity_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -216,7 +216,7 @@ enum ThemeRecipeCatalog {
     static let underwater = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "underwater_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -251,7 +251,7 @@ enum ThemeRecipeCatalog {
     static let volcano = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "volcano_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -296,7 +296,7 @@ enum ThemeRecipeCatalog {
     static let arctic = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "arctic_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -337,7 +337,7 @@ enum ThemeRecipeCatalog {
     static let western = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "western_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -378,7 +378,7 @@ enum ThemeRecipeCatalog {
     static let jungle = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "jungle_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -419,7 +419,7 @@ enum ThemeRecipeCatalog {
     static let cave = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "cave_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -454,7 +454,7 @@ enum ThemeRecipeCatalog {
     static let mountain = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "mountain_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -495,7 +495,7 @@ enum ThemeRecipeCatalog {
     static let lagoon = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "lagoon_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -536,7 +536,7 @@ enum ThemeRecipeCatalog {
     static let losAngeles = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "losAngeles_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -577,7 +577,7 @@ enum ThemeRecipeCatalog {
     static let london = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "london_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -649,7 +649,7 @@ enum ThemeRecipeCatalog {
     static let space = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "space_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -684,7 +684,7 @@ enum ThemeRecipeCatalog {
     static let pixelTokyo = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "pixelTokyo_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
@@ -725,7 +725,7 @@ enum ThemeRecipeCatalog {
     static let egypt = ThemeRecipe(
         hero: LayerRecipe(
             assetName: "egypt_hero",
-            scrollSpeed: 0.0,
+            scrollSpeed: 0.03,
             heightPoints: 620,
             yAnchor: .top,
             tiles: true
