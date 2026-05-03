@@ -1,12 +1,12 @@
 {
   "images": [
     {
-      "filename": "neonCity_hero.png",
+      "filename": "neonCity_midground_buildings.png",
       "idiom": "universal",
       "scale": "1x"
     },
     {
-      "filename": "neonCity_hero@2x.png",
+      "filename": "neonCity_midground_buildings@2x.png",
       "idiom": "universal",
       "scale": "2x"
     },

@@ -77,6 +77,13 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: LayerRecipe(
+            assetName: "day_foreground3",
+            scrollSpeed: 1.0,
+            heightPoints: 100,
+            yAnchor: .ground,
+            tiles: true
+        ),
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -99,6 +106,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -121,6 +129,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: darkBudget
     )
@@ -136,12 +145,25 @@ enum ThemeRecipeCatalog {
             tiles: true
         ),
         clouds: nil,
-        midground: nil,
+        midground: LayerRecipe(
+            assetName: "neonCity_midground_buildings",
+            scrollSpeed: 0.35,
+            heightPoints: 400,
+            yAnchor: .ground,
+            tiles: true
+        ),
         horizon: nil,
         ground: LayerRecipe(
             assetName: "neonCity_foreground2",
             scrollSpeed: 1.0,
             heightPoints: GK.groundHeight,
+            yAnchor: .ground,
+            tiles: true
+        ),
+        groundBase: LayerRecipe(
+            assetName: "neonCity_foreground3",
+            scrollSpeed: 1.0,
+            heightPoints: 100,
             yAnchor: .ground,
             tiles: true
         ),
@@ -167,6 +189,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: darkBudget
     )
@@ -189,6 +212,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: ContrastBudget(
             maxLuminanceVariance: 0.20,
@@ -215,6 +239,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -237,6 +262,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -259,6 +285,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -281,6 +308,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: darkBudget
     )
@@ -303,6 +331,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -325,6 +354,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -347,6 +377,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -369,6 +400,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )
@@ -385,6 +417,7 @@ enum ThemeRecipeCatalog {
         midground: nil,
         horizon: nil,
         ground: nil,
+        groundBase: nil,
         overlays: [],
         contrastBudget: darkBudget
     )
@@ -409,6 +442,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: darkBudget
     )
@@ -431,6 +465,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: darkBudget
     )
@@ -453,6 +488,7 @@ enum ThemeRecipeCatalog {
             yAnchor: .ground,
             tiles: true
         ),
+        groundBase: nil,
         overlays: [],
         contrastBudget: defaultBudget
     )

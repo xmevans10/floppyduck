@@ -11,6 +11,7 @@ struct ThemeRecipe {
     let midground: LayerRecipe?
     let horizon: LayerRecipe?
     let ground: LayerRecipe?
+    let groundBase: LayerRecipe?     // dirt / rocks layer below the ground surface
     let overlays: [OverlayRecipe]
     let contrastBudget: ContrastBudget
 }
@@ -132,7 +133,20 @@ extension ThemeRecipe {
             ))
         }
 
-        // Ground — gameplay ground tile (optional: some themes omit it)
+        // Ground base — dirt / rocks layer behind the surface strip
+        if let gb = groundBase {
+            defs.append(SpriteLayerDef(
+                assetName: gb.assetName,
+                speed: gb.scrollSpeed * GK.groundSpeed,
+                zPosition: 45,
+                tileCount: gb.tiles ? 3 : 1,
+                height: gb.heightPoints,
+                yPosition: 0,
+                isGround: true
+            ))
+        }
+
+        // Ground — gameplay ground surface tile (grass, road, etc.)
         if let gnd = ground {
             defs.append(SpriteLayerDef(
                 assetName: gnd.assetName,
