@@ -55,6 +55,20 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: LayerRecipe(
+            assetName: "day_clouds",
+            scrollSpeed: 0.15,
+            heightPoints: 150,
+            yAnchor: .horizon(offset: 350),
+            tiles: true
+        ),
+        midground: LayerRecipe(
+            assetName: "day_midground_trees",
+            scrollSpeed: 0.35,
+            heightPoints: 183,
+            yAnchor: .top,
+            tiles: true
+        ),
         horizon: nil,
         ground: LayerRecipe(
             assetName: "day_foreground2",
@@ -75,6 +89,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "sunset_foreground2",
@@ -95,6 +111,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "night_foreground2",
@@ -117,6 +135,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "neonCity_foreground2",
@@ -137,6 +157,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "underwater_foreground2",
@@ -157,6 +179,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "volcano_foreground2",
@@ -181,6 +205,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "arctic_foreground2",
@@ -201,6 +227,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "western_foreground2",
@@ -221,6 +249,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "jungle_foreground2",
@@ -241,6 +271,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "cave_foreground2",
@@ -261,6 +293,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "mountain_foreground2",
@@ -281,6 +315,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "lagoon_foreground2",
@@ -301,6 +337,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "losAngeles_foreground2",
@@ -321,6 +359,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "london_foreground2",
@@ -341,6 +381,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: nil,
         overlays: [],
@@ -357,6 +399,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "space_foreground2",
@@ -377,6 +421,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "pixelTokyo_foreground2",
@@ -397,6 +443,8 @@ enum ThemeRecipeCatalog {
             yAnchor: .top,
             tiles: true
         ),
+        clouds: nil,
+        midground: nil,
         horizon: nil,
         ground: LayerRecipe(
             assetName: "egypt_foreground2",

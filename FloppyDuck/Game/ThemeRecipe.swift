@@ -7,6 +7,8 @@ import SpriteKit
 /// not from filenames, switch statements, or hardcoded constants.
 struct ThemeRecipe {
     let hero: LayerRecipe
+    let clouds: LayerRecipe?
+    let midground: LayerRecipe?
     let horizon: LayerRecipe?
     let ground: LayerRecipe?
     let overlays: [OverlayRecipe]
@@ -88,6 +90,20 @@ extension ThemeRecipe {
             isGround: false
         ))
 
+        // Clouds — optional cloud layer, scrolls independently
+        if let cl = clouds {
+            let clY = yPosition(for: cl.yAnchor)
+            defs.append(SpriteLayerDef(
+                assetName: cl.assetName,
+                speed: cl.scrollSpeed * GK.groundSpeed,
+                zPosition: -70,
+                tileCount: cl.tiles ? 2 : 1,
+                height: cl.heightPoints,
+                yPosition: clY,
+                isGround: false
+            ))
+        }
+
         // Horizon — optional distant silhouette strip
         if let hz = horizon {
             let hzY = yPosition(for: hz.yAnchor)
@@ -98,6 +114,20 @@ extension ThemeRecipe {
                 tileCount: hz.tiles ? 2 : 1,
                 height: hz.heightPoints,
                 yPosition: hzY,
+                isGround: false
+            ))
+        }
+
+        // Midground — optional trees/foliage layer
+        if let mg = midground {
+            let mgY = yPosition(for: mg.yAnchor)
+            defs.append(SpriteLayerDef(
+                assetName: mg.assetName,
+                speed: mg.scrollSpeed * GK.groundSpeed,
+                zPosition: -40,
+                tileCount: mg.tiles ? 2 : 1,
+                height: mg.heightPoints,
+                yPosition: mgY,
                 isGround: false
             ))
         }
