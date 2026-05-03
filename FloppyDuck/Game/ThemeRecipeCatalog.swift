@@ -65,7 +65,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "day_midground_trees",
             scrollSpeed: 0.35,
-            heightPoints: 183,
+            heightPoints: 250,
             yAnchor: .top,
             tiles: true
         ),
@@ -393,7 +393,7 @@ enum ThemeRecipeCatalog {
         midground: LayerRecipe(
             assetName: "jungle_midground_trees",
             scrollSpeed: 0.35,
-            heightPoints: 200,
+            heightPoints: 250,
             yAnchor: .top,
             tiles: true
         ),

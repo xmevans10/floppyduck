@@ -1,23 +1,18 @@
 {
-  "images": [
+  "images" : [
     {
-      "filename": "egypt_midground_ruins@1x.png",
-      "idiom": "universal",
-      "scale": "1x"
+      "filename" : "egypt_midground_ruins.png",
+      "idiom" : "universal",
+      "scale" : "1x"
     },
     {
-      "filename": "egypt_midground_ruins@2x.png",
-      "idiom": "universal",
-      "scale": "2x"
-    },
-    {
-      "filename": "egypt_midground_ruins@2x.png",
-      "idiom": "universal",
-      "scale": "3x"
+      "filename" : "egypt_midground_ruins@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
     }
   ],
-  "info": {
-    "author": "xcode",
-    "version": 1
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
   }
 }

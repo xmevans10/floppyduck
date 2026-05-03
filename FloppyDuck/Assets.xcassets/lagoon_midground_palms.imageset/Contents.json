@@ -1,23 +1,18 @@
 {
-  "images": [
+  "images" : [
     {
-      "filename": "lagoon_midground_palms@1x.png",
-      "idiom": "universal",
-      "scale": "1x"
+      "filename" : "lagoon_midground_palms.png",
+      "idiom" : "universal",
+      "scale" : "1x"
     },
     {
-      "filename": "lagoon_midground_palms@2x.png",
-      "idiom": "universal",
-      "scale": "2x"
-    },
-    {
-      "filename": "lagoon_midground_palms@2x.png",
-      "idiom": "universal",
-      "scale": "3x"
+      "filename" : "lagoon_midground_palms@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
     }
   ],
-  "info": {
-    "author": "xcode",
-    "version": 1
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
   }
 }

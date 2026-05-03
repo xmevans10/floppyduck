@@ -1,23 +1,18 @@
 {
-  "images": [
+  "images" : [
     {
-      "filename": "roughOcean_midground_shore@1x.png",
-      "idiom": "universal",
-      "scale": "1x"
+      "filename" : "roughOcean_midground_shore.png",
+      "idiom" : "universal",
+      "scale" : "1x"
     },
     {
-      "filename": "roughOcean_midground_shore@2x.png",
-      "idiom": "universal",
-      "scale": "2x"
-    },
-    {
-      "filename": "roughOcean_midground_shore@2x.png",
-      "idiom": "universal",
-      "scale": "3x"
+      "filename" : "roughOcean_midground_shore@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
     }
   ],
-  "info": {
-    "author": "xcode",
-    "version": 1
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
   }
 }
