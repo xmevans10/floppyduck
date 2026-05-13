@@ -122,8 +122,8 @@ final class SoundManager {
             guard let self else { return }
             self.prepareIfNeeded()
 
-            // Per-skin variant for flap and death
-            if (sound == .flap || sound == .death) && self.activeSkin != .classic {
+            // Per-skin variant for flap, death, and quack
+            if (sound == .flap || sound == .death || sound == .quack) && self.activeSkin != .classic {
                 let key = "\(self.activeSkin.rawValue)_\(sound.rawValue)"
                 if let skinPlayer = self.skinPlayers[key] {
                     skinPlayer.stop()
@@ -307,20 +307,20 @@ final class SoundManager {
 
     private func buildSounds() {
         let defs: [(GameSound, Data, Float)] = [
-            (.flap,      flapWav(),      0.25),
-            (.score,     scoreWav(),     0.35),
-            (.death,     deathWav(),     0.40),
-            (.button,    buttonWav(),    0.20),
-            (.win,       winWav(),       0.45),
-            (.lose,      loseWav(),      0.35),
-            (.medal,     medalWav(),     0.40),
-            (.countTick, countTickWav(), 0.15),
-            (.newBest,   newBestWav(),   0.50),
-            (.milestone, milestoneWav(), 0.30),
-            (.quack,     loadBundledQuack(),  0.60),
-            (.coin,      coinWav(),      0.40),
-            (.powerUp,   powerUpWav(),   0.35),
-            (.debuff,    debuffWav(),    0.35),
+            (.flap,      flapWav(),      0.22),
+            (.score,     scoreWav(),     0.30),
+            (.death,     deathWav(),     0.36),
+            (.button,    buttonWav(),    0.18),
+            (.win,       winWav(),       0.35),
+            (.lose,      loseWav(),      0.28),
+            (.medal,     medalWav(),     0.32),
+            (.countTick, countTickWav(), 0.12),
+            (.newBest,   newBestWav(),   0.35),
+            (.milestone, milestoneWav(), 0.25),
+            (.quack,     loadBundledQuack(),  0.35),
+            (.coin,      coinWav(),      0.30),
+            (.powerUp,   powerUpWav(),   0.30),
+            (.debuff,    debuffWav(),    0.28),
         ]
         for (sound, data, vol) in defs {
             soundData[sound] = data
@@ -544,7 +544,7 @@ final class SoundManager {
     /// These play randomly every 10 pipes during gameplay.
     private func loadQuackSounds() {
         quackPlayers.removeAll()
-        let targetVolume: Float = 0.50 * _sfxVolume
+        let targetVolume: Float = 0.35 * _sfxVolume
         for i in 1...5 {
             let name = "quack_\(i)"
             // Try .m4a first, then .wav
@@ -661,15 +661,24 @@ final class SoundManager {
         let quackFile = "quack_\(skin.rawValue)"
         if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a", subdirectory: "Quacks/Skins"),
            let p = try? AVAudioPlayer(contentsOf: url) {
-            p.volume = 0.50 * _sfxVolume
+            p.volume = 0.35 * _sfxVolume
             p.prepareToPlay()
             self.skinPlayers[key_quack] = p
         } else if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a"),
                   let p = try? AVAudioPlayer(contentsOf: url) {
             // Fallback: flat bundle lookup (Xcode may flatten the directory)
-            p.volume = 0.50 * _sfxVolume
+            p.volume = 0.35 * _sfxVolume
             p.prepareToPlay()
             self.skinPlayers[key_quack] = p
+        }
+
+        // Synthesized fallback for skins without dedicated quack audio
+        if skinPlayers[key_quack] == nil, let (quackData, quackVol) = skinQuackWav(skin: skin) {
+            if let p = try? AVAudioPlayer(data: quackData) {
+                p.volume = quackVol * _sfxVolume
+                p.prepareToPlay()
+                self.skinPlayers[key_quack] = p
+            }
         }
     }
 
@@ -678,30 +687,57 @@ final class SoundManager {
         switch skin {
         case .cowboy:
             // Lower honk
-            return (wav(chirp(f0: 220, f1: 500, dur: 0.07)), 0.28)
+            return (wav(chirp(f0: 220, f1: 500, dur: 0.07)), 0.22)
         case .alien:
-            // High-pitched zap
-            return (wav(sine(freq: 1800, dur: 0.04, decay: 0.04) + sine(freq: 2400, dur: 0.03, decay: 0.03)), 0.22)
+            // Soft high zap — less piercing
+            return (wav(sine(freq: 1200, dur: 0.04, decay: 0.05) + sine(freq: 1600, dur: 0.03, decay: 0.04)), 0.18)
         case .wizard:
             // Shimmer / sparkle
-            return (wav(sine(freq: 1200, dur: 0.03, decay: 0.04) + sine(freq: 1600, dur: 0.03, decay: 0.04) + sine(freq: 2000, dur: 0.02, decay: 0.03)), 0.20)
+            return (wav(sine(freq: 1200, dur: 0.03, decay: 0.04) + sine(freq: 1600, dur: 0.03, decay: 0.04) + sine(freq: 2000, dur: 0.02, decay: 0.03)), 0.18)
         case .devil:
             // Low growl chirp
-            return (wav(chirp(f0: 180, f1: 400, dur: 0.08)), 0.30)
+            return (wav(chirp(f0: 180, f1: 400, dur: 0.08)), 0.24)
         case .pirate:
-            // Rough square wave flap
-            return (wav(square(freq: 300, dur: 0.05, decay: 0.06)), 0.25)
+            // Soft rough flap — less grating
+            return (wav(chirp(f0: 250, f1: 380, dur: 0.06)), 0.22)
         case .dinosaur:
             // Deep thud chirp
-            return (wav(chirp(f0: 150, f1: 350, dur: 0.07)), 0.28)
+            return (wav(chirp(f0: 150, f1: 350, dur: 0.07)), 0.22)
         case .sailor:
             // Whistle-like
             return (wav(sine(freq: 900, dur: 0.04, decay: 0.05) + sine(freq: 1100, dur: 0.03, decay: 0.04)), 0.22)
         case .golden:
             // Bright bell
-            return (wav(sine(freq: 1400, dur: 0.04, decay: 0.05) + sine(freq: 1800, dur: 0.04, decay: 0.05)), 0.25)
+            return (wav(sine(freq: 1400, dur: 0.04, decay: 0.05) + sine(freq: 1800, dur: 0.04, decay: 0.05)), 0.22)
+        case .ninja:
+            // Soft swift whoosh — quiet quick airy chord
+            return (wav(sine(freq: 600, dur: 0.04, decay: 0.05) + sine(freq: 800, dur: 0.03, decay: 0.04)), 0.18)
+        case .astronaut:
+            // Soft radio blip — less harsh
+            return (wav(sine(freq: 600, dur: 0.05, decay: 0.06) + sine(freq: 900, dur: 0.03, decay: 0.04)), 0.18)
+        case .pharaoh:
+            // Bright regal chord
+            return (wav(sine(freq: 900, dur: 0.05, decay: 0.06) + sine(freq: 1200, dur: 0.04, decay: 0.05)), 0.22)
+        case .robot:
+            // Soft digital blip — less grating
+            return (wav(sine(freq: 660, dur: 0.04, decay: 0.05) + sine(freq: 880, dur: 0.03, decay: 0.04)), 0.18)
+        case .king:
+            // Trumpet-like fanfare chord
+            return (wav(sine(freq: 660, dur: 0.05, decay: 0.06) + sine(freq: 990, dur: 0.04, decay: 0.05) + sine(freq: 1320, dur: 0.03, decay: 0.04)), 0.22)
+        case .mogul:
+            // Brassy bright honk
+            return (wav(chirp(f0: 280, f1: 520, dur: 0.07)), 0.24)
+        case .lumberquack:
+            // Heavy solid thwack
+            return (wav(chirp(f0: 180, f1: 380, dur: 0.06)), 0.22)
+        case .spider:
+            // Light skitter
+            return (wav(sine(freq: 1000, dur: 0.03, decay: 0.04) + sine(freq: 1400, dur: 0.02, decay: 0.03)), 0.16)
+        case .squirrel:
+            // Quick chitter
+            return (wav(sine(freq: 1100, dur: 0.03, decay: 0.04) + sine(freq: 1500, dur: 0.02, decay: 0.03)), 0.18)
         case .classic:
-            return (flapWav(), 0.25)
+            return (flapWav(), 0.22)
         }
     }
 
@@ -710,30 +746,70 @@ final class SoundManager {
         switch skin {
         case .cowboy:
             // Lower longer honk descend
-            return (wav(chirp(f0: 280, f1: 60, dur: 0.30)), 0.42)
+            return (wav(chirp(f0: 280, f1: 60, dur: 0.30)), 0.36)
         case .alien:
-            // High zap descend
-            return (wav(chirp(f0: 1200, f1: 200, dur: 0.25)), 0.38)
+            // Soft zap descend
+            return (wav(chirp(f0: 800, f1: 200, dur: 0.25)), 0.32)
         case .wizard:
             // Descending shimmer
-            return (wav(sine(freq: 800, dur: 0.08, decay: 0.10) + sine(freq: 500, dur: 0.08, decay: 0.10) + sine(freq: 300, dur: 0.12, decay: 0.14)), 0.38)
+            return (wav(sine(freq: 800, dur: 0.08, decay: 0.10) + sine(freq: 500, dur: 0.08, decay: 0.10) + sine(freq: 300, dur: 0.12, decay: 0.14)), 0.36)
         case .devil:
             // Deep growl
-            return (wav(chirp(f0: 300, f1: 50, dur: 0.35)), 0.45)
+            return (wav(chirp(f0: 300, f1: 50, dur: 0.35)), 0.38)
         case .pirate:
             // Square wave crash
-            return (wav(square(freq: 350, dur: 0.10, decay: 0.12) + square(freq: 200, dur: 0.15, decay: 0.18)), 0.40)
+            return (wav(square(freq: 350, dur: 0.10, decay: 0.12) + square(freq: 200, dur: 0.15, decay: 0.18)), 0.36)
         case .dinosaur:
             // Deep rumble
-            return (wav(chirp(f0: 250, f1: 40, dur: 0.30)), 0.42)
+            return (wav(chirp(f0: 250, f1: 40, dur: 0.30)), 0.36)
         case .sailor:
             // Descending whistle
-            return (wav(chirp(f0: 800, f1: 150, dur: 0.28)), 0.38)
+            return (wav(chirp(f0: 800, f1: 150, dur: 0.28)), 0.36)
         case .golden:
             // Bright crash descend
-            return (wav(chirp(f0: 1000, f1: 120, dur: 0.28)), 0.42)
+            return (wav(chirp(f0: 1000, f1: 120, dur: 0.28)), 0.36)
+        case .ninja:
+            // Quick descending whoosh
+            return (wav(chirp(f0: 800, f1: 100, dur: 0.20)), 0.30)
+        case .astronaut:
+            // Soft radio fade-out
+            return (wav(sine(freq: 800, dur: 0.10, decay: 0.12) + chirp(f0: 500, f1: 80, dur: 0.22)), 0.32)
+        case .pharaoh:
+            // Mournful descending temple chord
+            return (wav(sine(freq: 600, dur: 0.10, decay: 0.12) + sine(freq: 400, dur: 0.10, decay: 0.12) + chirp(f0: 250, f1: 50, dur: 0.20)), 0.36)
+        case .robot:
+            // Soft power-down
+            return (wav(sine(freq: 600, dur: 0.08, decay: 0.10) + sine(freq: 350, dur: 0.10, decay: 0.12) + chirp(f0: 250, f1: 50, dur: 0.20)), 0.34)
+        case .king:
+            // Royal trumpet descending
+            return (wav(chirp(f0: 700, f1: 100, dur: 0.30)), 0.36)
+        case .mogul:
+            // Brassy cascading descend
+            return (wav(chirp(f0: 350, f1: 60, dur: 0.32)), 0.36)
+        case .lumberquack:
+            // Heavy timber crash
+            return (wav(chirp(f0: 200, f1: 40, dur: 0.30)), 0.38)
+        case .spider:
+            // Skittering fade-out
+            return (wav(sine(freq: 900, dur: 0.06, decay: 0.08) + chirp(f0: 600, f1: 100, dur: 0.18)), 0.28)
+        case .squirrel:
+            // High chittering descend
+            return (wav(chirp(f0: 900, f1: 120, dur: 0.22)), 0.32)
         case .classic:
-            return (deathWav(), 0.40)
+            return (deathWav(), 0.36)
+        }
+    }
+
+    /// Per-skin quack sound — returns nil for skins with bundled .m4a audio.
+    /// Synthesized waveforms for skins awaiting dedicated quack recordings.
+    private func skinQuackWav(skin: DuckSkin) -> (Data, Float)? {
+        switch skin {
+        case .ninja:
+            // Swift silent whoosh — nearly inaudible, fitting "Silent Quack"
+            return (wav(chirp(f0: 900, f1: 300, dur: 0.08)), 0.16)
+        default:
+            // All skins have dedicated bundled .m4a quack files — no synthesis needed
+            return nil
         }
     }
 

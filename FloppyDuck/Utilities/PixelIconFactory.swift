@@ -33,6 +33,10 @@ enum PixelIcon: String, CaseIterable {
     case speedBurst    // lightning bolt
     case dizzyDuck     // spiral
     case heavyDuck     // anchor/weight
+    case jumboDuck     // oversized duck
+    case stickyFlap    // syrupy wing
+    case tinyDuck      // miniature duck
+    case megaFlap      // powerful wing burst
 
     // Game items & achievements
     case bread         // bread loaf
@@ -142,6 +146,10 @@ final class PixelIconFactory {
         case .doublePoints: grid = doublePointsGrid()
         case .dizzyDuck:    grid = dizzyDuckGrid()
         case .heavyDuck:    grid = heavyDuckGrid()
+        case .jumboDuck:    grid = jumboDuckGrid()
+        case .stickyFlap:   grid = stickyFlapGrid()
+        case .tinyDuck:     grid = tinyDuckGrid()
+        case .megaFlap:     grid = megaFlapGrid()
         case .bread:        grid = breadGrid()
         case .star:         grid = starGrid()
         case .crown:        grid = crownGrid()
@@ -167,13 +175,23 @@ final class PixelIconFactory {
 
         let gridH = grid.count
         let gridW = grid[0].count
+
+#if DEBUG
+        // Validate grid consistency — flag malformed rows so we can fix the source
+        for (i, row) in grid.enumerated() where row.count != gridW {
+            print("[PixelIconFactory] ⚠️ '\(icon.rawValue)' row \(i) has \(row.count) cols, expected \(gridW)")
+        }
+#endif
         let imgSize = CGSize(width: CGFloat(gridW) * pixelSize, height: CGFloat(gridH) * pixelSize)
 
         let renderer = UIGraphicsImageRenderer(size: imgSize)
         return renderer.image { ctx in
             for row in 0..<gridH {
+                let rowData = grid[row]
+                let rowW = rowData.count
                 for col in 0..<gridW {
-                    let color = grid[row][col]
+                    guard col < rowW else { break }
+                    let color = rowData[col]
                     guard color != UIColor.clear else { continue }
                     color.setFill()
                     ctx.fill(CGRect(
@@ -601,6 +619,69 @@ final class PixelIconFactory {
             [C,C,C,B,B,B,C,C,C,C],
             [C,B,B,B,B,B,B,B,C,C],
             [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func jumboDuckGrid() -> [[UIColor]] {
+        let Or = O
+        return [
+            [C,C,B,C,C,C,C,B,C,C],
+            [C,B,Or,B,C,C,B,Or,B,C],
+            [C,B,Or,Or,B,B,Or,Or,B,C],
+            [B,C,B,Or,Or,Or,Or,B,C,B],
+            [C,C,B,B,Or,Or,B,B,C,C],
+            [C,C,C,B,B,B,B,C,C,C],
+            [C,C,B,C,C,C,C,B,C,C],
+            [C,B,C,C,C,C,C,C,B,C],
+            [B,C,C,C,C,C,C,C,C,B],
+            [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func stickyFlapGrid() -> [[UIColor]] {
+        let M = UIColor(red: 0.4, green: 0.6, blue: 0.2, alpha: 1) // murky green
+        return [
+            [C,C,C,C,B,C,C,C,C,C],
+            [C,C,C,B,M,B,C,C,C,C],
+            [C,C,B,M,M,M,B,C,C,C],
+            [C,B,M,M,B,M,M,B,C,C],
+            [B,M,M,C,C,C,M,M,B,C],
+            [C,B,M,B,B,B,M,B,C,C],
+            [C,C,B,M,M,M,B,C,C,C],
+            [C,C,C,B,M,B,C,C,C,C],
+            [C,C,C,C,B,C,C,C,C,C],
+            [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func tinyDuckGrid() -> [[UIColor]] {
+        return [
+            [C,C,C,C,C,C,C,C,C,C],
+            [C,C,C,C,C,C,C,C,C,C],
+            [C,C,C,Bl,C,C,Bl,C,C,C],
+            [C,C,Bl,Bl,C,Bl,Bl,C,C],
+            [C,C,Bl,Bl,Bl,Bl,Bl,C,C],
+            [C,C,C,Bl,Bl,Bl,C,C,C],
+            [C,C,C,Bl,Bl,Bl,C,C,C],
+            [C,C,C,C,Bl,C,C,C,C],
+            [C,C,C,C,C,C,C,C,C,C],
+            [C,C,C,C,C,C,C,C,C,C],
+        ]
+    }
+
+    private func megaFlapGrid() -> [[UIColor]] {
+        let Am = UIColor(red: 1.0, green: 0.7, blue: 0.2, alpha: 1) // amber
+        return [
+            [C,C,C,B,C,C,C,C,C,C],
+            [C,C,B,Am,B,C,C,C,C,C],
+            [C,B,Am,Am,Am,B,C,C,C,C],
+            [B,Am,Am,C,Am,Am,B,C,C],
+            [C,C,B,B,C,C,B,B,C,C],
+            [C,B,C,C,C,C,C,C,B,C],
+            [B,Am,B,C,C,C,C,B,Am,B],
+            [C,B,Am,B,C,C,B,Am,B,C],
+            [C,C,B,Am,B,B,Am,B,C,C],
+            [C,C,C,B,B,B,B,C,C,C],
         ]
     }
 

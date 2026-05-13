@@ -23,10 +23,12 @@ final class PowerUpTests: XCTestCase {
 
     func testPositiveNegativeClassification() {
         let expectedPositive: Set<PowerUpKind> = [
-            .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck
+            .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck, .doublePoints,
+            .tinyDuck, .megaFlap
         ]
         let expectedNegative: Set<PowerUpKind> = [
-            .pipeSqueeze, .speedBurst, .dizzyDuck
+            .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck,
+            .jumboDuck, .stickyFlap
         ]
 
         for kind in PowerUpKind.allCases {

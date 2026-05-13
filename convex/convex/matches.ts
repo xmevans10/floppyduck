@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mustBeParticipant, resolveUser, userSide } from "./lib/identity";
 import { applyMatchStatsToUser, upsertRating } from "./lib/stats";
@@ -31,8 +31,15 @@ export const reportScore = mutation({
     mustBeParticipant(match, user._id);
     const side = userSide(match, user._id);
 
+    const newScore = Math.min(MAX_SCORE, Math.max(0, Math.floor(args.score)));
+    const currentScore = side === "p1" ? match.p1Score : match.p2Score;
+
+    if (newScore < currentScore) {
+      throw new ConvexError("Score cannot decrease.");
+    }
+
     await ctx.db.patch(match._id, {
-      [side === "p1" ? "p1Score" : "p2Score"]: Math.min(MAX_SCORE, Math.max(0, Math.floor(args.score))),
+      [side === "p1" ? "p1Score" : "p2Score"]: newScore,
       updatedAt: Date.now(),
     });
 

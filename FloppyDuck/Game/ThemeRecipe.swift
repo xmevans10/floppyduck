@@ -87,15 +87,30 @@ struct MidgroundProp {
     let scaleRange: ClosedRange<CGFloat>
     /// Y offset from ground top (0 = sitting right on the ground surface).
     let yOffset: CGFloat
+    /// Optional horizontal frame strip animation.
+    let animation: MidgroundAnimation?
+    /// Whether this prop is a tree (can overlap with other trees).
+    let isTree: Bool
 
     init(assetName: String, heightPoints: CGFloat, weight: Int = 1,
-         scaleRange: ClosedRange<CGFloat> = 0.7...1.0, yOffset: CGFloat = 0) {
+         scaleRange: ClosedRange<CGFloat> = 0.7...1.0,
+         yOffset: CGFloat = 0,
+         animation: MidgroundAnimation? = nil,
+         isTree: Bool = false) {
         self.assetName = assetName
         self.heightPoints = heightPoints
         self.weight = weight
         self.scaleRange = scaleRange
         self.yOffset = yOffset
+        self.animation = animation
+        self.isTree = isTree
     }
+}
+
+/// Animation metadata for a prop stored as a single horizontal sprite strip.
+struct MidgroundAnimation {
+    let frameCount: Int
+    let framesPerSecond: Double
 }
 
 /// Configuration for spawning scattered individual sprites in the midground.
@@ -106,6 +121,11 @@ struct MidgroundSpawnConfig {
     let scrollSpeed: CGFloat
     /// Horizontal spacing range between sprite centers (in game points).
     let spacingRange: ClosedRange<CGFloat>
+
+    /// Props that are trees (can overlap with each other, form dense patches).
+    var treeProps: [MidgroundProp] { props.filter(\.isTree) }
+    /// Props that are NOT trees (must stay clear of everything, spawn solo).
+    var nonTreeProps: [MidgroundProp] { props.filter { !$0.isTree } }
 
     init(props: [MidgroundProp], scrollSpeed: CGFloat = 0.35,
          spacingRange: ClosedRange<CGFloat> = 80...200) {

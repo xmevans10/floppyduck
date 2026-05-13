@@ -90,8 +90,9 @@ KEY FEATURES FOR REVIEW:
 
 ACCOUNT DELETION: Settings → Delete Account (visible when signed in with Apple) → confirm in dialog. Immediately deletes all user data.
 
-IN-APP PURCHASES (7 Non-Consumable):
+IN-APP PURCHASES (10 Non-Consumable):
 • 3 skins at $0.49: Alien, Wizard, Devil
+• 3 pipe skins at $0.49: Neon, Royal, Gold
 • 2 backgrounds at $0.99: Space, Tokyo
 • 2 banners at $0.99: Neon Tokyo, Cosmic Rift
 

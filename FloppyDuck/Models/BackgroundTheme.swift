@@ -12,6 +12,7 @@ enum ThemeOverlayEffect: String, Codable, Hashable {
     case mist
     case seaSpray
     case stars
+    case shootingStar
 }
 
 // MARK: - Purchase Kind (shared with DuckSkin)
@@ -51,7 +52,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     case lagoon
     case losAngeles
     case london
-    case roughOcean
 
     var id: String { rawValue }
 
@@ -76,7 +76,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "LAGOON"
         case .losAngeles:  return "LOS ANGELES"
         case .london:      return "LONDON"
-        case .roughOcean:  return "ROUGH OCEAN"
         }
     }
 
@@ -99,7 +98,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "Pirate Paradise"
         case .losAngeles:  return "City of Angels"
         case .london:      return "Cheerio!"
-        case .roughOcean:  return "Storm Swell"
         }
     }
 
@@ -114,7 +112,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return .normal
         case .space, .pixelTokyo, .egypt:
             return .premium
-        case .lagoon, .losAngeles, .london, .roughOcean:
+        case .lagoon, .losAngeles, .london:
             return .normal
         }
     }
@@ -136,7 +134,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return 225
         case .losAngeles:  return 250
         case .london:      return 200
-        case .roughOcean:  return 225
         default:           return nil
         }
     }
@@ -275,13 +272,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.62, green: 0.64, blue: 0.66),
                 Color(red: 0.72, green: 0.73, blue: 0.74),
             ]
-        case .roughOcean:
-            return [
-                Color(red: 0.04, green: 0.10, blue: 0.14),
-                Color(red: 0.08, green: 0.20, blue: 0.24),
-                Color(red: 0.14, green: 0.32, blue: 0.36),
-                Color(red: 0.32, green: 0.48, blue: 0.50),
-            ]
         }
     }
 
@@ -305,7 +295,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return UIColor(red: 0.50, green: 0.82, blue: 0.95, alpha: 1)
         case .losAngeles:  return UIColor(red: 0.70, green: 0.40, blue: 0.35, alpha: 1)
         case .london:      return UIColor(red: 0.42, green: 0.45, blue: 0.48, alpha: 1)
-        case .roughOcean:  return UIColor(red: 0.08, green: 0.20, blue: 0.24, alpha: 1)
         }
     }
 
@@ -361,8 +350,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return [.dust]
         case .london:
             return [.rain, .mist]
-        case .roughOcean:
-            return [.rain, .seaSpray]
         }
     }
 
@@ -386,7 +373,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.85, green: 0.78, blue: 0.60)
         case .losAngeles:  return Color(red: 0.35, green: 0.35, blue: 0.38)
         case .london:      return Color(red: 0.30, green: 0.30, blue: 0.32)
-        case .roughOcean:  return Color(red: 0.05, green: 0.18, blue: 0.22)
         }
     }
 
@@ -410,7 +396,6 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.20, green: 0.55, blue: 0.40)
         case .losAngeles:  return Color(red: 0.30, green: 0.22, blue: 0.15)
         case .london:      return Color(red: 0.25, green: 0.25, blue: 0.28)
-        case .roughOcean:  return Color(red: 0.10, green: 0.28, blue: 0.32)
         }
     }
 
@@ -434,15 +419,24 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.25, green: 0.80, blue: 0.85)
         case .losAngeles:  return Color(red: 0.90, green: 0.50, blue: 0.30)
         case .london:      return Color(red: 0.75, green: 0.20, blue: 0.20)
-        case .roughOcean:  return Color(red: 0.20, green: 0.62, blue: 0.68)
         }
     }
+
+    // MARK: - Card Preview
+
+    /// Hero layer asset name for theme card previews.
+    var heroAssetName: String { "\(rawValue)_hero" }
+
+    /// Anchor point for cropping the hero preview in square cards.
+    /// `.center` works for most themes; adjust for heroes where key content
+    /// is noticeably off-center (e.g., London's Big Ben leans left).
+    var previewCropAnchor: UnitPoint { .center }
 
     // MARK: - Per-Theme Music
 
     /// Preferred bundled gameplay music file name (without extension).
     /// `SoundManager` loads this instead of picking a random Action track.
-    /// All themes now have dedicated bundled tracks — no more synthesized fallbacks.
+    /// Newer themes can reuse an existing track until dedicated music ships.
     var gameplayMusicFile: String? {
         switch self {
         case .day:         return "action_level_1"
@@ -459,10 +453,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space:       return "theme_space"
         case .pixelTokyo:  return "theme_pixelTokyo"
         case .egypt:       return "theme_egypt"
-        case .lagoon:      return nil   // TODO: add theme_lagoon.m4a
-        case .losAngeles:  return nil   // TODO: add theme_losAngeles.m4a
-        case .london:      return nil   // TODO: add theme_london.m4a
-        case .roughOcean:  return nil   // TODO: add theme_roughOcean.m4a
+        case .lagoon:      return "theme_lagoon"
+        case .losAngeles:  return "theme_losAngeles"
+        case .london:      return "theme_london"
         }
     }
 

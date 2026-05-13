@@ -16,8 +16,8 @@ final class GameUIPerformanceTests: XCTestCase {
         measure(metrics: [XCTCPUMetric(), XCTMemoryMetric(), XCTClockMetric()], options: options) {
             app.launch()
             
-            // Wait for Splash screen to finish (~5 seconds) and tap "CLASSIC"
-            let classicButton = app.buttons["CLASSIC"]
+            // Wait for Splash screen to finish and tap the classic mode button.
+            let classicButton = app.buttons["CLASSIC, Solo Run"]
             XCTAssertTrue(classicButton.waitForExistence(timeout: 8.0), "Classic button should appear after splash screen")
             classicButton.tap()
             

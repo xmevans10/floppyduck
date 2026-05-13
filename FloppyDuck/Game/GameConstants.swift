@@ -33,18 +33,9 @@ enum GK {
     static let medalGold:     Int = 30
     static let medalPlatinum: Int = 50
 
-    // MARK: - Parallax Speeds (9-layer system: bg1 slowest → fg3 fastest)
-    static let bg1Speed: CGFloat = 8
-    static let bg2Speed: CGFloat = 15
-    static let bg3Speed: CGFloat = 25
-    static let mid1Speed: CGFloat = 38
-    static let mid2Speed: CGFloat = 52
-    static let mid3Speed: CGFloat = 68
-    static let fg1Speed: CGFloat = 90
-    static let fg2Speed: CGFloat = 150   // ground surface — matches pipe speed
-    static let fg3Speed: CGFloat = 150   // ground overlay — matches pipe speed
+    // MARK: - Parallax Speed
 
-    // Legacy aliases (pipes, ground physics still reference groundSpeed)
+    /// Base scroll speed for ground, pipes, and recipe-scaling. Pts/sec.
     static let groundSpeed: CGFloat = 150
 
     // MARK: - Duck positioning
@@ -82,9 +73,8 @@ enum GK {
     static let roomCodeLength = 5
 
     // MARK: - App Store
-    // TODO: Replace with real App Store ID after creating the app in App Store Connect.
-    // While this is "000000000", GK.appStoreURL returns nil and share sheets omit the link.
-    static let appStoreID = "000000000"
+
+    static let appStoreID = "6768735513"
     static var appStoreURL: URL? {
         makeAppStoreURL(appID: appStoreID)
     }
@@ -142,5 +132,9 @@ enum GK {
 
         // Bread currency
         static let breadGold    = Color(red: 0.85, green: 0.68, blue: 0.30)
+
+        // Wood — park sign boards
+        static let woodSurface  = Color(red: 0.55, green: 0.40, blue: 0.20)
+        static let woodGrain    = Color(red: 0.42, green: 0.28, blue: 0.12)
     }
 }

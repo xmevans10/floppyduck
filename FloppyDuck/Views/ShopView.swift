@@ -18,11 +18,14 @@ struct ShopView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            GeometryReader { geo in
+                Image(uiImage: UIImage(named: "floppy_theme") ?? UIImage())
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -366,9 +369,7 @@ struct ShopView: View {
             }
         } label: {
             VStack(spacing: 8) {
-                // Mini-scene preview showing sky + hills + ground
                 ThemePreviewView(theme: theme)
-                    .frame(height: 70)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)

@@ -1,6 +1,6 @@
 import { action, internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { findUserByAppleId, findUserByDeviceId, resolveUser, verifyAppleIdentityToken } from "./lib/identity";
 import {
@@ -265,6 +265,59 @@ export const syncBeatenBots = mutation({
     }
 
     return { beatenBots: merged };
+  },
+});
+
+export const spendBread = mutation({
+  args: {
+    amount: v.number(),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    const cost = Math.max(1, Math.floor(args.amount));
+
+    if (user.bread < cost) {
+      throw new ConvexError("Insufficient bread.");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(user._id, {
+      bread: user.bread - cost,
+      updatedAt: now,
+    });
+
+    return { bread: user.bread - cost };
+  },
+});
+
+export const updateUsername = mutation({
+  args: {
+    username: v.string(),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    const name = args.username.trim().slice(0, 16);
+    if (name.length < 2) {
+      throw new ConvexError("Username must be 2–16 characters.");
+    }
+
+    // Uniqueness check
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", name))
+      .first();
+    if (existing && existing._id !== user._id) {
+      throw new ConvexError("That name is already taken.");
+    }
+
+    await ctx.db.patch(user._id, {
+      username: name,
+      updatedAt: Date.now(),
+    });
+
+    return { username: name };
   },
 });
 

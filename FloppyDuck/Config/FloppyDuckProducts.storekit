@@ -65,6 +65,51 @@
       "type" : "NonConsumable"
     },
     {
+      "displayPrice" : "0.49",
+      "familyShareable" : false,
+      "internalID" : "pipe_neon",
+      "localizations" : [
+        {
+          "description" : "A bright neon pipe cosmetic for your runs.",
+          "displayName" : "Neon Pipe Skin",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.floppyduck.pipe.neon",
+      "referenceName" : "Neon Pipe Skin",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.49",
+      "familyShareable" : false,
+      "internalID" : "pipe_royal",
+      "localizations" : [
+        {
+          "description" : "A royal purple pipe cosmetic for your runs.",
+          "displayName" : "Royal Pipe Skin",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.floppyduck.pipe.royal",
+      "referenceName" : "Royal Pipe Skin",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.49",
+      "familyShareable" : false,
+      "internalID" : "pipe_gold",
+      "localizations" : [
+        {
+          "description" : "A gold pipe cosmetic for your runs.",
+          "displayName" : "Gold Pipe Skin",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.floppyduck.pipe.gold",
+      "referenceName" : "Gold Pipe Skin",
+      "type" : "NonConsumable"
+    },
+    {
       "displayPrice" : "0.99",
       "familyShareable" : false,
       "internalID" : "theme_pixelTokyo",

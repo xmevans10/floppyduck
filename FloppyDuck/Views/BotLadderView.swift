@@ -21,7 +21,15 @@ struct BotLadderView: View {
 
     var body: some View {
         ZStack {
-            eightBitBackground.ignoresSafeArea()
+            GeometryReader { geo in
+                Image(uiImage: UIImage(named: "floppy_theme") ?? UIImage())
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 header

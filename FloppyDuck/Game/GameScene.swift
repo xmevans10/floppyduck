@@ -79,6 +79,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var pipeTimer: TimeInterval = 0
     private var lastUpdate: TimeInterval = 0
 
+#if DEBUG
+    private var debugFrameTimes: [Double] = []
+#endif
+
     // Progressive difficulty
     private let difficulty = DifficultyManager()
     private var currentPipeSpeed: CGFloat = GK.pipeSpeed
@@ -128,6 +132,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // PERF: Pre-allocated flutter animation — reused every tap instead of
     // creating 7 new SKAction objects per flap (eliminates ~7 allocs/tap).
     private lazy var cachedFlutterAction: SKAction = {
+        guard duckTextures.count >= 3 else {
+            return SKAction.run { [weak self] in self?.startWingAnimation() }
+        }
         let flutter = SKAction.sequence([
             SKAction.setTexture(duckTextures[2]),
             SKAction.wait(forDuration: 0.05),
@@ -321,6 +328,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // Item 2: Safe optional chaining
     private func startWingAnimation() {
+        guard !duckTextures.isEmpty else { return }
         let wingAction = SKAction.animate(with: duckTextures, timePerFrame: 0.10)
         duck?.run(SKAction.repeatForever(wingAction), withKey: "wings")
     }
@@ -541,11 +549,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let gapBottom = max(minY, gapY - gapHeight / 2 + gapInset)
         let gapTop = min(maxY, gapY + gapHeight / 2 - gapInset)
 
+        // 75% in the pipe gap (flight corridor), 25% weighted toward gap region
         let y: CGFloat
-        if Bool.random(), gapBottom < gapTop {
+        if CGFloat.random(in: 0...1) < 0.75, gapBottom < gapTop {
             y = CGFloat.random(in: gapBottom...gapTop)
         } else {
-            y = CGFloat.random(in: minY...maxY)
+            let nearBottom = max(minY, gapY - gapHeight * 0.8)
+            let nearTop = min(maxY, gapY + gapHeight * 0.8)
+            if nearBottom < nearTop {
+                y = CGFloat.random(in: nearBottom...nearTop)
+            } else if gapBottom < gapTop {
+                y = CGFloat.random(in: gapBottom...gapTop)
+            } else {
+                y = gapY  // fallback dead center
+            }
         }
 
         let collectible = makePowerUpCollectible(kind: kind)
@@ -714,12 +731,46 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             botController?.startPlaying()
         }
 
+#if DEBUG
+        let totalNodes = children.reduce(0) { $0 + $1.children.count + 1 }
+        let midgroundNodes = parallax.debugScatteredCount()
+        let physicsCount = countPhysicsBodies()
+        print("[Scene] ▶️ GAME START — nodes:\(totalNodes) midground:\(midgroundNodes) physicsBodies:\(physicsCount) pipes:0 mode:\(mode.rawValue)")
+#endif
+
         gameDelegate?.gameDidStart()
     }
 
     // MARK: - Update Loop
 
     override func update(_ currentTime: TimeInterval) {
+#if DEBUG
+        let frameStart = CACurrentMediaTime()
+        defer {
+            let elapsed = CACurrentMediaTime() - frameStart
+            debugFrameTimes.append(elapsed)
+            if debugFrameTimes.count >= 60 {
+                let avg = debugFrameTimes.reduce(0, +) / Double(debugFrameTimes.count)
+                let maxT = debugFrameTimes.max() ?? 0
+                let minT = debugFrameTimes.min() ?? 0
+
+                let totalNodes = children.reduce(0) { $0 + $1.children.count + 1 }
+                let pipeCount = pipeLayer.children.count
+                let fps = 1.0 / avg
+
+                print("[Scene] FPS:\(String(format: "%.1f", fps))  avg:\(String(format: "%.2f", avg*1000))ms  min:\(String(format: "%.2f", minT*1000))ms  max:\(String(format: "%.2f", maxT*1000))ms  nodes:\(totalNodes)  pipes:\(pipeCount)")
+
+                if maxT > 0.016 {
+                    print("[Scene] ⚠️ SLOW FRAME: \(String(format: "%.2f", maxT*1000))ms — nodes:\(totalNodes) pipes:\(pipeCount)")
+                }
+                if maxT > 0.033 {
+                    print("[Scene] 🔴 DROPPED FRAME: \(String(format: "%.2f", maxT*1000))ms (>30ms)")
+                }
+
+                debugFrameTimes.removeAll(keepingCapacity: true)
+            }
+        }
+#endif
         // Item 2: Safe optional access for duck
         if phase == .dead, let duck {
             // Smooth nose-down rotation during scripted death fall
@@ -1008,7 +1059,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         spawnDeathParticles(at: duck.position)
 
         duck.removeAction(forKey: "wings")
-        duck.texture = duckTextures[0]
+        if !duckTextures.isEmpty { duck.texture = duckTextures[0] }
 
         // Disable physics — scripted fall only, no collision-based movement.
         duck.physicsBody?.velocity = .zero
@@ -1435,4 +1486,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
         tutorialOverlay = nil
     }
+
+#if DEBUG
+    private func countPhysicsBodies() -> Int {
+        var count = 0
+        enumerateChildNodes(withName: "//*") { node, _ in
+            if node.physicsBody != nil { count += 1 }
+        }
+        return count
+    }
+#endif
 }

@@ -27,6 +27,7 @@ final class ParallaxManager {
     private let groundLayer: SKNode
     private let foregroundLayer: SKNode
     private let theme: BackgroundTheme
+    private let factory: TextureFactory
 
     /// Compiled sprite layer definitions (from recipe).
     private var layerDefs: [SpriteLayerDef] = []
@@ -34,36 +35,54 @@ final class ParallaxManager {
     /// All layer tile arrays, keyed by asset name for O(1) lookup.
     private var layerTiles: [String: [SKSpriteNode]] = [:]
 
+    /// Pre-filtered moving layers — avoids per-frame dict lookups.
+    private var movingLayers: [MovingLayer] = []
+    private struct MovingLayer {
+        let tiles: [SKSpriteNode]
+        let speed: CGFloat
+        let tileWidth: CGFloat
+    }
+
     /// Cached accessibility state (avoid per-frame system queries).
     private var reduceMotionEnabled: Bool = false
+
+    /// Whether low-power mode is active — disables overlays, reduces FPS downstream.
+    private var lowPowerMode: Bool = false
 
     // MARK: - Scattered Midground
 
     /// Config for the scattered midground spawner (nil = use tiled strip instead).
     private var midgroundSpawnConfig: MidgroundSpawnConfig?
-    /// Active scattered midground sprites.
-    private var scatteredSprites: [SKSpriteNode] = []
+    /// Active scattered midground sprites with tree status for overlap logic.
+    private var scatteredSprites: [(sprite: SKSpriteNode, isTree: Bool)] = []
     /// Cached midground scroll speed in pts/sec.
     private var midgroundSpeed: CGFloat = 0
     /// Distance remaining before next spawn (in pts).
     private var nextSpawnDistance: CGFloat = 0
+    /// Global visual bump for individual midground/foreground props.
+    private let scatteredPropDisplayMultiplier: CGFloat = 1.8
 
-    private var overlayParticles: [OverlayParticle] = []
+#if DEBUG
+    private var debugOverlapChecks: Int = 0
+    private var debugOverlapSkips: Int = 0
+    private var debugTreeSpawns: Int = 0
+    private var debugSoloSpawns: Int = 0
+    private var debugReportCounter: Int = 0
 
-    // MARK: - Tile widths
+    func debugScatteredCount() -> Int { scatteredSprites.count }
+#endif
+
+    /// GPU-driven overlay emitters — one per effect type.
+    private var overlayEmitters: [SKEmitterNode] = []
+
+    /// Tiny white textures for emitter particles (tinted via particleColor).
+    private var emitterTextureCache: [String: SKTexture] = [:]    // MARK: - Tile widths
 
     /// Above-ground layers tile at 2× world width for seamless wrap.
     private let aboveGroundTileWidth: CGFloat = GK.worldWidth * 2
 
     /// Ground layers tile at 2× world width for seamless wrap.
     private let groundTileWidth: CGFloat = GK.worldWidth * 2
-
-    private struct OverlayParticle {
-        let node: SKSpriteNode
-        let effect: ThemeOverlayEffect
-        let speed: CGVector
-        let spin: CGFloat
-    }
 
     // MARK: - Init
 
@@ -76,12 +95,14 @@ final class ParallaxManager {
         self.groundLayer = groundLayer
         self.foregroundLayer = foregroundLayer
         self.theme = theme
+        self.factory = factory
     }
 
     // MARK: - Public API
 
     func setup() {
         reduceMotionEnabled = UIAccessibility.isReduceMotionEnabled
+        lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
 
         // Compile recipe into sprite layer definitions
         let recipe = ThemeRecipeCatalog.recipe(for: theme)
@@ -130,6 +151,20 @@ final class ParallaxManager {
         }
 
         setupRuntimeOverlays()
+
+        // Pre-filter moving layers for O(1) per-frame iteration — avoids
+        // per-frame dict lookups + Reduce Motion checks on static tiles.
+        movingLayers = []
+        for def in layerDefs {
+            guard def.isGround || !reduceMotionEnabled else { continue }
+            guard def.speed > 0 else { continue }
+            guard let tiles = layerTiles[def.assetName] else { continue }
+            movingLayers.append(MovingLayer(
+                tiles: tiles,
+                speed: def.speed,
+                tileWidth: def.isGround ? groundTileWidth : aboveGroundTileWidth
+            ))
+        }
     }
 
     /// Drive all scrolling. Call every frame from `update(_:)` while the game is playing.
@@ -140,19 +175,11 @@ final class ParallaxManager {
     func update(dt: TimeInterval) {
         let dtF = CGFloat(dt)
 
-        for def in layerDefs {
-            // Ground layers always scroll; decorative layers respect Reduce Motion
-            guard def.isGround || !reduceMotionEnabled else { continue }
-            // Static layers (speed 0) need no per-frame work
-            guard def.speed > 0 else { continue }
-            guard let tiles = layerTiles[def.assetName] else { continue }
-
-            let tileWidth = def.isGround ? groundTileWidth : aboveGroundTileWidth
-            let totalWidth = tileWidth * CGFloat(tiles.count)
-
-            for tile in tiles {
-                tile.position.x -= def.speed * dtF
-                if tile.position.x <= -tileWidth {
+        for layer in movingLayers {
+            let totalWidth = layer.tileWidth * CGFloat(layer.tiles.count)
+            for tile in layer.tiles {
+                tile.position.x -= layer.speed * dtF
+                if tile.position.x <= -layer.tileWidth {
                     tile.position.x += totalWidth
                 }
             }
@@ -168,35 +195,161 @@ final class ParallaxManager {
         midgroundSpawnConfig = config
         midgroundSpeed = config.scrollSpeed * GK.groundSpeed
 
-        // Fill the visible screen + a little extra with initial sprites
+        guard !config.props.isEmpty else { return }
+
         var x: CGFloat = CGFloat.random(in: 30...80)
+        var initialClusters = 0
         while x < GK.worldWidth + 100 {
-            spawnScatteredProp(at: x, config: config)
+            spawnMidgroundCluster(at: x, config: config)
             x += CGFloat.random(in: config.spacingRange)
+            initialClusters += 1
         }
         nextSpawnDistance = CGFloat.random(in: config.spacingRange)
+
+#if DEBUG
+        print("[Parallax] init: \(scatteredSprites.count) sprites from \(initialClusters) clusters (trees:\(config.treeProps.count) nonTrees:\(config.nonTreeProps.count))")
+#endif
     }
 
-    private func spawnScatteredProp(at x: CGFloat, config: MidgroundSpawnConfig) {
-        let prop = weightedRandomProp(config.props)
+    /// Spawn either a tree patch (2–4 trees, max 20% overlap) or a solo non-tree prop
+    /// (zero overlap with anything). Trees layer subtly; non-trees stand alone.
+    private func spawnMidgroundCluster(at x: CGFloat, config: MidgroundSpawnConfig) {
+        let hasTrees = !config.treeProps.isEmpty
+        let hasNonTrees = !config.nonTreeProps.isEmpty
+
+        // If only one category exists, always use that mode.
+        let useTreePatch: Bool
+        if hasTrees && !hasNonTrees {
+            useTreePatch = true
+        } else if hasNonTrees && !hasTrees {
+            useTreePatch = false
+        } else {
+            // ~60% tree patches, ~40% solo non-tree
+            useTreePatch = Bool.random()
+        }
+
+        if useTreePatch, hasTrees {
+            let clusterSize = Int.random(in: 1...3)
+            for i in 0..<clusterSize {
+                let offsetX = CGFloat(i) * CGFloat.random(in: 30...60)
+                let treeX = x + offsetX
+                let prop = weightedRandomProp(config.treeProps)
+#if DEBUG
+                debugOverlapChecks += 1
+#endif
+                guard maxOverlapFraction(at: treeX, prop: prop, margin: 0) <= 0.30 else {
+#if DEBUG
+                    debugOverlapSkips += 1
+#endif
+                    continue
+                }
+                spawnScatteredProp(at: treeX, prop: prop, isTree: true)
+#if DEBUG
+                debugTreeSpawns += 1
+#endif
+            }
+        } else if hasNonTrees {
+            let prop = weightedRandomProp(config.nonTreeProps)
+#if DEBUG
+            debugOverlapChecks += 1
+#endif
+            guard maxOverlapFraction(at: x, prop: prop, margin: 20) <= 0 else {
+#if DEBUG
+                debugOverlapSkips += 1
+#endif
+                return
+            }
+            spawnScatteredProp(at: x, prop: prop, isTree: false)
+#if DEBUG
+            debugSoloSpawns += 1
+#endif
+        }
+    }
+
+    /// Returns the highest overlap fraction (0…1) between the candidate prop at `x`
+    /// and any existing scattered sprite. 0 = no overlap, 1 = fully overlapping.
+    /// `margin` expands the candidate bounds outward for extra clearance.
+    private func maxOverlapFraction(at x: CGFloat, prop: MidgroundProp, margin: CGFloat) -> CGFloat {
+        let estScale = (prop.scaleRange.lowerBound + prop.scaleRange.upperBound) / 2
+        let estWidth = prop.heightPoints * estScale * scatteredPropDisplayMultiplier * 0.5
+        let halfWidth = max(estWidth / 2, 1)  // minimum 1pt to avoid degenerate bounds
+
+        let newMin = x - halfWidth - margin
+        let newMax = x + halfWidth + margin
+        guard newMax > newMin else { return 1 }  // degenerate bounds → treat as full overlap
+
+        var maxFrac: CGFloat = 0
+        for (sprite, _) in scatteredSprites {
+            let sx = sprite.position.x
+            let sw = sprite.size.width / 2
+            let existMin = sx - sw
+            let existMax = sx + sw
+
+            let overlapMin = max(newMin, existMin)
+            let overlapMax = min(newMax, existMax)
+            if overlapMin < overlapMax {
+                let overlapWidth = overlapMax - overlapMin
+                let frac = overlapWidth / (newMax - newMin)
+                if frac > maxFrac { maxFrac = frac }
+            }
+        }
+        return maxFrac
+    }
+
+    private func spawnScatteredProp(at x: CGFloat, prop: MidgroundProp, isTree: Bool) {
         let scale = CGFloat.random(in: prop.scaleRange)
 
-        let texture = SKTexture(imageNamed: prop.assetName)
+        let texture = factory.themedLayerTexture(theme: theme, assetName: prop.assetName)
         texture.filteringMode = .nearest
 
-        let aspectRatio = texture.size().width / texture.size().height
-        let height = prop.heightPoints * scale
+        let frameCount = CGFloat(prop.animation?.frameCount ?? 1)
+        let aspectRatio = (texture.size().width / frameCount) / texture.size().height
+        let baseHeight = prop.heightPoints * scale
+        let height = baseHeight * scatteredPropDisplayMultiplier
         let width = height * aspectRatio
+        let spawnX = x >= GK.worldWidth ? max(x, GK.worldWidth + width / 2 + 20) : x
+
+        guard width > 0, height > 0, spawnX.isFinite else { return }
 
         let sprite = SKSpriteNode(texture: texture,
                                    size: CGSize(width: width, height: height))
         sprite.anchorPoint = CGPoint(x: 0.5, y: 0)
-        sprite.position = CGPoint(x: x, y: GK.groundHeight + prop.yOffset)
+        // Bury the base inside the ground strip so props always read as "rooted"
+        // rather than "perched on top of" the ground line. The ground tile renders
+        // above midground sprites (zPosition 50 vs ~-38 with ignoresSiblingOrder),
+        // so the buried portion is hidden behind the strip and the visible portion
+        // scales up above it.
+        //   • Default bury: 30% of display height, clamped to 25...55pt.
+        //   • prop.yOffset shifts vertically (positive = less buried / further back,
+        //     negative = more buried / closer in).
+        //   • Hard floor of 8pt keeps the base inside the strip even at extreme
+        //     positive yOffset — prevents "floating above the ground" by construction.
+        let baseBury = min(max(height * 0.30, 25), 55)
+        let bury = max(baseBury - prop.yOffset, 8)
+        sprite.position = CGPoint(x: spawnX, y: GK.groundHeight - bury)
         // Smaller scale → further back → lower z; larger → closer → higher z
         sprite.zPosition = -42 + scale * 4
 
         backgroundLayer.addChild(sprite)
-        scatteredSprites.append(sprite)
+        scatteredSprites.append((sprite, isTree))
+
+        if let animation = prop.animation, animation.frameCount > 1 {
+            let frames = (0..<animation.frameCount).map { frameIndex -> SKTexture in
+                let frame = SKTexture(
+                    rect: CGRect(
+                        x: CGFloat(frameIndex) / CGFloat(animation.frameCount),
+                        y: 0,
+                        width: 1 / CGFloat(animation.frameCount),
+                        height: 1
+                    ),
+                    in: texture
+                )
+                frame.filteringMode = .nearest
+                return frame
+            }
+            let delay = 1.0 / max(animation.framesPerSecond, 1.0)
+            sprite.run(.repeatForever(.animate(with: frames, timePerFrame: delay)))
+        }
     }
 
     private func updateScatteredMidground(dt: CGFloat) {
@@ -205,31 +358,50 @@ final class ParallaxManager {
 
         let dx = midgroundSpeed * dt
 
-        // Move all sprites left
-        for sprite in scatteredSprites {
-            sprite.position.x -= dx
+        for entry in scatteredSprites {
+            entry.sprite.position.x -= dx
         }
 
-        // Remove sprites that have scrolled fully off the left edge
-        scatteredSprites.removeAll { sprite in
-            if sprite.position.x < -(sprite.size.width / 2) - 10 {
-                sprite.removeFromParent()
+        scatteredSprites.removeAll { entry in
+            guard let _ = entry.sprite.parent else {
+                // Already detached — remove from tracking
+                return true
+            }
+            if entry.sprite.position.x < -(entry.sprite.size.width / 2) - 10
+                || !entry.sprite.position.x.isFinite {
+                entry.sprite.removeFromParent()
                 return true
             }
             return false
         }
 
-        // Spawn new sprites from the right as needed
         nextSpawnDistance -= dx
         if nextSpawnDistance <= 0 {
             let spawnX = GK.worldWidth + 50
-            spawnScatteredProp(at: spawnX, config: config)
+            spawnMidgroundCluster(at: spawnX, config: config)
             nextSpawnDistance = CGFloat.random(in: config.spacingRange)
         }
+
+#if DEBUG
+        debugReportCounter += 1
+        if debugReportCounter >= 180 { // every ~3s at 60fps
+            let skipRate = debugOverlapChecks > 0
+                ? Int(Double(debugOverlapSkips) / Double(debugOverlapChecks) * 100)
+                : 0
+            print("[Parallax] sprites:\(scatteredSprites.count)  trees:\(debugTreeSpawns)  solos:\(debugSoloSpawns)  overlapChecks:\(debugOverlapChecks)  skipped(\(skipRate)%)")
+            debugOverlapChecks = 0
+            debugOverlapSkips = 0
+            debugTreeSpawns = 0
+            debugSoloSpawns = 0
+            debugReportCounter = 0
+        }
+#endif
     }
 
     private func weightedRandomProp(_ props: [MidgroundProp]) -> MidgroundProp {
+        guard !props.isEmpty else { return MidgroundProp(assetName: "", heightPoints: 0) }
         let totalWeight = props.reduce(0) { $0 + $1.weight }
+        guard totalWeight > 0 else { return props[0] }
         var roll = Int.random(in: 0..<totalWeight)
         for prop in props {
             roll -= prop.weight
@@ -242,6 +414,7 @@ final class ParallaxManager {
 
     private func setupRuntimeOverlays() {
         guard !theme.overlayEffects.isEmpty else { return }
+        guard !reduceMotionEnabled else { return }
 
         for effect in theme.overlayEffects {
             if effect == .mist {
@@ -249,158 +422,174 @@ final class ParallaxManager {
                 continue
             }
 
-            for i in 0..<particleCount(for: effect) {
-                let node = makeParticleNode(effect: effect, index: i)
-                node.position = initialParticlePosition(effect: effect, index: i)
-                node.zPosition = zPosition(for: effect)
-                backgroundLayer.addChild(node)
-
-                overlayParticles.append(OverlayParticle(
-                    node: node,
-                    effect: effect,
-                    speed: velocity(for: effect, index: i),
-                    spin: spin(for: effect, index: i)
-                ))
-            }
+            let emitter = createEmitter(for: effect)
+            emitter.position = emitterOrigin(for: effect)
+            emitter.particleZPosition = zPosition(for: effect)
+            emitter.advanceSimulationTime(4)
+            backgroundLayer.addChild(emitter)
+            overlayEmitters.append(emitter)
         }
     }
 
     private func updateRuntimeOverlays(dt: CGFloat) {
-        guard !overlayParticles.isEmpty, !reduceMotionEnabled else { return }
-
-        for particle in overlayParticles {
-            particle.node.position.x += particle.speed.dx * dt
-            particle.node.position.y += particle.speed.dy * dt
-            particle.node.zRotation += particle.spin * dt
-
-            if shouldRecycle(particle.node, effect: particle.effect) {
-                recycle(particle.node, effect: particle.effect)
-            }
-        }
+        // SKEmitterNode runs entirely on the GPU — zero per-frame CPU work.
     }
 
-    private func particleCount(for effect: ThemeOverlayEffect) -> Int {
-        switch effect {
-        case .rain: return 44
-        case .snow: return 34
-        case .embers: return 26
-        case .bubbles: return 24
-        case .dust: return 18
-        case .petals: return 16
-        case .seaSpray: return 22
-        case .stars: return 28
-        case .mist: return 0
-        }
-    }
+    // MARK: Emitter Configuration
 
-    private func makeParticleNode(effect: ThemeOverlayEffect, index: Int) -> SKSpriteNode {
-        let size: CGSize
-        let color: UIColor
+    private func createEmitter(for effect: ThemeOverlayEffect) -> SKEmitterNode {
+        let e = SKEmitterNode()
+        e.particleTexture = particleTexture(for: effect)
+        e.particleBlendMode = .alpha
+        e.numParticlesToEmit = 0
+        e.particleColorBlendFactor = 1.0
+
+        let hp = lowPowerMode
 
         switch effect {
         case .rain:
-            size = CGSize(width: 1, height: 18)
-            color = UIColor(red: 0.65, green: 0.80, blue: 0.88, alpha: 0.35)
+            e.particleBirthRate = CGFloat(hp ? 7 : 15)
+            e.particleLifetime = 3.5; e.particleLifetimeRange = 0.5
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: 0)
+            e.emissionAngle = 4.62; e.emissionAngleRange = 0.05
+            e.particleSpeed = 211; e.particleSpeedRange = 35
+            e.particleScale = 1.0
+            e.particleAlpha = 0.35; e.particleAlphaRange = 0.1; e.particleAlphaSpeed = 0
+            e.particleColor = UIColor(red: 0.65, green: 0.80, blue: 0.88, alpha: 1.0)
+
         case .snow:
-            size = CGSize(width: 3, height: 3)
-            color = UIColor(white: 1.0, alpha: 0.75)
+            e.particleBirthRate = CGFloat(hp ? 0.8 : 1.5)
+            e.particleLifetime = 28; e.particleLifetimeRange = 5
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: 40)
+            e.emissionAngle = 4.71; e.emissionAngleRange = 0.5
+            e.particleSpeed = 25; e.particleSpeedRange = 4
+            e.particleScale = 1.0
+            e.particleAlpha = 0.75; e.particleAlphaRange = 0.15; e.particleAlphaSpeed = -0.01
+            e.particleColor = UIColor.white
+
         case .embers:
-            size = CGSize(width: 3, height: 3)
-            color = UIColor(red: 1.0, green: 0.45, blue: 0.12, alpha: 0.75)
+            e.particleBirthRate = CGFloat(hp ? 0.8 : 1.5)
+            e.particleLifetime = 22; e.particleLifetimeRange = 5
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: 20)
+            e.emissionAngle = 1.57; e.emissionAngleRange = 0.5
+            e.particleSpeed = 30; e.particleSpeedRange = 6
+            e.particleScale = 1.0
+            e.particleAlpha = 0.75; e.particleAlphaRange = 0.2; e.particleAlphaSpeed = -0.02
+            e.particleColor = UIColor(red: 1.0, green: 0.45, blue: 0.12, alpha: 1.0)
+
         case .bubbles:
-            size = CGSize(width: 4, height: 4)
-            color = UIColor(red: 0.75, green: 0.95, blue: 1.0, alpha: 0.45)
+            e.particleBirthRate = CGFloat(hp ? 0.6 : 1.2)
+            e.particleLifetime = 22; e.particleLifetimeRange = 5
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: 20)
+            e.emissionAngle = 1.57; e.emissionAngleRange = 0.45
+            e.particleSpeed = 28; e.particleSpeedRange = 8
+            e.particleScale = 1.0
+            e.particleAlpha = 0.45; e.particleAlphaRange = 0.15; e.particleAlphaSpeed = -0.02
+            e.particleColor = UIColor(red: 0.75, green: 0.95, blue: 1.0, alpha: 1.0)
+
         case .dust:
-            size = CGSize(width: 2, height: 2)
-            color = UIColor(red: 0.95, green: 0.78, blue: 0.45, alpha: 0.35)
+            e.particleBirthRate = CGFloat(hp ? 0.4 : 0.8)
+            e.particleLifetime = 25; e.particleLifetimeRange = 6
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: 200)
+            e.emissionAngle = 2.95; e.emissionAngleRange = 0.1
+            e.particleSpeed = 16; e.particleSpeedRange = 3
+            e.particleScale = 1.0
+            e.particleAlpha = 0.35; e.particleAlphaRange = 0.15; e.particleAlphaSpeed = -0.005
+            e.particleColor = UIColor(red: 0.95, green: 0.78, blue: 0.45, alpha: 1.0)
+
         case .petals:
-            size = CGSize(width: 5, height: 3)
-            color = index % 3 == 0
-                ? UIColor(red: 1.0, green: 0.55, blue: 0.72, alpha: 0.85)
-                : UIColor(red: 1.0, green: 0.70, blue: 0.82, alpha: 0.75)
+            e.particleBirthRate = CGFloat(hp ? 1.5 : 3)
+            e.particleLifetime = 7; e.particleLifetimeRange = 2
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: 300)
+            e.emissionAngle = 3.36; e.emissionAngleRange = 0.35
+            e.particleSpeed = 38; e.particleSpeedRange = 10
+            e.particleScale = 1.0
+            e.particleAlpha = 0.85; e.particleAlphaRange = 0.1; e.particleAlphaSpeed = -0.02
+            e.particleColor = UIColor(red: 1.0, green: 0.55, blue: 0.72, alpha: 1.0)
+            e.particleRotationSpeed = 1.2
+
         case .seaSpray:
-            size = CGSize(width: 2, height: 2)
-            color = UIColor(red: 0.75, green: 0.92, blue: 0.95, alpha: 0.45)
+            e.particleBirthRate = CGFloat(hp ? 0.6 : 1.2)
+            e.particleLifetime = 20; e.particleLifetimeRange = 5
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: 20)
+            e.emissionAngle = 2.54; e.emissionAngleRange = 0.3
+            e.particleSpeed = 35; e.particleSpeedRange = 12
+            e.particleScale = 1.0
+            e.particleAlpha = 0.45; e.particleAlphaRange = 0.15; e.particleAlphaSpeed = -0.01
+            e.particleColor = UIColor(red: 0.75, green: 0.92, blue: 0.95, alpha: 1.0)
+
         case .stars:
-            size = CGSize(width: 2, height: 2)
-            color = UIColor(white: 1.0, alpha: 0.65)
+            e.particleBirthRate = CGFloat(hp ? 0.3 : 0.6)
+            e.particleLifetime = 60; e.particleLifetimeRange = 15
+            e.particlePositionRange = CGVector(dx: GK.worldWidth, dy: GK.worldHeight - GK.groundHeight)
+            e.emissionAngle = 3.14; e.emissionAngleRange = 0
+            e.particleSpeed = 2; e.particleSpeedRange = 0.5
+            e.particleScale = 1.0
+            e.particleAlpha = 0.65; e.particleAlphaRange = 0.2; e.particleAlphaSpeed = 0
+            e.particleColor = UIColor.white
+            // Twinkling via alpha sequence
+            let seq = SKKeyframeSequence(keyframeValues: [0.3, 1.0, 0.3, 1.0, 0.3] as [NSNumber],
+                                          times: [0, 0.25, 0.5, 0.75, 1])
+            seq.repeatMode = .loop
+            e.particleAlphaSequence = seq
+
+        case .shootingStar:
+            e.particleBirthRate = CGFloat(hp ? 0.03 : 0.06)
+            e.particleLifetime = 3; e.particleLifetimeRange = 1
+            e.particlePositionRange = CGVector(dx: 20, dy: 40)
+            e.emissionAngle = 3.46; e.emissionAngleRange = 0.05
+            e.particleSpeed = 221; e.particleSpeedRange = 10
+            e.particleScale = 1.0
+            e.particleAlpha = 0.58; e.particleAlphaRange = 0.1; e.particleAlphaSpeed = -0.1
+            e.particleColor = UIColor(red: 0.85, green: 0.92, blue: 1.0, alpha: 1.0)
+            e.particleRotation = -0.35
+
         case .mist:
-            size = .zero
-            color = .clear
+            break
         }
 
-        let node = SKSpriteNode(color: color, size: size)
-        node.blendMode = .alpha
-        return node
+        return e
     }
 
-    private func initialParticlePosition(effect: ThemeOverlayEffect, index: Int) -> CGPoint {
-        CGPoint(
-            x: seeded01(effect: effect, index: index, salt: 1) * GK.worldWidth,
-            y: GK.groundHeight + seeded01(effect: effect, index: index, salt: 2) * (GK.worldHeight - GK.groundHeight)
-        )
-    }
-
-    private func velocity(for effect: ThemeOverlayEffect, index: Int) -> CGVector {
+    private func emitterOrigin(for effect: ThemeOverlayEffect) -> CGPoint {
         switch effect {
-        case .rain:
-            return CGVector(dx: -20, dy: -210 - seeded01(effect: effect, index: index, salt: 3) * 70)
-        case .snow:
-            return CGVector(dx: -8 + seeded01(effect: effect, index: index, salt: 4) * 16, dy: -24)
-        case .embers:
-            return CGVector(dx: -8 + seeded01(effect: effect, index: index, salt: 5) * 16, dy: 30)
-        case .bubbles:
-            return CGVector(dx: -6 + seeded01(effect: effect, index: index, salt: 6) * 12, dy: 28)
+        case .rain, .snow, .petals, .shootingStar:
+            return CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight + 20)
+        case .embers, .bubbles, .seaSpray:
+            return CGPoint(x: GK.worldWidth / 2, y: GK.groundHeight + 5)
         case .dust:
-            return CGVector(dx: -16, dy: 3)
-        case .petals:
-            return CGVector(dx: -28 - seeded01(effect: effect, index: index, salt: 7) * 18, dy: -8)
-        case .seaSpray:
-            return CGVector(dx: -35, dy: 14 + seeded01(effect: effect, index: index, salt: 8) * 20)
+            return CGPoint(x: GK.worldWidth / 2, y: GK.groundHeight + 5)
         case .stars:
-            return CGVector(dx: -2, dy: 0)
+            return CGPoint(x: GK.worldWidth / 2, y: GK.groundHeight + (GK.worldHeight - GK.groundHeight) / 2)
         case .mist:
             return .zero
         }
     }
 
-    private func spin(for effect: ThemeOverlayEffect, index: Int) -> CGFloat {
-        effect == .petals ? (-1.2 + seeded01(effect: effect, index: index, salt: 9) * 2.4) : 0
-    }
-
-    private func shouldRecycle(_ node: SKSpriteNode, effect: ThemeOverlayEffect) -> Bool {
+    private func particleTexture(for effect: ThemeOverlayEffect) -> SKTexture {
+        let size: CGSize
         switch effect {
-        case .rain, .snow, .petals:
-            return node.position.y < GK.groundHeight - 30 || node.position.x < -30
-        case .embers, .bubbles, .seaSpray:
-            return node.position.y > GK.worldHeight + 30 || node.position.x < -30
-        case .dust, .stars:
-            return node.position.x < -30
-        case .mist:
-            return false
+        case .rain:         size = CGSize(width: 1, height: 18)
+        case .snow:         size = CGSize(width: 3, height: 3)
+        case .embers:       size = CGSize(width: 3, height: 3)
+        case .bubbles:      size = CGSize(width: 4, height: 4)
+        case .dust:         size = CGSize(width: 2, height: 2)
+        case .petals:       size = CGSize(width: 5, height: 3)
+        case .seaSpray:     size = CGSize(width: 2, height: 2)
+        case .stars:        size = CGSize(width: 2, height: 2)
+        case .shootingStar: size = CGSize(width: 48, height: 2)
+        case .mist:         size = CGSize(width: 2, height: 2)
         }
-    }
-
-    private func recycle(_ node: SKSpriteNode, effect: ThemeOverlayEffect) {
-        switch effect {
-        case .rain, .snow, .petals:
-            node.position = CGPoint(
-                x: seeded01(effect: effect, index: Int(node.position.x), salt: 10) * GK.worldWidth,
-                y: GK.worldHeight + 20
-            )
-        case .embers, .bubbles, .seaSpray:
-            node.position = CGPoint(
-                x: seeded01(effect: effect, index: Int(node.position.y), salt: 11) * GK.worldWidth,
-                y: GK.groundHeight + 5
-            )
-        case .dust, .stars:
-            node.position = CGPoint(
-                x: GK.worldWidth + 20,
-                y: GK.groundHeight + seeded01(effect: effect, index: Int(node.position.y), salt: 12) * (GK.worldHeight - GK.groundHeight)
-            )
-        case .mist:
-            break
+        let key = "\(Int(size.width))x\(Int(size.height))"
+        if let tex = emitterTextureCache[key] { return tex }
+        let img = UIGraphicsImageRenderer(size: size).image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
         }
+        let tex = SKTexture(image: img)
+        tex.filteringMode = .nearest
+        emitterTextureCache[key] = tex
+        return tex
     }
 
     private func setupMistBands() {
@@ -423,19 +612,13 @@ final class ParallaxManager {
         switch effect {
         case .stars:
             return -75
+        case .shootingStar:
+            return -74
         case .mist:
             return -18
         default:
             return -10
         }
-    }
-
-    private func seeded01(effect: ThemeOverlayEffect, index: Int, salt: Int) -> CGFloat {
-        var value = UInt64(abs(effect.rawValue.hashValue &+ index &* 1_103_515_245 &+ salt &* 12_345))
-        value ^= value >> 13
-        value &*= 0xff51afd7ed558ccd
-        value ^= value >> 33
-        return CGFloat(value % 10_000) / 10_000
     }
 
     // MARK: - Sky Gradient (procedural safety net)

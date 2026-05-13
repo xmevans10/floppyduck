@@ -195,6 +195,7 @@ final class GameManager: ObservableObject {
     func applyRemoteProfile(_ profile: RemotePlayerProfile) {
         playerName = profile.username
         var mergedStats = profile.stats
+        mergedStats.bread = max(stats.bread, profile.stats.bread)
         mergedStats.totalBreadCollected = max(stats.totalBreadCollected, profile.stats.totalBreadCollected)
         stats = mergedStats
         saveStats()
@@ -342,6 +343,13 @@ final class GameManager: ObservableObject {
         guard stats.bread >= amount else { return false }
         stats.bread -= amount
         saveStats()
+
+        // Sync the deduction to the Convex backend so the remote
+        // value doesn't overwrite local on next profile load.
+        Task { [amount] in
+            _ = try? await ConvexClient.shared.spendBread(amount)
+        }
+
         return true
     }
 
@@ -427,9 +435,17 @@ actor MultiplayerSession {
         }
 
         currentMode = mode
-        currentTicket = try await client.joinMatchmakingQueue(mode: mode)
+        let ticket = try await client.joinMatchmakingQueue(mode: mode)
+        currentTicket = ticket
         currentRoomCode = nil
-        return try await waitForMatch(timeout: timeout)
+#if DEBUG
+        print("[Multiplayer] 🎫 Joined queue — ticketId:\(ticket.ticketId) mode:\(mode.rawValue)")
+#endif
+        let assignment = try await waitForMatch(timeout: timeout)
+#if DEBUG
+        print("[Multiplayer] ⚔️ Match found! matchId:\(assignment.matchId) vs \(assignment.opponentName ?? "?") ranked:\(assignment.isRanked)")
+#endif
+        return assignment
     }
 
     func createPrivateRoom() async throws -> String {
@@ -441,6 +457,9 @@ actor MultiplayerSession {
         guard let code = ticket.roomCode, code.count == GK.roomCodeLength else {
             throw MultiplayerSessionError.invalidRoomCode
         }
+#if DEBUG
+        print("[Multiplayer] 🏠 Room created — code:\(code)")
+#endif
         return code
     }
 
@@ -453,6 +472,9 @@ actor MultiplayerSession {
         currentMode = .privateRoom
         currentRoomCode = normalized
         currentTicket = try await client.joinRoom(code: normalized)
+#if DEBUG
+        print("[Multiplayer] 🚪 Joined room — code:\(normalized)")
+#endif
     }
 
     func waitForPrivateRoomMatch(timeout: TimeInterval) async throws -> MultiplayerMatchAssignment {
@@ -463,6 +485,9 @@ actor MultiplayerSession {
     }
 
     func cancelMatchmaking() async {
+#if DEBUG
+        print("[Multiplayer] ❌ Cancelling — mode:\(currentMode?.rawValue ?? "?") room:\(currentRoomCode ?? "none")")
+#endif
         do {
             if let code = currentRoomCode {
                 try await client.leaveRoom(code: code)
@@ -484,9 +509,14 @@ actor MultiplayerSession {
 
     func reportScore(matchId: String, score: Int) async {
         do {
+#if DEBUG
+            print("[Multiplayer] 📊 Reporting score \(score) → matchId:\(matchId)")
+#endif
             try await client.reportScore(matchId: matchId, score: score)
         } catch {
-            // Score reporting should be non-fatal to local gameplay.
+#if DEBUG
+            print("[Multiplayer] ⚠️ Score report failed (non-fatal): \(error)")
+#endif
         }
     }
 
@@ -495,6 +525,9 @@ actor MultiplayerSession {
                      mode: MatchmakingMode,
                      fallbackOpponentScore: Int,
                      opponentName: String?) async throws -> MultiplayerMatchResult {
+#if DEBUG
+        print("[Multiplayer] 🏁 Finishing match \(matchId) — score:\(score) fallbackOpp:\(fallbackOpponentScore)")
+#endif
         let result = try await client.finishMatch(
             matchId: matchId,
             score: score,
@@ -502,6 +535,9 @@ actor MultiplayerSession {
             fallbackOpponentScore: fallbackOpponentScore,
             opponentName: opponentName
         )
+#if DEBUG
+        print("[Multiplayer] 🏆 Result — finalized:\(result.isFinalized) you:\(result.localScore) them:\(result.opponentScore) draw:\(result.didDraw) delta:\(result.ratingDelta ?? 0)")
+#endif
 
         currentMode = nil
         currentTicket = nil

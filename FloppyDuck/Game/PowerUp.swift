@@ -15,16 +15,23 @@ enum PowerUpKind: String, CaseIterable {
     case doublePoints  // Score 2× per pipe for next 5 pipes
 
     // Debuffs (negative)
-    case pipeSqueeze   // Narrows gap for next 3 pipes by 20%
+    case pipeSqueeze   // Narrows gap for next 3 pipes by 16%
     case speedBurst    // Pipes 40% faster for 5 seconds
     case dizzyDuck     // Controls invert for 3 seconds
     case heavyDuck     // Gravity +50% for 4 seconds — duck drops faster
+    case jumboDuck     // Duck grows 150% for 4 seconds — bigger hitbox
+    case stickyFlap    // Flap impulse -35% for 4 seconds — sluggish hops
+
+    // More power-ups
+    case tinyDuck      // Duck shrinks to 50% for 5 seconds — tiny hitbox
+    case megaFlap      // Flap impulse +30% for 4 seconds — super bouncy
 
     var isPositive: Bool {
         switch self {
-        case .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck, .doublePoints:
+        case .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck, .doublePoints,
+             .tinyDuck, .megaFlap:
             return true
-        case .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck:
+        case .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck, .jumboDuck, .stickyFlap:
             return false
         }
     }
@@ -41,6 +48,10 @@ enum PowerUpKind: String, CaseIterable {
         case .speedBurst:   return "SPEED!"
         case .dizzyDuck:    return "DIZZY"
         case .heavyDuck:    return "HEAVY"
+        case .jumboDuck:    return "JUMBO"
+        case .stickyFlap:   return "STICKY"
+        case .tinyDuck:     return "TINY"
+        case .megaFlap:     return "MEGA"
         }
     }
 
@@ -56,6 +67,10 @@ enum PowerUpKind: String, CaseIterable {
         case .speedBurst:   return .speedBurst
         case .dizzyDuck:    return .dizzyDuck
         case .heavyDuck:    return .heavyDuck
+        case .jumboDuck:    return .jumboDuck
+        case .stickyFlap:   return .stickyFlap
+        case .tinyDuck:     return .tinyDuck
+        case .megaFlap:     return .megaFlap
         }
     }
 
@@ -72,6 +87,10 @@ enum PowerUpKind: String, CaseIterable {
         case .speedBurst:   return 5.0
         case .dizzyDuck:    return 3.0
         case .heavyDuck:    return 4.0
+        case .jumboDuck:    return 4.0
+        case .stickyFlap:   return 4.0
+        case .tinyDuck:     return 5.0
+        case .megaFlap:     return 4.0
         }
     }
 
@@ -102,6 +121,10 @@ enum PowerUpKind: String, CaseIterable {
         case .speedBurst:   return 1.2
         case .dizzyDuck:    return 1.0
         case .heavyDuck:    return 1.2
+        case .jumboDuck:    return 1.4
+        case .stickyFlap:   return 1.3
+        case .tinyDuck:     return 1.6
+        case .megaFlap:     return 1.4
         }
     }
 
@@ -118,6 +141,10 @@ enum PowerUpKind: String, CaseIterable {
         case .speedBurst:   return UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1)   // red
         case .dizzyDuck:    return UIColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1)   // purple
         case .heavyDuck:    return UIColor(red: 0.5, green: 0.25, blue: 0.1, alpha: 1)  // dark brown
+        case .jumboDuck:    return UIColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 1)   // orange
+        case .stickyFlap:   return UIColor(red: 0.4, green: 0.6, blue: 0.2, alpha: 1)   // murky green
+        case .tinyDuck:     return UIColor(red: 0.4, green: 0.8, blue: 1.0, alpha: 1)   // light blue
+        case .megaFlap:     return UIColor(red: 1.0, green: 0.7, blue: 0.2, alpha: 1)   // amber
         }
     }
 
@@ -172,15 +199,15 @@ struct ActivePowerUp: Identifiable {
 /// Controls when and which power-ups spawn in pipe gaps.
 final class PowerUpSpawnManager {
     /// Minimum pipes between power-up spawns.
-    private let minSpawnInterval: Int = 3
+    private let minSpawnInterval: Int = 1
     /// Maximum pipes between power-up spawns.
-    private let maxSpawnInterval: Int = 5
+    private let maxSpawnInterval: Int = 3
 
     private var pipesUntilNextSpawn: Int
     private var lastSpawnedKind: PowerUpKind?
 
     init() {
-        pipesUntilNextSpawn = Int.random(in: 3...6)  // first spawn comes early
+        pipesUntilNextSpawn = Int.random(in: 1...2)  // first spawn comes early
     }
 
     /// Called each time a pipe is scored. Returns a PowerUpKind to spawn, or nil.
@@ -199,7 +226,7 @@ final class PowerUpSpawnManager {
 
     /// Reset for a new game.
     func reset() {
-        pipesUntilNextSpawn = Int.random(in: 3...6)
+        pipesUntilNextSpawn = Int.random(in: 1...2)
         lastSpawnedKind = nil
     }
 

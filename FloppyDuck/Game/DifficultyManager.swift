@@ -57,6 +57,7 @@ final class DifficultyManager {
     // MARK: - Parameter Ranges  (min at score 0 → max at refScore)
 
     private let speedRange:   (lo: CGFloat, hi: CGFloat) = (1.0,  1.78)
+    private let maxSpeedMultiplier: CGFloat = 1.6
     private let gapRange:     (lo: CGFloat, hi: CGFloat) = (1.0,  0.68)
     private let flapRange:    (lo: CGFloat, hi: CGFloat) = (1.0,  1.38)
     private let gravityRange: (lo: CGFloat, hi: CGFloat) = (1.0,  1.31)
@@ -86,7 +87,8 @@ final class DifficultyManager {
     private(set) var effectiveGravity: CGFloat = GK.gravity
 
     private func recomputeEffectives() {
-        effectivePipeSpeed   = GK.pipeSpeed   * lerp(speedRange.lo, speedRange.hi)
+        effectivePipeSpeed   = min(GK.pipeSpeed * lerp(speedRange.lo, speedRange.hi),
+                                   GK.pipeSpeed * maxSpeedMultiplier)
         effectivePipeGap     = GK.pipeGap     * lerp(gapRange.lo, gapRange.hi)
         effectiveFlapImpulse = GK.flapImpulse * lerp(flapRange.lo, flapRange.hi)
         effectiveGravity     = GK.gravity     * lerp(gravityRange.lo, gravityRange.hi)

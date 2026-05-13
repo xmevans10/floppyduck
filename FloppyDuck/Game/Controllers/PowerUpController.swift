@@ -152,7 +152,7 @@ final class PowerUpController {
             gap *= 1.3
         }
         if hasActivePipeCounted(.pipeSqueeze) {
-            gap *= 0.8
+            gap *= 0.84
         }
         return gap
     }
@@ -162,10 +162,13 @@ final class PowerUpController {
         difficulty.effectivePipeSpeed * speedModifier
     }
 
-    /// Flap impulse adjusted for dizzyDuck (inverted controls).
+    /// Flap impulse adjusted for dizzyDuck (inverted controls), megaFlap, and stickyFlap.
     var effectiveFlapImpulse: CGFloat {
         let base = difficulty.effectiveFlapImpulse
-        return hasActive(.dizzyDuck) ? -base : base
+        var impulse = hasActive(.dizzyDuck) ? -base : base
+        if hasActive(.megaFlap) { impulse *= 1.3 }
+        if hasActive(.stickyFlap) { impulse *= 0.65 }
+        return impulse
     }
 
     /// Whether the duck should phase through pipes (ghostDuck).
@@ -323,7 +326,6 @@ final class PowerUpController {
     /// Restores duck alpha and removes power-up visuals (shield ring, ghost glow)
     /// during death without resetting the full power-up state. Call from `die()`.
     func cleanupDuckVisuals() {
-        // Stop all expiry warning animations
         for powerUp in activePowerUps {
             stopExpiryWarning(for: powerUp.kind)
         }
@@ -331,6 +333,8 @@ final class PowerUpController {
 
         duck?.alpha = 1.0
         duck?.colorBlendFactor = 0
+        duck?.removeAction(forKey: "duckScaleAnim")
+        duck?.setScale(1.0)
         removeShieldVisual()
         removeGhostGlow()
     }
@@ -339,7 +343,6 @@ final class PowerUpController {
 
     /// Clear all power-up state for a new game / retry.
     func reset() {
-        // Clean up any active warning animations before clearing state
         for powerUp in activePowerUps {
             stopExpiryWarning(for: powerUp.kind)
         }
@@ -347,6 +350,8 @@ final class PowerUpController {
         expiryWarningActive.removeAll()
         removeShieldVisual()
         removeGhostGlow()
+        duck?.removeAction(forKey: "duckScaleAnim")
+        duck?.setScale(1.0)
         shieldCooldown = false
         pendingPowerUpKind = nil
         speedModifier = 1.0
@@ -356,8 +361,6 @@ final class PowerUpController {
     // MARK: - Activation
 
     private func activate(kind: PowerUpKind) {
-        // Use lastUpdate == 0 before first frame; callers provide currentTime via update()
-        // but activation happens during contact, so we store the time from the active run loop.
         let now = CACurrentMediaTime()
         let powerUp = ActivePowerUp(
             kind: kind,
@@ -373,6 +376,8 @@ final class PowerUpController {
             applyDizzyTransition()
         case .ghostDuck:
             activateGhostDuck()
+        case .tinyDuck, .jumboDuck:
+            applyDuckScale()
         default:
             break
         }
@@ -381,7 +386,6 @@ final class PowerUpController {
     // MARK: - Deactivation
 
     private func deactivate(_ powerUp: ActivePowerUp) {
-        // Always clean up any expiry warning animation first
         stopExpiryWarning(for: powerUp.kind)
         expiryWarningActive.remove(powerUp.id)
 
@@ -392,6 +396,8 @@ final class PowerUpController {
             applyDizzyTransition()
         case .ghostDuck:
             deactivateGhostDuck()
+        case .tinyDuck, .jumboDuck:
+            applyDuckScale()
         default:
             break
         }
@@ -483,6 +489,33 @@ final class PowerUpController {
                 SKAction.moveBy(x: 0, y: -2, duration: 0.04),
             ])
             duck.run(SKAction.repeatForever(shake), withKey: "expiryWarn_heavyDuck")
+
+        case .tinyDuck:
+            // Light blue pulse as duck begins to regrow
+            let tintOn = SKAction.colorize(with: UIColor(red: 0.4, green: 0.8, blue: 1.0, alpha: 1), colorBlendFactor: 0.3, duration: 0.15)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_tinyDuck")
+
+        case .megaFlap:
+            // Amber burst pulse
+            let tintOn = SKAction.colorize(with: UIColor(red: 1.0, green: 0.7, blue: 0.2, alpha: 1), colorBlendFactor: 0.4, duration: 0.12)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.12)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_megaFlap")
+
+        case .jumboDuck:
+            // Orange shake as duck begins to shrink back
+            let shrinkShake = SKAction.sequence([
+                SKAction.moveBy(x: 2, y: 2, duration: 0.04),
+                SKAction.moveBy(x: -4, y: -2, duration: 0.04),
+                SKAction.moveBy(x: 2, y: 0, duration: 0.04),
+            ])
+            duck.run(SKAction.repeatForever(shrinkShake), withKey: "expiryWarn_jumboDuck")
+
+        case .stickyFlap:
+            // Murky green tint
+            let tintOn = SKAction.colorize(with: UIColor(red: 0.4, green: 0.6, blue: 0.2, alpha: 1), colorBlendFactor: 0.4, duration: 0.15)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_stickyFlap")
         }
     }
 
@@ -511,6 +544,8 @@ final class PowerUpController {
             break
         case .shield:
             break
+        case .tinyDuck, .megaFlap, .jumboDuck, .stickyFlap:
+            duck.colorBlendFactor = 0
         }
     }
 
@@ -692,6 +727,41 @@ final class PowerUpController {
     private func removeGhostGlow() {
         ghostGlowSpriteNode?.removeFromParent()
         ghostGlowSpriteNode = nil
+    }
+
+    // MARK: - Duck Scale (TinyDuck / JumboDuck)
+
+    /// Compute the target duck scale from active size-modifying power-ups.
+    /// If both tinyDuck and jumboDuck are active, they cancel out to 1.0.
+    private var targetDuckScale: CGFloat {
+        let tiny = hasActive(.tinyDuck)
+        let jumbo = hasActive(.jumboDuck)
+        if tiny && jumbo { return 1.0 }
+        if tiny { return 0.5 }
+        if jumbo { return 1.3 }
+        return 1.0
+    }
+
+    /// Apply the current duck scale with a smooth animation.
+    private func applyDuckScale() {
+        guard let duck else { return }
+        let target = targetDuckScale
+        duck.removeAction(forKey: "duckScaleAnim")
+        duck.run(SKAction.scale(to: target, duration: 0.15), withKey: "duckScaleAnim")
+
+        let scaledRadius = GK.duckRadius * 0.72 * target
+        let body = SKPhysicsBody(circleOfRadius: scaledRadius)
+        body.categoryBitMask = GK.duckCategory
+        body.contactTestBitMask = duck.physicsBody?.contactTestBitMask ?? (GK.pipeCategory | GK.groundCategory | GK.powerUpCategory)
+        body.collisionBitMask = duck.physicsBody?.collisionBitMask ?? GK.groundCategory
+        body.allowsRotation = false
+        body.restitution = 0
+        body.linearDamping = 0
+        body.isDynamic = duck.physicsBody?.isDynamic ?? true
+        if let velocity = duck.physicsBody?.velocity {
+            body.velocity = velocity
+        }
+        duck.physicsBody = body
     }
 
     // MARK: - Collected Label Popup

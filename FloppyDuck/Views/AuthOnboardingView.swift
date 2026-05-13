@@ -33,8 +33,18 @@ struct AuthOnboardingView: View {
     var body: some View {
         ZStack {
             // Shared sky background
-            OnboardingSkyBackground()
-                .ignoresSafeArea()
+            GeometryReader { geo in
+                Image(uiImage: UIImage(named: "floppy_theme") ?? UIImage())
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
+            .ignoresSafeArea()
+
+            // Pixel-art clouds (same as HomeView menu)
+            cloudLayer
 
             // Page content
             Group {
@@ -121,6 +131,58 @@ struct AuthOnboardingView: View {
             manager.playerName = trimmed
         }
     }
+
+    // MARK: - Cloud Layer (same pixel-art clouds as HomeView)
+
+    private var cloudLayer: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            ZStack {
+                PixelCloud(scale: 1.0, yOffset: 12, duration: 22, screenWidth: w)
+                PixelCloud(scale: 0.65, yOffset: 0, duration: 29, screenWidth: w)
+                PixelCloud(scale: 1.2, yOffset: 24, duration: 25, screenWidth: w)
+                PixelCloud(scale: 0.8, yOffset: 40, duration: 32, screenWidth: w)
+                PixelCloud(scale: 0.5, yOffset: 30, duration: 27, screenWidth: w)
+            }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Pixel Cloud
+
+private struct PixelCloud: View {
+    let scale: CGFloat
+    let yOffset: CGFloat
+    let duration: Double
+    let screenWidth: CGFloat
+
+    @State private var xOffset: CGFloat
+
+    init(scale: CGFloat, yOffset: CGFloat, duration: Double, screenWidth: CGFloat) {
+        self.scale = scale
+        self.yOffset = yOffset
+        self.duration = duration
+        self.screenWidth = screenWidth
+        let baseW: CGFloat = 90 * scale
+        _xOffset = State(initialValue: -baseW)
+    }
+
+    var body: some View {
+        Image(uiImage: TextureFactory.shared.cloudUIImage())
+            .interpolation(.none)
+            .resizable()
+            .frame(width: 90 * scale, height: 40 * scale)
+            .offset(x: xOffset, y: yOffset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .onAppear {
+                guard !UIAccessibility.isReduceMotionEnabled else { return }
+                withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
+                    xOffset = screenWidth + 90 * scale
+                }
+            }
+    }
 }
 
 // MARK: - Page Dots
@@ -135,66 +197,6 @@ private struct OnboardingPageDots: View {
                     .fill(page == current ? Color.white : Color.white.opacity(0.35))
                     .frame(width: page == current ? 20 : 8, height: 8)
                     .animation(.spring(response: 0.35), value: current)
-            }
-        }
-    }
-}
-
-// MARK: - Shared Sky Background
-
-private struct OnboardingSkyBackground: View {
-    @State private var cloudOffset: CGFloat = 0
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                LinearGradient(
-                    stops: [
-                        .init(color: Color(red: 0.22, green: 0.50, blue: 0.85), location: 0.0),
-                        .init(color: Color(red: 0.38, green: 0.65, blue: 0.90), location: 0.3),
-                        .init(color: Color(red: 0.58, green: 0.80, blue: 0.94), location: 0.6),
-                        .init(color: Color(red: 0.78, green: 0.92, blue: 0.97), location: 0.85),
-                        .init(color: Color(red: 0.90, green: 0.95, blue: 0.98), location: 1.0),
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-
-                // Scrolling pixel clouds
-                HStack(spacing: 60) {
-                    ForEach(0..<6, id: \.self) { i in
-                        Image(uiImage: TextureFactory.shared.cloudUIImage())
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: [70, 90, 55, 80, 65, 95][i],
-                                   height: [28, 36, 22, 32, 26, 38][i])
-                            .opacity([0.55, 0.65, 0.45, 0.6, 0.5, 0.6][i])
-                            .offset(y: [0, -20, 15, -35, 5, -15][i])
-                    }
-                }
-                .offset(x: cloudOffset)
-                .onAppear {
-                    guard !UIAccessibility.isReduceMotionEnabled else { return }
-                    withAnimation(.linear(duration: 30).repeatForever(autoreverses: false)) {
-                        cloudOffset = -300
-                    }
-                }
-                .frame(maxHeight: geo.size.height * 0.4, alignment: .top)
-                .padding(.top, 40)
-
-                // Ground
-                VStack(spacing: 0) {
-                    Spacer()
-                    Rectangle()
-                        .fill(Color(red: 0.28, green: 0.52, blue: 0.16))
-                        .frame(height: 3)
-                    Rectangle()
-                        .fill(Color(red: 0.40, green: 0.72, blue: 0.22))
-                        .frame(height: 14)
-                    Rectangle()
-                        .fill(Color(red: 0.78, green: 0.70, blue: 0.50))
-                        .frame(height: 45)
-                }
             }
         }
     }

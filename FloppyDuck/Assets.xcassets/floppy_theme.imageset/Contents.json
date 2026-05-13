@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "floppy_theme.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

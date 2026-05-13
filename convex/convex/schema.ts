@@ -23,7 +23,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_deviceId", ["deviceId"])
-    .index("by_appleUserId", ["appleUserId"]),
+    .index("by_appleUserId", ["appleUserId"])
+    .index("by_username", ["username"]),
 
   sessions: defineTable({
     userId: v.id("users"),

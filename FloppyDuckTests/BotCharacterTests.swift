@@ -65,26 +65,16 @@ final class BotCharacterTests: XCTestCase {
 
     // MARK: - Controller Parity
 
-    func testBotControllerMatchesCurrentPipeCollisionEnvelope() {
+    func testBotControllerUsesSamePhysicsContactEnvelopeAsPlayer() throws {
         let worldNode = SKNode()
         let hudLayer = SKNode()
         let controller = BotController(worldNode: worldNode, hudLayer: hudLayer)
         controller.setup(skin: .classic)
 
-        let pipe = SKNode()
-        pipe.position = CGPoint(x: GK.duckStartX, y: 0)
-        pipe.name = "pipe_0"
+        let body = try XCTUnwrap(controller.sprite?.physicsBody)
 
-        let trigger = SKNode()
-        trigger.name = "scoreTrigger"
-        trigger.position = CGPoint(x: 0, y: 340)
-        pipe.addChild(trigger)
-
-        controller.update(pipeNodes: [pipe])
-
-        XCTAssertTrue(
-            controller.isDead,
-            "BotController should use the same full-radius, cap-aware collision envelope as GameScene."
-        )
+        XCTAssertEqual(body.categoryBitMask, GK.botCategory)
+        XCTAssertEqual(body.contactTestBitMask, GK.pipeCategory | GK.groundCategory | GK.scoreCategory)
+        XCTAssertEqual(body.collisionBitMask, 0)
     }
 }

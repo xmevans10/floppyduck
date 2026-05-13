@@ -62,8 +62,12 @@ final class TextureFactory {
 
     /// Pre-generates the most commonly used textures on a background thread.
     /// Call early (e.g. during SplashView) to avoid hitches on first game start.
+    @MainActor
     func preWarm() {
         guard !isPreWarmed else { return }
+        // Capture current selections on main thread before dispatching
+        let currentSkin = SkinManager.shared.selectedSkin
+        let currentPipeSkin = PipeSkinManager.shared.selectedSkin
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             // Duck wing phases (used every frame)
             for phase in 0...2 {
@@ -87,6 +91,24 @@ final class TextureFactory {
                     }
                 }
             }
+
+            // Pre-warm the player's currently equipped skin textures.
+            // Without this, the first flap in-game triggers a UIGraphicsImageRenderer
+            // render on the main thread — a hitch right when input latency matters most.
+            for phase in 0...2 {
+                _ = self.skinDuckTexture(skin: currentSkin, wingPhase: phase)
+                _ = self.skinBotDuckTexture(skin: currentSkin, wingPhase: phase)
+            }
+
+            // Pre-warm the player's currently equipped pipe skin textures.
+            _ = self.pipeTexture(height: 300, skinOverride: currentPipeSkin)
+            _ = self.pipeCapTexture(skinOverride: currentPipeSkin)
+
+            // Pre-warm common power-up glow presets (shield, magnet, debuff).
+            // Each first-call triggers a UIGraphicsImageRenderer render.
+            _ = self.glowCircleTexture(radius: 40, color: UIColor(red: 0.3, green: 1.0, blue: 0.3, alpha: 0.65))
+            _ = self.glowCircleTexture(radius: 80, color: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.6))
+            _ = self.glowCircleTexture(radius: 30, color: UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 0.65))
 
             DispatchQueue.main.async {
                 self.isPreWarmed = true
@@ -945,6 +967,87 @@ final class TextureFactory {
                 spec: c(0.20, 0.08, 0.08), specHi: c(0.35, 0.12, 0.12),
                 bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
                 collar: c(0.95, 0.75, 0.60))
+        case .ninja:
+            // Dark slate body with red speculum accent
+            p = DuckPalette(
+                head: c(0.18, 0.18, 0.20), headHi: c(0.28, 0.28, 0.32),
+                breast: c(0.45, 0.12, 0.10),
+                body: c(0.20, 0.22, 0.28), bodyHi: c(0.32, 0.34, 0.42),
+                spec: c(0.65, 0.10, 0.15), specHi: c(0.85, 0.20, 0.25),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.10, 0.10, 0.12))
+        case .astronaut:
+            // White suit with NASA blue speculum + red collar stripe
+            p = DuckPalette(
+                head: c(0.92, 0.94, 0.96), headHi: c(1.00, 1.00, 1.00),
+                breast: c(0.72, 0.75, 0.80),
+                body: c(0.85, 0.88, 0.92), bodyHi: c(0.95, 0.97, 0.98),
+                spec: c(0.20, 0.40, 0.85), specHi: c(0.40, 0.60, 1.00),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.85, 0.20, 0.20))
+        case .pharaoh:
+            // Classic green head, royal gold/blue body
+            p = DuckPalette(
+                head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
+                breast: c(0.85, 0.60, 0.18),
+                body: c(0.92, 0.85, 0.55), bodyHi: c(1.00, 0.95, 0.70),
+                spec: c(0.10, 0.18, 0.55), specHi: c(0.85, 0.70, 0.20),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.92, 0.78, 0.25))
+        case .robot:
+            // Chrome/steel body with cyan LED accents
+            p = DuckPalette(
+                head: c(0.55, 0.62, 0.70), headHi: c(0.72, 0.78, 0.85),
+                breast: c(0.32, 0.35, 0.40),
+                body: c(0.50, 0.55, 0.62), bodyHi: c(0.68, 0.72, 0.78),
+                spec: c(0.20, 0.85, 0.95), specHi: c(0.50, 1.00, 1.00),
+                bill: c(0.42, 0.45, 0.48), billTip: c(0.30, 0.32, 0.35),
+                collar: c(0.20, 0.85, 0.95))
+        case .king:
+            // Royal mallard with white royal body + crimson speculum
+            p = DuckPalette(
+                head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
+                breast: c(0.65, 0.10, 0.15),
+                body: c(0.92, 0.92, 0.95), bodyHi: c(0.98, 0.98, 1.00),
+                spec: c(0.55, 0.08, 0.15), specHi: c(0.85, 0.20, 0.25),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.92, 0.78, 0.20))
+        case .mogul:
+            // Navy suit coat, white shirt, red tie, dramatic yellow hair swoop
+            p = DuckPalette(
+                head: c(0.78, 0.50, 0.12), headHi: c(0.92, 0.60, 0.18),
+                breast: c(0.95, 0.95, 0.97),                              // white dress shirt
+                body: c(0.08, 0.15, 0.42), bodyHi: c(0.12, 0.22, 0.55), // navy suit coat
+                spec: c(0.05, 0.10, 0.30), specHi: c(0.08, 0.18, 0.48),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.95, 0.95, 0.97))                              // white collar
+        case .lumberquack:
+            // Classic mallard head, red flannel body
+            p = DuckPalette(
+                head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
+                breast: c(0.75, 0.15, 0.12),
+                body: c(0.55, 0.22, 0.10), bodyHi: c(0.68, 0.30, 0.15),
+                spec: c(0.20, 0.08, 0.10), specHi: c(0.35, 0.12, 0.15),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.10, 0.10, 0.10))
+        case .spider:
+            // Dark purple/black with red hourglass speculum
+            p = DuckPalette(
+                head: c(0.25, 0.10, 0.35), headHi: c(0.38, 0.18, 0.50),
+                breast: c(0.30, 0.08, 0.18),
+                body: c(0.15, 0.08, 0.25), bodyHi: c(0.25, 0.12, 0.38),
+                spec: c(0.85, 0.10, 0.10), specHi: c(1.00, 0.25, 0.25),
+                bill: c(0.40, 0.35, 0.45), billTip: c(0.25, 0.22, 0.30),
+                collar: c(0.08, 0.05, 0.12))
+        case .squirrel:
+            // Warm brown fur with creamy white belly
+            p = DuckPalette(
+                head: c(0.55, 0.35, 0.18), headHi: c(0.68, 0.48, 0.25),
+                breast: c(0.90, 0.85, 0.78),
+                body: c(0.50, 0.32, 0.15), bodyHi: c(0.62, 0.42, 0.22),
+                spec: c(0.40, 0.28, 0.12), specHi: c(0.52, 0.38, 0.18),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.95, 0.90, 0.82))
         }
         if ghost {
             // Cyan/blue tint for bot ghost — distinct from all skin palettes
@@ -1089,12 +1192,12 @@ final class TextureFactory {
             }
 
         case .sailor:
-            // White sailor cap — 3 rows above body
-            let W = UIColor.white
-            let N = UIColor(red: 0.10, green: 0.15, blue: 0.45, alpha: 1) // navy blue
+            // Red pirate bandana with skull motif — 3 rows above body
+            let R = UIColor(red: 0.85, green: 0.15, blue: 0.15, alpha: 1) // bandana red
+            let W = UIColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 1) // skull white
             grid[0] = [C, C, C, C, C, B, B, B, B, C, C, C, C, C, C, C]
-            grid[1] = [C, C, C, C, B, W, W, W, W, B, C, C, C, C, C, C]
-            grid[2] = [C, C, C, B, B, W, N, W, W, B, B, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, R, R, R, R, B, C, B, C, C, C, C]
+            grid[2] = [C, C, C, B, R, R, W, R, R, B, B, B, B, C, C, C]
 
         case .pirate:
             // Pirate tricorn hat — 4 rows above body + eye patch
@@ -1113,6 +1216,115 @@ final class TextureFactory {
             grid[0] = [C, C, C, C, G, C, G, C, G, C, C, C, C, C, C, C]
             grid[1] = [C, C, C, C, B, G, G, G, B, C, C, C, C, C, C, C]
             grid[2] = [C, C, C, C, B, G, G, G, B, C, C, C, C, C, C, C]
+
+        case .ninja:
+            // Headband band + tied tail + black eye mask
+            let R = UIColor(red: 0.85, green: 0.10, blue: 0.10, alpha: 1) // red eye glint
+            grid[1] = [C, C, B, B, B, B, B, B, B, B, B, B, C, C, C, C]
+            grid[2] = [C, C, C, C, C, C, C, C, C, C, B, B, B, B, C, C]
+            // Eye mask band overlays body row 3 (the eye row)
+            grid[off + 3][3] = B; grid[off + 3][4] = B
+            grid[off + 3][5] = B; grid[off + 3][6] = B
+            grid[off + 3][7] = B; grid[off + 3][8] = B
+            grid[off + 3][9] = B
+            // Red eye glints peek through the mask
+            grid[off + 3][6] = R; grid[off + 3][7] = R
+
+        case .astronaut:
+            // Domed helmet with gold visor band — 4 rows above body
+            let W = UIColor.white
+            let G = UIColor(red: 0.95, green: 0.78, blue: 0.20, alpha: 1) // gold visor
+            grid[0] = [C, C, C, C, C, B, B, B, B, B, C, C, C, C, C, C]
+            grid[1] = [C, C, C, B, W, W, W, W, W, W, B, C, C, C, C, C]
+            grid[2] = [C, C, B, W, G, G, G, G, G, G, W, B, C, C, C, C]
+            grid[3] = [C, B, W, W, G, G, G, G, G, G, W, W, B, C, C, C]
+
+        case .pharaoh:
+            // Striped nemes headdress — 4 rows above body + side flaps
+            let G = UIColor(red: 0.95, green: 0.78, blue: 0.20, alpha: 1) // gold stripe
+            let U = UIColor(red: 0.10, green: 0.20, blue: 0.55, alpha: 1) // blue stripe
+            let g = UIColor(red: 0.78, green: 0.62, blue: 0.10, alpha: 1) // dark gold edge
+            grid[0] = [C, C, C, C, C, B, G, B, G, B, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, G, U, G, U, G, B, C, C, C, C, C]
+            grid[2] = [C, C, C, B, G, U, G, U, G, U, G, B, C, C, C, C]
+            grid[3] = [C, C, B, g, U, G, U, G, U, G, U, g, B, C, C, C]
+            // Nemes flaps cascade down body sides (cols 0 and 11)
+            grid[off + 1][0] = G; grid[off + 1][11] = G
+            grid[off + 2][0] = U; grid[off + 2][11] = U
+            grid[off + 3][0] = G; grid[off + 3][11] = G
+            grid[off + 4][0] = U
+
+        case .robot:
+            // Antenna with red tip + cyan LED visor
+            let M = UIColor(red: 0.55, green: 0.60, blue: 0.65, alpha: 1) // chrome
+            let R = UIColor(red: 0.95, green: 0.20, blue: 0.20, alpha: 1) // red bulb
+            let L = UIColor(red: 0.40, green: 1.00, blue: 1.00, alpha: 1) // cyan LED
+            grid[0] = [C, C, C, C, C, C, C, C, R, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, C, C, C, C, B, C, C, C, C, C, C, C]
+            grid[2] = [C, C, C, C, C, C, C, B, M, B, C, C, C, C, C, C]
+            // LED visor band overlays body row 3 (eye row)
+            grid[off + 3][4] = B
+            grid[off + 3][5] = L; grid[off + 3][6] = L
+            grid[off + 3][7] = L; grid[off + 3][8] = L
+            grid[off + 3][9] = B
+
+        case .king:
+            // Crown with gem points + red velvet inset — 4 rows above body
+            let G = UIColor(red: 0.95, green: 0.80, blue: 0.20, alpha: 1) // gold
+            let g = UIColor(red: 0.78, green: 0.62, blue: 0.10, alpha: 1) // dark gold
+            let R = UIColor(red: 0.65, green: 0.10, blue: 0.15, alpha: 1) // red velvet
+            grid[0] = [C, C, C, G, C, G, C, G, C, G, C, C, C, C, C, C]
+            grid[1] = [C, C, B, G, G, G, G, G, G, G, B, C, C, C, C, C]
+            grid[2] = [C, C, B, g, R, R, R, R, R, g, B, C, C, C, C, C]
+            grid[3] = [C, C, B, G, G, G, G, G, G, G, B, C, C, C, C, C]
+
+        case .mogul:
+            // Dramatic yellow hair swoop + long red tie — 4 rows above body
+            let Y = UIColor(red: 0.95, green: 0.82, blue: 0.22, alpha: 1) // bright yellow hair
+            let H = UIColor(red: 0.88, green: 0.72, blue: 0.15, alpha: 1) // darker hair shadow
+            let R = UIColor(red: 0.90, green: 0.12, blue: 0.12, alpha: 1) // red tie
+            // Sweeping hair rightward
+            grid[0] = [C, C, C, C, C, C, B, Y, Y, B, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, C, B, Y, Y, Y, Y, B, C, C, C, C, C]
+            grid[2] = [C, C, C, C, B, Y, Y, Y, Y, Y, Y, B, C, C, C, C]
+            grid[3] = [C, C, C, B, Y, H, Y, Y, Y, Y, Y, Y, B, C, C, C]
+            // Long red tie down chest
+            grid[off + 4][7] = R; grid[off + 4][8] = R
+            grid[off + 5][7] = R; grid[off + 5][8] = R
+            grid[off + 6][7] = R; grid[off + 6][8] = R
+            grid[off + 7][7] = R; grid[off + 7][8] = R
+            grid[off + 8][7] = R
+
+        case .lumberquack:
+            // Red beanie with dark band — 4 rows above body
+            let R = UIColor(red: 0.88, green: 0.15, blue: 0.15, alpha: 1)
+            let D = UIColor(red: 0.30, green: 0.10, blue: 0.10, alpha: 1)
+            grid[0] = [C, C, C, C, C, B, B, B, B, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, R, R, R, R, B, C, C, C, C, C, C]
+            grid[2] = [C, C, C, B, R, R, R, R, R, R, B, C, C, C, C, C]
+            grid[3] = [C, C, B, D, D, D, D, D, D, D, B, B, C, C, C, C]
+
+        case .spider:
+            // Glowing extra eyes + leg tips — 3 rows above body
+            let E = UIColor(red: 0.95, green: 0.15, blue: 0.15, alpha: 1)
+            let L = UIColor(red: 0.30, green: 0.08, blue: 0.35, alpha: 1)
+            grid[0] = [C, C, C, C, E, C, C, C, C, E, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, C, B, C, C, B, C, C, C, C, C, C, C]
+            grid[2] = [C, L, C, C, C, C, C, C, C, C, C, C, L, C, C, C]
+            grid[off + 3][5] = E; grid[off + 3][6] = E
+            grid[off + 3][7] = E; grid[off + 3][8] = E
+
+        case .squirrel:
+            // Acorn on head + fluffy cheeks — 4 rows above body
+            let T = UIColor(red: 0.55, green: 0.35, blue: 0.15, alpha: 1)
+            let t = UIColor(red: 0.75, green: 0.55, blue: 0.25, alpha: 1)
+            let F = UIColor(red: 0.80, green: 0.60, blue: 0.38, alpha: 1)
+            grid[0] = [C, C, C, C, C, B, T, B, C, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, T, t, T, B, C, C, C, C, C, C, C]
+            grid[2] = [C, C, C, B, T, t, T, t, T, B, C, C, C, C, C, C]
+            grid[3] = [C, C, B, t, T, t, T, t, T, t, B, C, C, C, C, C]
+            grid[off + 3][3] = F; grid[off + 3][4] = F
+            grid[off + 3][9] = F; grid[off + 3][10] = F
         }
 
         let alpha: CGFloat = ghost ? 0.65 : 1.0

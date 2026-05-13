@@ -1,6 +1,6 @@
 # Floppy Duck TestFlight Runbook
 
-Updated April 13, 2026.
+Updated May 4, 2026.
 
 ## Purpose
 
@@ -18,15 +18,25 @@ Canonical launch-readiness source for getting Floppy Duck into TestFlight. [docs
 - **TextureFactory / PixelIconFactory** — NSLock added around cache reads/writes and `isPreWarmed` to fix background `preWarm()` race condition.
 - **Server-side score cap** — `MAX_SCORE = 500` applied to `reportScore` and `finishMatch` in `convex/matches.ts`.
 - **Guest account deletion** — `deleteAccount` now resolves any authenticated user (guest or Apple-linked), fixing App Review guideline 5.1.1(v) compliance.
-- **StoreKit config** — Both missing banner products (`neonTokyo`, `cosmicRift`) added to `FloppyDuckProducts.storekit`.
+- **StoreKit config** — All 10 visible premium products are listed in `FloppyDuckProducts.storekit`: 3 duck skins, 3 pipe skins, 2 backgrounds, and 2 banners.
+
+## Automation Available
+
+- `bundle install` installs Fastlane from the repo `Gemfile`.
+- `bundle exec fastlane ios setup_app` creates the App Store Connect app record for `com.xmevans10.FloppyDuck` if credentials permit it.
+- `bundle exec fastlane ios register_iaps` registers missing non-consumable IAP records from `FloppyDuck/Config/FloppyDuckProducts.storekit`.
+- `bundle exec fastlane ios build` creates the App Store archive and IPA using App Store export settings.
+- `bundle exec fastlane ios metadata` uploads metadata from `fastlane/metadata` without submitting for review.
+- `bundle exec fastlane ios upload` uploads `/tmp/FloppyDuckFastlane/FloppyDuck.ipa` to TestFlight.
+- `REAL_APP_STORE_ID=1234567890 bundle exec fastlane ios set_app_store_id` replaces the placeholder App Store ID after the numeric ID exists.
 
 ## What David Needs to Do (Manual Blockers)
 
 ### 1. App Store Connect setup
 
-- Create or confirm the App Store Connect app record.
-- Get the real Apple app ID and replace the placeholder `GK.appStoreID = "000000000"` in `GameConstants.swift` before final release submission.
-- Enter the metadata from [docs/APPSTORE_METADATA.md](docs/APPSTORE_METADATA.md).
+- Create or confirm the App Store Connect app record, manually or with `bundle exec fastlane ios setup_app`.
+- Get the real Apple app ID and replace the placeholder `GK.appStoreID = "000000000"` in `GameConstants.swift` before final release submission, manually or with `fastlane ios set_app_store_id`.
+- Enter the metadata from [docs/APPSTORE_METADATA.md](docs/APPSTORE_METADATA.md), manually or with `bundle exec fastlane ios metadata`.
 - Complete pricing, age rating, review contact info, and privacy disclosures.
 
 ### 2. Signing and Apple auth
@@ -37,7 +47,7 @@ Canonical launch-readiness source for getting Floppy Duck into TestFlight. [docs
 
 ### 3. IAP reconciliation and StoreKit validation
 
-- Register all 7 premium products in App Store Connect (3 skins, 2 backgrounds, 2 banners).
+- Register all 10 premium products in App Store Connect (3 skins, 3 pipe skins, 2 backgrounds, 2 banners), manually or with `bundle exec fastlane ios register_iaps`.
 - Validate that App Store Connect product inventory matches `FloppyDuckProducts.storekit` and `APPSTORE_METADATA.md`.
 - Run StoreKit sandbox purchases and restore flows on device.
 
@@ -60,8 +70,8 @@ Canonical launch-readiness source for getting Floppy Duck into TestFlight. [docs
 ### 6. Archive and upload
 
 - Verify signing and release archive settings in Xcode.
-- Archive the build.
-- Upload to App Store Connect.
+- Archive the build manually or with `bundle exec fastlane ios build`.
+- Upload to App Store Connect manually or with `bundle exec fastlane ios upload`.
 - Install from TestFlight and re-run a quick critical-path smoke test.
 
 ## Final Push Order
@@ -86,7 +96,7 @@ Canonical launch-readiness source for getting Floppy Duck into TestFlight. [docs
 
 ## Go / No-Go Checklist
 
-- `GO` only if all 7 user-facing premium items are registered in App Store Connect or intentionally hidden from this build.
+- `GO` only if all 10 user-facing premium items are registered in App Store Connect or intentionally hidden from this build.
 - `GO` only if Sign in with Apple works on a real device and delete-account flow is verified (both guest and Apple-linked).
 - `GO` only if at least one full StoreKit sandbox purchase and one restore flow pass on device.
 - `GO` only if Quick Play, Ranked, and Private Room each pass one end-to-end two-device run.

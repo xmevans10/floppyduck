@@ -1,0 +1,22 @@
+{
+  "images": [
+    {
+      "filename": "day_horizon.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "day_horizon@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

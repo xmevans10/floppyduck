@@ -5,15 +5,21 @@ struct SettingsView: View {
     @EnvironmentObject var auth: AuthManager
     @State private var showResetConfirm = false
     @State private var showDeleteAccountConfirm = false
+    @State private var usernameSynced = false
+    @State private var usernameError: String?
+    @State private var usernameSyncing = false
     private let icons = PixelIconFactory.shared
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [GK.Colors.skyTop, GK.Colors.skyBottom],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            GeometryReader { geo in
+                Image(uiImage: UIImage(named: "floppy_theme") ?? UIImage())
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
             .ignoresSafeArea()
 
             VStack(spacing: 20) {
@@ -40,17 +46,40 @@ struct SettingsView: View {
                                     .font(.custom(GK.pixelFontName, size: 8))
                                     .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
 
-                                PixelTextField(text: $manager.playerName, pixelFontName: GK.pixelFontName, fontSize: 14)
-                                    .frame(height: 44)
-                                    .padding(.horizontal, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.white)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .stroke(GK.Colors.panelBorder.opacity(0.2), lineWidth: 2)
-                                            )
-                                    )
+                                PixelTextField(
+                                    text: $manager.playerName,
+                                    pixelFontName: GK.pixelFontName,
+                                    fontSize: 14,
+                                    onReturn: { syncUsername() }
+                                )
+                                .frame(height: 44)
+                                .padding(.horizontal, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.white)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(GK.Colors.panelBorder.opacity(0.2), lineWidth: 2)
+                                        )
+                                )
+                                .disabled(usernameSynced)
+
+                                if usernameSyncing {
+                                    HStack(spacing: 4) {
+                                        ProgressView().scaleEffect(0.6)
+                                        Text("checking...")
+                                            .font(.custom(GK.pixelFontName, size: 7))
+                                            .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                                    }
+                                } else if let error = usernameError {
+                                    Text(error)
+                                        .font(.custom(GK.pixelFontName, size: 7))
+                                        .foregroundColor(.red)
+                                } else if usernameSynced {
+                                    Text("Name saved")
+                                        .font(.custom(GK.pixelFontName, size: 7))
+                                        .foregroundColor(GK.Colors.buttonGreen)
+                                }
                             }
                         }
 
@@ -301,6 +330,41 @@ struct SettingsView: View {
         }
         .onChange(of: manager.hapticsEnabled) { _, _ in
             Haptic.refreshPreference()
+        }
+    }
+
+    // MARK: - Username Sync
+
+    private func syncUsername() {
+        guard !usernameSynced else { return }
+        let name = manager.playerName.trimmingCharacters(in: .whitespaces)
+        guard name.count >= 2 else {
+            usernameError = "Name must be 2–16 characters."
+            return
+        }
+
+        usernameSyncing = true
+        usernameError = nil
+        Task {
+            do {
+                let confirmed = try await ConvexClient.shared.updateUsername(name)
+                await MainActor.run {
+                    manager.playerName = confirmed
+                    usernameSynced = true
+                    usernameSyncing = false
+                    usernameError = nil
+                }
+            } catch let error as ConvexError {
+                await MainActor.run {
+                    usernameError = error.localizedDescription
+                    usernameSyncing = false
+                }
+            } catch {
+                await MainActor.run {
+                    usernameError = "Couldn't reach server. Try again."
+                    usernameSyncing = false
+                }
+            }
         }
     }
 

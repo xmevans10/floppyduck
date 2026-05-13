@@ -60,5 +60,21 @@ Theme Music — Kevin MacLeod (incompetech.com)
   Track: theme_space.m4a
 
 "Two Guns, One Destiny" — Shane Ivers
-  License: Creative Commons (see artist page for details)
-  Track: theme_western.m4a
+   License: Creative Commons (see artist page for details)
+   Track: theme_western.m4a
+
+"Game 8-Bit On" — Pixabay (royalty-free, no attribution required)
+   Track: theme_arctic.m4a
+
+"Neon Gaming" — Pixabay (royalty-free, no attribution required)
+   Track: theme_neonCity.m4a
+
+"Multi Boss" — Pixabay (royalty-free, no attribution required)
+   Track: theme_volcano.m4a
+
+--- Pending dedicated music (placeholder filenames assigned) ---
+
+Track: theme_lagoon.m4a — TBD (source not yet selected)
+Track: theme_losAngeles.m4a — TBD (source not yet selected)
+Track: theme_london.m4a — TBD (source not yet selected)
+Track: theme_roughOcean.m4a — TBD (source not yet selected)

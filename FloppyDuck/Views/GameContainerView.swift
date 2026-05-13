@@ -84,7 +84,9 @@ struct GameContainerView: View {
     var body: some View {
         ZStack {
             if let scene {
-                SpriteView(scene: scene, preferredFramesPerSecond: 60, options: [.ignoresSiblingOrder])
+                SpriteView(scene: scene,
+                           preferredFramesPerSecond: ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60,
+                           options: [.ignoresSiblingOrder])
                     .ignoresSafeArea()
             }
 
@@ -359,6 +361,7 @@ struct GameContainerView: View {
         opponentPollTask?.cancel()
         opponentPollTask = Task {
             var consecutiveErrors = 0
+            var pollCount = 0
             while !Task.isCancelled {
                 do {
                     let state = try await manager.fetchHeadToHeadState(matchId: matchId)
@@ -366,6 +369,12 @@ struct GameContainerView: View {
                         botFinalScore = state.opponentScore
                         scene.setOpponentScore(state.opponentScore)
                     }
+#if DEBUG
+                    pollCount += 1
+                    if pollCount % 5 == 0 {
+                        print("[Multiplayer] 🔄 Poll #\(pollCount) — oppScore:\(state.opponentScore) you:\(state.localScore) finished:\(state.isFinished)")
+                    }
+#endif
                     consecutiveErrors = 0  // Reset backoff on success
                 } catch is CancellationError {
                     return

@@ -8,6 +8,7 @@ struct PixelTextField: UIViewRepresentable {
     let pixelFontName: String
     let fontSize: CGFloat
     var maxLength: Int = 16
+    var onReturn: (() -> Void)?
 
     /// Resolve the correct UIFont, trying common PostScript name variants.
     private static func resolveFont(name: String, size: CGFloat) -> UIFont {
@@ -54,15 +55,17 @@ struct PixelTextField: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, maxLength: maxLength)
+        Coordinator(text: $text, maxLength: maxLength, onReturn: onReturn)
     }
 
     final class Coordinator: NSObject, UITextFieldDelegate {
         @Binding var text: String
         let maxLength: Int
-        init(text: Binding<String>, maxLength: Int) {
+        let onReturn: (() -> Void)?
+        init(text: Binding<String>, maxLength: Int, onReturn: (() -> Void)?) {
             _text = text
             self.maxLength = maxLength
+            self.onReturn = onReturn
         }
 
         func textFieldDidChangeSelection(_ tf: UITextField) {
@@ -88,6 +91,7 @@ struct PixelTextField: UIViewRepresentable {
 
         func textFieldShouldReturn(_ tf: UITextField) -> Bool {
             tf.resignFirstResponder()
+            onReturn?()
             return true
         }
     }

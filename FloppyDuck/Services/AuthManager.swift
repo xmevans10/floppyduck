@@ -389,9 +389,9 @@ final class AuthManager: ObservableObject {
                 profile: fallbackProfile
             )
 
-            authState = .failed("Guest bootstrap failed")
+            authState = .authenticated(.guest)
             if !silentFailure {
-                statusMessage = "Guest sign-in failed. Using offline profile."
+                statusMessage = "Could not reach server. Playing offline."
             }
         }
     }

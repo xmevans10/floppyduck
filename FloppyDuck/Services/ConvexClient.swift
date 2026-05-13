@@ -1,4 +1,5 @@
 import Foundation
+import QuartzCore
 
 /// Abstraction used by multiplayer/session/auth logic so tests can inject a mock backend.
 protocol MultiplayerBackendClient: Sendable {
@@ -38,6 +39,18 @@ protocol MultiplayerBackendClient: Sendable {
 
     /// Sync beaten bot IDs to the backend immediately (XAN-9).
     func syncBeatenBots(_ botIds: [String]) async throws
+
+    /// Sync bread spent in the shop to the backend so it doesn't desync.
+    func spendBread(_ amount: Int) async throws -> Int
+
+    /// Update the player's username (enforced unique server-side).
+    func updateUsername(_ name: String) async throws -> String
+}
+
+extension MultiplayerBackendClient {
+    /// Default no-op — mocks and tests don't need bread sync.
+    func spendBread(_ amount: Int) async throws -> Int { 0 }
+    func updateUsername(_ name: String) async throws -> String { name }
 }
 
 struct ConvexAuthContext: Sendable {
@@ -133,10 +146,30 @@ actor ConvexClient: MultiplayerBackendClient {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
+#if DEBUG
+        let start = CACurrentMediaTime()
+#endif
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw ConvexError.requestFailed
         }
+
+#if DEBUG
+        let elapsed = CACurrentMediaTime() - start
+        let summary: String
+        if http.statusCode == 200 {
+            if let object = try? JSONSerialization.jsonObject(with: data, options: []),
+               let root = object as? [String: Any],
+               root["status"] as? String == "error" {
+                summary = "❌ error"
+            } else {
+                summary = "✅ OK"
+            }
+        } else {
+            summary = "❌ \(http.statusCode)"
+        }
+        print("[Convex] \(summary) \(functionName) \(String(format: "%.0f", elapsed*1000))ms")
+#endif
 
         // Don't retry auth errors (401/403)
         if http.statusCode == 401 || http.statusCode == 403 {
@@ -488,6 +521,31 @@ actor ConvexClient: MultiplayerBackendClient {
         _ = try await mutationRaw("auth:syncBeatenBots", args: [
             "beatenBots": botIds
         ])
+    }
+
+    func spendBread(_ amount: Int) async throws -> Int {
+        guard amount > 0 else { throw ConvexError.requestFailed }
+        let result = try await mutationRaw("auth:spendBread", args: [
+            "amount": amount,
+        ])
+        guard let dict = result as? [String: Any],
+              let bread = dict["bread"] as? Int else {
+            throw ConvexError.invalidResponse
+        }
+        return bread
+    }
+
+    func updateUsername(_ name: String) async throws -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 2 else { throw ConvexError.requestFailed }
+        let result = try await mutationRaw("auth:updateUsername", args: [
+            "username": trimmed,
+        ])
+        guard let dict = result as? [String: Any],
+              let username = dict["username"] as? String else {
+            throw ConvexError.invalidResponse
+        }
+        return username
     }
 
         // MARK: - Parsing Helpers
