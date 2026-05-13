@@ -3,8 +3,22 @@ name: CI Build & Screenshots
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'FloppyDuck/**'
+      - 'FloppyDuckTests/**'
+      - 'FloppyDuckUITests/**'
+      - 'FloppyDuck.xcodeproj/**'
+      - '.github/workflows/ci.yml'
+      - '.swiftlint.yml'
   push:
     branches: [main]
+    paths:
+      - 'FloppyDuck/**'
+      - 'FloppyDuckTests/**'
+      - 'FloppyDuckUITests/**'
+      - 'FloppyDuck.xcodeproj/**'
+      - '.github/workflows/ci.yml'
+      - '.swiftlint.yml'
 
 permissions:
   contents: read
@@ -15,13 +29,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: SwiftLint
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run SwiftLint
+        uses: realm/SwiftLint@main
+        with:
+          version: latest
+          working_directory: .
+
+  project-integrity:
+    name: Project Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for merge conflict markers
+        run: |
+          if grep -E "<<<<<<<|=======|>>>>>>>" FloppyDuck.xcodeproj/project.pbxproj; then
+            echo "❌ Project file contains merge conflict markers!"
+            exit 1
+          fi
+      - name: Check for duplicated files in pbxproj
+        run: |
+          # Basic check for common pbxproj duplication issues
+          if uniq -d FloppyDuck.xcodeproj/project.pbxproj | grep -E "isa = (PBXFileReference|PBXGroup)"; then
+             echo "⚠️ Warning: Potential duplicate entries in pbxproj detected."
+          fi
+
   build-and-test:
     name: Build + Unit Tests
     runs-on: macos-15
     timeout-minutes: 20
+    needs: [lint, project-integrity]
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-deriveddata-${{ hashFiles('FloppyDuck.xcodeproj/project.pbxproj') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-deriveddata-
 
       - name: Select Xcode & find simulator
         id: xcode
@@ -45,13 +97,14 @@ jobs:
           # Verify the simulator exists
           xcrun simctl list devices "iPhone 16 Pro" available
 
-      - name: Build (Debug, iphonesimulator)
+      - name: Build & Analyze (Debug, iphonesimulator)
         run: |
-          xcodebuild build \
+          xcodebuild build analyze \
             -project FloppyDuck.xcodeproj \
             -scheme FloppyDuck \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=${{ steps.xcode.outputs.ios_version }}' \
             -configuration Debug \
+            -derivedDataPath ~/Library/Developer/Xcode/DerivedData \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
