@@ -704,12 +704,14 @@ actor ConvexClient: MultiplayerBackendClient {
             let parsedMode = parseMode(from: string(in: source, keys: ["mode", "queueMode"])) ?? fallbackMode ?? .quickPlay
             let ranked = bool(in: source, keys: ["isRanked", "ranked"]) ?? parsedMode.isRanked
             let roomCode = string(in: source, keys: ["roomCode", "room_code", "code"]) ?? fallbackRoomCode
+            let gameKitCode = string(in: source, keys: ["gameKitSessionCode", "sessionCode", "gameKitCode"])
 
             return MultiplayerMatchAssignment(
                 matchId: matchId,
                 seed: seed,
                 opponentName: string(in: source, keys: ["opponentName", "opponent", "enemyName", "name"]) ?? "OPPONENT",
                 opponentSkinId: string(in: source, keys: ["opponentSkinId", "opponentSkin", "enemySkin"]),
+                gameKitSessionCode: gameKitCode,
                 mode: parsedMode,
                 isRanked: ranked,
                 roomCode: roomCode
@@ -722,6 +724,7 @@ actor ConvexClient: MultiplayerBackendClient {
                 seed: Int.random(in: 1...999999),
                 opponentName: "OPPONENT",
                 opponentSkinId: nil,
+                gameKitSessionCode: nil,
                 mode: fallbackMode,
                 isRanked: fallbackMode.isRanked,
                 roomCode: fallbackRoomCode

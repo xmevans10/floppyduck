@@ -77,6 +77,7 @@ export default defineSchema({
     ratingDeltaP1: v.optional(v.number()),
     ratingDeltaP2: v.optional(v.number()),
     roomCode: v.optional(v.string()),
+    gameKitSessionCode: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     finishedAt: v.optional(v.number()),

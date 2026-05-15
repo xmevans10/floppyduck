@@ -1,6 +1,7 @@
 import SwiftUI
 import PostHog
 import Sentry
+import GameKit
 
 @main
 struct FloppyDuckApp: App {
@@ -42,6 +43,12 @@ struct FloppyDuckApp: App {
             AnalyticsManager.configure()
             AnalyticsManager.shared.trackAppOpen()
             SoundManager.shared.prepare()
+
+            GKLocalPlayer.local.authenticateHandler = { _, error in
+                if let error = error {
+                    print("[GameKit] Auth error: \(error.localizedDescription)")
+                }
+            }
         }
 
         let manager = GameManager()

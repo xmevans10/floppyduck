@@ -1,4 +1,5 @@
 import SwiftUI
+import GameKit
 
 /// Manages navigation, stats persistence, and multiplayer session coordination.
 @MainActor
@@ -6,6 +7,8 @@ final class GameManager: ObservableObject {
     @Published var path = NavigationPath()
     @Published var stats: PlayerStats
     @Published var activeGameConfig: GameModeConfig? = nil
+
+    private(set) var gameKitSession: GameKitSession?
 
     // Settings
     @AppStorage("playerName") var playerName: String = "Player"
@@ -79,6 +82,8 @@ final class GameManager: ObservableObject {
     /// Dismiss the game overlay and return home
     func dismissGame() {
         activeGameConfig = nil
+        gameKitSession?.disconnect()
+        gameKitSession = nil
     }
 
     // MARK: - Multiplayer Navigation
@@ -95,6 +100,12 @@ final class GameManager: ObservableObject {
 
     func startHeadToHead(matchAssignment: MultiplayerMatchAssignment) {
         AnalyticsManager.shared.trackMultiplayerMatchFound(mode: matchAssignment.mode.rawValue)
+
+        if let sessionCode = matchAssignment.gameKitSessionCode {
+            gameKitSession = GameKitSession()
+            gameKitSession?.connect(sessionCode: sessionCode)
+        }
+
         let config = GameModeConfig(
             mode: .headToHead,
             seed: matchAssignment.seed,
@@ -103,7 +114,8 @@ final class GameManager: ObservableObject {
             matchId: matchAssignment.matchId,
             matchmakingMode: matchAssignment.mode,
             isRanked: matchAssignment.isRanked,
-            roomCode: matchAssignment.roomCode
+            roomCode: matchAssignment.roomCode,
+            gameKitSessionCode: matchAssignment.gameKitSessionCode
         )
         startGame(config)
     }

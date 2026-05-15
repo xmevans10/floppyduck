@@ -1,6 +1,7 @@
 import SwiftUI
 import SpriteKit
 import StoreKit
+import GameKit
 
 struct GameContainerView: View {
     let config: GameModeConfig
@@ -30,6 +31,7 @@ struct GameContainerView: View {
     @State private var showNewBest: Bool = false
     @State private var showBread: Bool = false
     @State private var countUpTimer: Timer?
+    @State private var gameKitBridge: HeadToHeadGameKitBridge?
 
     private let icons = PixelIconFactory.shared
 
@@ -190,6 +192,24 @@ struct GameContainerView: View {
         newScene.gameDelegate = newBridge
         bridge = newBridge
         scene = newScene
+
+        if let gkSession = manager.gameKitSession {
+            newScene.gameKitSession = gkSession
+            let gkBridge = HeadToHeadGameKitBridge()
+            gkBridge.scene = newScene
+            gkBridge.onConnected = {
+                print("[GameKit] Connected — spawning ghost duck")
+                newScene.spawnGhostDuck()
+                gkSession.sendSkinId(SkinManager.shared.selectedSkin.rawValue)
+            }
+            gkBridge.onOpponentSkinId = { skinId in
+                if let skin = DuckSkin(rawValue: skinId) {
+                    newScene.setGhostDuckSkin(skin)
+                }
+            }
+            gkSession.delegate = gkBridge
+            gameKitBridge = gkBridge
+        }
 
         if isHeadToHead,
            let matchId = config.matchId {
@@ -1023,4 +1043,58 @@ private final class GameSceneBridge: GameSceneDelegate {
     func botDidScore(_ botScore: Int) { onBotScore(botScore) }
     func gameDidWinBotLadder(score: Int) { onBotLadderWin(score) }
     func gameDidQuickRetry(score: Int) { onQuickRetry(score) }
+}
+
+private final class HeadToHeadGameKitBridge: GameKitSessionDelegate {
+    weak var scene: GameScene?
+    var onConnected: (() -> Void)?
+    var onDisconnected: (() -> Void)?
+    var onOpponentSkinId: ((String) -> Void)?
+
+    func gameKitSessionDidConnect() {
+        onConnected?()
+    }
+
+    func gameKitSessionDidDisconnect(error: Error?) {
+        onDisconnected?()
+    }
+
+    func gameKitSession(didReceivePosition position: GhostDuckPosition) {
+        Task { @MainActor in
+            scene?.setGhostPosition(
+                x: CGFloat(position.x),
+                y: CGFloat(position.y),
+                velY: CGFloat(position.velY),
+                rotation: CGFloat(position.rotation),
+                wingPhase: Int(position.wingPhase)
+            )
+        }
+    }
+
+    func gameKitSession(didReceiveScore score: UInt16) {
+        Task { @MainActor in
+            scene?.setOpponentScore(Int(score))
+        }
+    }
+
+    func gameKitSession(didReceiveEvent event: GhostDuckEvent) {
+        Task { @MainActor in
+            switch event.kind {
+            case .finished:
+                if let score = event.finalScore {
+                    scene?.setOpponentScore(Int(score))
+                }
+            case .disconnected:
+                onDisconnected?()
+            default:
+                break
+            }
+        }
+    }
+
+    func gameKitSession(didReceiveSkinId skinId: String) {
+        Task { @MainActor in
+            onOpponentSkinId?(skinId)
+        }
+    }
 }

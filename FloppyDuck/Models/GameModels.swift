@@ -31,6 +31,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let matchmakingMode: MatchmakingMode?
     let isRanked: Bool
     let roomCode: String?
+    let gameKitSessionCode: String?
 
     init(mode: GameMode,
          seed: Int = Int.random(in: 1...999999),
@@ -43,7 +44,8 @@ struct GameModeConfig: Identifiable, Hashable {
          matchId: String? = nil,
          matchmakingMode: MatchmakingMode? = nil,
          isRanked: Bool = false,
-         roomCode: String? = nil) {
+         roomCode: String? = nil,
+         gameKitSessionCode: String? = nil) {
         self.id = UUID()
         self.mode = mode
         self.seed = seed
@@ -57,6 +59,7 @@ struct GameModeConfig: Identifiable, Hashable {
         self.matchmakingMode = matchmakingMode
         self.isRanked = isRanked
         self.roomCode = roomCode
+        self.gameKitSessionCode = gameKitSessionCode
     }
 
     static func == (lhs: GameModeConfig, rhs: GameModeConfig) -> Bool {
@@ -327,6 +330,7 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
     let seed: Int
     let opponentName: String
     let opponentSkinId: String?
+    let gameKitSessionCode: String?
     let mode: MatchmakingMode
     let isRanked: Bool
     let roomCode: String?

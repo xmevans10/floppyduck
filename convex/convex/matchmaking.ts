@@ -12,6 +12,10 @@ function randomSeed() {
   return Math.floor(Math.random() * 999_999) + 1;
 }
 
+function randomSessionCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
 function randomRoomCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -61,9 +65,11 @@ export const joinQueue = mutation({
       .first();
 
     if (opponent) {
+      const gameKitCode = randomSessionCode();
       const matchId: Id<"matches"> = await ctx.db.insert("matches", {
         mode: args.mode,
         seed: randomSeed(),
+        gameKitSessionCode: gameKitCode,
         p1UserId: opponent.userId,
         p2UserId: user._id,
         p1Score: 0,
@@ -165,6 +171,7 @@ export const checkQueue = query({
         seed: match.seed,
         opponentName: opponent?.username ?? "OPPONENT",
         opponentSkinId: opponent?.selectedSkin ?? undefined,
+        gameKitSessionCode: match.gameKitSessionCode ?? undefined,
         mode: match.mode,
         isRanked: match.mode === "ranked",
       },
@@ -233,6 +240,7 @@ export const joinRoom = mutation({
     const matchId: Id<"matches"> = await ctx.db.insert("matches", {
       mode: "private",
       seed: randomSeed(),
+      gameKitSessionCode: room.code,
       p1UserId: room.hostUserId,
       p2UserId: user._id,
       p1Score: 0,
@@ -327,6 +335,7 @@ export const checkRoom = query({
         seed: match.seed,
         opponentName: opponent?.username ?? "OPPONENT",
         opponentSkinId: opponent?.selectedSkin ?? undefined,
+        gameKitSessionCode: match.gameKitSessionCode ?? undefined,
         mode: "private",
         isRanked: false,
         roomCode: code,

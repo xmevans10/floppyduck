@@ -315,6 +315,18 @@ final class BotController {
         onBotDied?()
     }
 
+    // MARK: - Ghost Position Sync (GameKit)
+
+    func setGhostPosition(x: CGFloat, y: CGFloat, velY: CGFloat, rotation: CGFloat, wingPhase: Int) {
+        guard let bot = sprite else { return }
+        bot.position = CGPoint(x: x, y: y)
+        bot.zRotation = rotation
+        let idx = min(max(wingPhase, 0), 2)
+        if idx < textures.count {
+            bot.texture = textures[idx]
+        }
+    }
+
     // MARK: - Score HUD
 
     /// Refreshes the on-screen bot score label text.
