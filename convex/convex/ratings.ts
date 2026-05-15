@@ -1,5 +1,13 @@
 import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
+
+type LeaderboardEntry = {
+  userId: string;
+  username: string;
+  rating: number;
+  rank: number;
+};
 
 export const leaderboard = query({
   args: {
@@ -8,17 +16,18 @@ export const leaderboard = query({
     sessionToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const target = Math.max(1, Math.min(100, Math.floor(args.limit ?? 20)));
-    const result: Array<{ userId: string; username: string; rating: number; rank: number }> = [];
+    const topN = Math.max(1, Math.min(100, Math.floor(args.limit ?? 50)));
+
+    const entries: LeaderboardEntry[] = [];
     const seenAppleIds = new Set<string>();
     let cursor: string | null = null;
 
-    while (result.length < target) {
+    while (entries.length < topN) {
       const batch = await ctx.db
         .query("ratings")
         .withIndex("by_rating")
         .order("desc")
-        .paginate({ numItems: target, cursor });
+        .paginate({ numItems: topN, cursor });
 
       for (const row of batch.page) {
         const user = await ctx.db.get(row.userId);
@@ -26,22 +35,111 @@ export const leaderboard = query({
         if (seenAppleIds.has(user.appleUserId)) continue;
         seenAppleIds.add(user.appleUserId);
 
-        result.push({
+        entries.push({
           userId: user._id,
           username: user.username,
           rating: row.rating,
-          rank: result.length + 1,
+          rank: entries.length + 1,
         });
-        if (result.length >= target) break;
+        if (entries.length >= topN) break;
       }
 
       if (batch.isDone) break;
       cursor = batch.continueCursor;
     }
 
-    return result;
+    const requestUser = await resolveRequestUser(ctx, args);
+
+    let ownEntry: LeaderboardEntry | null = null;
+    if (requestUser && requestUser.provider === "apple" && requestUser.appleUserId) {
+      const alreadyListed = entries.some((e) => e.userId === requestUser._id);
+      if (!alreadyListed) {
+        ownEntry = await computeUserRank(ctx, requestUser);
+      }
+    }
+
+    return { entries, ownEntry };
   },
 });
+
+async function resolveRequestUser(
+  ctx: any,
+  args: { deviceId?: string; sessionToken?: string },
+): Promise<Doc<"users"> | null> {
+  if (args.sessionToken) {
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q: any) => q.eq("token", args.sessionToken!))
+      .first();
+    if (session && !session.revokedAt && session.expiresAt > Date.now()) {
+      const user = await ctx.db.get(session.userId);
+      if (user) return user;
+    }
+  }
+
+  if (args.deviceId) {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_deviceId", (q: any) => q.eq("deviceId", args.deviceId))
+      .first();
+    if (user) return user;
+  }
+
+  return null;
+}
+
+async function computeUserRank(
+  ctx: any,
+  requestUser: Doc<"users">,
+): Promise<LeaderboardEntry | null> {
+  let rank = 1;
+  const seenAppleIds = new Set<string>();
+  let cursor: string | null = null;
+
+  const userRating = await ctx.db
+    .query("ratings")
+    .withIndex("by_userId", (q: any) => q.eq("userId", requestUser._id))
+    .first();
+
+  if (!userRating) return null;
+
+  while (true) {
+    const batch = await ctx.db
+      .query("ratings")
+      .withIndex("by_rating")
+      .order("desc")
+      .paginate({ numItems: 100, cursor });
+
+    let foundSelf = false;
+
+    for (const row of batch.page) {
+      if (row.userId === requestUser._id) {
+        foundSelf = true;
+        break;
+      }
+
+      const user = await ctx.db.get(row.userId);
+      if (!user || user.provider !== "apple" || !user.appleUserId) continue;
+      if (seenAppleIds.has(user.appleUserId)) continue;
+      seenAppleIds.add(user.appleUserId);
+      rank++;
+    }
+
+    if (foundSelf) {
+      return {
+        userId: requestUser._id,
+        username: requestUser.username,
+        rating: userRating.rating,
+        rank,
+      };
+    }
+
+    if (batch.isDone) break;
+    cursor = batch.continueCursor;
+  }
+
+  return null;
+}
 
 export const pruneNonAppleRatings = internalMutation({
   args: {},
