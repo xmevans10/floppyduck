@@ -4,6 +4,8 @@ import { v } from "convex/values";
 export const leaderboard = query({
   args: {
     limit: v.optional(v.number()),
+    deviceId: v.optional(v.string()),
+    sessionToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const target = Math.max(1, Math.min(100, Math.floor(args.limit ?? 20)));

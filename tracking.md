@@ -26,7 +26,7 @@ Measure activation, retention, monetization, and feature adoption while preservi
 
 ## Event Taxonomy — Prioritized
 
-### Launch-Critical (12 events) — Wired in v1
+### Launch-Critical (14 events) — Wired in v1
 
 These events are needed to understand first-session retention and IAP conversion from day one.
 
@@ -39,6 +39,8 @@ These events are needed to understand first-session retention and IAP conversion
 | `apple_sign_in_succeeded` | — | `AuthManager.signInWithApple()` success |
 | `game_started` | `mode`, `seed`, `is_ranked` | `GameManager.startGame()` |
 | `game_completed` | `mode`, `score`, `won` | `GameManager.recordGame()` |
+| `game_performance_sample` | `mode`, `theme_id`, `skin_id`, `score`, `duration_seconds`, `frame_count`, `avg_fps`, `avg_frame_ms`, `worst_frame_ms`, `slow_frame_count`, `dropped_frame_count`, `severe_frame_count`, `node_count`, `physics_body_count`, `pipe_layer_count`, `power_up_active`, `os_version` | `GameScene.update(_:)`, every ~10 seconds while playing |
+| `game_performance_summary` | Same as `game_performance_sample` plus full-run totals | `GameScene.die()` |
 | `mode_selected` | `mode` | `GameManager.navigate()` |
 | `shop_viewed` | — | `GameManager.navigate(.shop)` |
 | `iap_purchase_started` | `product_id`, `item_type` | `SkinManager/ThemeManager/BannerManager` |

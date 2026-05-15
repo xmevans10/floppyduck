@@ -71,6 +71,14 @@ final class AnalyticsManager {
         PostHogSDK.shared.capture("game_completed", properties: props)
     }
 
+    func trackGamePerformanceSample(properties: [String: Any]) {
+        PostHogSDK.shared.capture("game_performance_sample", properties: properties)
+    }
+
+    func trackGamePerformanceSummary(properties: [String: Any]) {
+        PostHogSDK.shared.capture("game_performance_summary", properties: properties)
+    }
+
     func trackModeSelected(mode: String) {
         PostHogSDK.shared.capture("mode_selected", properties: ["mode": mode])
     }

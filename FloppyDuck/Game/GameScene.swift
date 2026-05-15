@@ -83,6 +83,28 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var debugFrameTimes: [Double] = []
 #endif
 
+    private let performanceSessionId = UUID().uuidString
+    private var performanceStartedAt: TimeInterval = 0
+    private var performanceLastSampleAt: TimeInterval = 0
+    private var performanceFrameCount: Int = 0
+    private var performanceIntervalSum: TimeInterval = 0
+    private var performanceWorstInterval: TimeInterval = 0
+    private var performanceSlowFrames: Int = 0
+    private var performanceDroppedFrames: Int = 0
+    private var performanceSevereFrames: Int = 0
+    private var performanceWindowFrameCount: Int = 0
+    private var performanceWindowIntervalSum: TimeInterval = 0
+    private var performanceWindowWorstInterval: TimeInterval = 0
+    private var performanceWindowSlowFrames: Int = 0
+    private var performanceWindowDroppedFrames: Int = 0
+    private var performanceWindowSevereFrames: Int = 0
+    private var performanceSummarySent: Bool = false
+
+    private static let performanceSampleInterval: TimeInterval = 10
+    private static let slowFrameThreshold: TimeInterval = 1.0 / 50.0
+    private static let droppedFrameThreshold: TimeInterval = 1.0 / 30.0
+    private static let severeFrameThreshold: TimeInterval = 1.0 / 20.0
+
     // Progressive difficulty
     private let difficulty = DifficultyManager()
     private var currentPipeSpeed: CGFloat = GK.pipeSpeed
@@ -726,6 +748,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         phase = .playing
         duck?.removeAction(forKey: "float")
         duck?.physicsBody?.isDynamic = true
+        resetPerformanceTracking()
 
         if mode == .vsBot {
             botController?.startPlaying()
@@ -783,7 +806,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return
         }
 
-        var dt = lastUpdate == 0 ? 0 : currentTime - lastUpdate
+        let rawDt = lastUpdate == 0 ? 0 : currentTime - lastUpdate
+        recordPerformanceFrame(interval: rawDt, currentTime: currentTime)
+
+        var dt = rawDt
         lastUpdate = currentTime
 
         // Cap delta time to prevent physics & spawning chaos when returning
@@ -887,6 +913,129 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    // MARK: - Performance Tracking
+
+    private func resetPerformanceTracking() {
+        performanceStartedAt = 0
+        performanceLastSampleAt = 0
+        performanceFrameCount = 0
+        performanceIntervalSum = 0
+        performanceWorstInterval = 0
+        performanceSlowFrames = 0
+        performanceDroppedFrames = 0
+        performanceSevereFrames = 0
+        resetPerformanceWindow()
+        performanceSummarySent = false
+    }
+
+    private func resetPerformanceWindow() {
+        performanceWindowFrameCount = 0
+        performanceWindowIntervalSum = 0
+        performanceWindowWorstInterval = 0
+        performanceWindowSlowFrames = 0
+        performanceWindowDroppedFrames = 0
+        performanceWindowSevereFrames = 0
+    }
+
+    private func recordPerformanceFrame(interval: TimeInterval, currentTime: TimeInterval) {
+        if performanceStartedAt == 0 {
+            performanceStartedAt = currentTime
+            performanceLastSampleAt = currentTime
+        }
+
+        guard interval > 0, interval < 1 else { return }
+
+        performanceFrameCount += 1
+        performanceIntervalSum += interval
+        performanceWorstInterval = max(performanceWorstInterval, interval)
+
+        performanceWindowFrameCount += 1
+        performanceWindowIntervalSum += interval
+        performanceWindowWorstInterval = max(performanceWindowWorstInterval, interval)
+
+        if interval > Self.slowFrameThreshold {
+            performanceSlowFrames += 1
+            performanceWindowSlowFrames += 1
+        }
+        if interval > Self.droppedFrameThreshold {
+            performanceDroppedFrames += 1
+            performanceWindowDroppedFrames += 1
+        }
+        if interval > Self.severeFrameThreshold {
+            performanceSevereFrames += 1
+            performanceWindowSevereFrames += 1
+        }
+
+        guard currentTime - performanceLastSampleAt >= Self.performanceSampleInterval,
+              performanceWindowFrameCount > 0 else { return }
+
+        AnalyticsManager.shared.trackGamePerformanceSample(properties: performanceProperties(
+            duration: currentTime - performanceLastSampleAt,
+            frameCount: performanceWindowFrameCount,
+            intervalSum: performanceWindowIntervalSum,
+            worstInterval: performanceWindowWorstInterval,
+            slowFrames: performanceWindowSlowFrames,
+            droppedFrames: performanceWindowDroppedFrames,
+            severeFrames: performanceWindowSevereFrames,
+            eventKind: "sample"
+        ))
+        performanceLastSampleAt = currentTime
+        resetPerformanceWindow()
+    }
+
+    private func sendPerformanceSummary() {
+        guard !performanceSummarySent, performanceFrameCount > 0 else { return }
+        performanceSummarySent = true
+
+        let duration = max(performanceIntervalSum, 0.001)
+        AnalyticsManager.shared.trackGamePerformanceSummary(properties: performanceProperties(
+            duration: duration,
+            frameCount: performanceFrameCount,
+            intervalSum: performanceIntervalSum,
+            worstInterval: performanceWorstInterval,
+            slowFrames: performanceSlowFrames,
+            droppedFrames: performanceDroppedFrames,
+            severeFrames: performanceSevereFrames,
+            eventKind: "summary"
+        ))
+    }
+
+    private func performanceProperties(duration: TimeInterval,
+                                       frameCount: Int,
+                                       intervalSum: TimeInterval,
+                                       worstInterval: TimeInterval,
+                                       slowFrames: Int,
+                                       droppedFrames: Int,
+                                       severeFrames: Int,
+                                       eventKind: String) -> [String: Any] {
+        let avgFrameMs = frameCount > 0 ? (intervalSum / Double(frameCount)) * 1000 : 0
+        let avgFps = duration > 0 ? Double(frameCount) / duration : 0
+
+        return [
+            "event_kind": eventKind,
+            "perf_session_id": performanceSessionId,
+            "mode": mode.rawValue,
+            "theme_id": backgroundTheme.rawValue,
+            "skin_id": playerSkin.rawValue,
+            "score": score,
+            "duration_seconds": duration,
+            "frame_count": frameCount,
+            "avg_fps": avgFps,
+            "avg_frame_ms": avgFrameMs,
+            "worst_frame_ms": worstInterval * 1000,
+            "slow_frame_count": slowFrames,
+            "dropped_frame_count": droppedFrames,
+            "severe_frame_count": severeFrames,
+            "slow_frame_rate": Double(slowFrames) / Double(max(frameCount, 1)),
+            "dropped_frame_rate": Double(droppedFrames) / Double(max(frameCount, 1)),
+            "node_count": totalNodeCount(),
+            "physics_body_count": countPhysicsBodies(),
+            "pipe_layer_count": pipeLayer.children.count,
+            "power_up_active": !powerUpCtrl.activePowerUps.isEmpty,
+            "os_version": UIDevice.current.systemVersion
+        ]
+    }
+
     // MARK: - Collision
 
     func didBegin(_ contact: SKPhysicsContact) {
@@ -984,6 +1133,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func die() {
         phase = .dead
+        sendPerformanceSummary()
+
         // Item 6: Enhanced death haptic
         Haptic.enhancedDeath()
         SoundManager.shared.play(.death)
@@ -1487,7 +1638,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         tutorialOverlay = nil
     }
 
-#if DEBUG
+    private func totalNodeCount() -> Int {
+        var count = 1
+        enumerateChildNodes(withName: "//*") { _, _ in
+            count += 1
+        }
+        return count
+    }
+
     private func countPhysicsBodies() -> Int {
         var count = 0
         enumerateChildNodes(withName: "//*") { node, _ in
@@ -1495,5 +1653,4 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         return count
     }
-#endif
 }
