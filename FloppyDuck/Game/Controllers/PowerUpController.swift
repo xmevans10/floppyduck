@@ -162,12 +162,11 @@ final class PowerUpController {
         difficulty.effectivePipeSpeed * speedModifier
     }
 
-    /// Flap impulse adjusted for dizzyDuck (inverted controls), megaFlap, and stickyFlap.
+    /// Flap impulse adjusted for dizzyDuck (inverted controls) and megaFlap.
     var effectiveFlapImpulse: CGFloat {
         let base = difficulty.effectiveFlapImpulse
         var impulse = hasActive(.dizzyDuck) ? -base : base
         if hasActive(.megaFlap) { impulse *= 1.3 }
-        if hasActive(.stickyFlap) { impulse *= 0.65 }
         return impulse
     }
 
@@ -510,12 +509,6 @@ final class PowerUpController {
                 SKAction.moveBy(x: 2, y: 0, duration: 0.04),
             ])
             duck.run(SKAction.repeatForever(shrinkShake), withKey: "expiryWarn_jumboDuck")
-
-        case .stickyFlap:
-            // Murky green tint
-            let tintOn = SKAction.colorize(with: UIColor(red: 0.4, green: 0.6, blue: 0.2, alpha: 1), colorBlendFactor: 0.4, duration: 0.15)
-            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
-            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_stickyFlap")
         }
     }
 
@@ -544,7 +537,7 @@ final class PowerUpController {
             break
         case .shield:
             break
-        case .tinyDuck, .megaFlap, .jumboDuck, .stickyFlap:
+        case .tinyDuck, .megaFlap, .jumboDuck:
             duck.colorBlendFactor = 0
         }
     }

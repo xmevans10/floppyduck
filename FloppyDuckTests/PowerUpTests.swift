@@ -28,7 +28,7 @@ final class PowerUpTests: XCTestCase {
         ]
         let expectedNegative: Set<PowerUpKind> = [
             .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck,
-            .jumboDuck, .stickyFlap
+            .jumboDuck
         ]
 
         for kind in PowerUpKind.allCases {

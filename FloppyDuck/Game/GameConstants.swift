@@ -14,7 +14,7 @@ enum GK {
 
     // MARK: - Pipes
     static let pipeWidth:   CGFloat = 60
-    static let pipeGap:     CGFloat = 180        // was 170 — slightly wider for forgiveness
+    static let pipeGap:     CGFloat = 189        // 5% wider for easier play
     static let pipeSpeed:   CGFloat = 150
     static let pipeSpawnInterval: TimeInterval = 1.6
 

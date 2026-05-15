@@ -20,18 +20,17 @@ enum PowerUpKind: String, CaseIterable {
     case dizzyDuck     // Controls invert for 3 seconds
     case heavyDuck     // Gravity +50% for 4 seconds — duck drops faster
     case jumboDuck     // Duck grows 150% for 4 seconds — bigger hitbox
-    case stickyFlap    // Flap impulse -35% for 4 seconds — sluggish hops
 
     // More power-ups
     case tinyDuck      // Duck shrinks to 50% for 5 seconds — tiny hitbox
-    case megaFlap      // Flap impulse +30% for 4 seconds — super bouncy
+    case megaFlap      // Flap impulse +30% for next pipe — super bouncy
 
     var isPositive: Bool {
         switch self {
         case .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck, .doublePoints,
              .tinyDuck, .megaFlap:
             return true
-        case .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck, .jumboDuck, .stickyFlap:
+        case .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck, .jumboDuck:
             return false
         }
     }
@@ -49,7 +48,6 @@ enum PowerUpKind: String, CaseIterable {
         case .dizzyDuck:    return "DIZZY"
         case .heavyDuck:    return "HEAVY"
         case .jumboDuck:    return "JUMBO"
-        case .stickyFlap:   return "STICKY"
         case .tinyDuck:     return "TINY"
         case .megaFlap:     return "MEGA"
         }
@@ -68,7 +66,6 @@ enum PowerUpKind: String, CaseIterable {
         case .dizzyDuck:    return .dizzyDuck
         case .heavyDuck:    return .heavyDuck
         case .jumboDuck:    return .jumboDuck
-        case .stickyFlap:   return .stickyFlap
         case .tinyDuck:     return .tinyDuck
         case .megaFlap:     return .megaFlap
         }
@@ -88,9 +85,8 @@ enum PowerUpKind: String, CaseIterable {
         case .dizzyDuck:    return 3.0
         case .heavyDuck:    return 4.0
         case .jumboDuck:    return 4.0
-        case .stickyFlap:   return 4.0
         case .tinyDuck:     return 5.0
-        case .megaFlap:     return 4.0
+        case .megaFlap:     return 0      // next 1 pipe
         }
     }
 
@@ -101,6 +97,7 @@ enum PowerUpKind: String, CaseIterable {
         case .breadMagnet:  return 5
         case .doublePoints: return 5
         case .pipeSqueeze:  return 3
+        case .megaFlap:     return 2
         default:            return nil
         }
     }
@@ -122,7 +119,6 @@ enum PowerUpKind: String, CaseIterable {
         case .dizzyDuck:    return 1.0
         case .heavyDuck:    return 1.2
         case .jumboDuck:    return 1.4
-        case .stickyFlap:   return 1.3
         case .tinyDuck:     return 1.6
         case .megaFlap:     return 1.4
         }
@@ -142,7 +138,6 @@ enum PowerUpKind: String, CaseIterable {
         case .dizzyDuck:    return UIColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1)   // purple
         case .heavyDuck:    return UIColor(red: 0.5, green: 0.25, blue: 0.1, alpha: 1)  // dark brown
         case .jumboDuck:    return UIColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 1)   // orange
-        case .stickyFlap:   return UIColor(red: 0.4, green: 0.6, blue: 0.2, alpha: 1)   // murky green
         case .tinyDuck:     return UIColor(red: 0.4, green: 0.8, blue: 1.0, alpha: 1)   // light blue
         case .megaFlap:     return UIColor(red: 1.0, green: 0.7, blue: 0.2, alpha: 1)   // amber
         }

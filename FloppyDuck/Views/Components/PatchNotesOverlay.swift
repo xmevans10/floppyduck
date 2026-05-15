@@ -19,8 +19,20 @@ struct PatchRelease: Identifiable {
         version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0",
         date: "May 2026",
         entries: [
-            PatchEntry(title: "TESTING", color: GK.Colors.buttonGreen, items: [
-                "testing! hi floppies!",
+            PatchEntry(title: "BALANCE", color: GK.Colors.buttonGreen, items: [
+                "Pipes 5% wider — easier to fly through",
+                "MEGA flap now lasts 2 pipes (was way too long)",
+                "Removed STICKY debuff (too similar to HEAVY)",
+            ]),
+            PatchEntry(title: "LEADERBOARD", color: GK.Colors.buttonBlue, items: [
+                "Leaderboard shows your rank even outside top 50",
+                "Only Apple-authenticated players appear",
+                "Ghost/guest accounts cleaned up",
+            ]),
+            PatchEntry(title: "FIXES", color: GK.Colors.buttonOrange, items: [
+                "Fixed leaderboard loading error in build 5.0",
+                "Username validation & profanity filter added",
+                "Usernames must be unique (case-insensitive)",
             ]),
         ]
     )

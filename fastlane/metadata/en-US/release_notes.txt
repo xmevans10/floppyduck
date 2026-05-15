@@ -1,0 +1,6 @@
+- Pipes 5% wider for smoother gameplay
+- MEGA flap now lasts 2 pipes (was too long to survive)
+- Removed STICKY debuff (redundant with HEAVY)
+- Leaderboard fixed, shows your rank even outside top 50
+- Only Apple-authenticated players on leaderboard
+- Usernames are now validated and must be unique

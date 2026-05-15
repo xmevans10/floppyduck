@@ -34,7 +34,6 @@ enum PixelIcon: String, CaseIterable {
     case dizzyDuck     // spiral
     case heavyDuck     // anchor/weight
     case jumboDuck     // oversized duck
-    case stickyFlap    // syrupy wing
     case tinyDuck      // miniature duck
     case megaFlap      // powerful wing burst
 
@@ -147,7 +146,6 @@ final class PixelIconFactory {
         case .dizzyDuck:    grid = dizzyDuckGrid()
         case .heavyDuck:    grid = heavyDuckGrid()
         case .jumboDuck:    grid = jumboDuckGrid()
-        case .stickyFlap:   grid = stickyFlapGrid()
         case .tinyDuck:     grid = tinyDuckGrid()
         case .megaFlap:     grid = megaFlapGrid()
         case .bread:        grid = breadGrid()
@@ -634,22 +632,6 @@ final class PixelIconFactory {
             [C,C,B,C,C,C,C,B,C,C],
             [C,B,C,C,C,C,C,C,B,C],
             [B,C,C,C,C,C,C,C,C,B],
-            [C,C,C,C,C,C,C,C,C,C],
-        ]
-    }
-
-    private func stickyFlapGrid() -> [[UIColor]] {
-        let M = UIColor(red: 0.4, green: 0.6, blue: 0.2, alpha: 1) // murky green
-        return [
-            [C,C,C,C,B,C,C,C,C,C],
-            [C,C,C,B,M,B,C,C,C,C],
-            [C,C,B,M,M,M,B,C,C,C],
-            [C,B,M,M,B,M,M,B,C,C],
-            [B,M,M,C,C,C,M,M,B,C],
-            [C,B,M,B,B,B,M,B,C,C],
-            [C,C,B,M,M,M,B,C,C,C],
-            [C,C,C,B,M,B,C,C,C,C],
-            [C,C,C,C,B,C,C,C,C,C],
             [C,C,C,C,C,C,C,C,C,C],
         ]
     }
