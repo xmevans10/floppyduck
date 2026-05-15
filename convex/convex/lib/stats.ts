@@ -103,10 +103,18 @@ export function toPublicProfile(user: Doc<"users">) {
 }
 
 export async function upsertRating(ctx: any, userId: Id<"users">, rating: number, now: number) {
+  const user = await ctx.db.get(userId);
   const existing = await ctx.db
     .query("ratings")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
     .first();
+
+  if (!user || user.provider !== "apple" || !user.appleUserId) {
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+    return;
+  }
 
   if (existing) {
     await ctx.db.patch(existing._id, { rating, updatedAt: now });

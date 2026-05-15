@@ -11,6 +11,9 @@ import {
   upsertRating,
 } from "./lib/stats";
 
+// Remove before App Store release
+const TESTFLIGHT_STARTING_BREAD = 10000;
+
 const identityArgs = {
   deviceId: v.optional(v.string()),
   sessionToken: v.optional(v.string()),
@@ -19,6 +22,40 @@ const identityArgs = {
 const sessionTokenArg = {
   sessionToken: v.optional(v.string()),
 };
+
+const USERNAME_MIN_LENGTH = 2;
+const USERNAME_MAX_LENGTH = 16;
+const RESERVED_USERNAMES = new Set([
+  "admin",
+  "administrator",
+  "moderator",
+  "mod",
+  "staff",
+  "support",
+  "system",
+  "floppyduck",
+  "floppy duck",
+  "player",
+]);
+const BLOCKED_USERNAME_PARTS = [
+  "fuck",
+  "shit",
+  "bitch",
+  "cunt",
+  "nigger",
+  "nigga",
+  "fag",
+  "faggot",
+  "retard",
+  "rape",
+  "kike",
+  "spic",
+  "chink",
+  "gook",
+  "wetback",
+  "nazi",
+  "hitler",
+];
 
 const localStatsValidator = v.optional(
   v.object({
@@ -36,6 +73,63 @@ const localStatsValidator = v.optional(
   }),
 );
 
+function usernameKey(username: string) {
+  return username.toLowerCase();
+}
+
+function normalizeUsername(input: string) {
+  return input.trim().replace(/\s+/g, " ");
+}
+
+function validateUsername(input: string) {
+  const username = normalizeUsername(input);
+  if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
+    throw new ConvexError("Username must be 2-16 characters.");
+  }
+
+  if (!/^[A-Za-z0-9][A-Za-z0-9 _-]*[A-Za-z0-9]$/.test(username)) {
+    throw new ConvexError("Use letters, numbers, spaces, _ or -.");
+  }
+
+  const key = usernameKey(username);
+  if (RESERVED_USERNAMES.has(key)) {
+    throw new ConvexError("Choose a more specific username.");
+  }
+
+  const compact = key.replace(/[\s_-]/g, "");
+  if (BLOCKED_USERNAME_PARTS.some((blocked) => compact.includes(blocked))) {
+    throw new ConvexError("Choose a different username.");
+  }
+
+  return { username, usernameKey: key };
+}
+
+function safeStoredUsername(input: string | undefined) {
+  if (!input) return { username: "Player", usernameKey: "player" };
+  try {
+    return validateUsername(input);
+  } catch {
+    return { username: "Player", usernameKey: "player" };
+  }
+}
+
+async function ensureUsernameAvailable(ctx: any, key: string, selfId?: Id<"users">) {
+  const existingKeyMatch = await ctx.db
+    .query("users")
+    .withIndex("by_usernameKey", (q: any) => q.eq("usernameKey", key))
+    .first();
+  if (existingKeyMatch && existingKeyMatch._id !== selfId) {
+    throw new ConvexError("That username is already taken.");
+  }
+
+  const legacyMatches = await ctx.db.query("users").collect();
+  for (const user of legacyMatches) {
+    if (user._id !== selfId && usernameKey(normalizeUsername(user.username)) === key) {
+      throw new ConvexError("That username is already taken.");
+    }
+  }
+}
+
 export const bootstrapGuest = mutation({
   args: {
     deviceId: v.string(),
@@ -47,11 +141,14 @@ export const bootstrapGuest = mutation({
 
     if (!user) {
       const defaults = defaultUserStats();
+      const storedUsername = safeStoredUsername(args.localStats?.username);
       const userId: Id<"users"> = await ctx.db.insert("users", {
         deviceId: args.deviceId,
-        username: args.localStats?.username ?? "Player",
+        username: storedUsername.username,
+        usernameKey: storedUsername.usernameKey,
         provider: "guest",
         ...defaults,
+        bread: TESTFLIGHT_STARTING_BREAD,
         createdAt: now,
         updatedAt: now,
       });
@@ -67,8 +164,10 @@ export const bootstrapGuest = mutation({
 
     if (args.localStats && shouldMergeLocalStats(user)) {
       const merged = buildUserFromSnapshot(args.localStats);
+      const storedUsername = safeStoredUsername(args.localStats.username ?? user.username);
       await ctx.db.patch(user._id, {
-        username: args.localStats.username ?? user.username,
+        username: storedUsername.username,
+        usernameKey: storedUsername.usernameKey,
         rating: merged.rating,
         gamesPlayed: merged.gamesPlayed,
         wins: merged.wins,
@@ -115,6 +214,7 @@ export const linkApple = action({
     nonce: v.string(),
     deviceId: v.string(),
     displayName: v.optional(v.string()),
+    username: v.optional(v.string()),
     ...sessionTokenArg,
   },
   handler: async (ctx, args): Promise<any> => {
@@ -127,6 +227,7 @@ export const linkApple = action({
       email: claims.email,
       deviceId: args.deviceId,
       displayName: args.displayName,
+      username: args.username,
     });
   },
 });
@@ -141,9 +242,11 @@ export const linkAppleWrite = internalMutation({
     email: v.optional(v.string()),
     deviceId: v.string(),
     displayName: v.optional(v.string()),
+    username: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    const requestedUsername = args.username ? validateUsername(args.username) : undefined;
 
     let appleUser = await findUserByAppleId(ctx, args.appleUserId);
     const guestUser = await findUserByDeviceId(ctx, args.deviceId);
@@ -153,6 +256,9 @@ export const linkAppleWrite = internalMutation({
 
     if (appleUser) {
       userId = appleUser._id;
+      if (requestedUsername) {
+        await ensureUsernameAvailable(ctx, requestedUsername.usernameKey, appleUser._id);
+      }
 
       // Apple profile is source of truth. Only merge guest progress into Apple profile
       // when Apple profile is effectively fresh and guest actually has progress.
@@ -165,7 +271,8 @@ export const linkAppleWrite = internalMutation({
 
       if (canMergeGuestIntoApple && guestUser) {
         await ctx.db.patch(appleUser._id, {
-          username: args.displayName ?? appleUser.username,
+          username: requestedUsername?.username ?? appleUser.username,
+          usernameKey: requestedUsername?.usernameKey ?? appleUser.usernameKey,
           rating: guestUser.rating,
           gamesPlayed: guestUser.gamesPlayed,
           wins: guestUser.wins,
@@ -182,7 +289,8 @@ export const linkAppleWrite = internalMutation({
         didMergeStats = true;
       } else {
         await ctx.db.patch(appleUser._id, {
-          username: args.displayName ?? appleUser.username,
+          username: requestedUsername?.username ?? appleUser.username,
+          usernameKey: requestedUsername?.usernameKey ?? appleUser.usernameKey,
           provider: "apple",
           appleUserId: args.appleUserId,
           deviceId: args.deviceId,
@@ -191,8 +299,12 @@ export const linkAppleWrite = internalMutation({
       }
     } else if (guestUser) {
       userId = guestUser._id;
+      if (requestedUsername) {
+        await ensureUsernameAvailable(ctx, requestedUsername.usernameKey, userId);
+      }
       await ctx.db.patch(userId, {
-        username: args.displayName ?? guestUser.username,
+        username: requestedUsername?.username ?? guestUser.username,
+        usernameKey: requestedUsername?.usernameKey ?? guestUser.usernameKey,
         provider: "apple",
         appleUserId: args.appleUserId,
         deviceId: args.deviceId,
@@ -201,12 +313,18 @@ export const linkAppleWrite = internalMutation({
       didMergeStats = true;
     } else {
       const defaults = defaultUserStats();
+      if (!requestedUsername) {
+        throw new ConvexError("Choose a username before signing in.");
+      }
+      await ensureUsernameAvailable(ctx, requestedUsername.usernameKey);
       userId = await ctx.db.insert("users", {
         deviceId: args.deviceId,
         appleUserId: args.appleUserId,
-        username: args.displayName ?? "Player",
+        username: requestedUsername.username,
+        usernameKey: requestedUsername.usernameKey,
         provider: "apple",
         ...defaults,
+        bread: TESTFLIGHT_STARTING_BREAD,
         createdAt: now,
         updatedAt: now,
       });
@@ -298,26 +416,16 @@ export const updateUsername = mutation({
   },
   handler: async (ctx, args) => {
     const user = await resolveUser(ctx, args, { allowGuestFallback: false });
-    const name = args.username.trim().slice(0, 16);
-    if (name.length < 2) {
-      throw new ConvexError("Username must be 2–16 characters.");
-    }
-
-    // Uniqueness check
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", name))
-      .first();
-    if (existing && existing._id !== user._id) {
-      throw new ConvexError("That name is already taken.");
-    }
+    const name = validateUsername(args.username);
+    await ensureUsernameAvailable(ctx, name.usernameKey, user._id);
 
     await ctx.db.patch(user._id, {
-      username: name,
+      username: name.username,
+      usernameKey: name.usernameKey,
       updatedAt: Date.now(),
     });
 
-    return { username: name };
+    return { username: name.username };
   },
 });
 
@@ -398,6 +506,57 @@ export const deleteAccount = mutation({
   },
 });
 
+export const syncStats = mutation({
+  args: {
+    localStats: localStatsValidator,
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    if (!user) return { merged: false };
+
+    const stats = args.localStats ?? {};
+    const patch: Record<string, any> = {};
+
+    if (typeof stats.bestScore === "number" && stats.bestScore > user.bestScore) {
+      patch.bestScore = stats.bestScore;
+    }
+    if (typeof stats.gamesPlayed === "number" && stats.gamesPlayed > user.gamesPlayed) {
+      patch.gamesPlayed = stats.gamesPlayed;
+    }
+    if (typeof stats.wins === "number" && stats.wins > user.wins) {
+      patch.wins = stats.wins;
+    }
+    if (typeof stats.losses === "number" && stats.losses > user.losses) {
+      patch.losses = stats.losses;
+    }
+    if (typeof stats.totalScore === "number" && stats.totalScore > user.totalScore) {
+      patch.totalScore = stats.totalScore;
+    }
+    if (typeof stats.bread === "number" && stats.bread > user.bread) {
+      patch.bread = stats.bread;
+    }
+    if (typeof stats.totalBreadCollected === "number" && stats.totalBreadCollected > (user.totalBreadCollected ?? 0)) {
+      patch.totalBreadCollected = stats.totalBreadCollected;
+    }
+    if (Array.isArray(stats.beatenBots) && stats.beatenBots.length > 0) {
+      const existing = new Set(user.beatenBots ?? []);
+      for (const id of stats.beatenBots) {
+        existing.add(id);
+      }
+      patch.beatenBots = [...existing].slice(0, 32);
+    }
+
+    if (Object.keys(patch).length > 0) {
+      patch.updatedAt = Date.now();
+      await ctx.db.patch(user._id, patch);
+      return { merged: true };
+    }
+
+    return { merged: false };
+  },
+});
+
 export const signOutSession = mutation({
   args: {
     ...identityArgs,
@@ -419,5 +578,22 @@ export const signOutSession = mutation({
     }
 
     return { success: true };
+  },
+});
+
+export const grantTestflightBread = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const now = Date.now();
+    let updated = 0;
+    for (const user of users) {
+      await ctx.db.patch(user._id, {
+        bread: user.bread + 10000,
+        updatedAt: now,
+      });
+      updated++;
+    }
+    return { updated, total: users.length };
   },
 });

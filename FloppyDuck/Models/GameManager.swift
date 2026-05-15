@@ -197,6 +197,14 @@ final class GameManager: ObservableObject {
         var mergedStats = profile.stats
         mergedStats.bread = max(stats.bread, profile.stats.bread)
         mergedStats.totalBreadCollected = max(stats.totalBreadCollected, profile.stats.totalBreadCollected)
+        mergedStats.bestScore = max(stats.bestScore, profile.stats.bestScore)
+        mergedStats.gamesPlayed = max(stats.gamesPlayed, profile.stats.gamesPlayed)
+        mergedStats.wins = max(stats.wins, profile.stats.wins)
+        mergedStats.losses = max(stats.losses, profile.stats.losses)
+        mergedStats.totalScore = max(stats.totalScore, profile.stats.totalScore)
+        mergedStats.peakElo = max(stats.peakElo, profile.stats.peakElo)
+        mergedStats.bestWinStreak = max(stats.bestWinStreak, profile.stats.bestWinStreak)
+        mergedStats.beatenBots = Array(Set(stats.beatenBots + profile.stats.beatenBots))
         stats = mergedStats
         saveStats()
     }
@@ -237,11 +245,21 @@ final class GameManager: ObservableObject {
     // MARK: - Existing Stats APIs
 
     func recordGame(score: Int, won: Bool? = nil) {
+        let previousBest = stats.bestScore
         stats.recordGame(score: score, won: won)
         checkDailyStreak()
         saveStats()
         let mode = activeGameConfig?.mode.rawValue ?? "classic"
         AnalyticsManager.shared.trackGameCompleted(mode: mode, score: score, won: won)
+        if stats.bestScore > previousBest {
+            Task { [weak self, snapshotStats = stats] in
+                let snapshot = LocalStatsSnapshot(
+                    username: self?.playerName ?? "Player",
+                    stats: snapshotStats
+                )
+                try? await ConvexClient.shared.syncStats(snapshot)
+            }
+        }
     }
 
     func checkDailyStreak() {

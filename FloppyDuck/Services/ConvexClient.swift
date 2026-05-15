@@ -329,6 +329,28 @@ actor ConvexClient: MultiplayerBackendClient {
         _ = try await mutationRaw("auth:deleteAccount")
     }
 
+    func syncStats(_ snapshot: LocalStatsSnapshot) async throws {
+        _ = try await mutationRaw("auth:syncStats", args: [
+            "localStats": snapshot.asDictionary,
+        ])
+    }
+
+    func fetchAnnouncements() async throws -> [Announcement] {
+        let value = try await queryRaw("announcements:getActive")
+        guard let list = value as? [[String: Any]] else { return [] }
+        return list.compactMap { item in
+            guard let id = item["id"] as? String,
+                  let title = item["title"] as? String,
+                  let body = item["body"] as? [String] else { return nil }
+            return Announcement(
+                id: id,
+                title: title,
+                body: body,
+                color: item["color"] as? String ?? "#4CAF50"
+            )
+        }
+    }
+
     // MARK: - Matchmaking
 
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket {

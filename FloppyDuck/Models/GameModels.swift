@@ -298,6 +298,19 @@ enum AuthError: LocalizedError {
     }
 }
 
+// MARK: - Announcements (CMS)
+
+struct Announcement: Identifiable, Hashable, Codable {
+    let id: String
+    let title: String
+    let body: [String]
+    let color: String
+
+    var colorValue: Color {
+        Color(hexString: color) ?? GK.Colors.buttonGreen
+    }
+}
+
 // MARK: - Multiplayer
 
 struct QueueTicket: Hashable, Codable {

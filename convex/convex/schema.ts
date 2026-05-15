@@ -6,6 +6,7 @@ export default defineSchema({
     deviceId: v.optional(v.string()),
     appleUserId: v.optional(v.string()),
     username: v.string(),
+    usernameKey: v.optional(v.string()),
     provider: v.union(v.literal("guest"), v.literal("apple")),
 
     rating: v.number(),
@@ -24,7 +25,8 @@ export default defineSchema({
   })
     .index("by_deviceId", ["deviceId"])
     .index("by_appleUserId", ["appleUserId"])
-    .index("by_username", ["username"]),
+    .index("by_username", ["username"])
+    .index("by_usernameKey", ["usernameKey"]),
 
   sessions: defineTable({
     userId: v.id("users"),
@@ -90,4 +92,13 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_rating", ["rating"]),
+
+  announcements: defineTable({
+    title: v.string(),
+    body: v.array(v.string()),
+    color: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_active_createdAt", ["active", "createdAt"]),
 });

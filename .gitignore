@@ -26,6 +26,8 @@ playground.xcworkspace
 # App signing
 *.mobileprovision
 *.provisionprofile
+*.p8
+AuthKey_*
 
 # Archives
 *.xcarchive
@@ -48,3 +50,4 @@ tools/hero_art/.venv/
 __pycache__/
 **/__pycache__/
 artifacts/hero_sources/
+midgrounds-new/

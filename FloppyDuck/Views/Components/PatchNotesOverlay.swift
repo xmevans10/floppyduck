@@ -102,6 +102,7 @@ struct ParkNailView: View {
 struct PatchNotesOverlay: View {
     @Binding var isPresented: Bool
     let onDismiss: () -> Void
+    var announcements: [Announcement] = []
 
     @State private var hasAppeared = false
 
@@ -140,8 +141,14 @@ struct PatchNotesOverlay: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
-                    ForEach(PatchRelease.current.entries) { entry in
-                        sectionView(entry)
+                    if announcements.isEmpty {
+                        ForEach(PatchRelease.current.entries) { entry in
+                            sectionView(entry)
+                        }
+                    } else {
+                        ForEach(announcements) { announcement in
+                            announcementView(announcement)
+                        }
                     }
                 }
                 .padding(.horizontal, 4)
@@ -180,14 +187,16 @@ struct PatchNotesOverlay: View {
 
     private var headerSection: some View {
         VStack(spacing: 4) {
-            Text("WHAT'S NEW")
+            Text(announcements.isEmpty ? "WHAT'S NEW" : "ANNOUNCEMENTS")
                 .font(.custom(GK.pixelFontName, size: 16))
                 .foregroundColor(GK.Colors.panelBorder)
                 .shadow(color: GK.Colors.panelBorder.opacity(0.3), radius: 0, x: 2, y: 2)
 
-            Text("v\(PatchRelease.current.version)  •  \(PatchRelease.current.date)")
-                .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+            if announcements.isEmpty {
+                Text("v\(PatchRelease.current.version)  •  \(PatchRelease.current.date)")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+            }
         }
         .padding(.bottom, 4)
     }
@@ -207,19 +216,41 @@ struct PatchNotesOverlay: View {
             }
 
             ForEach(entry.items, id: \.self) { item in
-                HStack(alignment: .top, spacing: 6) {
-                    Text("•")
-                        .font(.custom(GK.pixelFontName, size: 8))
-                        .foregroundColor(entry.color)
-
-                    Text(item.uppercased())
-                        .font(.custom(GK.pixelFontName, size: 8))
-                        .foregroundColor(GK.Colors.panelBorder.opacity(0.75))
-                        .lineSpacing(2)
-                }
-                .padding(.leading, 14)
+                bulletItem(item, color: entry.color)
             }
         }
+    }
+
+    private func announcementView(_ announcement: Announcement) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(announcement.colorValue)
+                    .frame(width: 8, height: 8)
+
+                Text(announcement.title)
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(GK.Colors.panelBorder)
+            }
+
+            ForEach(announcement.body, id: \.self) { item in
+                bulletItem(item, color: announcement.colorValue)
+            }
+        }
+    }
+
+    private func bulletItem(_ text: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text("•")
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(color)
+
+            Text(text.uppercased())
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(GK.Colors.panelBorder.opacity(0.75))
+                .lineSpacing(2)
+        }
+        .padding(.leading, 14)
     }
 
     // MARK: - Got It Button

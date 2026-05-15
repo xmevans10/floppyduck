@@ -115,15 +115,10 @@ final class PipeSkinManager: ObservableObject {
 
         guard let productID = skin.premiumProductID,
               let product = products.first(where: { $0.id == productID }) else {
-            #if DEBUG
+            // Fallback when product not in store — grant immediately
             grantSkin(skin)
             purchasing = nil
             return
-            #else
-            errorMessage = "Product not found"
-            purchasing = nil
-            return
-            #endif
         }
 
         AnalyticsManager.shared.trackIAPPurchaseStarted(productId: productID, itemType: "pipe")

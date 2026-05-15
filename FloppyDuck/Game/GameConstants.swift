@@ -138,3 +138,16 @@ enum GK {
         static let woodGrain    = Color(red: 0.42, green: 0.28, blue: 0.12)
     }
 }
+
+extension Color {
+    init?(hexString: String) {
+        let sanitized = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+        guard sanitized.count == 6,
+              let value = UInt64(sanitized, radix: 16) else { return nil }
+        let r = Double((value >> 16) & 0xFF) / 255.0
+        let g = Double((value >> 8) & 0xFF) / 255.0
+        let b = Double(value & 0xFF) / 255.0
+        self.init(red: r, green: g, blue: b)
+    }
+}

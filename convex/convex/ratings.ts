@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const leaderboard = query({
@@ -10,6 +10,7 @@ export const leaderboard = query({
   handler: async (ctx, args) => {
     const target = Math.max(1, Math.min(100, Math.floor(args.limit ?? 20)));
     const result: Array<{ userId: string; username: string; rating: number; rank: number }> = [];
+    const seenAppleIds = new Set<string>();
     let cursor: string | null = null;
 
     while (result.length < target) {
@@ -21,7 +22,10 @@ export const leaderboard = query({
 
       for (const row of batch.page) {
         const user = await ctx.db.get(row.userId);
-        if (!user) continue;
+        if (!user || user.provider !== "apple" || !user.appleUserId) continue;
+        if (seenAppleIds.has(user.appleUserId)) continue;
+        seenAppleIds.add(user.appleUserId);
+
         result.push({
           userId: user._id,
           username: user.username,
@@ -36,5 +40,34 @@ export const leaderboard = query({
     }
 
     return result;
+  },
+});
+
+export const pruneNonAppleRatings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const ratings = await ctx.db
+      .query("ratings")
+      .withIndex("by_rating")
+      .order("desc")
+      .collect();
+    let deleted = 0;
+    const seenAppleIds = new Set<string>();
+
+    for (const rating of ratings) {
+      const user = await ctx.db.get(rating.userId);
+      if (!user || user.provider !== "apple" || !user.appleUserId || seenAppleIds.has(user.appleUserId)) {
+        await ctx.db.delete(rating._id);
+        deleted += 1;
+        continue;
+      }
+
+      seenAppleIds.add(user.appleUserId);
+    }
+
+    return {
+      deleted,
+      kept: ratings.length - deleted,
+    };
   },
 });

@@ -724,9 +724,6 @@ final class SoundManager {
         case .king:
             // Trumpet-like fanfare chord
             return (wav(sine(freq: 660, dur: 0.05, decay: 0.06) + sine(freq: 990, dur: 0.04, decay: 0.05) + sine(freq: 1320, dur: 0.03, decay: 0.04)), 0.22)
-        case .mogul:
-            // Brassy bright honk
-            return (wav(chirp(f0: 280, f1: 520, dur: 0.07)), 0.24)
         case .lumberquack:
             // Heavy solid thwack
             return (wav(chirp(f0: 180, f1: 380, dur: 0.06)), 0.22)
@@ -783,9 +780,6 @@ final class SoundManager {
         case .king:
             // Royal trumpet descending
             return (wav(chirp(f0: 700, f1: 100, dur: 0.30)), 0.36)
-        case .mogul:
-            // Brassy cascading descend
-            return (wav(chirp(f0: 350, f1: 60, dur: 0.32)), 0.36)
         case .lumberquack:
             // Heavy timber crash
             return (wav(chirp(f0: 200, f1: 40, dur: 0.30)), 0.38)

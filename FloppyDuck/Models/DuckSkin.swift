@@ -24,7 +24,6 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
     case pharaoh
     case robot
     case king
-    case mogul
     case lumberquack
     case spider
     case squirrel
@@ -47,7 +46,6 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .pharaoh:   return "PHARAOH"
         case .robot:     return "ROBOT"
         case .king:        return "KING"
-        case .mogul:       return "PREZ"
         case .lumberquack: return "LUMBERQUACK"
         case .spider:      return "SPIDER"
         case .squirrel:    return "SQUIRREL"
@@ -70,7 +68,6 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .pharaoh:   return "Royal Wings"
         case .robot:     return "Beep Boop"
         case .king:        return "Long Live the Quack"
-        case .mogul:       return "You're Hired!"
         case .lumberquack: return "Timber!"
         case .spider:      return "Web Slinger"
         case .squirrel:    return "Nutty"
@@ -83,7 +80,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
             return .free
         case .cowboy, .dinosaur, .robot, .king, .lumberquack, .squirrel:
             return .normal
-        case .alien, .wizard, .devil, .ninja, .astronaut, .pharaoh, .mogul, .spider:
+        case .alien, .wizard, .devil, .ninja, .astronaut, .pharaoh, .spider:
             return .premium
         case .sailor, .pirate, .golden:
             return .botReward
@@ -149,7 +146,6 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .pharaoh:   return (16, 15)
         case .robot:     return (16, 14)
         case .king:        return (16, 15)
-        case .mogul:       return (16, 15)
         case .lumberquack: return (16, 15)
         case .spider:      return (16, 14)
         case .squirrel:    return (16, 15)
@@ -173,7 +169,6 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .pharaoh:   return 4
         case .robot:     return 3
         case .king:        return 4
-        case .mogul:       return 4
         case .lumberquack: return 4
         case .spider:      return 3
         case .squirrel:    return 4
@@ -203,7 +198,6 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .pharaoh:   return Color(red: 0.85, green: 0.70, blue: 0.20)
         case .robot:     return Color(red: 0.55, green: 0.65, blue: 0.75)
         case .king:        return Color(red: 0.80, green: 0.15, blue: 0.20)
-        case .mogul:       return Color(red: 0.90, green: 0.65, blue: 0.10)
         case .lumberquack: return Color(red: 0.85, green: 0.25, blue: 0.20)
         case .spider:      return Color(red: 0.40, green: 0.15, blue: 0.50)
         case .squirrel:    return Color(red: 0.60, green: 0.38, blue: 0.20)

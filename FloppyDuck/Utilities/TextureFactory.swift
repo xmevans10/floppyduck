@@ -1012,15 +1012,6 @@ final class TextureFactory {
                 spec: c(0.55, 0.08, 0.15), specHi: c(0.85, 0.20, 0.25),
                 bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
                 collar: c(0.92, 0.78, 0.20))
-        case .mogul:
-            // Navy suit coat, white shirt, red tie, dramatic yellow hair swoop
-            p = DuckPalette(
-                head: c(0.78, 0.50, 0.12), headHi: c(0.92, 0.60, 0.18),
-                breast: c(0.95, 0.95, 0.97),                              // white dress shirt
-                body: c(0.08, 0.15, 0.42), bodyHi: c(0.12, 0.22, 0.55), // navy suit coat
-                spec: c(0.05, 0.10, 0.30), specHi: c(0.08, 0.18, 0.48),
-                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
-                collar: c(0.95, 0.95, 0.97))                              // white collar
         case .lumberquack:
             // Classic mallard head, red flannel body
             p = DuckPalette(
@@ -1277,23 +1268,6 @@ final class TextureFactory {
             grid[1] = [C, C, B, G, G, G, G, G, G, G, B, C, C, C, C, C]
             grid[2] = [C, C, B, g, R, R, R, R, R, g, B, C, C, C, C, C]
             grid[3] = [C, C, B, G, G, G, G, G, G, G, B, C, C, C, C, C]
-
-        case .mogul:
-            // Dramatic yellow hair swoop + long red tie — 4 rows above body
-            let Y = UIColor(red: 0.95, green: 0.82, blue: 0.22, alpha: 1) // bright yellow hair
-            let H = UIColor(red: 0.88, green: 0.72, blue: 0.15, alpha: 1) // darker hair shadow
-            let R = UIColor(red: 0.90, green: 0.12, blue: 0.12, alpha: 1) // red tie
-            // Sweeping hair rightward
-            grid[0] = [C, C, C, C, C, C, B, Y, Y, B, C, C, C, C, C, C]
-            grid[1] = [C, C, C, C, C, B, Y, Y, Y, Y, B, C, C, C, C, C]
-            grid[2] = [C, C, C, C, B, Y, Y, Y, Y, Y, Y, B, C, C, C, C]
-            grid[3] = [C, C, C, B, Y, H, Y, Y, Y, Y, Y, Y, B, C, C, C]
-            // Long red tie down chest
-            grid[off + 4][7] = R; grid[off + 4][8] = R
-            grid[off + 5][7] = R; grid[off + 5][8] = R
-            grid[off + 6][7] = R; grid[off + 6][8] = R
-            grid[off + 7][7] = R; grid[off + 7][8] = R
-            grid[off + 8][7] = R
 
         case .lumberquack:
             // Red beanie with dark band — 4 rows above body
