@@ -7,6 +7,7 @@ export default defineSchema({
     appleUserId: v.optional(v.string()),
     username: v.string(),
     usernameKey: v.optional(v.string()),
+    selectedSkin: v.optional(v.string()),
     provider: v.union(v.literal("guest"), v.literal("apple")),
 
     rating: v.number(),

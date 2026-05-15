@@ -20,6 +20,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let mode: GameMode
     let seed: Int
     let opponentName: String?
+    let opponentSkinId: String?
     let botDifficulty: BotDifficulty?
     let botCharacterId: String?
     let botSkin: DuckSkin?
@@ -34,6 +35,7 @@ struct GameModeConfig: Identifiable, Hashable {
     init(mode: GameMode,
          seed: Int = Int.random(in: 1...999999),
          opponentName: String? = nil,
+         opponentSkinId: String? = nil,
          botDifficulty: BotDifficulty? = nil,
          botCharacterId: String? = nil,
          botSkin: DuckSkin? = nil,
@@ -46,6 +48,7 @@ struct GameModeConfig: Identifiable, Hashable {
         self.mode = mode
         self.seed = seed
         self.opponentName = opponentName
+        self.opponentSkinId = opponentSkinId
         self.botDifficulty = botDifficulty
         self.botCharacterId = botCharacterId
         self.botSkin = botSkin
@@ -323,6 +326,7 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
     let matchId: String
     let seed: Int
     let opponentName: String
+    let opponentSkinId: String?
     let mode: MatchmakingMode
     let isRanked: Bool
     let roomCode: String?
@@ -334,6 +338,7 @@ struct MultiplayerMatchState: Hashable, Codable {
     let opponentScore: Int
     let isFinished: Bool
     let opponentName: String?
+    let opponentSkinId: String?
     var didWin: Bool? = nil
     var didDraw: Bool? = nil
     var ratingDelta: Int? = nil

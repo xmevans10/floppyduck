@@ -450,6 +450,7 @@ actor ConvexClient: MultiplayerBackendClient {
             let opponent = int(in: dict, keys: ["opponentScore", "otherScore", "p2Score"]) ?? 0
             let finished = bool(in: dict, keys: ["isFinished", "finished", "done"]) ?? false
             let opponentName = string(in: dict, keys: ["opponentName", "opponent", "enemyName"])
+            let opponentSkinId = string(in: dict, keys: ["opponentSkinId", "opponentSkin", "enemySkin", "skinId"])
 
             return MultiplayerMatchState(
                 matchId: matchId,
@@ -457,6 +458,7 @@ actor ConvexClient: MultiplayerBackendClient {
                 opponentScore: opponent,
                 isFinished: finished,
                 opponentName: opponentName,
+                opponentSkinId: opponentSkinId,
                 didWin: bool(in: dict, keys: ["didWin", "won", "isWinner"]),
                 didDraw: bool(in: dict, keys: ["didDraw", "draw", "isDraw"]),
                 ratingDelta: int(in: dict, keys: ["ratingDelta", "eloDelta", "delta"]),
@@ -470,7 +472,8 @@ actor ConvexClient: MultiplayerBackendClient {
             localScore: 0,
             opponentScore: 0,
             isFinished: false,
-            opponentName: nil
+            opponentName: nil,
+            opponentSkinId: nil
         )
     }
 
@@ -555,6 +558,12 @@ actor ConvexClient: MultiplayerBackendClient {
             throw ConvexError.invalidResponse
         }
         return bread
+    }
+
+    func syncSkin(_ skinId: String) async throws {
+        try await mutationRaw("auth:syncSkin", args: [
+            "skinId": skinId,
+        ])
     }
 
     func updateUsername(_ name: String) async throws -> String {
@@ -700,6 +709,7 @@ actor ConvexClient: MultiplayerBackendClient {
                 matchId: matchId,
                 seed: seed,
                 opponentName: string(in: source, keys: ["opponentName", "opponent", "enemyName", "name"]) ?? "OPPONENT",
+                opponentSkinId: string(in: source, keys: ["opponentSkinId", "opponentSkin", "enemySkin"]),
                 mode: parsedMode,
                 isRanked: ranked,
                 roomCode: roomCode
@@ -711,6 +721,7 @@ actor ConvexClient: MultiplayerBackendClient {
                 matchId: matchId,
                 seed: Int.random(in: 1...999999),
                 opponentName: "OPPONENT",
+                opponentSkinId: nil,
                 mode: fallbackMode,
                 isRanked: fallbackMode.isRanked,
                 roomCode: fallbackRoomCode

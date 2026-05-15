@@ -58,6 +58,10 @@ final class SkinManager: ObservableObject {
         selectedSkin = skin
         saveState()
         AnalyticsManager.shared.trackSkinEquipped(skinId: skin.rawValue)
+
+        Task {
+            _ = try? await ConvexClient.shared.syncSkin(skin.rawValue)
+        }
     }
 
     // MARK: - StoreKit 2

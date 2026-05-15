@@ -116,6 +116,9 @@ struct GameContainerView: View {
                 phase = .versusIntro
             }
             setupScene()
+            if config.mode == .classic {
+                scene?.isReadyToStart = true
+            }
         }
         .onDisappear {
             countUpTimer?.invalidate()
@@ -233,7 +236,6 @@ struct GameContainerView: View {
         botFinalScore = scene.botScore
 
         SoundManager.shared.stopPlayMusic()
-        opponentPollTask?.cancel()
 
         if isHeadToHead {
             finalizeHeadToHeadResult(finalScore: finalScore, scene: scene)
@@ -508,14 +510,25 @@ struct GameContainerView: View {
             playerSkin: playerSkin,
             playerName: (manager.playerName.isEmpty || manager.playerName == "Player") ? "YOU" : manager.playerName.uppercased(),
             playerBanner: playerBanner,
-            opponentSkin: bot?.skin,
+            opponentSkin: resolvedOpponentSkin,
             opponentName: config.opponentName ?? "OPPONENT",
             opponentAccent: bot?.accentColor ?? Color.red
         ) {
+            scene?.isReadyToStart = true
             withAnimation(.easeOut(duration: 0.2)) {
                 phase = .ready
             }
         }
+    }
+
+    private var resolvedOpponentSkin: DuckSkin? {
+        if let botId = config.botCharacterId, let bot = BotCharacter.find(botId) {
+            return bot.skin
+        }
+        if let skinId = config.opponentSkinId, let skin = DuckSkin(rawValue: skinId) {
+            return skin
+        }
+        return nil
     }
 
     private var getReadyOverlay: some View {
@@ -642,6 +655,9 @@ struct GameContainerView: View {
                             SoundManager.shared.play(.button)
                             resetGameOverState()
                             manager.dismissGame()
+                            if isHeadToHead {
+                                manager.path.removeLast()
+                            }
                         }
                     }
                 }

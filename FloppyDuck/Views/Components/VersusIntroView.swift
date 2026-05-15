@@ -139,9 +139,14 @@ struct VersusIntroView: View {
                         if let opSkin = opponentSkin {
                             duckPortrait(skin: opSkin, flipped: true)
                         } else {
-                            // Ghost silhouette for head-to-head
-                            duckPortrait(skin: playerSkin, flipped: true)
-                                .opacity(0.5)
+                            // Unknown opponent skin — show generic silhouette
+                            duckPortrait(skin: .classic, flipped: true)
+                                .opacity(0.3)
+                                .overlay(
+                                    Text("?")
+                                        .font(.custom(GK.pixelFontName, size: 24))
+                                        .foregroundColor(.white.opacity(0.6))
+                                )
                         }
                         Text(opponentName)
                             .font(.custom(GK.pixelFontName, size: 14))

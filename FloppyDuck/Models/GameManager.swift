@@ -99,6 +99,7 @@ final class GameManager: ObservableObject {
             mode: .headToHead,
             seed: matchAssignment.seed,
             opponentName: matchAssignment.opponentName,
+            opponentSkinId: matchAssignment.opponentSkinId,
             matchId: matchAssignment.matchId,
             matchmakingMode: matchAssignment.mode,
             isRanked: matchAssignment.isRanked,

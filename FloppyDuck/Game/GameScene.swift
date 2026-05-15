@@ -33,6 +33,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     weak var gameDelegate: GameSceneDelegate?
 
     private(set) var phase: GamePhase = .ready
+    var isReadyToStart: Bool = false
     private(set) var score: Int = 0
 
     /// Bot/opponent score — delegates to BotController when available.
@@ -707,6 +708,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         switch phase {
         case .ready:
+            guard isReadyToStart else { break }
             startPlaying()
             flap()
         case .playing:

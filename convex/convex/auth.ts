@@ -581,6 +581,21 @@ export const signOutSession = mutation({
   },
 });
 
+export const syncSkin = mutation({
+  args: {
+    skinId: v.string(),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    await ctx.db.patch(user._id, {
+      selectedSkin: args.skinId,
+      updatedAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
 export const grantTestflightBread = internalMutation({
   args: {},
   handler: async (ctx) => {
