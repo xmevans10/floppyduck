@@ -1,6 +1,7 @@
-- Pipes 5% wider for smoother gameplay
-- MEGA flap now lasts 2 pipes (was too long to survive)
-- Removed STICKY debuff (redundant with HEAVY)
-- Leaderboard fixed, shows your rank even outside top 50
-- Only Apple-authenticated players on leaderboard
-- Usernames are now validated and must be unique
+- Ghost duck opponent in head-to-head multiplayer (via GameKit P2P)
+- Opponent score now updates live on the game over screen
+- Fixed blank screen when returning from multiplayer matches
+- Opponent's actual duck skin shown in VS intro
+- Fixed GET READY screen hanging on fast tap
+- Pipes 5% wider, MEGA flap lasts 2 pipes, removed STICKY debuff
+- Leaderboard shows your rank even outside top 50

@@ -1,0 +1,125 @@
+default_platform(:ios)
+
+ROOT = File.expand_path("..", __dir__)
+APP_IDENTIFIER = "com.xmevans10.FloppyDuck"
+APP_NAME = "Floppy Duck"
+SKU = "floppyduck-001"
+ARCHIVE_PATH = "/tmp/FloppyDuck-TestFlight.xcarchive"
+OUTPUT_DIRECTORY = "/tmp/FloppyDuckFastlane"
+OUTPUT_NAME = "FloppyDuck"
+
+platform :ios do
+  desc "Create the App Store Connect app record if it does not already exist"
+  lane :setup_app do
+    produce(
+      app_identifier: APP_IDENTIFIER,
+      app_name: APP_NAME,
+      language: "English",
+      sku: SKU,
+      skip_itc: false,
+      skip_devcenter: true
+    )
+  end
+
+  desc "Register StoreKit non-consumable IAPs from FloppyDuckProducts.storekit"
+  lane :register_iaps do
+    sh(
+      "ruby #{File.join(ROOT, "scripts/register_iaps.rb")}",
+      log: true
+    )
+  end
+
+  desc "Print the IAP records that would be registered from FloppyDuckProducts.storekit"
+  lane :iap_plan do
+    sh(
+      "ruby #{File.join(ROOT, "scripts/register_iaps.rb")} --dry-run",
+      log: true
+    )
+  end
+
+  desc "Fetch App Store distribution signing assets with match"
+  lane :certs do
+    match(
+      type: "appstore",
+      app_identifier: APP_IDENTIFIER,
+      readonly: ENV["MATCH_READONLY"] == "1"
+    )
+  end
+
+  desc "Replace GK.appStoreID with REAL_APP_STORE_ID or APP_STORE_ID"
+  lane :set_app_store_id do
+    app_store_id = ENV["REAL_APP_STORE_ID"] || ENV["APP_STORE_ID"]
+    UI.user_error!("Set REAL_APP_STORE_ID or APP_STORE_ID to the numeric App Store Connect app ID") if app_store_id.to_s.strip.empty?
+    UI.user_error!("App Store ID must be numeric") unless app_store_id.match?(/\A\d+\z/)
+
+    constants_path = File.join(ROOT, "FloppyDuck/Game/GameConstants.swift")
+    contents = File.read(constants_path)
+    updated = contents.sub(/static let appStoreID = "\d+"/, "static let appStoreID = \"#{app_store_id}\"")
+    UI.user_error!("Could not find GK.appStoreID assignment in #{constants_path}") if updated == contents
+
+    File.write(constants_path, updated)
+  end
+
+  desc "Build an App Store archive and IPA for TestFlight"
+  lane :build do
+    gym(
+      project: File.join(ROOT, "FloppyDuck.xcodeproj"),
+      scheme: "FloppyDuck",
+      configuration: "Release",
+      export_method: "app-store",
+      archive_path: ARCHIVE_PATH,
+      output_directory: OUTPUT_DIRECTORY,
+      output_name: OUTPUT_NAME,
+      clean: true,
+      xcargs: "-allowProvisioningUpdates"
+    )
+  end
+
+  desc "Upload the generated IPA to TestFlight"
+  lane :upload do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_FILE"],
+    )
+    pilot(
+      api_key: api_key,
+      ipa: "#{OUTPUT_DIRECTORY}/#{OUTPUT_NAME}.ipa",
+      skip_waiting_for_build_processing: true,
+      notify_external_testers: false
+    )
+  end
+
+  desc "Upload App Store metadata and screenshots without submitting for review"
+  lane :metadata do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_FILE"],
+    )
+    deliver(
+      api_key: api_key,
+      app_identifier: APP_IDENTIFIER,
+      metadata_path: File.join(ROOT, "fastlane/metadata"),
+      screenshots_path: File.join(ROOT, "fastlane/screenshots"),
+      submit_for_review: false,
+      force: true,
+      skip_binary_upload: true,
+      skip_app_version_update: false,
+      precheck_include_in_app_purchases: false
+    )
+  end
+
+  desc "Create/update app record and IAP records"
+  lane :setup do
+    setup_app
+    register_iaps
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :release do
+    build
+    metadata
+    upload
+  end
+end
