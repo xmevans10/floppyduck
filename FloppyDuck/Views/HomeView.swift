@@ -10,8 +10,10 @@ struct HomeView: View {
     @State private var showSignInPrompt: Bool = false
 
     @AppStorage("lastPatchNotesVersion") private var lastPatchNotesVersion: String = ""
+    @AppStorage("seenAnnouncementIds") private var seenAnnouncementIds: String = ""
     @State private var showPatchNotes = false
     @State private var patchNotesShownThisSession = false
+    @State private var activeAnnouncements: [Announcement] = []
 
     private var isGuest: Bool { auth.isGuest }
 
@@ -58,17 +60,33 @@ struct HomeView: View {
             }
 
             if showPatchNotes {
-                PatchNotesOverlay(isPresented: $showPatchNotes, onDismiss: {
-                    lastPatchNotesVersion = currentAppVersion
-                })
+                PatchNotesOverlay(
+                    isPresented: $showPatchNotes,
+                    onDismiss: {
+                        lastPatchNotesVersion = currentAppVersion
+                        let newSeenIds = Set(seenAnnouncementIds.components(separatedBy: ",").filter { !$0.isEmpty })
+                            .union(activeAnnouncements.map { $0.id })
+                        seenAnnouncementIds = newSeenIds.sorted().joined(separator: ",")
+                    },
+                    announcements: activeAnnouncements
+                )
                 .zIndex(100)
             }
         }
         .navigationBarHidden(true)
-        .onAppear {
+        .task {
+            activeAnnouncements = (try? await ConvexClient.shared.fetchAnnouncements()) ?? []
+
             guard !patchNotesShownThisSession else { return }
-            patchNotesShownThisSession = true
-            showPatchNotes = true
+
+            let seenIds = Set(seenAnnouncementIds.components(separatedBy: ",").filter { !$0.isEmpty })
+            let hasNewAnnouncement = activeAnnouncements.contains { !seenIds.contains($0.id) }
+            let isNewVersion = lastPatchNotesVersion != currentAppVersion
+
+            if hasNewAnnouncement || isNewVersion {
+                patchNotesShownThisSession = true
+                showPatchNotes = true
+            }
         }
         .alert("Sign In to Unlock", isPresented: $showSignInPrompt) {
             Button("NOT NOW", role: .cancel) {}

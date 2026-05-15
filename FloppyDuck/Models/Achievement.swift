@@ -38,6 +38,18 @@ enum AchievementId: String, CaseIterable, Codable {
     case collector        // Own 5 skins
     case fashionista      // Own all skins
 
+    // Multiplayer
+    case socialDuck           // Play a private room match
+    case competitiveSpirit    // Play your first ranked match
+    case winStreak3           // Win 3 multiplayer matches in a row
+    case winStreak5           // Win 5 multiplayer matches in a row
+    case rankedRookie         // Play 10 ranked matches
+    case rankedVeteran        // Play 50 ranked matches
+    case eloPro               // Reach 1500 ELO
+    case eloElite             // Reach 2000 ELO
+    case drawGame             // Draw a match
+    case winFarmer            // Win 25 head-to-head matches
+
     // MARK: - Display Properties
 
     var title: String {
@@ -61,9 +73,19 @@ enum AchievementId: String, CaseIterable, Codable {
         case .streakStarter:  return "Streak Starter"
         case .committed:      return "Committed"
         case .obsessed:       return "Obsessed"
-        case .survivalist:    return "Survivalist"
-        case .collector:      return "Collector"
-        case .fashionista:    return "Fashionista"
+        case .survivalist:       return "Survivalist"
+        case .collector:         return "Collector"
+        case .fashionista:       return "Fashionista"
+        case .socialDuck:        return "Social Duck"
+        case .competitiveSpirit: return "Competitive Spirit"
+        case .winStreak3:        return "Heating Up"
+        case .winStreak5:        return "On Fire"
+        case .rankedRookie:      return "Ranked Rookie"
+        case .rankedVeteran:     return "Ranked Veteran"
+        case .eloPro:            return "ELO Pro"
+        case .eloElite:          return "ELO Elite"
+        case .drawGame:          return "Stalemate"
+        case .winFarmer:         return "Win Farmer"
         }
     }
 
@@ -91,6 +113,16 @@ enum AchievementId: String, CaseIterable, Codable {
         case .survivalist:    return "Survive a debuff and score 5 more points"
         case .collector:      return "Own 5 skins"
         case .fashionista:    return "Own all skins"
+        case .socialDuck:        return "Play a private room match"
+        case .competitiveSpirit: return "Play your first ranked match"
+        case .winStreak3:        return "Win 3 matches in a row"
+        case .winStreak5:        return "Win 5 matches in a row"
+        case .rankedRookie:      return "Play 10 ranked matches"
+        case .rankedVeteran:     return "Play 50 ranked matches"
+        case .eloPro:            return "Reach 1500 ELO"
+        case .eloElite:          return "Reach 2000 ELO"
+        case .drawGame:          return "Draw a match"
+        case .winFarmer:         return "Win 25 head-to-head matches"
         }
     }
 
@@ -118,6 +150,16 @@ enum AchievementId: String, CaseIterable, Codable {
         case .survivalist:    return .skull
         case .collector:      return .palette
         case .fashionista:    return .palette
+        case .socialDuck:        return .share
+        case .competitiveSpirit: return .trophy
+        case .winStreak3:        return .flame
+        case .winStreak5:        return .flame
+        case .rankedRookie:      return .ribbon
+        case .rankedVeteran:     return .ribbon
+        case .eloPro:            return .star
+        case .eloElite:          return .crown
+        case .drawGame:          return .checkmark
+        case .winFarmer:         return .swords
         }
     }
 
@@ -146,13 +188,23 @@ enum AchievementId: String, CaseIterable, Codable {
         case .survivalist:    return 100
         case .collector:      return 50
         case .fashionista:    return 300
+        case .socialDuck:        return 25
+        case .competitiveSpirit: return 50
+        case .winStreak3:        return 75
+        case .winStreak5:        return 150
+        case .rankedRookie:      return 100
+        case .rankedVeteran:     return 250
+        case .eloPro:            return 150
+        case .eloElite:          return 500
+        case .drawGame:          return 50
+        case .winFarmer:         return 200
         }
     }
 
     /// Secret achievements are hidden until unlocked.
     var isSecret: Bool {
         switch self {
-        case .legendary, .topDuck, .obsessed, .fashionista:
+        case .legendary, .topDuck, .obsessed, .fashionista, .rankedVeteran, .eloElite:
             return true
         default:
             return false
@@ -172,6 +224,12 @@ enum AchievementEvent {
     case debuffSurvivedWithScore(extraPoints: Int)
     case streakUpdated(days: Int)
     case skinPurchased(totalOwned: Int)
+    case privateRoomMatch
+    case rankedMatch
+    case matchWinStreak(streak: Int)
+    case ratingUpdated(elo: Int, peakElo: Int)
+    case matchDraw
+    case h2hWin(total: Int)
 }
 
 // MARK: - Achievement Progress
@@ -182,6 +240,9 @@ struct AchievementProgress: Codable, Equatable {
     var ghostPipesPhased: Int = 0
     var magnetBreadCollected: Int = 0
     var debuffSurvivalScore: Int? = nil  // tracks score when debuff started
+    var h2hWins: Int = 0
+    var rankedMatches: Int = 0
+    var draws: Int = 0
 
     // MARK: - Check & Unlock
 
@@ -237,6 +298,32 @@ struct AchievementProgress: Codable, Equatable {
             // Total skins in DuckSkin.allCases — fashionista requires owning all
             let totalSkins = DuckSkin.allCases.count
             if totalOwned >= totalSkins { newlyUnlocked.append(contentsOf: tryUnlock(.fashionista)) }
+
+        case .privateRoomMatch:
+            newlyUnlocked.append(contentsOf: tryUnlock(.socialDuck))
+
+        case .rankedMatch:
+            rankedMatches += 1
+            newlyUnlocked.append(contentsOf: tryUnlock(.competitiveSpirit))
+            if rankedMatches >= 10 { newlyUnlocked.append(contentsOf: tryUnlock(.rankedRookie)) }
+            if rankedMatches >= 50 { newlyUnlocked.append(contentsOf: tryUnlock(.rankedVeteran)) }
+
+        case .matchWinStreak(let streak):
+            if streak >= 3 { newlyUnlocked.append(contentsOf: tryUnlock(.winStreak3)) }
+            if streak >= 5 { newlyUnlocked.append(contentsOf: tryUnlock(.winStreak5)) }
+
+        case .ratingUpdated(let elo, let peakElo):
+            let effective = max(elo, peakElo)
+            if effective >= 1500 { newlyUnlocked.append(contentsOf: tryUnlock(.eloPro)) }
+            if effective >= 2000 { newlyUnlocked.append(contentsOf: tryUnlock(.eloElite)) }
+
+        case .matchDraw:
+            draws += 1
+            if draws >= 1 { newlyUnlocked.append(contentsOf: tryUnlock(.drawGame)) }
+
+        case .h2hWin(let total):
+            h2hWins = total
+            if h2hWins >= 25 { newlyUnlocked.append(contentsOf: tryUnlock(.winFarmer)) }
         }
 
         return newlyUnlocked

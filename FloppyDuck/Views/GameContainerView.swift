@@ -352,6 +352,28 @@ struct GameContainerView: View {
                         SoundManager.shared.play(.lose)
                         Haptic.lose()
                     }
+
+                    let am = AchievementManager.shared
+                    let skinsOwned = SkinManager.shared.ownedSkins.count
+                    let stats = manager.stats
+
+                    if result.didDraw {
+                        am.process(event: .matchDraw, stats: stats, skinsOwned: skinsOwned, manager: manager)
+                    }
+
+                    if result.didWin {
+                        am.process(event: .h2hWin(total: stats.wins), stats: stats, skinsOwned: skinsOwned, manager: manager)
+                    }
+
+                    if mode == .privateRoom {
+                        am.process(event: .privateRoomMatch, stats: stats, skinsOwned: skinsOwned, manager: manager)
+                    } else if mode == .ranked {
+                        am.process(event: .rankedMatch, stats: stats, skinsOwned: skinsOwned, manager: manager)
+                        am.process(event: .ratingUpdated(elo: stats.elo, peakElo: stats.peakElo), stats: stats, skinsOwned: skinsOwned, manager: manager)
+                    }
+
+                    am.process(event: .matchWinStreak(streak: stats.winStreak), stats: stats, skinsOwned: skinsOwned, manager: manager)
+                    am.save()
                 }
             }
         }

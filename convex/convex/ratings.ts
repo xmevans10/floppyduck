@@ -8,16 +8,14 @@ export const leaderboard = query({
   handler: async (ctx, args) => {
     const target = Math.max(1, Math.min(100, Math.floor(args.limit ?? 20)));
     const result: Array<{ userId: string; username: string; rating: number; rank: number }> = [];
-    let cursor: string | undefined;
+    let cursor: string | null = null;
 
     while (result.length < target) {
-      const opts: { numItems: number; cursor?: string } = { numItems: target };
-      if (cursor) opts.cursor = cursor;
       const batch = await ctx.db
         .query("ratings")
         .withIndex("by_rating")
         .order("desc")
-        .paginate(opts);
+        .paginate({ numItems: target, cursor });
 
       for (const row of batch.page) {
         const user = await ctx.db.get(row.userId);

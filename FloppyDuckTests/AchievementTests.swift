@@ -193,10 +193,95 @@ final class AchievementTests: XCTestCase {
         XCTAssertTrue(result5.contains(.collector))
     }
 
+    // MARK: - Multiplayer Achievements
+
+    func testSocialDuck() {
+        var progress = AchievementProgress()
+        let stats = PlayerStats()
+        let result = progress.check(event: .privateRoomMatch, stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result.contains(.socialDuck))
+    }
+
+    func testCompetitiveSpirit() {
+        var progress = AchievementProgress()
+        let stats = PlayerStats()
+        let result = progress.check(event: .rankedMatch, stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result.contains(.competitiveSpirit))
+    }
+
+    func testWinStreakAchievements() {
+        var progress = AchievementProgress()
+        let stats = PlayerStats()
+
+        let result2 = progress.check(event: .matchWinStreak(streak: 2), stats: stats, skinsOwned: 1)
+        XCTAssertFalse(result2.contains(.winStreak3))
+
+        let result3 = progress.check(event: .matchWinStreak(streak: 3), stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result3.contains(.winStreak3))
+        XCTAssertFalse(result3.contains(.winStreak5))
+
+        let result5 = progress.check(event: .matchWinStreak(streak: 5), stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result5.contains(.winStreak5))
+    }
+
+    func testRankedRookieVeteran() {
+        var progress = AchievementProgress()
+        let stats = PlayerStats()
+
+        for _ in 1...9 {
+            let result = progress.check(event: .rankedMatch, stats: stats, skinsOwned: 1)
+            XCTAssertFalse(result.contains(.rankedRookie))
+        }
+
+        let result10 = progress.check(event: .rankedMatch, stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result10.contains(.rankedRookie))
+
+        for _ in 1...39 {
+            _ = progress.check(event: .rankedMatch, stats: stats, skinsOwned: 1)
+        }
+
+        let result50 = progress.check(event: .rankedMatch, stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result50.contains(.rankedVeteran))
+    }
+
+    func testEloProElite() {
+        var progress = AchievementProgress()
+        let stats = PlayerStats()
+
+        let below = progress.check(event: .ratingUpdated(elo: 1400, peakElo: 1400), stats: stats, skinsOwned: 1)
+        XCTAssertFalse(below.contains(.eloPro))
+        XCTAssertFalse(below.contains(.eloElite))
+
+        let pro = progress.check(event: .ratingUpdated(elo: 1500, peakElo: 1500), stats: stats, skinsOwned: 1)
+        XCTAssertTrue(pro.contains(.eloPro))
+        XCTAssertFalse(pro.contains(.eloElite))
+
+        let elite = progress.check(event: .ratingUpdated(elo: 2000, peakElo: 2000), stats: stats, skinsOwned: 1)
+        XCTAssertTrue(elite.contains(.eloElite))
+    }
+
+    func testDrawGame() {
+        var progress = AchievementProgress()
+        let stats = PlayerStats()
+        let result = progress.check(event: .matchDraw, stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result.contains(.drawGame))
+    }
+
+    func testWinFarmer() {
+        var progress = AchievementProgress()
+        let stats = PlayerStats()
+
+        let below = progress.check(event: .h2hWin(total: 24), stats: stats, skinsOwned: 1)
+        XCTAssertFalse(below.contains(.winFarmer))
+
+        let result = progress.check(event: .h2hWin(total: 25), stats: stats, skinsOwned: 1)
+        XCTAssertTrue(result.contains(.winFarmer))
+    }
+
     // MARK: - Secret Achievements
 
     func testSecretAchievementFlags() {
-        let secretAchievements: Set<AchievementId> = [.legendary, .topDuck, .obsessed, .fashionista]
+        let secretAchievements: Set<AchievementId> = [.legendary, .topDuck, .obsessed, .fashionista, .rankedVeteran, .eloElite]
 
         for achievement in AchievementId.allCases {
             if secretAchievements.contains(achievement) {
