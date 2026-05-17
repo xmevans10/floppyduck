@@ -36,6 +36,65 @@ final class GameModelTests: XCTestCase {
         XCTAssertEqual(MatchmakingMode.privateRoom.queueTimeout, 120)
     }
 
+    func testMultiplayerMatchAssignmentDefaultsRealtimeMetadata() {
+        let assignment = MultiplayerMatchAssignment(
+            matchId: "match-1",
+            seed: 42,
+            opponentName: "Rival",
+            mode: .quickPlay,
+            isRanked: false,
+            roomCode: nil
+        )
+
+        XCTAssertNil(assignment.opponentSkinId)
+        XCTAssertNil(assignment.gameKitSessionCode)
+    }
+
+    func testMultiplayerMatchStateDefaultsOpponentSkin() {
+        let state = MultiplayerMatchState(
+            matchId: "match-1",
+            localScore: 3,
+            opponentScore: 2,
+            isFinished: false,
+            opponentName: "Rival"
+        )
+
+        XCTAssertNil(state.opponentSkinId)
+    }
+
+    func testGameKitPlayerGroupUsesNumericSessionCode() {
+        XCTAssertEqual(GameKitSession.playerGroup(for: "123456"), 123456)
+    }
+
+    func testGameKitPlayerGroupIsStableForRoomCode() {
+        let first = GameKitSession.playerGroup(for: "DUCKY")
+        let second = GameKitSession.playerGroup(for: "DUCKY")
+
+        XCTAssertEqual(first, second)
+        XCTAssertTrue((0...Int(Int32.max)).contains(first))
+    }
+
+    func testBattleRoyaleModeMetadata() {
+        XCTAssertEqual(GameMode.battleRoyale.shareDisplayName, "Battle Royale")
+        XCTAssertEqual(MatchmakingMode.battleRoyale.queueValue, "battle_royale")
+        XCTAssertFalse(MatchmakingMode.battleRoyale.isRanked)
+        XCTAssertEqual(MatchmakingMode.battleRoyale.queueTimeout, 300)
+    }
+
+    func testBattleRoyaleGameConfigStoresLobbyMetadata() {
+        let config = GameModeConfig(
+            mode: .battleRoyale,
+            seed: 99,
+            matchmakingMode: .battleRoyale,
+            battleRoyaleLobbyId: "lobby-1",
+            battleRoyaleEntrantId: "entrant-1"
+        )
+
+        XCTAssertEqual(config.mode, .battleRoyale)
+        XCTAssertEqual(config.battleRoyaleLobbyId, "lobby-1")
+        XCTAssertEqual(config.battleRoyaleEntrantId, "entrant-1")
+    }
+
     // MARK: - DuckSkin
 
     func testDuckSkinSpriteSize() {

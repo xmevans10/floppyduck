@@ -103,7 +103,7 @@ final class GameManager: ObservableObject {
 
         if let sessionCode = matchAssignment.gameKitSessionCode {
             gameKitSession = GameKitSession()
-            gameKitSession?.connect(sessionCode: sessionCode)
+            print("[GameKit] Prepared session for code \(sessionCode)")
         }
 
         let config = GameModeConfig(
@@ -116,6 +116,20 @@ final class GameManager: ObservableObject {
             isRanked: matchAssignment.isRanked,
             roomCode: matchAssignment.roomCode,
             gameKitSessionCode: matchAssignment.gameKitSessionCode
+        )
+        startGame(config)
+    }
+
+    func startBattleRoyale(assignment: BattleRoyaleAssignment) {
+        stats.bread = assignment.bread
+        saveStats()
+
+        let config = GameModeConfig(
+            mode: .battleRoyale,
+            seed: assignment.seed,
+            matchmakingMode: .battleRoyale,
+            battleRoyaleLobbyId: assignment.lobbyId,
+            battleRoyaleEntrantId: assignment.entrantId
         )
         startGame(config)
     }
@@ -140,6 +154,46 @@ final class GameManager: ObservableObject {
 
     func cancelMatchmaking() async {
         await multiplayerSession.cancelMatchmaking()
+    }
+
+    func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment {
+        let assignment = try await multiplayerSession.joinBattleRoyaleLobby()
+        stats.bread = assignment.bread
+        saveStats()
+        return assignment
+    }
+
+    func leaveBattleRoyaleLobby(lobbyId: String) async {
+        if let bread = try? await multiplayerSession.leaveBattleRoyaleLobby(lobbyId: lobbyId) {
+            stats.bread = bread
+            saveStats()
+        }
+    }
+
+    func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState {
+        try await multiplayerSession.startBattleRoyaleIfReady(lobbyId: lobbyId)
+    }
+
+    func fetchBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState {
+        try await multiplayerSession.fetchBattleRoyaleState(lobbyId: lobbyId)
+    }
+
+    func reportBattleRoyaleState(lobbyId: String,
+                                  score: Int,
+                                  y: Double,
+                                  rotation: Double,
+                                  wingPhase: Int) async {
+        await multiplayerSession.reportBattleRoyaleState(
+            lobbyId: lobbyId,
+            score: score,
+            y: y,
+            rotation: rotation,
+            wingPhase: wingPhase
+        )
+    }
+
+    func finishBattleRoyaleRun(lobbyId: String, score: Int) async -> BattleRoyaleState? {
+        try? await multiplayerSession.finishBattleRoyaleRun(lobbyId: lobbyId, score: score)
     }
 
     func fetchHeadToHeadState(matchId: String) async throws -> MultiplayerMatchState {
@@ -203,6 +257,20 @@ final class GameManager: ObservableObject {
             score: result.localScore,
             opponentScore: result.opponentScore
         )
+    }
+
+    func applyBattleRoyaleResult(_ state: BattleRoyaleState, score: Int) {
+        stats.gamesPlayed += 1
+        stats.bestScore = max(stats.bestScore, score)
+        stats.totalScore += score
+        stats.recentScores.append(score)
+        if stats.recentScores.count > 20 {
+            stats.recentScores = Array(stats.recentScores.suffix(20))
+        }
+        stats.bread += state.local.prize
+        stats.totalBreadCollected += state.local.prize
+        saveStats()
+        AnalyticsManager.shared.trackGameCompleted(mode: GameMode.battleRoyale.rawValue, score: score, won: state.local.placement == 1)
     }
 
     func applyRemoteProfile(_ profile: RemotePlayerProfile) {
@@ -454,6 +522,7 @@ actor MultiplayerSession {
     private var currentMode: MatchmakingMode?
     private var currentTicket: QueueTicket?
     private var currentRoomCode: String?
+    private var currentBattleRoyaleLobbyId: String?
 
     init(client: any MultiplayerBackendClient) {
         self.client = client
@@ -469,12 +538,13 @@ actor MultiplayerSession {
         let ticket = try await client.joinMatchmakingQueue(mode: mode)
         currentTicket = ticket
         currentRoomCode = nil
+        currentBattleRoyaleLobbyId = nil
 #if DEBUG
         print("[Multiplayer] 🎫 Joined queue — ticketId:\(ticket.ticketId) mode:\(mode.rawValue)")
 #endif
         let assignment = try await waitForMatch(timeout: timeout)
 #if DEBUG
-        print("[Multiplayer] ⚔️ Match found! matchId:\(assignment.matchId) vs \(assignment.opponentName ?? "?") ranked:\(assignment.isRanked)")
+        print("[Multiplayer] ⚔️ Match found! matchId:\(assignment.matchId) vs \(assignment.opponentName) ranked:\(assignment.isRanked)")
 #endif
         return assignment
     }
@@ -484,6 +554,7 @@ actor MultiplayerSession {
         let ticket = try await client.createRoom()
         currentTicket = ticket
         currentRoomCode = ticket.roomCode
+        currentBattleRoyaleLobbyId = nil
 
         guard let code = ticket.roomCode, code.count == GK.roomCodeLength else {
             throw MultiplayerSessionError.invalidRoomCode
@@ -502,6 +573,7 @@ actor MultiplayerSession {
 
         currentMode = .privateRoom
         currentRoomCode = normalized
+        currentBattleRoyaleLobbyId = nil
         currentTicket = try await client.joinRoom(code: normalized)
 #if DEBUG
         print("[Multiplayer] 🚪 Joined room — code:\(normalized)")
@@ -522,6 +594,8 @@ actor MultiplayerSession {
         do {
             if let code = currentRoomCode {
                 try await client.leaveRoom(code: code)
+            } else if let lobbyId = currentBattleRoyaleLobbyId {
+                _ = try await client.leaveBattleRoyaleLobby(lobbyId: lobbyId)
             } else {
                 try await client.leaveMatchmakingQueue(ticketId: currentTicket?.ticketId)
             }
@@ -532,6 +606,62 @@ actor MultiplayerSession {
         currentMode = nil
         currentTicket = nil
         currentRoomCode = nil
+        currentBattleRoyaleLobbyId = nil
+    }
+
+    func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment {
+        currentMode = .battleRoyale
+        currentTicket = nil
+        currentRoomCode = nil
+        let assignment = try await client.joinBattleRoyaleLobby()
+        currentBattleRoyaleLobbyId = assignment.lobbyId
+        return assignment
+    }
+
+    func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int? {
+        let bread = try await client.leaveBattleRoyaleLobby(lobbyId: lobbyId)
+        if currentBattleRoyaleLobbyId == lobbyId {
+            currentMode = nil
+            currentBattleRoyaleLobbyId = nil
+        }
+        return bread
+    }
+
+    func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState {
+        try await client.startBattleRoyaleIfReady(lobbyId: lobbyId)
+    }
+
+    func fetchBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState {
+        try await client.getBattleRoyaleState(lobbyId: lobbyId)
+    }
+
+    func reportBattleRoyaleState(lobbyId: String,
+                                  score: Int,
+                                  y: Double,
+                                  rotation: Double,
+                                  wingPhase: Int) async {
+        do {
+            try await client.reportBattleRoyaleState(
+                lobbyId: lobbyId,
+                score: score,
+                y: y,
+                rotation: rotation,
+                wingPhase: wingPhase
+            )
+        } catch {
+#if DEBUG
+            print("[BattleRoyale] ⚠️ State report failed (non-fatal): \(error)")
+#endif
+        }
+    }
+
+    func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState {
+        let state = try await client.finishBattleRoyaleRun(lobbyId: lobbyId, score: score)
+        if currentBattleRoyaleLobbyId == lobbyId {
+            currentMode = nil
+            currentBattleRoyaleLobbyId = nil
+        }
+        return state
     }
 
     func fetchMatchState(matchId: String) async throws -> MultiplayerMatchState {
@@ -573,6 +703,7 @@ actor MultiplayerSession {
         currentMode = nil
         currentTicket = nil
         currentRoomCode = nil
+        currentBattleRoyaleLobbyId = nil
         return result
     }
 

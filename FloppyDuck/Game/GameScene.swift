@@ -64,6 +64,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Controllers
     private var parallax: ParallaxManager!
     private var botController: BotController?
+    private var battleRoyaleGhostRenderer: GhostDuckRenderer?
     private var powerUpCtrl: PowerUpController!
 
     // Duck (Item 2: optional safety)
@@ -293,6 +294,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             botController = bc
         }
 
+        if mode == .battleRoyale {
+            battleRoyaleGhostRenderer = GhostDuckRenderer(worldNode: worldNode)
+        }
+
         // Duck floats gently before first tap
         guard let duck else { return }
         let float = SKAction.sequence([
@@ -467,6 +472,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             wingPhase: currentWingPhase
         )
         session.sendPosition(pos)
+    }
+
+    func battleRoyaleSnapshot() -> (y: CGFloat, rotation: CGFloat, wingPhase: Int)? {
+        guard let duck else { return nil }
+        return (duck.position.y, duck.zRotation, Int(currentWingPhase))
+    }
+
+    func updateBattleRoyaleGhosts(_ ghosts: [BattleRoyaleGhost]) {
+        battleRoyaleGhostRenderer?.update(ghosts)
     }
 
     private var currentWingPhase: UInt8 {
@@ -1701,6 +1715,60 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 }
 
+// MARK: - Battle Royale Ghosts
+
+@MainActor
+final class GhostDuckRenderer {
+    private let worldNode: SKNode
+    private let factory = TextureFactory.shared
+    private var sprites: [String: SKSpriteNode] = [:]
+
+    init(worldNode: SKNode) {
+        self.worldNode = worldNode
+    }
+
+    func update(_ snapshots: [BattleRoyaleGhost]) {
+        let activeIds = Set(snapshots.map(\.playerId))
+        for (playerId, sprite) in sprites where !activeIds.contains(playerId) {
+            sprite.removeFromParent()
+            sprites[playerId] = nil
+        }
+
+        for snapshot in snapshots {
+            let phase = max(0, min(2, snapshot.wingPhase))
+            let skin = snapshot.skinId.flatMap(DuckSkin.init(rawValue:)) ?? .classic
+            let sprite = sprites[snapshot.playerId] ?? makeSprite(playerId: snapshot.playerId)
+            sprite.texture = factory.skinBotDuckTexture(skin: skin, wingPhase: phase)
+            sprite.position = CGPoint(
+                x: GK.duckStartX + CGFloat(Self.stableLane(for: snapshot.playerId)) * 18 + 28,
+                y: CGFloat(snapshot.y)
+            )
+            sprite.zRotation = CGFloat(snapshot.rotation)
+            sprite.alpha = 0.48
+        }
+    }
+
+    private func makeSprite(playerId: String) -> SKSpriteNode {
+        let sprite = SKSpriteNode(texture: factory.skinBotDuckTexture(skin: .classic, wingPhase: 1))
+        sprite.name = "battle_royale_ghost_\(playerId)"
+        sprite.zPosition = 98
+        sprite.setScale(1.0)
+        sprite.alpha = 0.48
+        worldNode.addChild(sprite)
+        sprites[playerId] = sprite
+        return sprite
+    }
+
+    private static func stableLane(for value: String) -> Int {
+        var hash: UInt32 = 2_166_136_261
+        for byte in value.utf8 {
+            hash ^= UInt32(byte)
+            hash &*= 16_777_619
+        }
+        return Int(hash % 7)
+    }
+}
+
 // MARK: - GameKit Session (P2P multiplayer)
 
 struct GhostDuckPosition {
@@ -1737,16 +1805,30 @@ final class GameKitSession: NSObject {
     private let sendInterval: TimeInterval = 1.0 / 20.0
     private var lastSendTime: TimeInterval = 0
     private var isConnected = false
+    private var isConnecting = false
+    private var activeSessionCode: String?
 
     var connected: Bool { isConnected && match != nil }
 
     func connect(sessionCode: String, timeout: TimeInterval = 15) {
+        if activeSessionCode == sessionCode, isConnecting || connected {
+            return
+        }
+
+        if activeSessionCode != sessionCode {
+            disconnect()
+        }
+
+        activeSessionCode = sessionCode
+
         guard GKLocalPlayer.local.isAuthenticated else {
             delegate?.gameKitSessionDidDisconnect(error: SessionError.notAuthenticated)
             return
         }
 
-        let groupId = sessionCode.hashValue & 0x7FFFFFFF
+        isConnecting = true
+
+        let groupId = Self.playerGroup(for: sessionCode)
         let request = GKMatchRequest()
         request.minPlayers = 2
         request.maxPlayers = 2
@@ -1757,6 +1839,7 @@ final class GameKitSession: NSObject {
 
         GKMatchmaker.shared().findMatch(for: request) { [weak self] match, error in
             guard let self else { return }
+            self.isConnecting = false
             if let error = error {
                 print("[GameKit] Matchmaking failed: \(error.localizedDescription)")
                 self.delegate?.gameKitSessionDidDisconnect(error: error)
@@ -1778,19 +1861,19 @@ final class GameKitSession: NSObject {
         let now = CACurrentMediaTime()
         guard now - lastSendTime >= sendInterval else { return }
         lastSendTime = now
-        sendReliable(data: encodePosition(pos))
+        send(data: encodePosition(pos), mode: .unreliable)
     }
 
     func sendScore(_ score: UInt16) {
-        sendReliable(data: encodeScore(score))
+        send(data: encodeScore(score), mode: .reliable)
     }
 
     func sendEvent(_ event: GhostDuckEvent) {
-        sendReliable(data: encodeEvent(event))
+        send(data: encodeEvent(event), mode: .reliable)
     }
 
     func sendSkinId(_ skinId: String) {
-        sendReliable(data: encodeSkinId(skinId))
+        send(data: encodeSkinId(skinId), mode: .reliable)
     }
 
     func disconnect() {
@@ -1798,15 +1881,31 @@ final class GameKitSession: NSObject {
         match?.delegate = nil
         match = nil
         isConnected = false
+        isConnecting = false
+        activeSessionCode = nil
     }
 
-    private func sendReliable(data: Data) {
+    private func send(data: Data, mode: GKMatch.SendDataMode) {
         guard let match, isConnected else { return }
         do {
-            try match.sendData(toAllPlayers: data, with: .reliable)
+            try match.sendData(toAllPlayers: data, with: mode)
         } catch {
             print("[GameKit] Send error: \(error.localizedDescription)")
         }
+    }
+
+    static func playerGroup(for sessionCode: String) -> Int {
+        let positiveMask = UInt32(Int32.max)
+        if let numericCode = UInt32(sessionCode) {
+            return Int(numericCode & positiveMask)
+        }
+
+        var hash: UInt32 = 2_166_136_261
+        for byte in sessionCode.utf8 {
+            hash ^= UInt32(byte)
+            hash = hash &* 16_777_619
+        }
+        return Int(hash & positiveMask)
     }
 
     // MARK: - Encoding

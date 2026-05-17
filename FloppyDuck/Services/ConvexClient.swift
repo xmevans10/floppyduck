@@ -35,6 +35,17 @@ protocol MultiplayerBackendClient: Sendable {
                      fallbackOpponentScore: Int,
                      opponentName: String?) async throws -> MultiplayerMatchResult
 
+    func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment
+    func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int?
+    func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState
+    func getBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState
+    func reportBattleRoyaleState(lobbyId: String,
+                                  score: Int,
+                                  y: Double,
+                                  rotation: Double,
+                                  wingPhase: Int) async throws
+    func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState
+
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry]
 
     /// Sync beaten bot IDs to the backend immediately (XAN-9).
@@ -51,6 +62,16 @@ extension MultiplayerBackendClient {
     /// Default no-op — mocks and tests don't need bread sync.
     func spendBread(_ amount: Int) async throws -> Int { 0 }
     func updateUsername(_ name: String) async throws -> String { name }
+    func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment { throw ConvexError.requestFailed }
+    func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int? { nil }
+    func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
+    func getBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
+    func reportBattleRoyaleState(lobbyId: String,
+                                  score: Int,
+                                  y: Double,
+                                  rotation: Double,
+                                  wingPhase: Int) async throws {}
+    func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
 }
 
 struct ConvexAuthContext: Sendable {
@@ -517,6 +538,50 @@ actor ConvexClient: MultiplayerBackendClient {
         )
     }
 
+    // MARK: - Battle Royale
+
+    func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment {
+        let value = try await mutationRaw("battleRoyale:joinLobby")
+        return try parseBattleRoyaleAssignment(value)
+    }
+
+    func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int? {
+        let value = try await mutationRaw("battleRoyale:leaveLobby", args: ["lobbyId": lobbyId])
+        return int(in: dictionary(from: value), keys: ["bread"])
+    }
+
+    func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState {
+        let value = try await mutationRaw("battleRoyale:startIfReady", args: ["lobbyId": lobbyId])
+        return try parseBattleRoyaleState(value)
+    }
+
+    func getBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState {
+        let value = try await queryRaw("battleRoyale:getState", args: ["lobbyId": lobbyId])
+        return try parseBattleRoyaleState(value)
+    }
+
+    func reportBattleRoyaleState(lobbyId: String,
+                                  score: Int,
+                                  y: Double,
+                                  rotation: Double,
+                                  wingPhase: Int) async throws {
+        _ = try await mutationRaw("battleRoyale:reportState", args: [
+            "lobbyId": lobbyId,
+            "score": score,
+            "y": y,
+            "rotation": rotation,
+            "wingPhase": wingPhase,
+        ])
+    }
+
+    func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState {
+        let value = try await mutationRaw("battleRoyale:finishRun", args: [
+            "lobbyId": lobbyId,
+            "score": score,
+        ])
+        return try parseBattleRoyaleState(value)
+    }
+
     // MARK: - Leaderboard
 
     func getLeaderboard(limit: Int = 20) async throws -> [LeaderboardEntry] {
@@ -734,6 +799,95 @@ actor ConvexClient: MultiplayerBackendClient {
         return nil
     }
 
+    private func parseBattleRoyaleAssignment(_ value: Any?) throws -> BattleRoyaleAssignment {
+        guard let dict = dictionary(from: value) else {
+            throw ConvexError.invalidResponse
+        }
+
+        guard let lobbyId = string(in: dict, keys: ["lobbyId", "lobby_id", "id", "_id"]),
+              let entrantId = string(in: dict, keys: ["entrantId", "entrant_id"]) else {
+            throw ConvexError.invalidResponse
+        }
+
+        return BattleRoyaleAssignment(
+            lobbyId: lobbyId,
+            entrantId: entrantId,
+            seed: int(in: dict, keys: ["seed"]) ?? 1,
+            status: parseBattleRoyaleStatus(from: string(in: dict, keys: ["status"])) ?? .open,
+            playerCount: int(in: dict, keys: ["playerCount", "players"]) ?? 1,
+            aliveCount: int(in: dict, keys: ["aliveCount", "alive"]) ?? 1,
+            buyIn: int(in: dict, keys: ["buyIn", "buy_in"]) ?? 25,
+            maxPlayers: int(in: dict, keys: ["maxPlayers", "max_players"]) ?? 100,
+            bread: int(in: dict, keys: ["bread"]) ?? 0
+        )
+    }
+
+    private func parseBattleRoyaleState(_ value: Any?) throws -> BattleRoyaleState {
+        guard let dict = dictionary(from: value),
+              let lobbyId = string(in: dict, keys: ["lobbyId", "lobby_id", "id", "_id"]),
+              let entrantId = string(in: dict, keys: ["entrantId", "entrant_id"]),
+              let localDict = dictionary(in: dict, keys: ["local", "entrant"]),
+              let local = parseBattleRoyaleEntrant(localDict) else {
+            throw ConvexError.invalidResponse
+        }
+
+        let leaderboard = dictionaryArray(in: dict, keys: ["leaderboard", "leaders"])
+            .compactMap(parseBattleRoyaleEntrant)
+        let ghosts = dictionaryArray(in: dict, keys: ["ghosts", "snapshots"])
+            .compactMap(parseBattleRoyaleGhost)
+
+        return BattleRoyaleState(
+            lobbyId: lobbyId,
+            entrantId: entrantId,
+            seed: int(in: dict, keys: ["seed"]) ?? 1,
+            status: parseBattleRoyaleStatus(from: string(in: dict, keys: ["status"])) ?? .open,
+            buyIn: int(in: dict, keys: ["buyIn", "buy_in"]) ?? 25,
+            maxPlayers: int(in: dict, keys: ["maxPlayers", "max_players"]) ?? 100,
+            playerCount: int(in: dict, keys: ["playerCount", "players"]) ?? leaderboard.count,
+            aliveCount: int(in: dict, keys: ["aliveCount", "alive"]) ?? leaderboard.filter(\.alive).count,
+            local: local,
+            leaderboard: leaderboard,
+            ghosts: ghosts
+        )
+    }
+
+    private func parseBattleRoyaleEntrant(_ dict: [String: Any]) -> BattleRoyaleEntrant? {
+        guard let playerId = string(in: dict, keys: ["playerId", "userId", "id", "_id"]) else {
+            return nil
+        }
+
+        return BattleRoyaleEntrant(
+            playerId: playerId,
+            username: string(in: dict, keys: ["username", "name"]) ?? "PLAYER",
+            skinId: string(in: dict, keys: ["skinId", "skin"]),
+            score: int(in: dict, keys: ["score"]) ?? 0,
+            alive: bool(in: dict, keys: ["alive"]) ?? true,
+            placement: int(in: dict, keys: ["placement", "place"]),
+            prize: int(in: dict, keys: ["prize", "amount"]) ?? 0
+        )
+    }
+
+    private func parseBattleRoyaleGhost(_ dict: [String: Any]) -> BattleRoyaleGhost? {
+        guard let playerId = string(in: dict, keys: ["playerId", "userId", "id", "_id"]) else {
+            return nil
+        }
+
+        return BattleRoyaleGhost(
+            playerId: playerId,
+            username: string(in: dict, keys: ["username", "name"]) ?? "PLAYER",
+            skinId: string(in: dict, keys: ["skinId", "skin"]),
+            score: int(in: dict, keys: ["score"]) ?? 0,
+            y: double(in: dict, keys: ["y"]) ?? 0,
+            rotation: double(in: dict, keys: ["rotation"]) ?? 0,
+            wingPhase: int(in: dict, keys: ["wingPhase", "wing"]) ?? 1
+        )
+    }
+
+    private func parseBattleRoyaleStatus(from raw: String?) -> BattleRoyaleStatus? {
+        guard let raw else { return nil }
+        return BattleRoyaleStatus(rawValue: raw.lowercased())
+    }
+
     private func parseMode(from raw: String?) -> MatchmakingMode? {
         guard let raw else { return nil }
         switch raw.lowercased() {
@@ -743,6 +897,8 @@ actor ConvexClient: MultiplayerBackendClient {
             return .ranked
         case "private", "room", "private_room":
             return .privateRoom
+        case "battle_royale", "battleroyale", "battle":
+            return .battleRoyale
         default:
             return nil
         }
@@ -771,6 +927,18 @@ actor ConvexClient: MultiplayerBackendClient {
             }
         }
         return nil
+    }
+
+    private func dictionaryArray(in dict: [String: Any], keys: [String]) -> [[String: Any]] {
+        for key in keys {
+            if let values = dict[key] as? [[String: Any]] {
+                return values
+            }
+            if let values = dict[key] as? [Any] {
+                return values.compactMap { $0 as? [String: Any] }
+            }
+        }
+        return []
     }
 
     private func stringArray(in dict: [String: Any], keys: [String]) -> [String] {
@@ -827,6 +995,16 @@ actor ConvexClient: MultiplayerBackendClient {
         return nil
     }
 
+    private func double(in dict: [String: Any]?, keys: [String]) -> Double? {
+        guard let dict else { return nil }
+        for key in keys {
+            if let value = double(from: dict[key]) {
+                return value
+            }
+        }
+        return nil
+    }
+
     private func date(in dict: [String: Any]?, keys: [String]) -> Date? {
         guard let dict else { return nil }
 
@@ -871,6 +1049,22 @@ actor ConvexClient: MultiplayerBackendClient {
         }
         if let value = value as? String {
             return Int(value)
+        }
+        return nil
+    }
+
+    private func double(from value: Any?) -> Double? {
+        if let value = value as? Double {
+            return value
+        }
+        if let value = value as? CGFloat {
+            return Double(value)
+        }
+        if let value = value as? NSNumber {
+            return value.doubleValue
+        }
+        if let value = value as? String {
+            return Double(value)
         }
         return nil
     }

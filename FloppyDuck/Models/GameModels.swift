@@ -32,6 +32,8 @@ struct GameModeConfig: Identifiable, Hashable {
     let isRanked: Bool
     let roomCode: String?
     let gameKitSessionCode: String?
+    let battleRoyaleLobbyId: String?
+    let battleRoyaleEntrantId: String?
 
     init(mode: GameMode,
          seed: Int = Int.random(in: 1...999999),
@@ -45,7 +47,9 @@ struct GameModeConfig: Identifiable, Hashable {
          matchmakingMode: MatchmakingMode? = nil,
          isRanked: Bool = false,
          roomCode: String? = nil,
-         gameKitSessionCode: String? = nil) {
+         gameKitSessionCode: String? = nil,
+         battleRoyaleLobbyId: String? = nil,
+         battleRoyaleEntrantId: String? = nil) {
         self.id = UUID()
         self.mode = mode
         self.seed = seed
@@ -60,6 +64,8 @@ struct GameModeConfig: Identifiable, Hashable {
         self.isRanked = isRanked
         self.roomCode = roomCode
         self.gameKitSessionCode = gameKitSessionCode
+        self.battleRoyaleLobbyId = battleRoyaleLobbyId
+        self.battleRoyaleEntrantId = battleRoyaleEntrantId
     }
 
     static func == (lhs: GameModeConfig, rhs: GameModeConfig) -> Bool {
@@ -75,12 +81,14 @@ enum GameMode: String, Hashable {
     case classic
     case headToHead
     case vsBot
+    case battleRoyale
 
     var shareDisplayName: String {
         switch self {
-        case .classic:    return "Classic"
-        case .headToHead: return "Head to Head"
-        case .vsBot:      return "VS Bot"
+        case .classic:      return "Classic"
+        case .headToHead:   return "Head to Head"
+        case .vsBot:        return "VS Bot"
+        case .battleRoyale: return "Battle Royale"
         }
     }
 }
@@ -89,12 +97,14 @@ enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
     case quickPlay
     case ranked
     case privateRoom
+    case battleRoyale
 
     var queueValue: String {
         switch self {
         case .quickPlay: return "quick"
         case .ranked: return "ranked"
         case .privateRoom: return "private"
+        case .battleRoyale: return "battle_royale"
         }
     }
 
@@ -108,6 +118,8 @@ enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
             return 30
         case .privateRoom:
             return 120
+        case .battleRoyale:
+            return 300
         }
     }
 }
@@ -334,6 +346,24 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
     let mode: MatchmakingMode
     let isRanked: Bool
     let roomCode: String?
+
+    init(matchId: String,
+         seed: Int,
+         opponentName: String,
+         opponentSkinId: String? = nil,
+         gameKitSessionCode: String? = nil,
+         mode: MatchmakingMode,
+         isRanked: Bool,
+         roomCode: String?) {
+        self.matchId = matchId
+        self.seed = seed
+        self.opponentName = opponentName
+        self.opponentSkinId = opponentSkinId
+        self.gameKitSessionCode = gameKitSessionCode
+        self.mode = mode
+        self.isRanked = isRanked
+        self.roomCode = roomCode
+    }
 }
 
 struct MultiplayerMatchState: Hashable, Codable {
@@ -348,6 +378,30 @@ struct MultiplayerMatchState: Hashable, Codable {
     var ratingDelta: Int? = nil
     var newRating: Int? = nil
     var isRanked: Bool? = nil
+
+    init(matchId: String,
+         localScore: Int,
+         opponentScore: Int,
+         isFinished: Bool,
+         opponentName: String?,
+         opponentSkinId: String? = nil,
+         didWin: Bool? = nil,
+         didDraw: Bool? = nil,
+         ratingDelta: Int? = nil,
+         newRating: Int? = nil,
+         isRanked: Bool? = nil) {
+        self.matchId = matchId
+        self.localScore = localScore
+        self.opponentScore = opponentScore
+        self.isFinished = isFinished
+        self.opponentName = opponentName
+        self.opponentSkinId = opponentSkinId
+        self.didWin = didWin
+        self.didDraw = didDraw
+        self.ratingDelta = ratingDelta
+        self.newRating = newRating
+        self.isRanked = isRanked
+    }
 
     func finalizedResult(mode: MatchmakingMode,
                          fallbackOpponentName: String?) -> MultiplayerMatchResult? {
@@ -384,6 +438,59 @@ struct MultiplayerMatchResult: Hashable, Codable {
     let newRating: Int?
     let isRanked: Bool
     var isFinalized: Bool = true
+}
+
+enum BattleRoyaleStatus: String, Hashable, Codable {
+    case open
+    case active
+    case finished
+    case cancelled
+}
+
+struct BattleRoyaleAssignment: Hashable, Codable {
+    let lobbyId: String
+    let entrantId: String
+    let seed: Int
+    let status: BattleRoyaleStatus
+    let playerCount: Int
+    let aliveCount: Int
+    let buyIn: Int
+    let maxPlayers: Int
+    let bread: Int
+}
+
+struct BattleRoyaleEntrant: Hashable, Codable {
+    let playerId: String
+    let username: String
+    let skinId: String?
+    let score: Int
+    let alive: Bool
+    let placement: Int?
+    let prize: Int
+}
+
+struct BattleRoyaleGhost: Hashable, Codable {
+    let playerId: String
+    let username: String
+    let skinId: String?
+    let score: Int
+    let y: Double
+    let rotation: Double
+    let wingPhase: Int
+}
+
+struct BattleRoyaleState: Hashable, Codable {
+    let lobbyId: String
+    let entrantId: String
+    let seed: Int
+    let status: BattleRoyaleStatus
+    let buyIn: Int
+    let maxPlayers: Int
+    let playerCount: Int
+    let aliveCount: Int
+    let local: BattleRoyaleEntrant
+    let leaderboard: [BattleRoyaleEntrant]
+    let ghosts: [BattleRoyaleGhost]
 }
 
 // MARK: - Medals

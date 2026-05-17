@@ -87,6 +87,48 @@ export default defineSchema({
     .index("by_roomCode", ["roomCode"])
     .index("by_status_createdAt", ["status", "createdAt"]),
 
+  battleRoyaleLobbies: defineTable({
+    status: v.union(v.literal("open"), v.literal("active"), v.literal("finished"), v.literal("cancelled")),
+    seed: v.number(),
+    buyIn: v.number(),
+    maxPlayers: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+  })
+    .index("by_status_createdAt", ["status", "createdAt"]),
+
+  battleRoyaleEntrants: defineTable({
+    lobbyId: v.id("battleRoyaleLobbies"),
+    userId: v.id("users"),
+    username: v.string(),
+    skinId: v.optional(v.string()),
+    score: v.number(),
+    y: v.number(),
+    rotation: v.number(),
+    wingPhase: v.number(),
+    alive: v.boolean(),
+    placement: v.optional(v.number()),
+    prize: v.optional(v.number()),
+    joinedAt: v.number(),
+    lastSeenAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  })
+    .index("by_lobbyId", ["lobbyId"])
+    .index("by_lobby_alive", ["lobbyId", "alive"])
+    .index("by_userId", ["userId"]),
+
+  battleRoyalePayouts: defineTable({
+    lobbyId: v.id("battleRoyaleLobbies"),
+    userId: v.id("users"),
+    placement: v.number(),
+    amount: v.number(),
+    paidAt: v.number(),
+  })
+    .index("by_lobbyId", ["lobbyId"])
+    .index("by_userId", ["userId"]),
+
   ratings: defineTable({
     userId: v.id("users"),
     rating: v.number(),

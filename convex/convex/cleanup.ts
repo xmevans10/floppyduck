@@ -1,6 +1,7 @@
 import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import { cleanupBattleRoyale } from "./battleRoyale";
 
 const STALE_QUEUE_MS = 2 * 60 * 1000;
 const ABANDONED_MATCH_MS = 5 * 60 * 1000;
@@ -78,6 +79,8 @@ export const run = internalMutation({
         await resolveMatchAndRatings(ctx, updated);
       }
     }
+
+    await cleanupBattleRoyale(ctx, now);
   },
 });
 

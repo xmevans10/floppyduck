@@ -22,6 +22,10 @@ struct GameContainerView: View {
     @State private var opponentPollTask: Task<Void, Never>?
     @State private var lastReportedScore: Int = -1
     @State private var lastReportTime: Date = .distantPast
+    @State private var battleRoyaleState: BattleRoyaleState?
+    @State private var battleRoyalePollTask: Task<Void, Never>?
+    @State private var battleRoyaleReportTask: Task<Void, Never>?
+    @State private var battleRoyaleResultApplied: Bool = false
 
     // Game-over animation states
     @State private var displayedScore: Int = 0
@@ -37,9 +41,13 @@ struct GameContainerView: View {
 
     private var isBotLadder: Bool { config.botCharacterId != nil }
     private var isHeadToHead: Bool { config.mode == .headToHead }
+    private var isBattleRoyale: Bool { config.mode == .battleRoyale }
     private var showsVersusScore: Bool { config.mode == .vsBot || config.mode == .headToHead }
     private var headToHeadOutcomeReady: Bool { !isHeadToHead || (matchResult?.isFinalized ?? false) }
     private var headToHeadPending: Bool { isHeadToHead && !headToHeadOutcomeReady }
+    private var battleRoyalePlacement: Int? { battleRoyaleState?.local.placement }
+    private var battleRoyalePrize: Int { battleRoyaleState?.local.prize ?? 0 }
+    private var battleRoyalePending: Bool { isBattleRoyale && battleRoyalePlacement == nil }
 
     private var ladderWon: Bool {
         // The player wins a bot-ladder match only when the bot died FIRST
@@ -70,6 +78,10 @@ struct GameContainerView: View {
     }
 
     private var breadEarned: Int {
+        if isBattleRoyale {
+            return battleRoyalePrize
+        }
+
         if config.mode == .headToHead {
             if headToHeadDidDraw { return max(1, score) }
             return headToHeadDidWin ? max(3, score) : max(1, score / 2)
@@ -121,10 +133,15 @@ struct GameContainerView: View {
             if config.mode == .classic {
                 scene?.isReadyToStart = true
             }
+            if config.mode == .battleRoyale {
+                scene?.isReadyToStart = true
+            }
         }
         .onDisappear {
             countUpTimer?.invalidate()
             opponentPollTask?.cancel()
+            battleRoyalePollTask?.cancel()
+            battleRoyaleReportTask?.cancel()
         }
         .statusBarHidden(true)
     }
@@ -209,12 +226,21 @@ struct GameContainerView: View {
             }
             gkSession.delegate = gkBridge
             gameKitBridge = gkBridge
+            if let sessionCode = config.gameKitSessionCode {
+                gkSession.connect(sessionCode: sessionCode)
+            }
         }
 
         if isHeadToHead,
            let matchId = config.matchId {
             startOpponentPolling(matchId: matchId, scene: newScene)
             newScene.setOpponentScore(0)
+        }
+
+        if isBattleRoyale,
+           let lobbyId = config.battleRoyaleLobbyId {
+            startBattleRoyalePolling(lobbyId: lobbyId, scene: newScene)
+            startBattleRoyaleReporting(lobbyId: lobbyId, scene: newScene)
         }
     }
 
@@ -259,6 +285,11 @@ struct GameContainerView: View {
 
         if isHeadToHead {
             finalizeHeadToHeadResult(finalScore: finalScore, scene: scene)
+            return
+        }
+
+        if isBattleRoyale {
+            finalizeBattleRoyaleResult(finalScore: finalScore, scene: scene)
             return
         }
 
@@ -435,6 +466,89 @@ struct GameContainerView: View {
         }
     }
 
+    private func finalizeBattleRoyaleResult(finalScore: Int, scene: GameScene) {
+        guard let lobbyId = config.battleRoyaleLobbyId else {
+            withAnimation(.easeOut(duration: 0.35)) {
+                phase = .gameOver
+            }
+            startGameOverAnimation()
+            return
+        }
+
+        finishingMatch = true
+        battleRoyalePollTask?.cancel()
+        battleRoyaleReportTask?.cancel()
+
+        withAnimation(.easeOut(duration: 0.35)) {
+            phase = .gameOver
+        }
+        startGameOverAnimation()
+
+        Task {
+            let latest = await manager.finishBattleRoyaleRun(lobbyId: lobbyId, score: finalScore)
+            await MainActor.run {
+                if let latest {
+                    battleRoyaleState = latest
+                    scene.updateBattleRoyaleGhosts(latest.ghosts)
+                    if !battleRoyaleResultApplied {
+                        battleRoyaleResultApplied = true
+                        manager.applyBattleRoyaleResult(latest, score: finalScore)
+                    }
+                }
+                finishingMatch = false
+
+                if battleRoyalePlacement == 1 {
+                    SoundManager.shared.play(.win)
+                    Haptic.win()
+                } else {
+                    SoundManager.shared.play(.lose)
+                    Haptic.lose()
+                }
+            }
+        }
+    }
+
+    private func startBattleRoyalePolling(lobbyId: String, scene: GameScene) {
+        battleRoyalePollTask?.cancel()
+        battleRoyalePollTask = Task {
+            while !Task.isCancelled {
+                do {
+                    let latest = try await manager.fetchBattleRoyaleState(lobbyId: lobbyId)
+                    await MainActor.run {
+                        battleRoyaleState = latest
+                        scene.updateBattleRoyaleGhosts(latest.ghosts)
+                    }
+                } catch is CancellationError {
+                    return
+                } catch {
+                    // Transient polling failures should not interrupt a run.
+                }
+
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
+        }
+    }
+
+    private func startBattleRoyaleReporting(lobbyId: String, scene: GameScene) {
+        battleRoyaleReportTask?.cancel()
+        battleRoyaleReportTask = Task {
+            while !Task.isCancelled {
+                if phase == .playing,
+                   let snapshot = scene.battleRoyaleSnapshot() {
+                    await manager.reportBattleRoyaleState(
+                        lobbyId: lobbyId,
+                        score: score,
+                        y: Double(snapshot.y),
+                        rotation: Double(snapshot.rotation),
+                        wingPhase: snapshot.wingPhase
+                    )
+                }
+
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
+        }
+    }
+
     // MARK: - Game Over Animation Sequence
 
     private func startGameOverAnimation() {
@@ -514,6 +628,8 @@ struct GameContainerView: View {
         celebrationPulse = false
         matchResult = nil
         finishingMatch = false
+        battleRoyaleState = nil
+        battleRoyaleResultApplied = false
     }
 
     // MARK: - Get Ready Overlay
@@ -588,6 +704,13 @@ struct GameContainerView: View {
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
                     }
+                } else if config.mode == .battleRoyale {
+                    HStack(spacing: 8) {
+                        pixelIcon(.trophy, size: 18)
+                        Text("BATTLE ROYALE")
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
+                    }
                 } else if config.mode == .classic {
                     HStack(spacing: 8) {
                         pixelIcon(.classic, size: 18)
@@ -637,18 +760,22 @@ struct GameContainerView: View {
                 .padding(.horizontal, 40)
 
             if finishingMatch {
-                Text("FINALIZING MATCH...")
+                Text(isBattleRoyale ? "FINALIZING RUN..." : "FINALIZING MATCH...")
                     .font(.custom(GK.pixelFontName, size: 8))
                     .foregroundColor(.white.opacity(0.85))
             } else if headToHeadPending {
                 Text("WAITING FOR OPPONENT...")
                     .font(.custom(GK.pixelFontName, size: 8))
                     .foregroundColor(.white.opacity(0.85))
+            } else if battleRoyalePending {
+                Text("SYNCING PLACEMENT...")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(.white.opacity(0.85))
             }
 
             if countingDone && !finishingMatch {
                 HStack(spacing: 16) {
-                    if !isHeadToHead {
+                    if !isHeadToHead && !isBattleRoyale {
                         actionButton(icon: .retry, label: "RETRY", color: GK.Colors.buttonGreen) {
                             SoundManager.shared.play(.button)
                             resetGameOverState()
@@ -675,7 +802,7 @@ struct GameContainerView: View {
                             SoundManager.shared.play(.button)
                             resetGameOverState()
                             manager.dismissGame()
-                            if isHeadToHead {
+                            if isHeadToHead || isBattleRoyale {
                                 manager.path.removeLast()
                             }
                         }
@@ -684,7 +811,7 @@ struct GameContainerView: View {
                 .padding(.horizontal, 40)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
 
-                if !isHeadToHead || headToHeadOutcomeReady {
+                if (!isHeadToHead || headToHeadOutcomeReady) && !battleRoyalePending {
                     Button {
                         shareScore()
                     } label: {
@@ -732,6 +859,23 @@ struct GameContainerView: View {
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
             } else {
                 Text("YOU LOSE")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            }
+        } else if config.mode == .battleRoyale {
+            if battleRoyalePending {
+                Text(finishingMatch ? "FINALIZING..." : "PLACEMENT PENDING")
+                    .font(.custom(GK.pixelFontName, size: 18))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            } else if battleRoyalePlacement == 1 {
+                Text("LAST DUCK!")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(GK.Colors.scoreYellow)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+            } else {
+                Text("PLACE #\(battleRoyalePlacement ?? 0)")
                     .font(.custom(GK.pixelFontName, size: 22))
                     .foregroundColor(.white)
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
@@ -837,6 +981,29 @@ struct GameContainerView: View {
                 }
             }
 
+            if isBattleRoyale {
+                Divider()
+                HStack {
+                    Text("PLACE")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.panelBorder)
+                    Spacer()
+                    Text(battleRoyalePlacement.map { "#\($0)" } ?? "--")
+                        .font(.custom(GK.pixelFontName, size: 18))
+                        .foregroundColor(GK.Colors.scoreYellow)
+                }
+
+                HStack {
+                    Text("ALIVE")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.panelBorder)
+                    Spacer()
+                    Text("\(battleRoyaleState?.aliveCount ?? 0)")
+                        .font(.custom(GK.pixelFontName, size: 18))
+                        .foregroundColor(GK.Colors.panelBorder)
+                }
+            }
+
             Divider()
 
             HStack {
@@ -876,14 +1043,14 @@ struct GameContainerView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            if showBread && (!isHeadToHead || headToHeadOutcomeReady) {
+            if showBread && (!isHeadToHead || headToHeadOutcomeReady) && !battleRoyalePending {
                 Divider()
                 HStack {
                     Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
                         .interpolation(.none)
                         .resizable()
                         .frame(width: 20, height: 16)
-                    Text("+\(breadEarned)")
+                    Text(isBattleRoyale ? "+\(breadEarned) PRIZE" : "+\(breadEarned)")
                         .font(.custom(GK.pixelFontName, size: 10))
                         .foregroundColor(GK.Colors.breadGold)
                     Spacer()

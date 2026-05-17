@@ -89,6 +89,13 @@ struct MultiplayerModesView: View {
                         }
                     }
                     .opacity(isGuest ? 0.5 : 1.0)
+
+                    modeButton(icon: .trophy,
+                               title: "BATTLE ROYALE",
+                               subtitle: "25 bread buy-in - top 5 paid") {
+                        manager.startMatchmaking(mode: .battleRoyale)
+                    }
+                    .opacity(manager.stats.bread >= 25 ? 1.0 : 0.55)
                 }
                 .padding(.horizontal, 28)
 
@@ -199,6 +206,8 @@ struct MatchmakingView: View {
     @State private var roomAction: PrivateRoomAction = .create
     @State private var isWorking: Bool = false
     @State private var searchTask: Task<Void, Never>?
+    @State private var battleRoyaleAssignment: BattleRoyaleAssignment?
+    @State private var battleRoyaleState: BattleRoyaleState?
 
     private let icons = PixelIconFactory.shared
     private let dotTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -231,6 +240,8 @@ struct MatchmakingView: View {
                         searchingContent
                     case .privateRoom:
                         privateRoomContent
+                    case .battleRoyale:
+                        battleRoyaleContent
                     }
                 }
                 .padding(24)
@@ -304,7 +315,11 @@ struct MatchmakingView: View {
     private func onDisappear() {
         if isWorking {
             searchTask?.cancel()
-            Task { await manager.cancelMatchmaking() }
+            if let lobbyId = battleRoyaleAssignment?.lobbyId {
+                Task { await manager.leaveBattleRoyaleLobby(lobbyId: lobbyId) }
+            } else {
+                Task { await manager.cancelMatchmaking() }
+            }
         }
     }
 
@@ -315,6 +330,7 @@ struct MatchmakingView: View {
         case .quickPlay: return "HEAD TO HEAD"
         case .ranked: return "RANKED"
         case .privateRoom: return "PRIVATE ROOM"
+        case .battleRoyale: return "BATTLE ROYALE"
         }
     }
 
@@ -439,6 +455,57 @@ struct MatchmakingView: View {
         }
     }
 
+    private var battleRoyaleContent: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 10) {
+                pixelIcon(.trophy, size: 20)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("25 BREAD BUY-IN")
+                        .font(.custom(GK.pixelFontName, size: 9))
+                        .foregroundColor(GK.Colors.panelBorder)
+                    Text("TOP 5 SPLIT THE POOL")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.55))
+                }
+                Spacer()
+                Text("\(manager.stats.bread)")
+                    .font(.custom(GK.pixelFontName, size: 14))
+                    .foregroundColor(GK.Colors.scoreYellow)
+            }
+
+            if let state = battleRoyaleState {
+                battleRoyaleLobbyCount(players: state.playerCount,
+                                       maxPlayers: state.maxPlayers,
+                                       detail: state.status == .active ? "\(state.aliveCount) ALIVE" : "STARTS AT 100 OR 10+ AFTER 60S")
+            } else if let assignment = battleRoyaleAssignment {
+                battleRoyaleLobbyCount(players: assignment.playerCount,
+                                       maxPlayers: assignment.maxPlayers,
+                                       detail: "WAITING FOR LOBBY\(dots)")
+            }
+
+            actionButton(title: battleRoyaleAssignment == nil ? "JOIN - 25 BREAD" : "WAITING") {
+                joinBattleRoyaleAndWait()
+            }
+            .disabled(isWorking || battleRoyaleAssignment != nil || manager.stats.bread < 25)
+            .opacity((!isWorking && battleRoyaleAssignment == nil && manager.stats.bread >= 25) ? 1 : 0.5)
+
+            statusText
+            retryButton
+        }
+    }
+
+    private func battleRoyaleLobbyCount(players: Int, maxPlayers: Int, detail: String) -> some View {
+        VStack(spacing: 6) {
+            Text("\(players)/\(maxPlayers) DUCKS")
+                .font(.custom(GK.pixelFontName, size: 12))
+                .foregroundColor(GK.Colors.panelBorder)
+            Text(detail)
+                .font(.custom(GK.pixelFontName, size: 7))
+                .foregroundColor(GK.Colors.panelBorder.opacity(0.55))
+                .multilineTextAlignment(.center)
+        }
+    }
+
     private var statusText: some View {
         Text(statusMessage)
             .font(.custom(GK.pixelFontName, size: 7))
@@ -451,15 +518,23 @@ struct MatchmakingView: View {
     private var statusMessage: String {
         switch state {
         case .idle:
-            return mode == .privateRoom
-                ? "Create a room or join one with a 5-character code."
-                : "Searching for an opponent..."
+            if mode == .privateRoom {
+                return "Create a room or join one with a 5-character code."
+            }
+            if mode == .battleRoyale {
+                return manager.stats.bread >= 25
+                    ? "Join the pool. Last duck standing wins."
+                    : "You need 25 bread to join."
+            }
+            return "Searching for an opponent..."
         case .searching:
             return mode == .privateRoom
                 ? "Searching\(dots)"
                 : "Matchmaking in progress\(dots)"
         case .waitingRoom(let code):
-            return "Share code \(code). Waiting for opponent\(dots)"
+            return mode == .battleRoyale
+                ? "Lobby \(code). Waiting for ducks\(dots)"
+                : "Share code \(code). Waiting for opponent\(dots)"
         case .timedOut:
             return "Matchmaking timed out. Retry to keep searching."
         case .failed(let msg):
@@ -602,10 +677,75 @@ struct MatchmakingView: View {
         }
     }
 
+    private func joinBattleRoyaleAndWait() {
+        cancelPendingSearch()
+        state = .searching
+        isWorking = true
+        battleRoyaleAssignment = nil
+        battleRoyaleState = nil
+
+        searchTask = Task {
+            do {
+                let assignment = try await manager.joinBattleRoyaleLobby()
+                await MainActor.run {
+                    battleRoyaleAssignment = assignment
+                    state = .waitingRoom(String(assignment.lobbyId.prefix(5)).uppercased())
+                }
+
+                while !Task.isCancelled {
+                    let latest = try await manager.startBattleRoyaleIfReady(lobbyId: assignment.lobbyId)
+                    await MainActor.run {
+                        battleRoyaleState = latest
+                    }
+
+                    if latest.status == .active {
+                        await MainActor.run {
+                            isWorking = false
+                            state = .matched
+                            manager.startBattleRoyale(assignment: BattleRoyaleAssignment(
+                                lobbyId: latest.lobbyId,
+                                entrantId: latest.entrantId,
+                                seed: latest.seed,
+                                status: latest.status,
+                                playerCount: latest.playerCount,
+                                aliveCount: latest.aliveCount,
+                                buyIn: latest.buyIn,
+                                maxPlayers: latest.maxPlayers,
+                                bread: manager.stats.bread
+                            ))
+                        }
+                        return
+                    }
+
+                    if latest.status == .cancelled || latest.status == .finished {
+                        await MainActor.run {
+                            isWorking = false
+                            state = .failed("Lobby closed. Your buy-in was refunded if it had not started.")
+                        }
+                        return
+                    }
+
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    state = errorToState(error)
+                }
+            }
+        }
+    }
+
     private func cancelAndReturnHome() {
         cancelPendingSearch()
         Task {
-            await manager.cancelMatchmaking()
+            if let lobbyId = battleRoyaleAssignment?.lobbyId {
+                await manager.leaveBattleRoyaleLobby(lobbyId: lobbyId)
+            } else {
+                await manager.cancelMatchmaking()
+            }
             await MainActor.run {
                 manager.goHome()
             }
@@ -638,7 +778,11 @@ struct MatchmakingView: View {
         }
 
         if lowered.contains("sign in") {
-            return .failed("Sign in with Apple is required for ranked matchmaking.")
+            return .failed(mode == .battleRoyale ? "Could not join Battle Royale." : "Sign in with Apple is required for ranked matchmaking.")
+        }
+
+        if lowered.contains("insufficient") || lowered.contains("bread") {
+            return .failed("You need 25 bread to join Battle Royale.")
         }
 
         if lowered.contains("resolve user identity") || lowered.contains("device identity") {
@@ -660,6 +804,8 @@ struct MatchmakingView: View {
             return .trophy
         case .privateRoom:
             return .lock
+        case .battleRoyale:
+            return .trophy
         }
     }
 
@@ -673,6 +819,8 @@ struct MatchmakingView: View {
             } else {
                 joinRoomAndWait()
             }
+        case .battleRoyale:
+            joinBattleRoyaleAndWait()
         }
     }
 
