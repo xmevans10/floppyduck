@@ -30,7 +30,7 @@ import SpriteKit
 ///      ```
 ///   4. Every frame while `.playing`:
 ///      ```
-///      botController.update(pipeNodes: pipeLayer.children)
+///      botController.update(pipeRecords: activePipes)
 ///      ```
 ///   5. On game reset:
 ///      ```
@@ -217,23 +217,21 @@ final class BotController {
     /// handled by SpriteKit's physics engine — same as the player duck.
     /// This method only decides *when* to flap.
     ///
-    /// - Parameter pipeNodes: All current pipe nodes from the pipe layer
-    ///   (used only to find the nearest gap center for targeting).
-    func update(pipeNodes: [SKNode]) {
+    /// - Parameter pipeRecords: Cached active pipe records from the scene
+    ///   (avoids per-frame child-tree scans with string-name checks).
+    func update(pipeRecords: [ActivePipeRecord]) {
         guard alive, let bot = sprite else { return }
 
         // --- Find nearest pipe gap center for AI targeting ---
         var targetGapY: CGFloat = GK.duckStartY
         var nearestDist: CGFloat = .greatestFiniteMagnitude
 
-        for child in pipeNodes {
-            let dist = child.position.x - GK.duckStartX
-            // Only consider pipes ahead of (or at) the bot
+        for record in pipeRecords {
+            guard let pipeNode = record.node else { continue }
+            let dist = pipeNode.position.x - GK.duckStartX
             if dist > -(GK.pipeWidth / 2) && dist < nearestDist {
-                if let trigger = child.childNode(withName: "scoreTrigger") {
-                    targetGapY = trigger.position.y
-                    nearestDist = dist
-                }
+                targetGapY = record.gapCenterY
+                nearestDist = dist
             }
         }
 

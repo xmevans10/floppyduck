@@ -13,6 +13,10 @@ protocol MultiplayerBackendClient: Sendable {
                    deviceId: String,
                    displayName: String?) async throws -> AuthLinkResponse
 
+    func linkGameCenter(playerId: String,
+                        alias: String,
+                        deviceId: String) async throws -> AuthLinkResponse
+
     func getProfile() async throws -> RemotePlayerProfile
     func signOutSession() async throws
     func deleteAccount() async throws
@@ -47,6 +51,7 @@ protocol MultiplayerBackendClient: Sendable {
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry]
+    func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry]
 
     /// Sync beaten bot IDs to the backend immediately (XAN-9).
     func syncBeatenBots(_ botIds: [String]) async throws
@@ -62,6 +67,9 @@ extension MultiplayerBackendClient {
     /// Default no-op — mocks and tests don't need bread sync.
     func spendBread(_ amount: Int) async throws -> Int { 0 }
     func updateUsername(_ name: String) async throws -> String { name }
+    func linkGameCenter(playerId: String,
+                        alias: String,
+                        deviceId: String) async throws -> AuthLinkResponse { throw ConvexError.requestFailed }
     func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment { throw ConvexError.requestFailed }
     func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int? { nil }
     func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
@@ -72,6 +80,7 @@ extension MultiplayerBackendClient {
                                   rotation: Double,
                                   wingPhase: Int) async throws {}
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
+    func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] { [] }
 }
 
 struct ConvexAuthContext: Sendable {
@@ -216,7 +225,9 @@ actor ConvexClient: MultiplayerBackendClient {
             // Prefer clean errorData, then errorMessage, then legacy keys
             let msg = string(in: root, keys: ["errorData", "errorMessage", "error", "message"])
                 ?? "Server error (\(functionName))"
+#if DEBUG
             print("[ConvexClient] \(functionName) error: \(msg)")
+#endif
             throw ConvexError.server(msg)
         }
 
@@ -321,6 +332,37 @@ actor ConvexClient: MultiplayerBackendClient {
             sessionToken: sessionToken,
             sessionExpiresAt: date(in: payload, keys: ["sessionExpiresAt", "expiresAt", "expires_at"]),
             appleUserId: string(in: payload, keys: ["appleUserId", "apple_user_id"]),
+            didMergeStats: bool(in: payload, keys: ["didMergeStats", "did_merge_stats", "merged"]) ?? false
+        )
+    }
+
+    func linkGameCenter(playerId: String,
+                        alias: String,
+                        deviceId: String) async throws -> AuthLinkResponse {
+        let value = try await mutationRaw("auth:linkGameCenter", args: [
+            "gameCenterPlayerId": playerId,
+            "alias": alias,
+            "deviceId": deviceId,
+        ])
+        guard let payload = dictionary(from: value) else {
+            throw ConvexError.invalidResponse
+        }
+
+        let profileSource = dictionary(in: payload, keys: ["profile", "user"]) ?? payload
+        guard let profile = parseProfile(profileSource) else {
+            throw ConvexError.invalidResponse
+        }
+
+        guard let sessionToken = string(in: payload, keys: ["sessionToken", "session_token", "token"]),
+              !sessionToken.isEmpty else {
+            throw ConvexError.invalidResponse
+        }
+
+        return AuthLinkResponse(
+            profile: profile,
+            sessionToken: sessionToken,
+            sessionExpiresAt: date(in: payload, keys: ["sessionExpiresAt", "expiresAt", "expires_at"]),
+            appleUserId: nil,
             didMergeStats: bool(in: payload, keys: ["didMergeStats", "did_merge_stats", "merged"]) ?? false
         )
     }
@@ -586,22 +628,82 @@ actor ConvexClient: MultiplayerBackendClient {
 
     func getLeaderboard(limit: Int = 20) async throws -> [LeaderboardEntry] {
         let value = try await queryRaw("ratings:leaderboard", args: ["limit": limit])
-        guard let items = value as? [Any] else { return [] }
+        let items: [Any]
+        let ownEntry: [String: Any]?
 
-        return items.enumerated().compactMap { i, item in
-            guard let dict = item as? [String: Any],
-                  let userId = string(in: dict, keys: ["userId", "user_id", "id", "_id"]),
-                  let rating = int(in: dict, keys: ["rating", "elo"]) else {
-                return nil
-            }
-
-            return LeaderboardEntry(
-                id: userId,
-                username: string(in: dict, keys: ["username", "name", "displayName"]) ?? "Player",
-                rating: rating,
-                rank: i + 1
-            )
+        if let payload = dictionary(from: value) {
+            items = payload["entries"] as? [Any] ?? []
+            ownEntry = dictionary(in: payload, keys: ["ownEntry", "own_entry"])
+        } else {
+            items = value as? [Any] ?? []
+            ownEntry = nil
         }
+
+        var entries = items.enumerated().compactMap { index, item in
+            parseLeaderboardEntry(item, fallbackRank: index + 1)
+        }
+
+        if let own = parseLeaderboardEntry(ownEntry),
+           !entries.contains(where: { $0.id == own.id }) {
+            entries.append(own)
+        }
+
+        return entries
+    }
+
+    func getHighScoreLeaderboard(limit: Int = 20) async throws -> [HighScoreEntry] {
+        let value = try await queryRaw("scores:leaderboard", args: ["limit": limit])
+        let items: [Any]
+        let ownEntry: [String: Any]?
+
+        if let payload = dictionary(from: value) {
+            items = payload["entries"] as? [Any] ?? []
+            ownEntry = dictionary(in: payload, keys: ["ownEntry", "own_entry"])
+        } else {
+            items = value as? [Any] ?? []
+            ownEntry = nil
+        }
+
+        var entries = items.enumerated().compactMap { index, item in
+            parseHighScoreEntry(item, fallbackRank: index + 1)
+        }
+
+        if let own = parseHighScoreEntry(ownEntry),
+           !entries.contains(where: { $0.id == own.id }) {
+            entries.append(own)
+        }
+
+        return entries
+    }
+
+    private func parseLeaderboardEntry(_ value: Any?, fallbackRank: Int = 0) -> LeaderboardEntry? {
+        guard let dict = dictionary(from: value),
+              let userId = string(in: dict, keys: ["userId", "user_id", "id", "_id"]),
+              let rating = int(in: dict, keys: ["rating", "elo"]) else {
+            return nil
+        }
+
+        return LeaderboardEntry(
+            id: userId,
+            username: string(in: dict, keys: ["username", "name", "displayName"]) ?? "Player",
+            rating: rating,
+            rank: int(in: dict, keys: ["rank"]) ?? fallbackRank
+        )
+    }
+
+    private func parseHighScoreEntry(_ value: Any?, fallbackRank: Int = 0) -> HighScoreEntry? {
+        guard let dict = dictionary(from: value),
+              let userId = string(in: dict, keys: ["userId", "user_id", "id", "_id"]),
+              let bestScore = int(in: dict, keys: ["bestScore", "best_score", "score"]) else {
+            return nil
+        }
+
+        return HighScoreEntry(
+            id: userId,
+            username: string(in: dict, keys: ["username", "name", "displayName"]) ?? "Player",
+            bestScore: bestScore,
+            rank: int(in: dict, keys: ["rank"]) ?? fallbackRank
+        )
     }
 
     // MARK: - Bot Sync (XAN-9)
@@ -626,7 +728,7 @@ actor ConvexClient: MultiplayerBackendClient {
     }
 
     func syncSkin(_ skinId: String) async throws {
-        try await mutationRaw("auth:syncSkin", args: [
+        _ = try await mutationRaw("auth:syncSkin", args: [
             "skinId": skinId,
         ])
     }
@@ -909,6 +1011,8 @@ actor ConvexClient: MultiplayerBackendClient {
         switch raw.lowercased() {
         case "apple", "siwa":
             return .apple
+        case "gamecenter", "game_center", "gc":
+            return .gameCenter
         case "guest", "anonymous":
             return .guest
         default:

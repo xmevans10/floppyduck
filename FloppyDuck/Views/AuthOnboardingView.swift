@@ -3,16 +3,15 @@ import SwiftUI
 // MARK: - Onboarding Auth Action (file-private)
 
 private enum OnboardingAuthAction {
-    case guest, apple
+    case gameCenter
 }
 
 // MARK: - Pages Enum
 
 private enum OnboardingPage: Int, CaseIterable {
     case welcome = 0
-    case namePicker = 1
-    case howToPlay = 2
-    case authChoice = 3
+    case howToPlay = 1
+    case authChoice = 2
 }
 
 // MARK: - Main Onboarding Container
@@ -23,12 +22,6 @@ struct AuthOnboardingView: View {
 
     @State private var currentPage: OnboardingPage = .welcome
     @State private var busyAction: OnboardingAuthAction?
-    @State private var username: String = ""
-
-    private var isUsernameValid: Bool {
-        let trimmed = username.trimmingCharacters(in: .whitespaces)
-        return trimmed.count >= 2 && trimmed.count <= 16
-    }
 
     var body: some View {
         ZStack {
@@ -52,24 +45,9 @@ struct AuthOnboardingView: View {
                 case .welcome:
                     WelcomePage {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                            currentPage = .namePicker
+                            currentPage = .howToPlay
                         }
                     }
-                case .namePicker:
-                    NamePickerPage(
-                        username: $username,
-                        isUsernameValid: isUsernameValid,
-                        onContinue: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                currentPage = .howToPlay
-                            }
-                        },
-                        onBack: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                currentPage = .welcome
-                            }
-                        }
-                    )
                 case .howToPlay:
                     HowToPlayPage(
                         onContinue: {
@@ -79,26 +57,17 @@ struct AuthOnboardingView: View {
                         },
                         onBack: {
                             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                currentPage = .namePicker
+                                currentPage = .welcome
                             }
                         }
                     )
                 case .authChoice:
                     AuthChoicePage(
                         busyAction: $busyAction,
-                        onGuest: {
-                            commitUsername()
-                            busyAction = .guest
+                        onGameCenter: {
+                            busyAction = .gameCenter
                             Task {
-                                await auth.continueAsGuest()
-                                busyAction = nil
-                            }
-                        },
-                        onApple: {
-                            commitUsername()
-                            busyAction = .apple
-                            Task {
-                                await auth.signInWithApple()
+                                await auth.signInWithGameCenter()
                                 busyAction = nil
                             }
                         },
@@ -122,13 +91,6 @@ struct AuthOnboardingView: View {
                 OnboardingPageDots(current: currentPage)
                     .padding(.bottom, 28)
             }
-        }
-    }
-
-    private func commitUsername() {
-        let trimmed = username.trimmingCharacters(in: .whitespaces)
-        if trimmed.count >= 2 {
-            manager.playerName = trimmed
         }
     }
 
@@ -207,107 +169,95 @@ private struct OnboardingPageDots: View {
 private struct WelcomePage: View {
     let onContinue: () -> Void
 
-    @State private var duckBounce: CGFloat = 0
-    @State private var duckRotation: Double = 0
     @State private var titleFlashOffset: CGFloat = -180
     @State private var subtitleOpacity: Double = 0
     @State private var tapPromptOpacity: Double = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                Spacer().frame(height: max(24, geo.size.height * 0.30))
 
-            // Bouncing duck
-            Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 6.0))
-                .interpolation(.none)
-                .resizable()
-                .frame(width: 108, height: 81)
-                .rotationEffect(.degrees(duckRotation))
-                .offset(y: duckBounce)
+                // Title with sheen
+                VStack(spacing: 4) {
+                    titleLine("FLOPPY", color: .white, size: 36)
+                    titleLine("DUCK", color: GK.Colors.scoreYellow, size: 36)
+                }
+                .frame(maxWidth: .infinity)
+                .overlay {
+                    VStack(spacing: 4) {
+                        titleLine("FLOPPY", color: .white, size: 36)
+                        titleLine("DUCK", color: GK.Colors.scoreYellow, size: 36)
+                    }
+                    .mask {
+                        VStack(spacing: 4) {
+                            Text("FLOPPY").font(.custom(GK.pixelFontName, size: 36))
+                            Text("DUCK").font(.custom(GK.pixelFontName, size: 36))
+                        }
+                    }
+                    .overlay {
+                        Rectangle()
+                            .fill(LinearGradient(
+                                colors: [.clear, .white.opacity(0.15), .white.opacity(0.65), .white.opacity(0.15), .clear],
+                                startPoint: .leading, endPoint: .trailing
+                            ))
+                            .frame(width: 60, height: 110)
+                            .rotationEffect(.degrees(14))
+                            .offset(x: titleFlashOffset)
+                            .blendMode(.screen)
+                            .allowsHitTesting(false)
+                    }
+                    .mask {
+                        VStack(spacing: 4) {
+                            Text("FLOPPY").font(.custom(GK.pixelFontName, size: 36))
+                            Text("DUCK").font(.custom(GK.pixelFontName, size: 36))
+                        }
+                    }
+                }
                 .onAppear {
                     guard !UIAccessibility.isReduceMotionEnabled else { return }
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                        duckBounce = -12
-                    }
-                    withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-                        duckRotation = 5
+                    withAnimation(.linear(duration: 1.65).repeatForever(autoreverses: false)) {
+                        titleFlashOffset = 200
                     }
                 }
-                .padding(.bottom, 20)
 
-            // Title with sheen
-            VStack(spacing: 4) {
-                titleLine("FLOPPY", color: .white, size: 30)
-                titleLine("DUCK", color: GK.Colors.scoreYellow, size: 30)
-            }
-            .overlay {
-                VStack(spacing: 4) {
-                    titleLine("FLOPPY", color: .white, size: 30)
-                    titleLine("DUCK", color: GK.Colors.scoreYellow, size: 30)
-                }
-                .mask {
-                    VStack(spacing: 4) {
-                        Text("FLOPPY").font(.custom(GK.pixelFontName, size: 30))
-                        Text("DUCK").font(.custom(GK.pixelFontName, size: 30))
+                PixelOutlinedText(text: "WELCOME, NEW FLAPPER!", fontSize: 12,
+                                  fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 2)
+                    .padding(.top, 18)
+                    .opacity(subtitleOpacity)
+                    .onAppear {
+                        withAnimation(.easeIn(duration: 0.6).delay(0.4)) {
+                            subtitleOpacity = 1
+                        }
                     }
-                }
-                .overlay {
-                    Rectangle()
-                        .fill(LinearGradient(
-                            colors: [.clear, .white.opacity(0.15), .white.opacity(0.65), .white.opacity(0.15), .clear],
-                            startPoint: .leading, endPoint: .trailing
-                        ))
-                        .frame(width: 50, height: 100)
-                        .rotationEffect(.degrees(14))
-                        .offset(x: titleFlashOffset)
-                        .blendMode(.screen)
-                        .allowsHitTesting(false)
-                }
-                .mask {
-                    VStack(spacing: 4) {
-                        Text("FLOPPY").font(.custom(GK.pixelFontName, size: 30))
-                        Text("DUCK").font(.custom(GK.pixelFontName, size: 30))
-                    }
-                }
-            }
-            .onAppear {
-                guard !UIAccessibility.isReduceMotionEnabled else { return }
-                withAnimation(.linear(duration: 1.65).repeatForever(autoreverses: false)) {
-                    titleFlashOffset = 180
-                }
-            }
 
-            Text("WELCOME, NEW FLAPPER!")
-                .font(.custom(GK.pixelFontName, size: 8))
-                .foregroundColor(.white.opacity(0.8))
-                .padding(.top, 16)
-                .opacity(subtitleOpacity)
+                Spacer()
+
+                // Tap prompt with subtle dark plate
+                VStack(spacing: 6) {
+                    Image(uiImage: PixelIconFactory.shared.image(for: .tapHand, pixelScale: 3.0))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 28, height: 28)
+
+                    PixelOutlinedText(text: "TAP TO BEGIN", fontSize: 10,
+                                      fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1)
+                }
+                .padding(.horizontal, 28)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.black.opacity(0.2))
+                )
+                .opacity(tapPromptOpacity)
+                .padding(.bottom, 40)
                 .onAppear {
-                    withAnimation(.easeIn(duration: 0.6).delay(0.4)) {
-                        subtitleOpacity = 1
+                    withAnimation(.easeIn(duration: 0.5).delay(0.8)) {
+                        tapPromptOpacity = 1
                     }
                 }
-
-            Spacer()
-
-            // Tap prompt
-            VStack(spacing: 6) {
-                Image(uiImage: PixelIconFactory.shared.image(for: .tapHand, pixelScale: 3.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .frame(width: 24, height: 24)
-
-                Text("TAP TO BEGIN")
-                    .font(.custom(GK.pixelFontName, size: 8))
-                    .foregroundColor(.white.opacity(0.6))
             }
-            .opacity(tapPromptOpacity)
-            .onAppear {
-                withAnimation(.easeIn(duration: 0.5).delay(0.8)) {
-                    tapPromptOpacity = 1
-                }
-            }
-            .padding(.bottom, 60)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -323,157 +273,14 @@ private struct WelcomePage: View {
             .font(.custom(GK.pixelFontName, size: size))
             .foregroundColor(color)
             .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: 4)
-            .shadow(color: Color.black.opacity(0.35), radius: 0, x: 0, y: 2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -4, y: 4)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: -4)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -4, y: -4)
+            .shadow(color: Color.black.opacity(0.25), radius: 0, x: 0, y: 6)
     }
 }
 
-// MARK: - Page 2: Name Picker
-
-private struct NamePickerPage: View {
-    @Binding var username: String
-    let isUsernameValid: Bool
-    let onContinue: () -> Void
-    let onBack: () -> Void
-
-    @State private var appearedSuggestions = false
-
-    private let nameSuggestions = [
-        "FlapJack", "BreadBaron", "QuackAttack",
-        "SirFlaps", "DizzyBird", "CrumbLord",
-        "CloudDuck", "PipeDodger",
-    ]
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Back button
-            HStack {
-                onboardingBackButton(action: onBack)
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
-            Spacer()
-
-            // Duck
-            Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 4.0))
-                .interpolation(.none)
-                .resizable()
-                .frame(width: 72, height: 54)
-                .padding(.bottom, 10)
-
-            Text("WHO ARE YOU?")
-                .font(.custom(GK.pixelFontName, size: 18))
-                .foregroundColor(.white)
-                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
-                .padding(.bottom, 4)
-
-            Text("EVERY DUCK NEEDS A NAME")
-                .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.bottom, 20)
-
-            // Name input
-            VStack(spacing: 8) {
-                PixelTextField(text: $username, pixelFontName: GK.pixelFontName,
-                               fontSize: 14, maxLength: 16)
-                    .frame(height: 44)
-                    .padding(.horizontal, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(isUsernameValid
-                                            ? GK.Colors.buttonGreen.opacity(0.6)
-                                            : GK.Colors.panelBorder.opacity(0.15),
-                                            lineWidth: 2)
-                            )
-                    )
-                    .shadow(color: Color.black.opacity(0.12), radius: 4, y: 2)
-
-                HStack {
-                    if !username.isEmpty && !isUsernameValid {
-                        Text("2–16 CHARACTERS")
-                            .font(.custom(GK.pixelFontName, size: 6))
-                            .foregroundColor(GK.Colors.buttonRed.opacity(0.8))
-                    }
-                    Spacer()
-                    Text("\(username.count)/16")
-                        .font(.custom(GK.pixelFontName, size: 6))
-                        .foregroundColor(.white.opacity(0.5))
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 16)
-
-            // Random name chips
-            VStack(spacing: 6) {
-                Text("OR PICK ONE")
-                    .font(.custom(GK.pixelFontName, size: 6))
-                    .foregroundColor(.white.opacity(0.55))
-
-                LazyVGrid(columns: [
-                    GridItem(.flexible(), spacing: 6),
-                    GridItem(.flexible(), spacing: 6),
-                ], spacing: 6) {
-                    ForEach(Array(nameSuggestions.enumerated()), id: \.offset) { index, name in
-                        Button {
-                            SoundManager.shared.play(.button)
-                            Haptic.buttonTap()
-                            username = name
-                        } label: {
-                            Text(name.uppercased())
-                                .font(.custom(GK.pixelFontName, size: 7))
-                                .foregroundColor(username == name ? .white : GK.Colors.panelBorder)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(username == name
-                                              ? GK.Colors.buttonBlue
-                                              : GK.Colors.panelCream)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(username == name
-                                                ? GK.Colors.buttonBlue.opacity(0.8)
-                                                : GK.Colors.panelBorder.opacity(0.3),
-                                                lineWidth: 1.5)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .scaleEffect(appearedSuggestions ? 1 : 0.7)
-                        .opacity(appearedSuggestions ? 1 : 0)
-                        .animation(
-                            .spring(response: 0.4, dampingFraction: 0.65).delay(Double(index) * 0.05),
-                            value: appearedSuggestions
-                        )
-                    }
-                }
-                .padding(.horizontal, 32)
-            }
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    appearedSuggestions = true
-                }
-            }
-
-            Spacer()
-
-            // Continue button
-            onboardingContinueButton(title: "NEXT", color: GK.Colors.buttonGreen, enabled: isUsernameValid) {
-                SoundManager.shared.play(.button)
-                Haptic.buttonTap()
-                onContinue()
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 60)
-        }
-    }
-}
-
-// MARK: - Page 3: How To Play
+// MARK: - Page 2: How To Play
 
 private struct HowToPlayPage: View {
     let onContinue: () -> Void
@@ -488,55 +295,60 @@ private struct HowToPlayPage: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                onboardingBackButton(action: onBack)
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                HStack {
+                    onboardingBackButton(action: onBack)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
+                Spacer().frame(height: max(10, geo.size.height * 0.22))
+
+                Text("HOW TO PLAY")
+                    .font(.custom(GK.pixelFontName, size: 24))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: 3)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: -3)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: -3)
+                    .padding(.bottom, 8)
+
+                PixelOutlinedText(text: "IT'S SIMPLE, REALLY", fontSize: 9,
+                                  fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1.5)
+                    .padding(.bottom, 24)
+
+                // Tip cards
+                VStack(spacing: 12) {
+                    ForEach(Array(tips.enumerated()), id: \.offset) { index, tip in
+                        tipCard(icon: tip.0, title: tip.1, subtitle: tip.2)
+                            .offset(x: cardsAppeared ? 0 : (index % 2 == 0 ? -60 : 60))
+                            .opacity(cardsAppeared ? 1 : 0)
+                            .animation(
+                                .spring(response: 0.5, dampingFraction: 0.75).delay(Double(index) * 0.12),
+                                value: cardsAppeared
+                            )
+                    }
+                }
+                .padding(.horizontal, 28)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        cardsAppeared = true
+                    }
+                }
+
                 Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
 
-            Spacer()
-
-            Text("HOW TO PLAY")
-                .font(.custom(GK.pixelFontName, size: 20))
-                .foregroundColor(.white)
-                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
-                .padding(.bottom, 6)
-
-            Text("IT'S SIMPLE, REALLY")
-                .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.bottom, 24)
-
-            // Tip cards
-            VStack(spacing: 12) {
-                ForEach(Array(tips.enumerated()), id: \.offset) { index, tip in
-                    tipCard(icon: tip.0, title: tip.1, subtitle: tip.2)
-                        .offset(x: cardsAppeared ? 0 : (index % 2 == 0 ? -60 : 60))
-                        .opacity(cardsAppeared ? 1 : 0)
-                        .animation(
-                            .spring(response: 0.5, dampingFraction: 0.75).delay(Double(index) * 0.12),
-                            value: cardsAppeared
-                        )
+                onboardingContinueButton(title: "ALMOST DONE", color: GK.Colors.buttonGreen, enabled: true) {
+                    SoundManager.shared.play(.button)
+                    Haptic.buttonTap()
+                    onContinue()
                 }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 60)
             }
-            .padding(.horizontal, 28)
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    cardsAppeared = true
-                }
-            }
-
-            Spacer()
-
-            onboardingContinueButton(title: "ALMOST DONE", color: GK.Colors.buttonGreen, enabled: true) {
-                SoundManager.shared.play(.button)
-                Haptic.buttonTap()
-                onContinue()
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 60)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -548,15 +360,15 @@ private struct HowToPlayPage: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 30, height: 30)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.custom(GK.pixelFontName, size: 9))
-                    .foregroundColor(GK.Colors.panelBorder)
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(GK.Colors.cardTextPrimary)
 
                 Text(subtitle)
-                    .font(.custom(GK.pixelFontName, size: 6))
-                    .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
-                    .lineSpacing(2)
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(GK.Colors.cardTextSecondary)
+                    .lineSpacing(3)
             }
 
             Spacer()
@@ -579,8 +391,7 @@ private struct HowToPlayPage: View {
 
 private struct AuthChoicePage: View {
     @Binding var busyAction: OnboardingAuthAction?
-    let onGuest: () -> Void
-    let onApple: () -> Void
+    let onGameCenter: () -> Void
     let statusMessage: String?
     let onBack: () -> Void
 
@@ -589,87 +400,84 @@ private struct AuthChoicePage: View {
     private var anyBusy: Bool { busyAction != nil }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                onboardingBackButton(action: onBack)
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
-            Spacer()
-
-            Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 5.0))
-                .interpolation(.none)
-                .resizable()
-                .frame(width: 90, height: 68)
-                .padding(.bottom, 10)
-
-            Text("ONE LAST THING")
-                .font(.custom(GK.pixelFontName, size: 18))
-                .foregroundColor(.white)
-                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
-                .padding(.bottom, 4)
-
-            Text("HOW DO YOU WANT TO PLAY?")
-                .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.bottom, 24)
-
-            // Auth buttons
-            VStack(spacing: 12) {
-                authOptionButton(
-                    icon: .classic,
-                    title: "PLAY AS GUEST",
-                    subtitle: "Classic + Quick Play",
-                    color: GK.Colors.buttonGreen,
-                    isBusy: busyAction == .guest,
-                    action: onGuest
-                )
-                .scaleEffect(buttonsAppeared ? 1 : 0.85)
-                .opacity(buttonsAppeared ? 1 : 0)
-                .animation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.1), value: buttonsAppeared)
-
-                authOptionButton(
-                    icon: .trophy,
-                    title: "SIGN IN WITH APPLE",
-                    subtitle: "All modes + cloud sync",
-                    color: GK.Colors.buttonBlue,
-                    isBusy: busyAction == .apple,
-                    action: onApple
-                )
-                .scaleEffect(buttonsAppeared ? 1 : 0.85)
-                .opacity(buttonsAppeared ? 1 : 0)
-                .animation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.2), value: buttonsAppeared)
-            }
-            .padding(.horizontal, 30)
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    buttonsAppeared = true
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                HStack {
+                    onboardingBackButton(action: onBack)
+                    Spacer()
                 }
-            }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
 
-            // Fine print
-            Text("Classic and Quick Play are always free.\nSign in to unlock ranked, bots & cloud sync.")
-                .font(.custom(GK.pixelFontName, size: 6))
-                .foregroundColor(.white.opacity(0.55))
-                .multilineTextAlignment(.center)
+                Spacer().frame(height: max(10, geo.size.height * 0.22))
+
+                Text("ONE LAST THING")
+                    .font(.custom(GK.pixelFontName, size: 22))
+                    .foregroundColor(.white)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: 3)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: -3)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: -3)
+                    .padding(.bottom, 6)
+
+                PixelOutlinedText(text: "SIGN IN WITH GAME CENTER", fontSize: 9,
+                                  fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1.5)
+                    .padding(.bottom, 24)
+
+                // Auth buttons
+                VStack(spacing: 12) {
+                    authOptionButton(
+                        icon: .trophy,
+                        title: "CONTINUE",
+                        subtitle: "Use your Game Center name",
+                        color: GK.Colors.buttonBlue,
+                        isBusy: busyAction == .gameCenter,
+                        action: onGameCenter
+                    )
+                    .scaleEffect(buttonsAppeared ? 1 : 0.85)
+                    .opacity(buttonsAppeared ? 1 : 0)
+                    .animation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.1), value: buttonsAppeared)
+                }
                 .padding(.horizontal, 30)
-                .padding(.top, 14)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        buttonsAppeared = true
+                    }
+                }
 
-            if let statusMessage {
-                Text(statusMessage)
+                // Fine print on a subtle card
+                Text("Your Game Center alias is your in-game name.")
                     .font(.custom(GK.pixelFontName, size: 7))
-                    .foregroundColor(GK.Colors.scoreYellow)
+                    .foregroundColor(GK.Colors.titleCream)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.black.opacity(0.25))
+                    )
                     .padding(.horizontal, 30)
-                    .padding(.top, 8)
+                    .padding(.top, 16)
+
+                if let statusMessage {
+                    Text(statusMessage)
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(GK.Colors.scoreYellow)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: 1)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: 1)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: -1)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: -1)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 30)
+                        .padding(.top, 8)
+                }
+
+                Spacer()
+
+                // Spacer for page dots
+                Spacer().frame(height: 50)
             }
-
-            Spacer()
-
-            // Spacer for page dots
-            Spacer().frame(height: 50)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -685,11 +493,15 @@ private struct AuthChoicePage: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.custom(GK.pixelFontName, size: 9))
+                        .font(.custom(GK.pixelFontName, size: 10))
                         .foregroundColor(.white)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: 1)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: 1)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: -1)
+                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: -1)
                     Text(subtitle)
                         .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(.white.opacity(0.75))
+                        .foregroundColor(GK.Colors.titleCream)
                 }
 
                 Spacer()
@@ -748,8 +560,12 @@ private func onboardingContinueButton(title: String, color: Color, enabled: Bool
                                        action: @escaping () -> Void) -> some View {
     Button(action: action) {
         Text(title)
-            .font(.custom(GK.pixelFontName, size: 12))
+            .font(.custom(GK.pixelFontName, size: 13))
             .foregroundColor(.white)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: 2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: -2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: -2)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(

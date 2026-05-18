@@ -90,11 +90,11 @@ struct HomeView: View {
         }
         .alert("Sign In to Unlock", isPresented: $showSignInPrompt) {
             Button("NOT NOW", role: .cancel) {}
-            Button("SIGN IN WITH APPLE") {
-                Task { await auth.signInWithApple() }
+            Button("SIGN IN WITH GAME CENTER") {
+                Task { await auth.signInWithGameCenter() }
             }
         } message: {
-            Text("Sign in with Apple to access all game features. Classic and Quick Play are always free to play.")
+            Text("Sign in with Game Center to access all game features.")
         }
     }
 
@@ -164,7 +164,10 @@ struct HomeView: View {
             .font(.custom(GK.pixelFontName, size: size))
             .foregroundColor(color)
             .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: 4)
-            .shadow(color: Color.black.opacity(0.35), radius: 0, x: 0, y: 2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -4, y: 4)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 4, y: -4)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -4, y: -4)
+            .shadow(color: Color.black.opacity(0.25), radius: 0, x: 0, y: 6)
     }
 
     // MARK: - 8-bit Home Background

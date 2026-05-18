@@ -1,0 +1,29 @@
+{
+  "world": {
+    "width": 400,
+    "height": 700,
+    "groundHeight": 80
+  },
+  "themesRendered": [
+    "day",
+    "sunset",
+    "night",
+    "neonCity",
+    "underwater",
+    "volcano",
+    "arctic",
+    "western",
+    "jungle",
+    "cave",
+    "mountain",
+    "space",
+    "pixelTokyo",
+    "egypt",
+    "lagoon",
+    "losAngeles",
+    "london",
+    "roughOcean"
+  ],
+  "missing": {},
+  "notes": "Matches ThemeRecipeCatalog layer definitions and ParallaxManager static placement; runtime particle overlays are not included."
+}

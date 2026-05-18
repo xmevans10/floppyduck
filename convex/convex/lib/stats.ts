@@ -109,7 +109,7 @@ export async function upsertRating(ctx: any, userId: Id<"users">, rating: number
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
     .first();
 
-  if (!user || user.provider !== "apple" || !user.appleUserId) {
+  if (!user || (user.provider !== "apple" && user.provider !== "gameCenter")) {
     if (existing) {
       await ctx.db.delete(existing._id);
     }

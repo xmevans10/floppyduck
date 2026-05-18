@@ -1,0 +1,7 @@
+app_identifier("com.xmevans10.FloppyDuck")
+team_id("8K5ZVPCQ42")
+
+for_platform :ios do
+  app_identifier("com.xmevans10.FloppyDuck")
+  team_id("8K5ZVPCQ42")
+end

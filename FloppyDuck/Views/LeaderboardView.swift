@@ -1,15 +1,21 @@
 import SwiftUI
 
+enum LeaderboardMode: String, CaseIterable {
+    case elo = "ELO"
+    case highScore = "HIGH SCORES"
+}
+
 struct LeaderboardView: View {
     @EnvironmentObject var manager: GameManager
 
-    @State private var entries: [LeaderboardEntry] = []
+    @State private var eloEntries: [LeaderboardEntry] = []
+    @State private var highScoreEntries: [HighScoreEntry] = []
     @State private var isLoading: Bool = true
     @State private var errorMessage: String? = nil
+    @State private var mode: LeaderboardMode = .elo
 
     private let icons = PixelIconFactory.shared
 
-    /// The current player's userId for highlighting and auto-scroll.
     private var currentUserId: String? {
         manager.authManager?.identity?.userId
     }
@@ -50,6 +56,18 @@ struct LeaderboardView: View {
                     Color.clear.frame(width: 44, height: 44)
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 8)
+
+                // Mode picker
+                Picker("Leaderboard Mode", selection: $mode) {
+                    ForEach(LeaderboardMode.allCases, id: \.self) { m in
+                        Text(m.rawValue)
+                            .font(.custom(GK.pixelFontName, size: 9))
+                            .tag(m)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 30)
                 .padding(.top, 8)
 
                 if isLoading {
@@ -95,7 +113,7 @@ struct LeaderboardView: View {
                     }
                     .padding(30)
                     Spacer()
-                } else if entries.isEmpty {
+                } else if currentEntries().isEmpty {
                     Spacer()
                     Text("NO RANKINGS YET")
                         .font(.custom(GK.pixelFontName, size: 10))
@@ -105,9 +123,16 @@ struct LeaderboardView: View {
                     ScrollViewReader { proxy in
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 8) {
-                                ForEach(entries) { entry in
-                                    leaderboardRow(entry)
-                                        .id(entry.id)
+                                if mode == .elo {
+                                    ForEach(eloEntries) { entry in
+                                        eloRow(entry)
+                                            .id(entry.id)
+                                    }
+                                } else {
+                                    ForEach(highScoreEntries) { entry in
+                                        highScoreRow(entry)
+                                            .id(entry.id)
+                                    }
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -117,7 +142,13 @@ struct LeaderboardView: View {
                         .refreshable {
                             await loadLeaderboard()
                         }
-                        .onChange(of: entries) { _, _ in
+                        .onChange(of: mode) { _, _ in
+                            Task { await loadLeaderboard() }
+                        }
+                        .onChange(of: eloEntries.map { $0.id }) { _, _ in
+                            scrollToCurrentPlayer(proxy: proxy)
+                        }
+                        .onChange(of: highScoreEntries.map { $0.id }) { _, _ in
                             scrollToCurrentPlayer(proxy: proxy)
                         }
                     }
@@ -130,14 +161,20 @@ struct LeaderboardView: View {
         }
     }
 
+    private func currentEntries() -> [any Identifiable] {
+        mode == .elo ? eloEntries : highScoreEntries
+    }
+
+    private func currentEntryIds() -> Set<String> {
+        mode == .elo ? Set(eloEntries.map { $0.id }) : Set(highScoreEntries.map { $0.id })
+    }
+
     // MARK: - Auto-Scroll
 
-    /// Scrolls to the current player's row after data loads.
     private func scrollToCurrentPlayer(proxy: ScrollViewProxy) {
         guard let userId = currentUserId,
-              entries.contains(where: { $0.id == userId }) else { return }
+              currentEntryIds().contains(userId) else { return }
 
-        // Brief delay so the ScrollView has laid out its content
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.easeInOut(duration: 0.3)) {
                 proxy.scrollTo(userId, anchor: .center)
@@ -148,10 +185,15 @@ struct LeaderboardView: View {
     // MARK: - Load Data
 
     private func loadLeaderboard() async {
-        isLoading = entries.isEmpty  // Only show spinner on first load
+        isLoading = currentEntries().isEmpty
         errorMessage = nil
         do {
-            entries = try await ConvexClient.shared.getLeaderboard(limit: 50)
+            switch mode {
+            case .elo:
+                eloEntries = try await ConvexClient.shared.getLeaderboard(limit: 50)
+            case .highScore:
+                highScoreEntries = try await ConvexClient.shared.getHighScoreLeaderboard(limit: 50)
+            }
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -159,19 +201,17 @@ struct LeaderboardView: View {
         }
     }
 
-    // MARK: - Row
+    // MARK: - ELO Row
 
-    private func leaderboardRow(_ entry: LeaderboardEntry) -> some View {
+    private func eloRow(_ entry: LeaderboardEntry) -> some View {
         let isCurrentPlayer = entry.id == currentUserId
 
         return HStack(spacing: 12) {
-            // Rank
             Text("#\(entry.rank)")
                 .font(.custom(GK.pixelFontName, size: 12))
                 .foregroundColor(rankColor(entry.rank))
                 .frame(width: 44, alignment: .leading)
 
-            // Username
             Text(entry.username)
                 .font(.custom(GK.pixelFontName, size: 10))
                 .foregroundColor(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder)
@@ -179,7 +219,6 @@ struct LeaderboardView: View {
 
             Spacer()
 
-            // Rating
             Text("\(entry.rating)")
                 .font(.custom(GK.pixelFontName, size: 12))
                 .foregroundColor(GK.Colors.panelBorder)
@@ -199,11 +238,50 @@ struct LeaderboardView: View {
         .accessibilityLabel("Rank \(entry.rank), \(entry.username), rating \(entry.rating)\(isCurrentPlayer ? ", you" : "")")
     }
 
+    // MARK: - High Score Row
+
+    private func highScoreRow(_ entry: HighScoreEntry) -> some View {
+        let isCurrentPlayer = entry.id == currentUserId
+
+        return HStack(spacing: 12) {
+            Text("#\(entry.rank)")
+                .font(.custom(GK.pixelFontName, size: 12))
+                .foregroundColor(rankColor(entry.rank))
+                .frame(width: 44, alignment: .leading)
+
+            Text(entry.username)
+                .font(.custom(GK.pixelFontName, size: 10))
+                .foregroundColor(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder)
+                .lineLimit(1)
+
+            Spacer()
+
+            Text("\(entry.bestScore)")
+                .font(.custom(GK.pixelFontName, size: 12))
+                .foregroundColor(GK.Colors.panelBorder)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isCurrentPlayer ? Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.12) : GK.Colors.panelCream)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder,
+                        lineWidth: isCurrentPlayer ? 3 : 2)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Rank \(entry.rank), \(entry.username), score \(entry.bestScore)\(isCurrentPlayer ? ", you" : "")")
+    }
+
+    // MARK: - Shared Helpers
+
     private func rankColor(_ rank: Int) -> Color {
         switch rank {
-        case 1: return Color(red: 1.0, green: 0.84, blue: 0.0)   // gold
-        case 2: return Color(red: 0.75, green: 0.75, blue: 0.80)  // silver
-        case 3: return Color(red: 0.80, green: 0.50, blue: 0.20)  // bronze
+        case 1: return Color(red: 1.0, green: 0.84, blue: 0.0)
+        case 2: return Color(red: 0.75, green: 0.75, blue: 0.80)
+        case 3: return Color(red: 0.80, green: 0.50, blue: 0.20)
         default: return GK.Colors.panelBorder.opacity(0.6)
         }
     }

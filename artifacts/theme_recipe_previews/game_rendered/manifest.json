@@ -1,0 +1,26 @@
+{
+  "commit": "d303d888784ea0a33c0862caf137ea09ba1423aa",
+  "renderPath": "FloppyDuckTests.GamePerformanceTests.testExportThemeParallaxQAFrames -> ParallaxManager.setup() -> UIImage(named:) -> SKView.texture(from:)",
+  "themesRendered": [
+    "day",
+    "sunset",
+    "night",
+    "neonCity",
+    "underwater",
+    "volcano",
+    "arctic",
+    "western",
+    "jungle",
+    "cave",
+    "mountain",
+    "space",
+    "pixelTokyo",
+    "egypt",
+    "lagoon",
+    "losAngeles",
+    "london",
+    "roughOcean"
+  ],
+  "missing": {},
+  "notes": "Static parallax layer stack rendered through SpriteKit. Runtime particle overlays are not included."
+}

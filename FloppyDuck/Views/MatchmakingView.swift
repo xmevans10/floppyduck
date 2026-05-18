@@ -100,7 +100,7 @@ struct MultiplayerModesView: View {
                 .padding(.horizontal, 28)
 
                 VStack(spacing: 6) {
-                    Text(auth.isAppleLinked ? "CURRENT ELO" : "GUEST MODE")
+                    Text(auth.isAppleLinked ? "CURRENT ELO" : "GAME CENTER")
                         .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(.white.opacity(0.65))
 
@@ -116,21 +116,21 @@ struct MultiplayerModesView: View {
         .navigationBarHidden(true)
         .alert("Sign In to Unlock", isPresented: $showFeatureSignInPrompt) {
             Button("NOT NOW", role: .cancel) {}
-            Button("SIGN IN WITH APPLE") {
-                Task { await auth.signInWithApple() }
+            Button("SIGN IN WITH GAME CENTER") {
+                Task { await auth.signInWithGameCenter() }
             }
         } message: {
-            Text("Sign in with Apple to access all game modes. Classic and Quick Play are always free to play.")
+            Text("Sign in with Game Center to access all game modes.")
         }
         .alert("Ranked Requires Sign In", isPresented: $auth.showRankedSignInPrompt) {
             Button("NOT NOW", role: .cancel) {}
-            Button("SIGN IN WITH APPLE") {
+            Button("SIGN IN WITH GAME CENTER") {
                 Task {
-                    await auth.signInWithApple()
+                    await auth.signInWithGameCenter()
                 }
             }
         } message: {
-            Text("Ranked requires Sign in with Apple.")
+            Text("Ranked requires Game Center sign in.")
         }
     }
 
@@ -778,7 +778,7 @@ struct MatchmakingView: View {
         }
 
         if lowered.contains("sign in") {
-            return .failed(mode == .battleRoyale ? "Could not join Battle Royale." : "Sign in with Apple is required for ranked matchmaking.")
+            return .failed(mode == .battleRoyale ? "Could not join Battle Royale." : "Game Center sign in is required for ranked matchmaking.")
         }
 
         if lowered.contains("insufficient") || lowered.contains("bread") {

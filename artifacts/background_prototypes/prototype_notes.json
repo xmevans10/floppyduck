@@ -1,0 +1,110 @@
+[
+  {
+    "theme": "day",
+    "source": "/Users/xanderevans/Downloads/generation-91a28445-c5a5-4a58-8acb-0c1be44eeab4.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/day_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/day_gameplay_mock.png"
+  },
+  {
+    "theme": "arctic",
+    "source": "/Users/xanderevans/Downloads/generation-6d68d2ea-1427-4423-b821-8f3e6908967a.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/arctic_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/arctic_gameplay_mock.png"
+  },
+  {
+    "theme": "cave",
+    "source": "/Users/xanderevans/Downloads/generation-4764dc73-d7b1-4106-a696-824edf3ecc6c.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/cave_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/cave_gameplay_mock.png"
+  },
+  {
+    "theme": "sunset",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/sunset_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/sunset_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/sunset_gameplay_mock.png"
+  },
+  {
+    "theme": "night",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/night_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/night_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/night_gameplay_mock.png"
+  },
+  {
+    "theme": "neonCity",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_candidates/neonCity_hero_source_stage-v1-light.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/neonCity_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/neonCity_gameplay_mock.png"
+  },
+  {
+    "theme": "underwater",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/underwater_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/underwater_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/underwater_gameplay_mock.png"
+  },
+  {
+    "theme": "volcano",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/volcano_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/volcano_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/volcano_gameplay_mock.png"
+  },
+  {
+    "theme": "western",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/western_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/western_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/western_gameplay_mock.png"
+  },
+  {
+    "theme": "jungle",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/jungle_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/jungle_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/jungle_gameplay_mock.png"
+  },
+  {
+    "theme": "mountain",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/mountain_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/mountain_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/mountain_gameplay_mock.png"
+  },
+  {
+    "theme": "space",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/space_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/space_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/space_gameplay_mock.png"
+  },
+  {
+    "theme": "pixelTokyo",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/pixelTokyo_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/pixelTokyo_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/pixelTokyo_gameplay_mock.png"
+  },
+  {
+    "theme": "egypt",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_candidates/egypt_hero_source_stage-v1-light.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/egypt_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/egypt_gameplay_mock.png"
+  },
+  {
+    "theme": "lagoon",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/lagoon_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/lagoon_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/lagoon_gameplay_mock.png"
+  },
+  {
+    "theme": "losAngeles",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/losAngeles_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/losAngeles_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/losAngeles_gameplay_mock.png"
+  },
+  {
+    "theme": "london",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/london_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/london_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/london_gameplay_mock.png"
+  },
+  {
+    "theme": "roughOcean",
+    "source": "/Users/xanderevans/Documents/floppyduck/artifacts/hero_sources/roughOcean_hero_source_sd35-large-1280x992.png",
+    "candidate": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/roughOcean_candidate_hero.png",
+    "mock": "/Users/xanderevans/Documents/floppyduck/artifacts/background_prototypes/roughOcean_gameplay_mock.png"
+  }
+]

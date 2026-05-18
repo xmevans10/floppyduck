@@ -14,6 +14,10 @@ final class AnalyticsManager {
             apiKey: "phc_DSZGupxsSlreIJxdSzEHhGjnQbRLVtvrSEE2TahVoad",
             host: "https://us.i.posthog.com"
         )
+        config.enableSwizzling = false
+        config.captureElementInteractions = false
+        config.captureScreenViews = false
+        config.captureApplicationLifecycleEvents = false
         #if DEBUG
         // Opt-in only — verbose logging adds main-thread overhead during gameplay.
         config.debug = ProcessInfo.processInfo.environment["POSTHOG_VERBOSE"] != nil

@@ -98,9 +98,7 @@ struct GameContainerView: View {
     var body: some View {
         ZStack {
             if let scene {
-                SpriteView(scene: scene,
-                           preferredFramesPerSecond: ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60,
-                           options: [.ignoresSiblingOrder])
+                OptimizedGameView(scene: scene)
                     .ignoresSafeArea()
             }
 
@@ -446,7 +444,9 @@ struct GameContainerView: View {
                     }
 #if DEBUG
                     pollCount += 1
-                    if pollCount % 5 == 0 {
+                    if pollCount % 5 == 0,
+                       ProcessInfo.processInfo.arguments.contains("-DebugFrameLog")
+                        || ProcessInfo.processInfo.environment["DEBUG_FRAME_LOG"] == "1" {
                         print("[Multiplayer] 🔄 Poll #\(pollCount) — oppScore:\(state.opponentScore) you:\(state.localScore) finished:\(state.isFinished)")
                     }
 #endif

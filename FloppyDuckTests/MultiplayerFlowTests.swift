@@ -446,6 +446,8 @@ private actor TwoPlayerMock: MultiplayerBackendClient {
         Array(leaderboardEntries.prefix(limit))
     }
 
+    func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] { [] }
+
     func syncBeatenBots(_ botIds: [String]) async throws {}
 }
 
@@ -524,6 +526,8 @@ private actor PendingFinalizationBackend: MultiplayerBackendClient {
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] { [] }
 
+    func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] { [] }
+
     func syncBeatenBots(_ botIds: [String]) async throws {}
 }
 
@@ -601,6 +605,8 @@ private actor RetryingBootstrapBackend: MultiplayerBackendClient {
     }
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] { [] }
+
+    func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] { [] }
 
     func syncBeatenBots(_ botIds: [String]) async throws {}
 }

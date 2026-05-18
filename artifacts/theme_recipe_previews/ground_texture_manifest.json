@@ -1,0 +1,106 @@
+{
+  "sources": [
+    {
+      "name": "Theme hero layers",
+      "license": "first-party/generated in repo",
+      "local": "FloppyDuck/Assets.xcassets/*_hero.imageset/*_hero.png"
+    }
+  ],
+  "grounds": {
+    "day": {
+      "asset": "day_ground",
+      "material": "hero-derived grass/dirt",
+      "sourceHero": "day_hero"
+    },
+    "sunset": {
+      "asset": "sunset_ground",
+      "material": "hero-derived warm field",
+      "sourceHero": "sunset_hero"
+    },
+    "night": {
+      "asset": "night_ground",
+      "material": "hero-derived dark grass",
+      "sourceHero": "night_hero"
+    },
+    "neonCity": {
+      "asset": "neonCity_ground",
+      "material": "hero-derived neon pavement",
+      "sourceHero": "neonCity_hero"
+    },
+    "underwater": {
+      "asset": "underwater_ground",
+      "material": "hero-derived seabed",
+      "sourceHero": "underwater_hero"
+    },
+    "volcano": {
+      "asset": "volcano_ground",
+      "material": "hero-derived basalt/lava",
+      "sourceHero": "volcano_hero"
+    },
+    "arctic": {
+      "asset": "arctic_ground",
+      "material": "hero-derived snow/ice",
+      "sourceHero": "arctic_hero"
+    },
+    "western": {
+      "asset": "western_ground",
+      "material": "hero-derived desert sand",
+      "sourceHero": "western_hero"
+    },
+    "jungle": {
+      "asset": "jungle_ground",
+      "material": "hero-derived jungle floor",
+      "sourceHero": "jungle_hero"
+    },
+    "cave": {
+      "asset": "cave_ground",
+      "material": "hero-derived cave rock",
+      "sourceHero": "cave_hero"
+    },
+    "mountain": {
+      "asset": "mountain_ground",
+      "material": "hero-derived alpine ground",
+      "sourceHero": "mountain_hero"
+    },
+    "lagoon": {
+      "asset": "lagoon_ground",
+      "material": "hero-derived beach turf",
+      "sourceHero": "lagoon_hero"
+    },
+    "losAngeles": {
+      "asset": "losAngeles_ground",
+      "material": "hero-derived dry park soil",
+      "sourceHero": "losAngeles_hero"
+    },
+    "london": {
+      "asset": "london_ground",
+      "material": "hero-derived wet embankment",
+      "sourceHero": "london_hero"
+    },
+    "roughOcean": {
+      "asset": "roughOcean_ground",
+      "material": "hero-derived storm shore",
+      "sourceHero": "roughOcean_hero"
+    },
+    "space": {
+      "asset": "space_ground",
+      "material": "hero-derived alien regolith",
+      "sourceHero": "space_hero"
+    },
+    "pixelTokyo": {
+      "asset": "pixelTokyo_ground",
+      "material": "hero-derived city path",
+      "sourceHero": "pixelTokyo_hero"
+    },
+    "egypt": {
+      "asset": "egypt_ground",
+      "material": "hero-derived pyramid sand",
+      "sourceHero": "egypt_hero"
+    }
+  },
+  "hero": {
+    "theme": "egypt",
+    "asset": "egypt_hero",
+    "source": "generated in repo"
+  }
+}

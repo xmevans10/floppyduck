@@ -6,31 +6,32 @@ final class GameUIPerformanceTests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testGameplayMetrics() throws {
+    /// 20–30 second classic gameplay loop with repeated taps.
+    /// Collects CPU, memory, and clock metrics over 3 iterations.
+    func testClassicGameplayLoop() throws {
         let app = XCUIApplication()
-        
-        // Measure CPU, Memory, and Clock time over 5 iterations
+
         let options = XCTMeasureOptions()
-        options.iterationCount = 5
-        
+        options.iterationCount = 3
+
         measure(metrics: [XCTCPUMetric(), XCTMemoryMetric(), XCTClockMetric()], options: options) {
             app.launch()
-            
-            // Wait for Splash screen to finish and tap the classic mode button.
+
+            // Wait for splash and tap CLASSIC
             let classicButton = app.buttons["CLASSIC, Solo Run"]
             XCTAssertTrue(classicButton.waitForExistence(timeout: 8.0), "Classic button should appear after splash screen")
             classicButton.tap()
-            
-            // Wait a moment for the 'GET READY' countdown to clear (~3 seconds)
+
+            // Wait for countdown to finish (~3 seconds)
             Thread.sleep(forTimeInterval: 3.5)
-            
-            // Simulate 5 flaps with a 0.5s pause to engage the physics and generation loops
-            for _ in 0..<5 {
+
+            // Simulate rapid-flap gameplay for ~20 seconds
+            let startTime = Date()
+            while Date().timeIntervalSince(startTime) < 20.0 {
                 app.tap()
-                Thread.sleep(forTimeInterval: 0.5)
+                Thread.sleep(forTimeInterval: 0.25) // ~240 BPM tapping
             }
-            
-            // Terminate the app so the next measure block iteration has a clean slate
+
             app.terminate()
         }
     }

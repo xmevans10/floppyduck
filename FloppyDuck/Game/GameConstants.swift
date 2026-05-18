@@ -136,6 +136,12 @@ enum GK {
         // Wood — park sign boards
         static let woodSurface  = Color(red: 0.55, green: 0.40, blue: 0.20)
         static let woodGrain    = Color(red: 0.42, green: 0.28, blue: 0.12)
+
+        // Pixel typography
+        static let titleCream        = Color(red: 1.0,   green: 0.965, blue: 0.847)  // #FFF6D8
+        static let cardTextPrimary   = Color(red: 0.29,  green: 0.226, blue: 0.141)  // #4A3A24
+        static let cardTextSecondary = Color(red: 0.43,  green: 0.376, blue: 0.298)  // #6E604C
+        static let outlineShadow     = Color(red: 0.063, green: 0.165, blue: 0.094)  // #102A18
     }
 }
 

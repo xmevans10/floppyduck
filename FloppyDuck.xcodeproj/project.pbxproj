@@ -7,19 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2207B7BAF82148B0BE7D5DE8 /* ThemePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4340EF076E87455287C0DFA4 /* ThemePreviewView.swift */; };
-		DEECE41FEA0C4454A6DE9182 /* PixelButtonBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86C1628F41C47F49421AE66 /* PixelButtonBackground.swift */; };
 		04666A470ECFB54E910D5BAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */; };
+		0BE2C5C15BDB95BDB4513ACC /* OptimizedGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE02A113F19E410CF301C13D /* OptimizedGameView.swift */; };
 		0FD673CC8B4188A4D5B14A68 /* DifficultyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20080901053DC37D1D533489 /* DifficultyManager.swift */; };
 		108CA6DF21DC6F0EDE421CE6 /* FloppyDuckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */; };
+		131183A5C3710A2967419ED0 /* PipeSkin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A5446E0CA1C4FF2B11AC94 /* PipeSkin.swift */; };
 		186FEA6281971BA1A9DA11E7 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AF25026FF4DAD8B84CD3AF5 /* ThemeManager.swift */; };
 		198EBFE8E30E445C4F77AAA3 /* GameModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5705907ABD8FDB16D7CA92 /* GameModelTests.swift */; };
 		1BB9C896FDADFF52588A8475 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F57D6444D8C2281BB9B5DEA /* GameScene.swift */; };
-		F20000000000000000000030 /* AudioNormalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000030 /* AudioNormalizationTests.swift */; };
 		20823673A32711E924366C3E /* PowerUpTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8AC2575D86DB5D5D7AA15BC /* PowerUpTests.swift */; };
+		2207B7BAF82148B0BE7D5DE8 /* ThemePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4340EF076E87455287C0DFA4 /* ThemePreviewView.swift */; };
 		2514E0B97AF4CE474E62C8E4 /* BannerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E8274143C4B7D0D42878511 /* BannerManager.swift */; };
-		131183A5C3710A2967419ED0 /* PipeSkin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A5446E0CA1C4FF2B11AC94 /* PipeSkin.swift */; };
-		AAF2774F842E3A0EE7661F7E /* PipeSkinManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9470B99E437E109110C09E26 /* PipeSkinManager.swift */; };
+		2C6BFFF71B1F4F47AAA17A63 /* PatchNotesOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40EF3CF403664FE7A584B1C6 /* PatchNotesOverlay.swift */; };
 		2EEEE91902883C94188AF143 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93CCF6581206AE4460510C5F /* Achievement.swift */; };
 		426F8821C9831D68A5B27147 /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5631A2E41C3ECFE3139D9B36 /* AchievementsView.swift */; };
 		488CD340D85ACEFFDE3580E9 /* GamePerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A39FF82D49B79DC5EE276C /* GamePerformanceTests.swift */; };
@@ -33,6 +32,7 @@
 		802DB17F036507568468C6F4 /* BackgroundTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */; };
 		83E9AC3E2D6FD63ABDC83B4D /* GameContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6536C0571E3D58450DECC837 /* GameContainerView.swift */; };
 		89B61228B4E653AA90467704 /* PRNG.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0703F9981111218E6869673 /* PRNG.swift */; };
+		8F49275B739499A85A822420 /* RapidFlapHotPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445359B5F10EBA12243F985D /* RapidFlapHotPathTests.swift */; };
 		915FA225B9808E616EE0A791 /* GameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF5559B8D2060C87F39CB2A8 /* GameManager.swift */; };
 		9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */; };
 		99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */; };
@@ -42,6 +42,7 @@
 		A10000000000000000000099 /* MultiplayerFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000099 /* MultiplayerFlowTests.swift */; };
 		A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709E16E4587997D58A88C22F /* BotCharacter.swift */; };
 		A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D35655334C23B66037D828D /* GameModels.swift */; };
+		AAF2774F842E3A0EE7661F7E /* PipeSkinManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9470B99E437E109110C09E26 /* PipeSkinManager.swift */; };
 		B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304050 /* SoundManager.swift */; };
 		B27BE089E51B1C20456A5356 /* BotCharacterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01FBB5328EEB7721AC2BC6C4 /* BotCharacterTests.swift */; };
 		B2F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */; };
@@ -65,6 +66,9 @@
 		D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652A08D5F52D04D2A070A /* StatsView.swift */; };
 		DA952EA9A8F9F4B558AE3005 /* DifficultyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEC0FA57DB4A1F4290C01227 /* DifficultyManagerTests.swift */; };
 		DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */; };
+		DEDE0001DEDE0001DEDE0001 /* ThemeRecipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDE0002DEDE0002DEDE0002 /* ThemeRecipe.swift */; };
+		DEDE0003DEDE0003DEDE0003 /* ThemeRecipeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDE0004DEDE0004DEDE0004 /* ThemeRecipeCatalog.swift */; };
+		DEECE41FEA0C4454A6DE9182 /* PixelButtonBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86C1628F41C47F49421AE66 /* PixelButtonBackground.swift */; };
 		E10000000000000000000001 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001 /* ScreenshotTests.swift */; };
 		E4862C9430504EFD8842A776 /* GameConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F70986D2FC6C1758722D0D5 /* GameConstants.swift */; };
 		EB39ADF36C8B378B568E6FFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */; };
@@ -84,13 +88,19 @@
 		F2000000000000000000000D /* theme_egypt.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000D /* theme_egypt.m4a */; };
 		F2000000000000000000000E /* theme_jungle.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000E /* theme_jungle.m4a */; };
 		F2000000000000000000000F /* theme_mountain.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* theme_mountain.m4a */; };
+		F20000000000000000000010 /* theme_western.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* theme_western.m4a */; };
+		F20000000000000000000011 /* quack_1.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* quack_1.m4a */; };
+		F20000000000000000000012 /* quack_2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000012 /* quack_2.m4a */; };
+		F20000000000000000000013 /* quack_3.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* quack_3.m4a */; };
+		F20000000000000000000014 /* quack_4.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000014 /* quack_4.m4a */; };
+		F20000000000000000000015 /* quack_5.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000015 /* quack_5.m4a */; };
 		F20000000000000000000020 /* theme_neonCity.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000020 /* theme_neonCity.m4a */; };
 		F20000000000000000000021 /* theme_underwater.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000021 /* theme_underwater.m4a */; };
 		F20000000000000000000022 /* theme_volcano.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000022 /* theme_volcano.m4a */; };
 		F20000000000000000000023 /* theme_arctic.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000023 /* theme_arctic.m4a */; };
 		F20000000000000000000024 /* theme_space.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000024 /* theme_space.m4a */; };
 		F20000000000000000000025 /* theme_pixelTokyo.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000025 /* theme_pixelTokyo.m4a */; };
-		F20000000000000000000010 /* theme_western.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* theme_western.m4a */; };
+		F20000000000000000000030 /* AudioNormalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000030 /* AudioNormalizationTests.swift */; };
 		F20000000000000000000040 /* quack_cowboy.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000040 /* quack_cowboy.m4a */; };
 		F20000000000000000000041 /* quack_alien.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000041 /* quack_alien.m4a */; };
 		F20000000000000000000042 /* quack_dinosaur.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000042 /* quack_dinosaur.m4a */; };
@@ -98,25 +108,18 @@
 		F20000000000000000000044 /* quack_devil.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000044 /* quack_devil.m4a */; };
 		F20000000000000000000045 /* quack_sailor.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000045 /* quack_sailor.m4a */; };
 		F20000000000000000000046 /* quack_pirate.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000046 /* quack_pirate.m4a */; };
-		DEDE0001DEDE0001DEDE0001 /* ThemeRecipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDE0002DEDE0002DEDE0002 /* ThemeRecipe.swift */; };
-		DEDE0003DEDE0003DEDE0003 /* ThemeRecipeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDE0004DEDE0004DEDE0004 /* ThemeRecipeCatalog.swift */; };
 		F20000000000000000000047 /* quack_golden.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000047 /* quack_golden.m4a */; };
 		F20000000000000000000048 /* quack_ninja.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000048 /* quack_ninja.m4a */; };
 		F20000000000000000000049 /* quack_astronaut.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000049 /* quack_astronaut.m4a */; };
 		F2000000000000000000004A /* quack_pharaoh.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000004A /* quack_pharaoh.m4a */; };
 		F2000000000000000000004B /* quack_robot.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000004B /* quack_robot.m4a */; };
 		F2000000000000000000004C /* quack_king.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000004C /* quack_king.m4a */; };
-		F20000000000000000000011 /* quack_1.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* quack_1.m4a */; };
-		F20000000000000000000012 /* quack_2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000012 /* quack_2.m4a */; };
-		F20000000000000000000013 /* quack_3.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* quack_3.m4a */; };
-		F20000000000000000000014 /* quack_4.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000014 /* quack_4.m4a */; };
-		F20000000000000000000015 /* quack_5.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000015 /* quack_5.m4a */; };
+		F20000000000000000000060 /* cruchh.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000060 /* cruchh.m4a */; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 		FF1E7DCB9494C2D8DE5E22BC /* ParallaxManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */; };
 		PH0000000000000000000003 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = PH0000000000000000000002 /* PostHog */; };
 		PH0000000000000000000004 /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PH0000000000000000000005 /* AnalyticsManager.swift */; };
 		SE0000000000000000000003 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = SE0000000000000000000002 /* Sentry */; };
-		2C6BFFF71B1F4F47AAA17A63 /* PatchNotesOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40EF3CF403664FE7A584B1C6 /* PatchNotesOverlay.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -137,21 +140,21 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		4340EF076E87455287C0DFA4 /* ThemePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePreviewView.swift; sourceTree = "<group>"; };
-		E86C1628F41C47F49421AE66 /* PixelButtonBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelButtonBackground.swift; sourceTree = "<group>"; };
 		0096DDB5D5C93DB7732319BF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		01256F5F2501C40E0B8C7A2F /* BotController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotController.swift; sourceTree = "<group>"; };
 		01FBB5328EEB7721AC2BC6C4 /* BotCharacterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacterTests.swift; sourceTree = "<group>"; };
 		04256D4EFAB614B2184DDDCE /* BattleBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BattleBanner.swift; sourceTree = "<group>"; };
 		0F70986D2FC6C1758722D0D5 /* GameConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConstants.swift; sourceTree = "<group>"; };
 		1E8274143C4B7D0D42878511 /* BannerManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BannerManager.swift; sourceTree = "<group>"; };
-		32A5446E0CA1C4FF2B11AC94 /* PipeSkin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipeSkin.swift; sourceTree = "<group>"; };
-		9470B99E437E109110C09E26 /* PipeSkinManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipeSkinManager.swift; sourceTree = "<group>"; };
 		20080901053DC37D1D533489 /* DifficultyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DifficultyManager.swift; sourceTree = "<group>"; };
 		288CEF83A709F6415BE70A30 /* GameUIPerformanceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameUIPerformanceTests.swift; sourceTree = "<group>"; };
 		2E1FEDB6FF10BA6FFD17B81A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		32A5446E0CA1C4FF2B11AC94 /* PipeSkin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipeSkin.swift; sourceTree = "<group>"; };
 		3D35655334C23B66037D828D /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
+		40EF3CF403664FE7A584B1C6 /* PatchNotesOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PatchNotesOverlay.swift; sourceTree = "<group>"; };
 		4140A43FD1A514A199DC2BD5 /* VersusIntroView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VersusIntroView.swift; sourceTree = "<group>"; };
+		4340EF076E87455287C0DFA4 /* ThemePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePreviewView.swift; sourceTree = "<group>"; };
+		445359B5F10EBA12243F985D /* RapidFlapHotPathTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RapidFlapHotPathTests.swift; sourceTree = "<group>"; };
 		44A39FF82D49B79DC5EE276C /* GamePerformanceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GamePerformanceTests.swift; sourceTree = "<group>"; };
 		451E6FA22D65A28DB1459F95 /* FloppyDuckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloppyDuckApp.swift; sourceTree = "<group>"; };
 		45E49708FF03202FD286092D /* FloppyDuck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FloppyDuck.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -162,14 +165,13 @@
 		6536C0571E3D58450DECC837 /* GameContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameContainerView.swift; sourceTree = "<group>"; };
 		6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchmakingView.swift; sourceTree = "<group>"; };
 		6F57D6444D8C2281BB9B5DEA /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
-		DEDE0002DEDE0002DEDE0002 /* ThemeRecipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeRecipe.swift; sourceTree = "<group>"; };
-		DEDE0004DEDE0004DEDE0004 /* ThemeRecipeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeRecipeCatalog.swift; sourceTree = "<group>"; };
 		709E16E4587997D58A88C22F /* BotCharacter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacter.swift; sourceTree = "<group>"; };
 		7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTheme.swift; sourceTree = "<group>"; };
 		81BFA94D06C0765AAE762441 /* PowerUpController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerUpController.swift; sourceTree = "<group>"; };
 		8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexClient.swift; sourceTree = "<group>"; };
 		8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		93CCF6581206AE4460510C5F /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Achievement.swift; sourceTree = "<group>"; };
+		9470B99E437E109110C09E26 /* PipeSkinManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipeSkinManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6071829304050 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A20000000000000000000001 /* FloppyDuckTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -180,6 +182,7 @@
 		AEC0FA57DB4A1F4290C01227 /* DifficultyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DifficultyManagerTests.swift; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293040 /* FloppyDuck.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FloppyDuck.entitlements; sourceTree = "<group>"; };
 		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
+		BE02A113F19E410CF301C13D /* OptimizedGameView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OptimizedGameView.swift; sourceTree = "<group>"; };
 		C20000000000000000000001 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		C20000000000000000000002 /* IdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityStore.swift; sourceTree = "<group>"; };
 		C20000000000000000000003 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
@@ -195,13 +198,15 @@
 		D10000000000000000000005 /* PixelTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelTextField.swift; sourceTree = "<group>"; };
 		DC899E2E5A7F7DAC55ECAADB /* ShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopView.swift; sourceTree = "<group>"; };
 		DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		DEDE0002DEDE0002DEDE0002 /* ThemeRecipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeRecipe.swift; sourceTree = "<group>"; };
+		DEDE0004DEDE0004DEDE0004 /* ThemeRecipeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeRecipeCatalog.swift; sourceTree = "<group>"; };
 		DF5559B8D2060C87F39CB2A8 /* GameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameManager.swift; sourceTree = "<group>"; };
 		DFA2E95068DB1B30BB047902 /* PixelIconFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelIconFactory.swift; sourceTree = "<group>"; };
 		E20000000000000000000001 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		E20000000000000000000002 /* FloppyDuckUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E511804596196C25C1C1D540 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		E67C34482BABF41365A82C48 /* AchievementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementTests.swift; sourceTree = "<group>"; };
-		F10000000000000000000030 /* AudioNormalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNormalizationTests.swift; sourceTree = "<group>"; };
+		E86C1628F41C47F49421AE66 /* PixelButtonBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelButtonBackground.swift; sourceTree = "<group>"; };
 		E8AC2575D86DB5D5D7AA15BC /* PowerUpTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerUpTests.swift; sourceTree = "<group>"; };
 		ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallaxManager.swift; sourceTree = "<group>"; };
 		EF6223E9869786181FDBDB97 /* TextureFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextureFactory.swift; sourceTree = "<group>"; };
@@ -221,36 +226,37 @@
 		F1000000000000000000000D /* theme_egypt.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_egypt.m4a; sourceTree = "<group>"; };
 		F1000000000000000000000E /* theme_jungle.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_jungle.m4a; sourceTree = "<group>"; };
 		F1000000000000000000000F /* theme_mountain.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_mountain.m4a; sourceTree = "<group>"; };
+		F10000000000000000000010 /* theme_western.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_western.m4a; sourceTree = "<group>"; };
+		F10000000000000000000011 /* quack_1.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_1.m4a; sourceTree = "<group>"; };
+		F10000000000000000000012 /* quack_2.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_2.m4a; sourceTree = "<group>"; };
+		F10000000000000000000013 /* quack_3.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_3.m4a; sourceTree = "<group>"; };
+		F10000000000000000000014 /* quack_4.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_4.m4a; sourceTree = "<group>"; };
+		F10000000000000000000015 /* quack_5.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_5.m4a; sourceTree = "<group>"; };
 		F10000000000000000000020 /* theme_neonCity.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_neonCity.m4a; sourceTree = "<group>"; };
 		F10000000000000000000021 /* theme_underwater.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_underwater.m4a; sourceTree = "<group>"; };
 		F10000000000000000000022 /* theme_volcano.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_volcano.m4a; sourceTree = "<group>"; };
 		F10000000000000000000023 /* theme_arctic.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_arctic.m4a; sourceTree = "<group>"; };
 		F10000000000000000000024 /* theme_space.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_space.m4a; sourceTree = "<group>"; };
 		F10000000000000000000025 /* theme_pixelTokyo.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_pixelTokyo.m4a; sourceTree = "<group>"; };
-		F10000000000000000000010 /* theme_western.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_western.m4a; sourceTree = "<group>"; };
-		F10000000000000000000040 /* quack_cowboy.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_cowboy.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000041 /* quack_alien.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_alien.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000042 /* quack_dinosaur.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_dinosaur.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000043 /* quack_wizard.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_wizard.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000044 /* quack_devil.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_devil.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000045 /* quack_sailor.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_sailor.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000046 /* quack_pirate.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_pirate.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000047 /* quack_golden.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_golden.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000048 /* quack_ninja.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_ninja.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000049 /* quack_astronaut.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_astronaut.m4a"; sourceTree = "<group>"; };
-		F1000000000000000000004A /* quack_pharaoh.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_pharaoh.m4a"; sourceTree = "<group>"; };
-		F1000000000000000000004B /* quack_robot.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_robot.m4a"; sourceTree = "<group>"; };
-		F1000000000000000000004C /* quack_king.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = "quack_king.m4a"; sourceTree = "<group>"; };
-		F10000000000000000000011 /* quack_1.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_1.m4a; sourceTree = "<group>"; };
-		F10000000000000000000012 /* quack_2.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_2.m4a; sourceTree = "<group>"; };
-		F10000000000000000000013 /* quack_3.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_3.m4a; sourceTree = "<group>"; };
-		F10000000000000000000014 /* quack_4.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_4.m4a; sourceTree = "<group>"; };
-		F10000000000000000000015 /* quack_5.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = quack_5.m4a; sourceTree = "<group>"; };
+		F10000000000000000000030 /* AudioNormalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNormalizationTests.swift; sourceTree = "<group>"; };
+		F10000000000000000000040 /* quack_cowboy.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_cowboy.m4a; sourceTree = "<group>"; };
+		F10000000000000000000041 /* quack_alien.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_alien.m4a; sourceTree = "<group>"; };
+		F10000000000000000000042 /* quack_dinosaur.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_dinosaur.m4a; sourceTree = "<group>"; };
+		F10000000000000000000043 /* quack_wizard.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_wizard.m4a; sourceTree = "<group>"; };
+		F10000000000000000000044 /* quack_devil.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_devil.m4a; sourceTree = "<group>"; };
+		F10000000000000000000045 /* quack_sailor.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_sailor.m4a; sourceTree = "<group>"; };
+		F10000000000000000000046 /* quack_pirate.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_pirate.m4a; sourceTree = "<group>"; };
+		F10000000000000000000047 /* quack_golden.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_golden.m4a; sourceTree = "<group>"; };
+		F10000000000000000000048 /* quack_ninja.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_ninja.m4a; sourceTree = "<group>"; };
+		F10000000000000000000049 /* quack_astronaut.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_astronaut.m4a; sourceTree = "<group>"; };
+		F1000000000000000000004A /* quack_pharaoh.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_pharaoh.m4a; sourceTree = "<group>"; };
+		F1000000000000000000004B /* quack_robot.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_robot.m4a; sourceTree = "<group>"; };
+		F1000000000000000000004C /* quack_king.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_king.m4a; sourceTree = "<group>"; };
+		F10000000000000000000060 /* cruchh.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = cruchh.m4a; sourceTree = "<group>"; };
 		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		FE0494021C7FBFABF4BD6618 /* MedalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedalTests.swift; sourceTree = "<group>"; };
 		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
 		PH0000000000000000000005 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
-		40EF3CF403664FE7A584B1C6 /* PatchNotesOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PatchNotesOverlay.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -298,6 +304,7 @@
 				D10000000000000000000004 /* LeaderboardView.swift */,
 				D10000000000000000000005 /* PixelTextField.swift */,
 				4340EF076E87455287C0DFA4 /* ThemePreviewView.swift */,
+				BE02A113F19E410CF301C13D /* OptimizedGameView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -308,6 +315,7 @@
 				40E7256AF7638B5B6B81606E /* FloppyDuck */,
 				A40000000000000000000001 /* FloppyDuckTests */,
 				E40000000000000000000001 /* FloppyDuckUITests */,
+				F10000000000000000000060 /* cruchh.m4a */,
 				869F6DB7D2C008CCC31F4B39 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -377,7 +385,6 @@
 			path = Game;
 			sourceTree = "<group>";
 		};
-
 		869F6DB7D2C008CCC31F4B39 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -412,6 +419,7 @@
 				CD5705907ABD8FDB16D7CA92 /* GameModelTests.swift */,
 				A20000000000000000000099 /* MultiplayerFlowTests.swift */,
 				44A39FF82D49B79DC5EE276C /* GamePerformanceTests.swift */,
+				445359B5F10EBA12243F985D /* RapidFlapHotPathTests.swift */,
 			);
 			path = FloppyDuckTests;
 			sourceTree = "<group>";
@@ -504,6 +512,19 @@
 			path = Music;
 			sourceTree = "<group>";
 		};
+		F30000000000000000000003 /* Quacks */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000011 /* quack_1.m4a */,
+				F10000000000000000000012 /* quack_2.m4a */,
+				F10000000000000000000013 /* quack_3.m4a */,
+				F10000000000000000000014 /* quack_4.m4a */,
+				F10000000000000000000015 /* quack_5.m4a */,
+				F30000000000000000000004 /* Skins */,
+			);
+			path = Quacks;
+			sourceTree = "<group>";
+		};
 		F30000000000000000000004 /* Skins */ = {
 			isa = PBXGroup;
 			children = (
@@ -522,19 +543,6 @@
 				F1000000000000000000004C /* quack_king.m4a */,
 			);
 			path = Skins;
-			sourceTree = "<group>";
-		};
-		F30000000000000000000003 /* Quacks */ = {
-			isa = PBXGroup;
-			children = (
-				F10000000000000000000011 /* quack_1.m4a */,
-				F10000000000000000000012 /* quack_2.m4a */,
-				F10000000000000000000013 /* quack_3.m4a */,
-				F10000000000000000000014 /* quack_4.m4a */,
-				F10000000000000000000015 /* quack_5.m4a */,
-				F30000000000000000000004 /* Skins */,
-			);
-			path = Quacks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -649,6 +657,7 @@
 				F20000000000000000000009 /* adventure_stage_select.m4a in Resources */,
 				F2000000000000000000000A /* CREDITS.txt in Resources */,
 				F2000000000000000000000B /* quack.wav in Resources */,
+				F20000000000000000000060 /* cruchh.m4a in Resources */,
 				F2000000000000000000000C /* theme_cave.m4a in Resources */,
 				F2000000000000000000000D /* theme_egypt.m4a in Resources */,
 				F2000000000000000000000E /* theme_jungle.m4a in Resources */,
@@ -678,7 +687,6 @@
 				F2000000000000000000004A /* quack_pharaoh.m4a in Resources */,
 				F2000000000000000000004B /* quack_robot.m4a in Resources */,
 				F2000000000000000000004C /* quack_king.m4a in Resources */,
-
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -714,7 +722,6 @@
 				BCA7AC277DEBF717137BC891 /* PowerUp.swift in Sources */,
 				DEDE0001DEDE0001DEDE0001 /* ThemeRecipe.swift in Sources */,
 				DEDE0003DEDE0003DEDE0003 /* ThemeRecipeCatalog.swift in Sources */,
-
 				915FA225B9808E616EE0A791 /* GameManager.swift in Sources */,
 				A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */,
 				2EEEE91902883C94188AF143 /* Achievement.swift in Sources */,
@@ -753,11 +760,10 @@
 				AAF2774F842E3A0EE7661F7E /* PipeSkinManager.swift in Sources */,
 				52928A5D99AFDD8C805F878A /* BattleBanner.swift in Sources */,
 				PH0000000000000000000004 /* AnalyticsManager.swift in Sources */,
-			
 				DEECE41FEA0C4454A6DE9182 /* PixelButtonBackground.swift in Sources */,
 				2207B7BAF82148B0BE7D5DE8 /* ThemePreviewView.swift in Sources */,
-			
 				2C6BFFF71B1F4F47AAA17A63 /* PatchNotesOverlay.swift in Sources */,
+				0BE2C5C15BDB95BDB4513ACC /* OptimizedGameView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -776,6 +782,7 @@
 				198EBFE8E30E445C4F77AAA3 /* GameModelTests.swift in Sources */,
 				A10000000000000000000099 /* MultiplayerFlowTests.swift in Sources */,
 				488CD340D85ACEFFDE3580E9 /* GamePerformanceTests.swift in Sources */,
+				8F49275B739499A85A822420 /* RapidFlapHotPathTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -818,7 +825,7 @@
 				CODE_SIGN_ENTITLEMENTS = FloppyDuck/FloppyDuck.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 9;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_ASSET_PATHS = "\"FloppyDuck/Preview Content\"";
 				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
@@ -924,7 +931,7 @@
 				CODE_SIGN_ENTITLEMENTS = FloppyDuck/FloppyDuck.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 9;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_ASSET_PATHS = "\"FloppyDuck/Preview Content\"";
 				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
@@ -970,7 +977,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -990,7 +997,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1060,7 +1067,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1079,7 +1086,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 8K5ZVPCQ42;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

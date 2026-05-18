@@ -68,6 +68,11 @@ final class ParallaxManager {
     private var debugTreeSpawns: Int = 0
     private var debugSoloSpawns: Int = 0
     private var debugReportCounter: Int = 0
+    /// Only log scatter stats when `-DebugFrameLog` is passed as a launch argument.
+    private let debugLogEnabled: Bool = {
+        ProcessInfo.processInfo.arguments.contains("-DebugFrameLog")
+            || ProcessInfo.processInfo.environment["DEBUG_FRAME_LOG"] == "1"
+    }()
 
     func debugScatteredCount() -> Int { scatteredSprites.count }
 #endif
@@ -207,7 +212,9 @@ final class ParallaxManager {
         nextSpawnDistance = CGFloat.random(in: config.spacingRange)
 
 #if DEBUG
-        print("[Parallax] init: \(scatteredSprites.count) sprites from \(initialClusters) clusters (trees:\(config.treeProps.count) nonTrees:\(config.nonTreeProps.count))")
+        if debugLogEnabled {
+            print("[Parallax] init: \(scatteredSprites.count) sprites from \(initialClusters) clusters (trees:\(config.treeProps.count) nonTrees:\(config.nonTreeProps.count))")
+        }
 #endif
     }
 
@@ -384,7 +391,7 @@ final class ParallaxManager {
 
 #if DEBUG
         debugReportCounter += 1
-        if debugReportCounter >= 180 { // every ~3s at 60fps
+        if debugReportCounter >= 180 && debugLogEnabled { // every ~3s at 60fps
             let skipRate = debugOverlapChecks > 0
                 ? Int(Double(debugOverlapSkips) / Double(debugOverlapChecks) * 100)
                 : 0

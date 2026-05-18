@@ -22,7 +22,7 @@ final class AppleSignInCoordinator: NSObject {
         currentNonce = nonce
 
         let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.fullName, .email]
+        request.requestedScopes = []
         request.nonce = Self.sha256(nonce)
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -91,16 +91,11 @@ extension AppleSignInCoordinator: ASAuthorizationControllerDelegate {
             return
         }
 
-        let components = [credential.fullName?.givenName, credential.fullName?.familyName]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        let displayName = components.isEmpty ? nil : components.joined(separator: " ")
-
         let payload = AppleSignInPayload(
             identityToken: identityToken,
             nonce: currentNonce,
             appleUserId: credential.user,
-            displayName: displayName
+            displayName: nil
         )
         finish(with: .success(payload))
     }

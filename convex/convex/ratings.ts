@@ -19,7 +19,7 @@ export const leaderboard = query({
     const topN = Math.max(1, Math.min(100, Math.floor(args.limit ?? 50)));
 
     const entries: LeaderboardEntry[] = [];
-    const seenAppleIds = new Set<string>();
+    const seenIdentityIds = new Set<string>();
     let cursor: string | null = null;
 
     while (entries.length < topN) {
@@ -31,9 +31,10 @@ export const leaderboard = query({
 
       for (const row of batch.page) {
         const user = await ctx.db.get(row.userId);
-        if (!user || user.provider !== "apple" || !user.appleUserId) continue;
-        if (seenAppleIds.has(user.appleUserId)) continue;
-        seenAppleIds.add(user.appleUserId);
+        const identityId = ratingIdentityId(user);
+        if (!identityId) continue;
+        if (seenIdentityIds.has(identityId)) continue;
+        seenIdentityIds.add(identityId);
 
         entries.push({
           userId: user._id,
@@ -51,7 +52,7 @@ export const leaderboard = query({
     const requestUser = await resolveRequestUser(ctx, args);
 
     let ownEntry: LeaderboardEntry | null = null;
-    if (requestUser && requestUser.provider === "apple" && requestUser.appleUserId) {
+    if (requestUser && ratingIdentityId(requestUser)) {
       const alreadyListed = entries.some((e) => e.userId === requestUser._id);
       if (!alreadyListed) {
         ownEntry = await computeUserRank(ctx, requestUser);
@@ -93,7 +94,7 @@ async function computeUserRank(
   requestUser: Doc<"users">,
 ): Promise<LeaderboardEntry | null> {
   let rank = 1;
-  const seenAppleIds = new Set<string>();
+  const seenIdentityIds = new Set<string>();
   let cursor: string | null = null;
 
   const userRating = await ctx.db
@@ -119,9 +120,10 @@ async function computeUserRank(
       }
 
       const user = await ctx.db.get(row.userId);
-      if (!user || user.provider !== "apple" || !user.appleUserId) continue;
-      if (seenAppleIds.has(user.appleUserId)) continue;
-      seenAppleIds.add(user.appleUserId);
+      const identityId = ratingIdentityId(user);
+      if (!identityId) continue;
+      if (seenIdentityIds.has(identityId)) continue;
+      seenIdentityIds.add(identityId);
       rank++;
     }
 
@@ -150,17 +152,18 @@ export const pruneNonAppleRatings = internalMutation({
       .order("desc")
       .collect();
     let deleted = 0;
-    const seenAppleIds = new Set<string>();
+    const seenIdentityIds = new Set<string>();
 
     for (const rating of ratings) {
       const user = await ctx.db.get(rating.userId);
-      if (!user || user.provider !== "apple" || !user.appleUserId || seenAppleIds.has(user.appleUserId)) {
+      const identityId = user ? ratingIdentityId(user) : null;
+      if (!identityId || seenIdentityIds.has(identityId)) {
         await ctx.db.delete(rating._id);
         deleted += 1;
         continue;
       }
 
-      seenAppleIds.add(user.appleUserId);
+      seenIdentityIds.add(identityId);
     }
 
     return {
@@ -169,3 +172,13 @@ export const pruneNonAppleRatings = internalMutation({
     };
   },
 });
+
+function ratingIdentityId(user: Doc<"users">): string | null {
+  if (user.provider === "gameCenter" && user.gameCenterPlayerId) {
+    return `gc:${user.gameCenterPlayerId}`;
+  }
+  if (user.provider === "apple" && user.appleUserId) {
+    return `apple:${user.appleUserId}`;
+  }
+  return null;
+}

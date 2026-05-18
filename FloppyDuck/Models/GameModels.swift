@@ -129,6 +129,7 @@ enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
 enum AuthProvider: String, Hashable, Codable {
     case guest
     case apple
+    case gameCenter
 }
 
 enum AuthState: Hashable {
@@ -547,6 +548,14 @@ struct LeaderboardEntry: Identifiable, Codable, Hashable {
     let id: String
     let username: String
     let rating: Int
+    let rank: Int
+}
+
+/// Single-player high score leaderboard entry.
+struct HighScoreEntry: Identifiable, Codable, Hashable {
+    let id: String
+    let username: String
+    let bestScore: Int
     let rank: Int
 }
 

@@ -13,6 +13,7 @@ enum GameSound: String {
     case newBest
     case milestone
     case quack
+    case bread
     case coin
     case powerUp
     case debuff
@@ -28,6 +29,8 @@ final class SoundManager {
     static let shared = SoundManager()
 
     private var players: [GameSound: AVAudioPlayer] = [:]
+    private var playerPools: [GameSound: [AVAudioPlayer]] = [:]
+    private var playerPoolIndexes: [GameSound: Int] = [:]
     private var soundData: [GameSound: Data] = [:]
     private var bgmPlayer: AVAudioPlayer?
     private var playBgmPlayer: AVAudioPlayer?
@@ -52,8 +55,10 @@ final class SoundManager {
     /// Chill tracks used for the home screen menu music.
     private static let homeTrackFiles = ["adventure_stage_select", "adventure_stage_1", "adventure_stage_2"]
 
-    /// Per-skin sound variant players (keyed by "\(skin.rawValue)_\(sound.rawValue)")
-    private var skinPlayers: [String: AVAudioPlayer] = [:]
+    /// Per-skin sound variant pools (keyed by "\(skin.rawValue)_\(sound.rawValue)")
+    /// Flap uses a pool of 6 players; death uses a single player (low frequency).
+    private var skinPlayerPools: [String: [AVAudioPlayer]] = [:]
+    private var skinPoolIndexes: [String: Int] = [:]
 
     /// Currently active skin for sound variants
     private var activeSkin: DuckSkin = .classic
@@ -61,8 +66,11 @@ final class SoundManager {
     /// Base volume for each SFX — used to scale with the user's SFX volume preference.
     private var sfxBaseVolumes: [GameSound: (Data, Float)] = [:]
 
+    /// Base volumes for per-skin variant pools (keyed by pool key string).
+    private var skinBaseVolumes: [String: Float] = [:]
+
     /// Dedicated serial queue for audio playback — keeps AVAudioPlayer off the main/render thread.
-    private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInteractive)
+    private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInitiated)
     private var didPrepareAudio = false
     private var didSetupSession = false
 
@@ -122,15 +130,32 @@ final class SoundManager {
             guard let self else { return }
             self.prepareIfNeeded()
 
-            // Per-skin variant for flap, death, and quack
+            // Skin variant pools for flap/death/quack
             if (sound == .flap || sound == .death || sound == .quack) && self.activeSkin != .classic {
                 let key = "\(self.activeSkin.rawValue)_\(sound.rawValue)"
-                if let skinPlayer = self.skinPlayers[key] {
-                    skinPlayer.stop()
-                    skinPlayer.currentTime = 0
-                    skinPlayer.play()
+                if let pool = self.skinPlayerPools[key], !pool.isEmpty {
+                    let index = self.skinPoolIndexes[key, default: 0] % pool.count
+                    let player = pool[index]
+                    self.skinPoolIndexes[key] = index + 1
+                    if player.isPlaying {
+                        player.stop()
+                        player.currentTime = 0
+                    }
+                    player.play()
                     return
                 }
+            }
+
+            if let pool = self.playerPools[sound], !pool.isEmpty {
+                let index = self.playerPoolIndexes[sound, default: 0] % pool.count
+                let player = pool[index]
+                self.playerPoolIndexes[sound] = index + 1
+                if player.isPlaying {
+                    player.stop()
+                    player.currentTime = 0
+                }
+                player.play()
+                return
             }
 
             guard let player = self.players[sound] else { return }
@@ -260,13 +285,19 @@ final class SoundManager {
                     player.volume = baseVol * self._sfxVolume
                 }
             }
+            for (sound, pool) in self.playerPools {
+                if let (_, baseVol) = self.sfxBaseVolumes[sound] {
+                    pool.forEach { $0.volume = baseVol * self._sfxVolume }
+                }
+            }
+            for (key, pool) in self.skinPlayerPools {
+                if let baseVol = self.skinBaseVolumes[key] {
+                    pool.forEach { $0.volume = baseVol * self._sfxVolume }
+                }
+            }
             
             if self.isEnabled {
                 self.prepareIfNeeded()
-                // Only restart BGM when sound was just re-enabled (toggled
-                // from off → on), NOT on every volume slider change.
-                // This prevents the gameplay theme from playing while the
-                // user is adjusting sliders on the settings screen.
                 if justEnabled {
                     if self.bgmPlayer != nil && !self.bgmPlayer!.isPlaying {
                         self.bgmPlayer?.play()
@@ -277,6 +308,8 @@ final class SoundManager {
                 return
             }
             self.players.values.forEach { $0.stop() }
+            self.playerPools.values.flatMap { $0 }.forEach { $0.stop() }
+            self.skinPlayerPools.values.flatMap { $0 }.forEach { $0.stop() }
             self.bgmPlayer?.stop()
             self.playBgmPlayer?.stop()
             self.menuTracks.forEach { $0.stop() }
@@ -318,6 +351,7 @@ final class SoundManager {
             (.newBest,   newBestWav(),   0.35),
             (.milestone, milestoneWav(), 0.25),
             (.quack,     loadBundledQuack(),  0.35),
+            (.bread,     breadWav(),     0.30),
             (.coin,      coinWav(),      0.30),
             (.powerUp,   powerUpWav(),   0.30),
             (.debuff,    debuffWav(),    0.28),
@@ -329,6 +363,11 @@ final class SoundManager {
                 p.volume = vol * _sfxVolume
                 p.prepareToPlay()
                 players[sound] = p
+            }
+            if sound == .flap {
+                playerPools[sound] = makePlayerPool(data: data, volume: vol * _sfxVolume, count: 6)
+            } else if sound == .bread {
+                playerPools[sound] = makePlayerPool(data: data, volume: vol * _sfxVolume, count: 4)
             }
         }
 
@@ -476,6 +515,24 @@ final class SoundManager {
             sine(freq: 1320, dur: 0.10, decay: 0.10))
     }
 
+    private func breadWav() -> Data {
+        if let url = Bundle.main.url(forResource: "cruchh", withExtension: "m4a"),
+           let data = try? Data(contentsOf: url) {
+            return data
+        }
+
+        return coinWav()
+    }
+
+    private func makePlayerPool(data: Data, volume: Float, count: Int) -> [AVAudioPlayer] {
+        (0..<count).compactMap { _ in
+            guard let player = try? AVAudioPlayer(data: data) else { return nil }
+            player.volume = volume
+            player.prepareToPlay()
+            return player
+        }
+    }
+
     private func deathWav() -> Data {
         wav(chirp(f0: 420, f1: 80, dur: 0.22))
     }
@@ -530,11 +587,9 @@ final class SoundManager {
     private func loadBundledQuack() -> Data {
         if let url = Bundle.main.url(forResource: "quack", withExtension: "wav"),
            let data = try? Data(contentsOf: url) {
-            print("[SoundManager] ✅ Loaded quack.wav from bundle (\(data.count) bytes)")
             return data
         }
         // Fallback: synthesized square-wave honk if the asset is missing
-        print("[SoundManager] ⚠️ quack.wav not found in bundle — using synthesized fallback")
         return wav(square(freq: 600, dur: 0.12, decay: 0.15) +
                    silence(0.02) +
                    square(freq: 520, dur: 0.15, decay: 0.18))
@@ -555,19 +610,16 @@ final class SoundManager {
                    ?? Bundle.main.url(forResource: name, withExtension: "m4a")
                    ?? Bundle.main.url(forResource: name, withExtension: "wav")
             guard let fileUrl = url, let player = try? AVAudioPlayer(contentsOf: fileUrl) else {
-                print("[SoundManager] ⚠️ Quack file \(name) not found in bundle")
                 continue
             }
             player.volume = targetVolume
             player.prepareToPlay()
             quackPlayers.append(player)
-            print("[SoundManager] ✅ Loaded \(name) for pipe quacks")
         }
         if quackPlayers.isEmpty {
             // Fallback: re-use the splash quack as the sole pipe quack
             if let splashPlayer = players[.quack] {
                 quackPlayers.append(splashPlayer)
-                print("[SoundManager] ℹ️ No quack variants found — using splash quack for pipe quacks")
             }
         }
     }
@@ -581,7 +633,7 @@ final class SoundManager {
             // Non-classic skins get a unique synthesized quack
             if self.activeSkin != .classic {
                 let key = "\(self.activeSkin.rawValue)_quack"
-                if let skinPlayer = self.skinPlayers[key] {
+                if let pool = self.skinPlayerPools[key], let skinPlayer = pool.first {
                     skinPlayer.stop()
                     skinPlayer.currentTime = 0
                     skinPlayer.play()
@@ -633,7 +685,7 @@ final class SoundManager {
     // MARK: - Per-Skin Sound Variants (Item 11)
 
     /// Build per-skin flap, death, and quack sounds.
-    /// Flap/death use synthesized waveforms; quacks load bundled audio files per skin.
+    /// Flap uses a player pool (6); death and quack use single players.
     private func buildSkinVariants(for skin: DuckSkin) {
         guard skin != .classic else { return }
         let key_flap = "\(skin.rawValue)_flap"
@@ -641,20 +693,21 @@ final class SoundManager {
         let key_quack = "\(skin.rawValue)_quack"
 
         // Skip if already built
-        if skinPlayers[key_flap] != nil { return }
+        if skinPlayerPools[key_flap] != nil { return }
 
         let (flapData, flapVol) = self.skinFlapWav(skin: skin)
         let (deathData, deathVol) = self.skinDeathWav(skin: skin)
 
-        if let p = try? AVAudioPlayer(data: flapData) {
-            p.volume = flapVol * _sfxVolume
-            p.prepareToPlay()
-            self.skinPlayers[key_flap] = p
-        }
+        // Flap: build pool of 6 for rapid-fire taps
+        skinPlayerPools[key_flap] = makePlayerPool(data: flapData, volume: flapVol * _sfxVolume, count: 6)
+        skinBaseVolumes[key_flap] = flapVol
+
+        // Death: single player (infrequent)
         if let p = try? AVAudioPlayer(data: deathData) {
             p.volume = deathVol * _sfxVolume
             p.prepareToPlay()
-            self.skinPlayers[key_death] = p
+            skinPlayerPools[key_death] = [p]
+            skinBaseVolumes[key_death] = deathVol
         }
 
         // Per-skin quack: load bundled audio file (e.g. quack_cowboy.m4a)
@@ -663,21 +716,23 @@ final class SoundManager {
            let p = try? AVAudioPlayer(contentsOf: url) {
             p.volume = 0.35 * _sfxVolume
             p.prepareToPlay()
-            self.skinPlayers[key_quack] = p
+            skinPlayerPools[key_quack] = [p]
+            skinBaseVolumes[key_quack] = 0.35
         } else if let url = Bundle.main.url(forResource: quackFile, withExtension: "m4a"),
                   let p = try? AVAudioPlayer(contentsOf: url) {
-            // Fallback: flat bundle lookup (Xcode may flatten the directory)
             p.volume = 0.35 * _sfxVolume
             p.prepareToPlay()
-            self.skinPlayers[key_quack] = p
+            skinPlayerPools[key_quack] = [p]
+            skinBaseVolumes[key_quack] = 0.35
         }
 
         // Synthesized fallback for skins without dedicated quack audio
-        if skinPlayers[key_quack] == nil, let (quackData, quackVol) = skinQuackWav(skin: skin) {
+        if skinPlayerPools[key_quack] == nil, let (quackData, quackVol) = skinQuackWav(skin: skin) {
             if let p = try? AVAudioPlayer(data: quackData) {
                 p.volume = quackVol * _sfxVolume
                 p.prepareToPlay()
-                self.skinPlayers[key_quack] = p
+                skinPlayerPools[key_quack] = [p]
+                skinBaseVolumes[key_quack] = quackVol
             }
         }
     }

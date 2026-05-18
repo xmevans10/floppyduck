@@ -30,25 +30,23 @@ struct FloppyDuckApp: App {
                 options.debug = sentryVerbose
                 options.tracesSampleRate = 0.2
                 options.attachScreenshot = false
+                // Gameplay taps must never be auto-instrumented — tap-correlated
+                // spans add ~1–3 ms of main-thread overhead per touch event and
+                // cause frame spikes at 60 FPS during rapid flapping.
                 options.enableUserInteractionTracing = false
                 #else
                 options.environment = "production"
                 options.debug = false
                 options.tracesSampleRate = 0.1
                 options.attachScreenshot = true
-                options.enableUserInteractionTracing = true
+                // Gameplay taps must never be auto-instrumented (see DEBUG comment).
+                options.enableUserInteractionTracing = false
                 #endif
             }
 
             AnalyticsManager.configure()
             AnalyticsManager.shared.trackAppOpen()
             SoundManager.shared.prepare()
-
-            GKLocalPlayer.local.authenticateHandler = { _, error in
-                if let error = error {
-                    print("[GameKit] Auth error: \(error.localizedDescription)")
-                }
-            }
         }
 
         let manager = GameManager()

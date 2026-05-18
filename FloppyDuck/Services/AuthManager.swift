@@ -1,5 +1,7 @@
 import AuthenticationServices
 import Foundation
+import GameKit
+import UIKit
 
 @MainActor
 final class AuthManager: ObservableObject {
@@ -31,7 +33,7 @@ final class AuthManager: ObservableObject {
     }
 
     var isAppleLinked: Bool {
-        identity?.provider == .apple
+        identity?.provider == .gameCenter || identity?.provider == .apple
     }
 
     var isGuest: Bool {
@@ -39,7 +41,7 @@ final class AuthManager: ObservableObject {
     }
 
     var accountBadgeText: String {
-        isAppleLinked ? "APPLE LINKED" : "GUEST"
+        isAppleLinked ? "GAME CENTER" : "SIGNED OUT"
     }
 
     var syncStatusText: String {
@@ -50,9 +52,9 @@ final class AuthManager: ObservableObject {
             return "Using cloud profile"
         }
         if needsCloudRestore {
-            return "Cloud profile available. Sign in with Apple to restore."
+            return "Cloud profile available. Sign in with Game Center to restore."
         }
-        return "Using guest profile"
+        return "Sign in with Game Center to sync your profile."
     }
 
     var shouldShowOnboarding: Bool {
@@ -98,16 +100,17 @@ final class AuthManager: ObservableObject {
         if let token, !token.isEmpty {
             do {
                 let remoteProfile = try await client.getProfile()
+                let provider = remoteProfile.provider
                 applyAuthenticatedState(
-                    provider: .apple,
+                    provider: provider,
                     userId: remoteProfile.userId,
                     deviceId: deviceId,
-                    appleUserId: identityStore.appleUserId,
+                    appleUserId: provider == .apple ? identityStore.appleUserId : nil,
                     sessionToken: token,
                     sessionExpiresAt: nil,
                     profile: remoteProfile
                 )
-                authState = .authenticated(.apple)
+                authState = .authenticated(provider)
                 statusMessage = nil
                 needsCloudRestore = false
             } catch let error as ConvexError where error.isAuthError {
@@ -117,17 +120,17 @@ final class AuthManager: ObservableObject {
                 identityStore.appleUserId = nil
                 await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
                 needsCloudRestore = true
-                statusMessage = "Session expired. Sign in with Apple to restore cloud profile."
+                statusMessage = "Session expired. Sign in with Game Center to restore cloud profile."
             } catch {
                 // Network / transient error — keep session for next attempt.
                 // Fall back to guest for this launch but don't destroy the token.
                 print("[AuthManager] Bootstrap profile fetch failed (non-auth): \(error)")
                 await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
                 needsCloudRestore = true
-                statusMessage = "Could not reach server. Sign in with Apple to reconnect."
+                statusMessage = "Could not reach server. Sign in with Game Center to reconnect."
             }
         } else {
-            await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+            authState = .onboardingRequired
             needsCloudRestore = false
         }
     }
@@ -147,56 +150,43 @@ final class AuthManager: ObservableObject {
     }
 
     func signInWithApple() async {
+        await signInWithGameCenter()
+    }
+
+    func signInWithGameCenter() async {
         isBusy = true
         defer { isBusy = false }
 
         AnalyticsManager.shared.trackAppleSignInStarted()
 
-        // Pre-flight: if we have a previous Apple User ID, check if the
-        // credential is still valid (user may have revoked in Settings).
-        if let previousAppleId = identityStore.appleUserId {
-            let state = await Self.appleCredentialState(for: previousAppleId)
-            print("[AuthManager] Apple credential state for \(previousAppleId.prefix(8))…: \(state)")
-            if state == .revoked {
-                identityStore.sessionToken = nil
-                identityStore.appleUserId = nil
-                print("[AuthManager] Apple credential revoked — cleared stored identity.")
-            }
-        }
-
         do {
-            let coordinator = AppleSignInCoordinator()
-            activeCoordinator = coordinator  // retain until complete
-            let applePayload = try await coordinator.signIn()
-            activeCoordinator = nil
-
-            print("[AuthManager] Apple sign-in payload received. appleUserId=\(applePayload.appleUserId.prefix(8))… tokenLength=\(applePayload.identityToken.count)")
+            let player = try await Self.authenticateGameCenterPlayer()
+            let playerId = Self.gameCenterPlayerId(from: player)
+            let alias = Self.gameCenterAlias(from: player)
 
             let deviceId = identityStore.getOrCreateDeviceId()
 
             await client.setAuthContext(deviceId: deviceId, sessionToken: nil)
 
-            let displayName = applePayload.displayName ?? gameManager.playerName
-            let linkResponse = try await client.linkApple(
-                identityToken: applePayload.identityToken,
-                nonce: applePayload.nonce,
-                deviceId: deviceId,
-                displayName: displayName
+            let linkResponse = try await client.linkGameCenter(
+                playerId: playerId,
+                alias: alias,
+                deviceId: deviceId
             )
 
-            print("[AuthManager] linkApple succeeded. sessionToken length=\(linkResponse.sessionToken.count)")
+            print("[AuthManager] linkGameCenter succeeded. sessionToken length=\(linkResponse.sessionToken.count)")
 
             identityStore.sessionToken = linkResponse.sessionToken
-            identityStore.appleUserId = linkResponse.appleUserId ?? applePayload.appleUserId
+            identityStore.appleUserId = nil
             if !identityStore.didCompleteAuthOnboarding {
-                AnalyticsManager.shared.trackOnboardingCompleted(method: "apple")
+                AnalyticsManager.shared.trackOnboardingCompleted(method: "game_center")
             }
             identityStore.didCompleteAuthOnboarding = true
             if !identityStore.didMergeLocalStats || linkResponse.didMergeStats {
                 identityStore.didMergeLocalStats = true
             }
             AnalyticsManager.shared.trackAppleSignInSucceeded()
-            AnalyticsManager.identify(userId: linkResponse.profile.userId, properties: ["provider": "apple"])
+            AnalyticsManager.identify(userId: linkResponse.profile.userId, properties: ["provider": "game_center"])
 
             // Verify the session token was actually persisted to Keychain.
             let readBack = identityStore.sessionToken
@@ -207,16 +197,16 @@ final class AuthManager: ObservableObject {
             await client.setAuthContext(deviceId: deviceId, sessionToken: linkResponse.sessionToken)
 
             applyAuthenticatedState(
-                provider: .apple,
+                provider: .gameCenter,
                 userId: linkResponse.profile.userId,
                 deviceId: deviceId,
-                appleUserId: identityStore.appleUserId,
+                appleUserId: nil,
                 sessionToken: linkResponse.sessionToken,
                 sessionExpiresAt: linkResponse.sessionExpiresAt,
                 profile: linkResponse.profile
             )
 
-            authState = .authenticated(.apple)
+            authState = .authenticated(.gameCenter)
             statusMessage = nil
             showRankedSignInPrompt = false
             needsCloudRestore = false
@@ -234,16 +224,79 @@ final class AuthManager: ObservableObject {
             // Include underlying error type so backend issues are diagnosable
             let detail: String
             if let convexErr = error as? ConvexError {
-                detail = "Sign in failed: \(convexErr.localizedDescription)"
+                detail = "Game Center sign in failed: \(convexErr.localizedDescription)"
             } else if let authErr = error as? AuthError {
-                detail = "Sign in failed: \(authErr.localizedDescription)"
+                detail = "Game Center sign in failed: \(authErr.localizedDescription)"
             } else {
-                detail = "Sign in failed: \(error.localizedDescription)"
+                detail = "Game Center sign in failed: \(error.localizedDescription)"
             }
             statusMessage = detail
-            print("[AuthManager] signInWithApple error: \(error)")
+            print("[AuthManager] signInWithGameCenter error: \(error)")
             needsCloudRestore = true
         }
+    }
+
+    private static func authenticateGameCenterPlayer() async throws -> GKLocalPlayer {
+        if GKLocalPlayer.local.isAuthenticated {
+            return GKLocalPlayer.local
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            var didResume = false
+            GKLocalPlayer.local.authenticateHandler = { viewController, error in
+                if let viewController {
+                    Self.presentGameCenterAuthentication(viewController)
+                    return
+                }
+
+                guard !didResume else { return }
+
+                if let error {
+                    // GameKit sometimes fires a stale error before a successful
+                    // re-auth completes internally. If the player is actually
+                    // authenticated by now, succeed instead of throwing.
+                    if GKLocalPlayer.local.isAuthenticated {
+                        didResume = true
+                        continuation.resume(returning: GKLocalPlayer.local)
+                        return
+                    }
+                    didResume = true
+                    continuation.resume(throwing: error)
+                } else if GKLocalPlayer.local.isAuthenticated {
+                    didResume = true
+                    continuation.resume(returning: GKLocalPlayer.local)
+                } else {
+                    didResume = true
+                    continuation.resume(throwing: AuthError.signInFailed("Game Center is not available."))
+                }
+            }
+        }
+    }
+
+    private static func presentGameCenterAuthentication(_ viewController: UIViewController) {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let root = scenes
+            .flatMap(\.windows)
+            .first(where: { $0.isKeyWindow })?
+            .rootViewController else { return }
+
+        var presenter = root
+        while let presented = presenter.presentedViewController {
+            presenter = presented
+        }
+        presenter.present(viewController, animated: true)
+    }
+
+    private static func gameCenterPlayerId(from player: GKLocalPlayer) -> String {
+        if !player.teamPlayerID.isEmpty {
+            return player.teamPlayerID
+        }
+        return player.gamePlayerID
+    }
+
+    private static func gameCenterAlias(from player: GKLocalPlayer) -> String {
+        let alias = player.alias.trimmingCharacters(in: .whitespacesAndNewlines)
+        return alias.isEmpty ? "Player" : String(alias.prefix(16))
     }
 
     /// Checks the Apple ID credential state for a given user ID.
@@ -267,14 +320,17 @@ final class AuthManager: ObservableObject {
         identityStore.sessionToken = nil
         identityStore.appleUserId = nil
 
-        await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+        identity = nil
+        profile = nil
+        lastCloudSyncAt = nil
+        authState = .onboardingRequired
         statusMessage = "Signed out."
         needsCloudRestore = false
     }
 
     /// Permanently deletes the user's account and all associated server-side
     /// data. Required by App Store Review Guideline 5.1.1(v) for any app that
-    /// supports account creation (Sign in with Apple).
+    /// supports account creation.
     func deleteAccount() async {
         isBusy = true
         defer { isBusy = false }
@@ -440,7 +496,7 @@ final class AuthManager: ObservableObject {
             sessionExpiresAt: sessionExpiresAt
         )
 
-        if provider == .apple {
+        if provider == .apple || provider == .gameCenter {
             lastCloudSyncAt = Date()
         }
 

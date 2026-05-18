@@ -5,10 +5,11 @@ export default defineSchema({
   users: defineTable({
     deviceId: v.optional(v.string()),
     appleUserId: v.optional(v.string()),
+    gameCenterPlayerId: v.optional(v.string()),
     username: v.string(),
     usernameKey: v.optional(v.string()),
     selectedSkin: v.optional(v.string()),
-    provider: v.union(v.literal("guest"), v.literal("apple")),
+    provider: v.union(v.literal("guest"), v.literal("apple"), v.literal("gameCenter")),
 
     rating: v.number(),
     gamesPlayed: v.number(),
@@ -26,8 +27,10 @@ export default defineSchema({
   })
     .index("by_deviceId", ["deviceId"])
     .index("by_appleUserId", ["appleUserId"])
+    .index("by_gameCenterPlayerId", ["gameCenterPlayerId"])
     .index("by_username", ["username"])
-    .index("by_usernameKey", ["usernameKey"]),
+    .index("by_usernameKey", ["usernameKey"])
+    .index("by_bestScore", ["bestScore"]),
 
   sessions: defineTable({
     userId: v.id("users"),

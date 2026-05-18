@@ -1,0 +1,657 @@
+{
+  "version": 1,
+  "generation_defaults": {
+    "model": "stabilityai/stable-diffusion-3.5-large",
+    "provider": "replicate",
+    "width": 1024,
+    "height": 1024,
+    "steps": 20,
+    "guidance": 4.2,
+    "candidate_guidance": [
+      3.8,
+      4.2,
+      4.8
+    ],
+    "out_dir": "artifacts/hero_candidates"
+  },
+  "import_defaults": {
+    "crop_x_bias": 0.5,
+    "crop_y_bias": 0.56,
+    "hero_width": 800,
+    "hero_height": 620,
+    "ground_width": 800,
+    "ground_height": 130
+  },
+  "theme_generation": {
+    "day": {
+      "seed_base": 42000,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/day_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/day_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "sunset": {
+      "seed_base": 42100,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/sunset_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/sunset_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "night": {
+      "seed_base": 42200,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/night_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/night_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "neonCity": {
+      "seed_base": 42300,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/neonCity_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/neonCity_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "underwater": {
+      "seed_base": 42400,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/underwater_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/underwater_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "volcano": {
+      "seed_base": 42500,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/volcano_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/volcano_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "arctic": {
+      "seed_base": 42600,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/arctic_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/arctic_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "western": {
+      "seed_base": 42700,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/western_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/western_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "jungle": {
+      "seed_base": 42800,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/jungle_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/jungle_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "cave": {
+      "seed_base": 42900,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/cave_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/cave_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "mountain": {
+      "seed_base": 43000,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/mountain_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/mountain_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "space": {
+      "seed_base": 43100,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/space_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/space_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "pixelTokyo": {
+      "seed_base": 43200,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/pixelTokyo_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/pixelTokyo_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "egypt": {
+      "seed_base": 43300,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/egypt_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/egypt_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "lagoon": {
+      "seed_base": 43400,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/lagoon_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/lagoon_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "losAngeles": {
+      "seed_base": 43500,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/losAngeles_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/losAngeles_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "london": {
+      "seed_base": 43600,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/london_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/london_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "roughOcean": {
+      "seed_base": 43700,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/roughOcean_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/roughOcean_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    }
+  },
+  "ground_palettes": {
+    "day": {
+      "lip": "#9fe955",
+      "body": "#4f9f38",
+      "shadow": "#1f5f35",
+      "accent": "#d7ff8f"
+    },
+    "sunset": {
+      "lip": "#f6c65b",
+      "body": "#8f6b34",
+      "shadow": "#4d3522",
+      "accent": "#ffe184"
+    },
+    "night": {
+      "lip": "#6d8f62",
+      "body": "#294b3f",
+      "shadow": "#102437",
+      "accent": "#b8d58b"
+    },
+    "neonCity": {
+      "lip": "#22b8d7",
+      "body": "#40307f",
+      "shadow": "#07193a",
+      "accent": "#ef4fc8"
+    },
+    "underwater": {
+      "lip": "#69d6d1",
+      "body": "#24758b",
+      "shadow": "#12334d",
+      "accent": "#ff9a6d"
+    },
+    "volcano": {
+      "lip": "#ff8c22",
+      "body": "#5e2d2b",
+      "shadow": "#1c1518",
+      "accent": "#ffd14a"
+    },
+    "arctic": {
+      "lip": "#dff7ff",
+      "body": "#75adc6",
+      "shadow": "#315d80",
+      "accent": "#ffffff"
+    },
+    "western": {
+      "lip": "#dfb35b",
+      "body": "#9a6534",
+      "shadow": "#51311f",
+      "accent": "#f5d284"
+    },
+    "jungle": {
+      "lip": "#79b947",
+      "body": "#2f7341",
+      "shadow": "#17392a",
+      "accent": "#b9d95a"
+    },
+    "cave": {
+      "lip": "#55b2c5",
+      "body": "#37405c",
+      "shadow": "#171b2d",
+      "accent": "#9b68e8"
+    },
+    "mountain": {
+      "lip": "#8fca59",
+      "body": "#3f8354",
+      "shadow": "#17394a",
+      "accent": "#e8f4ff"
+    },
+    "space": {
+      "lip": "#6d74d9",
+      "body": "#343064",
+      "shadow": "#09091d",
+      "accent": "#9ee8ff"
+    },
+    "pixelTokyo": {
+      "lip": "#4ccde0",
+      "body": "#35568d",
+      "shadow": "#101b3d",
+      "accent": "#ff74ad"
+    },
+    "egypt": {
+      "lip": "#f2c35c",
+      "body": "#c47a29",
+      "shadow": "#5e371d",
+      "accent": "#ffe08a"
+    },
+    "lagoon": {
+      "lip": "#fff0b6",
+      "body": "#dfb875",
+      "shadow": "#73523d",
+      "accent": "#83e6df"
+    },
+    "losAngeles": {
+      "lip": "#f7d18d",
+      "body": "#d59a61",
+      "shadow": "#704b3b",
+      "accent": "#9edbba"
+    },
+    "london": {
+      "lip": "#76c0cc",
+      "body": "#3b8aa0",
+      "shadow": "#12364a",
+      "accent": "#ffd382"
+    },
+    "roughOcean": {
+      "lip": "#b9e5df",
+      "body": "#2f6f7f",
+      "shadow": "#123042",
+      "accent": "#eef7e8"
+    }
+  },
+  "global": {
+    "style": [
+      "Polished 16-bit pixel art hero background for a side-scrolling mobile arcade flying game",
+      "clean hand-authored game art look",
+      "hard-edged crisp pixel clusters",
+      "smooth readable sky gradients with pixel-art edges",
+      "strong but controlled shading",
+      "clear atmospheric depth",
+      "full-frame opaque background",
+      "target runtime composition 800x620"
+    ],
+    "art_direction": [
+      "match the day theme benchmark: flat, open, calm, and immediately readable during fast gameplay",
+      "single side-on stage backplate rather than poster art, splash art, a street scene, or a tunnel scene",
+      "theme identity comes from palette, horizon silhouettes, and small edge props rather than large central objects"
+    ],
+    "framing": [
+      "side-scrolling profile view",
+      "camera pulled back",
+      "straight horizon",
+      "no dramatic vanishing-point road",
+      "no canyon, hallway, tunnel, or city street perspective pulling into the center",
+      "no close foreground frame around the play area"
+    ],
+    "composition": [
+      "top 55 to 65 percent remains open low-detail sky or atmosphere for the flight corridor",
+      "central 65 percent of the image width stays simple behind the duck and pipes",
+      "theme landmarks stay below the flight path as distant lower-middle silhouettes",
+      "bottom 18 to 24 percent is a simple chunky terrain band that can be sampled into a scrolling ground strip",
+      "detail is strongest near the bottom corners and far edges"
+    ],
+    "detail": [
+      "low to medium detail only",
+      "large simple pixel shapes",
+      "few objects",
+      "no dense repeated micro-details",
+      "no window grid noise",
+      "no busy flowers, rocks, rain streaks, stars, bubbles, or debris in the central play corridor",
+      "leave clouds, sparkles, animals, weather, and other small motion to runtime overlays"
+    ],
+    "color": [
+      "4 to 6 dominant color families",
+      "one clear background color family and one ground color family",
+      "small accents only",
+      "low saturation in distant midground",
+      "avoid rainbow palettes",
+      "avoid high-contrast speckled highlights",
+      "avoid neon confetti outside theme accents"
+    ],
+    "quality": [
+      "high quality pixel-art background",
+      "clean shapes",
+      "sharp nearest-neighbor pixel edges",
+      "cohesive lighting",
+      "limited but not posterized palette",
+      "no gritty texture",
+      "no noisy dithering",
+      "no speckled grain",
+      "no photographic realism",
+      "no soft-focus blur"
+    ],
+    "negative": [
+      "characters",
+      "player avatar",
+      "birds as main subjects",
+      "insects",
+      "bees",
+      "tiny flying objects",
+      "pipes",
+      "UI",
+      "score text",
+      "letters",
+      "logos",
+      "readable signs",
+      "giant centered object",
+      "foreground wall blocking the play area",
+      "painterly brush strokes",
+      "vector art",
+      "3D render",
+      "photorealism",
+      "muddy colors",
+      "heavy grain",
+      "random pixel noise",
+      "over-dithered sky",
+      "deep perspective street",
+      "road vanishing point",
+      "tunnel perspective",
+      "dense skyline",
+      "building window grid",
+      "hundreds of tiny lights",
+      "busy pattern field"
+    ]
+  },
+  "themes": {
+    "day": {
+      "name": "bright daytime countryside",
+      "scene": "cheerful open meadow under a clear blue day sky",
+      "upper": "clean cyan-blue sky with two or three small separated cumulus cloud groups placed high and far from the center flight path",
+      "midground": "pale rolling hills and a few low separated cloud puffs across the lower middle, never forming one giant white wall",
+      "ground": "chunky saturated green meadow strip with a clean grass lip, small flowers, and simple grass texture",
+      "edges": "tiny tree clusters and flowers only at the far edges and bottom corners",
+      "palette": "cyan sky, warm white clouds, fresh greens, small red/yellow flower accents",
+      "motion_hooks": "slow cloud sprites and very occasional tiny distant birds",
+      "negative": [
+        "large tree trunk",
+        "dense forest",
+        "busy flower field in the center",
+        "giant cloud bank",
+        "large white cloud wall",
+        "soft blurry illustration"
+      ]
+    },
+    "sunset": {
+      "name": "warm sunset fields",
+      "scene": "golden countryside at sunset with calm arcade readability",
+      "upper": "orange-to-rose sky gradient with soft cloud shapes, no giant sun disk in the flight corridor",
+      "midground": "low lavender hills and warm cloud bank across the lower middle, silhouetted softly",
+      "ground": "warm grass and earth strip with a clean lip, amber highlights, and sparse flowers",
+      "edges": "small fence pieces or shrubs at far bottom edges only",
+      "palette": "orange, peach, rose, lavender shadows, warm green grass",
+      "motion_hooks": "slow cloud sprites, sunset glow tint, tiny drifting motes",
+      "negative": [
+        "huge sun",
+        "dark foreground tree",
+        "black silhouettes across the center"
+      ]
+    },
+    "night": {
+      "name": "quiet moonlit night",
+      "scene": "peaceful blue night landscape with stars and distant hills",
+      "upper": "deep navy sky with sparse stars and a small moon away from the central play path",
+      "midground": "low blue hills and soft mist band with simple silhouettes",
+      "ground": "dark grassy terrain strip with a clean cool-green lip and subtle moonlit pixels",
+      "edges": "small shrubs or tiny roof silhouettes tucked near bottom edges",
+      "palette": "navy, midnight blue, muted teal, moonlit pale yellow accents",
+      "motion_hooks": "twinkling stars and rare firefly specks",
+      "negative": [
+        "dense star field",
+        "galaxy",
+        "large moon centered",
+        "black unreadable foreground"
+      ]
+    },
+    "western": {
+      "name": "western desert canyon",
+      "scene": "open desert with mesas and dusty arcade staging",
+      "upper": "clear turquoise-to-warm sky with minimal clouds and no large sun disk",
+      "midground": "low red-rock mesas and distant cactus silhouettes below the center line",
+      "ground": "chunky ochre dirt and dry grass strip with a clean dusty lip",
+      "edges": "small cactus, wagon wheel, or rock props at the far bottom edges only",
+      "palette": "turquoise sky, ochre sand, terracotta rock, muted sage accents",
+      "motion_hooks": "dust motes and heat shimmer tint",
+      "negative": [
+        "cowboy",
+        "horse",
+        "saloon sign",
+        "giant cactus in center"
+      ]
+    },
+    "jungle": {
+      "name": "misty jungle canopy",
+      "scene": "lush tropical jungle with a readable open misty center",
+      "upper": "pale teal mist and soft canopy shapes high above the play path",
+      "midground": "layered distant jungle silhouettes across the lower middle with softened contrast",
+      "ground": "chunky leafy jungle floor strip with a clean fern and moss lip",
+      "edges": "vines, leaves, and flowers framing only the far sides and bottom corners",
+      "palette": "teal mist, deep green foliage, lime highlights, small warm flower accents",
+      "motion_hooks": "subtle drifting leaf particles and rare bird silhouettes",
+      "negative": [
+        "tree trunk through center",
+        "dense vines across play path",
+        "animal character"
+      ]
+    },
+    "mountain": {
+      "name": "alpine mountain valley",
+      "scene": "bright alpine valley with snowy mountains in the distance",
+      "upper": "clean blue sky with sparse soft clouds, mostly open over the play corridor",
+      "midground": "large but distant snowy mountain silhouettes pushed behind the play area with softened blue shadows",
+      "ground": "green alpine meadow strip with a clean grass lip, small stones, and wildflower pixels",
+      "edges": "pine trees only at far lower edges, never crossing the central flight corridor",
+      "palette": "sky blue, snow white, glacier cyan, pine green, meadow green",
+      "motion_hooks": "slow clouds and rare snow sparkle specks",
+      "negative": [
+        "mountain peak filling the whole center",
+        "ski lodge",
+        "foreground pine wall"
+      ]
+    },
+    "egypt": {
+      "name": "ancient Egypt desert",
+      "scene": "open golden desert with tiny ancient ruins along the horizon",
+      "upper": "simple golden sky occupying most of the image, no sun disk, no pyramid entering the upper play area",
+      "midground": "very small far-away pyramid silhouettes, low dunes, and tiny temple blocks forming a thin horizon band below the center line",
+      "ground": "chunky warm sand terrain strip with a clean sand lip, scattered sandstone pixels, and a few small flat blocks",
+      "edges": "tiny palm silhouette or broken ruin pieces only near the bottom far edges",
+      "palette": "golden sky, pale sand, terracotta shadows, muted sandstone brown",
+      "motion_hooks": "dust motes, heat shimmer, low ruin trim",
+      "negative": [
+        "large pyramid",
+        "close-up pyramid",
+        "giant sphinx",
+        "huge columns",
+        "sun disk",
+        "poster composition",
+        "readable glyphs"
+      ]
+    },
+    "lagoon": {
+      "name": "tropical lagoon beach",
+      "scene": "bright tropical lagoon with open sky and turquoise water",
+      "upper": "clear cyan sky with soft white clouds, uncluttered through the flight corridor",
+      "midground": "turquoise water, distant island shapes, and soft reef silhouettes across the lower middle",
+      "ground": "pale sand beach strip with a clean lip, small shells, and aqua reflection pixels",
+      "edges": "palm leaves or island foliage only at far lower edges",
+      "palette": "cyan, turquoise, pale sand, seafoam white, tropical green accents",
+      "motion_hooks": "sparkle particles, slow cloud sprites, tiny wave shimmer",
+      "negative": [
+        "giant palm trunk",
+        "boat",
+        "people",
+        "dense beach objects"
+      ]
+    },
+    "underwater": {
+      "name": "underwater reef",
+      "scene": "clear underwater reef environment with open blue water",
+      "upper": "blue water gradient with soft light rays and very low detail in the play corridor",
+      "midground": "distant reef silhouettes and soft kelp shapes below the center line",
+      "ground": "chunky coral and seafloor strip with a clean sand-and-rock lip",
+      "edges": "coral fans and seaweed at bottom corners only",
+      "palette": "deep aqua, teal blue, coral orange, seafoam highlights, dark reef shadows",
+      "motion_hooks": "bubbles, subtle caustic shimmer, tiny fish silhouettes far behind gameplay",
+      "negative": [
+        "large fish",
+        "shark",
+        "octopus",
+        "dense coral in center",
+        "murky water"
+      ]
+    },
+    "volcano": {
+      "name": "volcanic lava field",
+      "scene": "dangerous volcanic landscape with readable smoky air",
+      "upper": "dark smoky red sky with soft ash haze and no bright clutter in the center",
+      "midground": "distant low volcano silhouettes and lava glow below the center line",
+      "ground": "chunky black rock strip with a clean lava-lit edge and small orange cracks",
+      "edges": "small basalt rocks and ember-lit shapes at far bottom edges",
+      "palette": "charcoal, crimson, ember orange, smoky purple, hot yellow accents",
+      "motion_hooks": "embers, smoke wisps, occasional lava glow pulse",
+      "negative": [
+        "giant eruption plume in center",
+        "fire covering play path",
+        "overbright orange screen"
+      ]
+    },
+    "arctic": {
+      "name": "arctic snowfield",
+      "scene": "cold open arctic landscape with icy distance",
+      "upper": "pale blue sky with soft aurora or cloud tint, very open over the play corridor",
+      "midground": "low icy hills and distant glacier silhouettes across the lower middle",
+      "ground": "chunky snow and ice strip with a clean snow lip, small blue shadow pixels, and sparse ice chunks",
+      "edges": "small ice rocks or snow mounds near bottom corners",
+      "palette": "pale blue, icy cyan, snow white, muted violet shadows",
+      "motion_hooks": "light snow particles and slow mist",
+      "negative": [
+        "polar animal",
+        "igloo in center",
+        "dense blizzard",
+        "whiteout"
+      ]
+    },
+    "space": {
+      "name": "outer space horizon",
+      "scene": "arcade space backdrop with a distant planet horizon",
+      "upper": "deep starry space with sparse stars and no dense galaxy noise",
+      "midground": "soft nebula haze and a distant planet curve or moon shapes below the center line",
+      "ground": "chunky alien rock strip with a clean rim and small glowing mineral pixels",
+      "edges": "small crater rocks and alien plants only at far bottom edges",
+      "palette": "deep navy, violet, cyan stars, muted magenta nebula, dark rock",
+      "motion_hooks": "slow star specks and subtle nebula drift",
+      "negative": [
+        "spaceship",
+        "astronaut",
+        "dense star noise",
+        "large planet filling center"
+      ]
+    },
+    "cave": {
+      "name": "glowing crystal cave",
+      "scene": "subterranean cave with readable open blue darkness",
+      "upper": "dark cave air with soft blue haze, open enough for the flight corridor",
+      "midground": "distant cave walls and crystal silhouettes kept low and softened",
+      "ground": "chunky stone strip with a clean rock lip and small glowing crystal pixels",
+      "edges": "stalactites and crystals only near far sides and bottom corners, not across the center",
+      "palette": "deep blue, slate gray, teal glow, violet crystal accents",
+      "motion_hooks": "glow motes and subtle fog",
+      "negative": [
+        "closed tunnel",
+        "giant stalactite through center",
+        "monster",
+        "torch text"
+      ]
+    },
+    "neonCity": {
+      "name": "futuristic neon city",
+      "scene": "flat futuristic night skyline staged like the day theme, not a street canyon",
+      "upper": "open dark blue to teal sky haze with sparse glow, no rain streaks or tiny light noise in the flight corridor",
+      "midground": "low distant simplified block skyline silhouettes below the center line with only a few cyan and magenta accent windows",
+      "ground": "simple chunky wet pavement or rooftop strip with a clean lip and controlled cyan and magenta reflection pixels",
+      "edges": "small neon panels and low building edges pushed to far sides and bottom corners only",
+      "palette": "dark navy, cyan, teal, magenta, small warm window accents",
+      "motion_hooks": "rain particles, neon flicker, faint haze",
+      "negative": [
+        "yellow daylight",
+        "giant tower",
+        "foreground building wall",
+        "readable signage",
+        "dense window noise in center",
+        "street canyon",
+        "road perspective",
+        "crosswalk",
+        "cars",
+        "storefronts",
+        "crowded signs"
+      ]
+    },
+    "pixelTokyo": {
+      "name": "rainy pixel Tokyo",
+      "scene": "Tokyo-inspired rainy street skyline with neon atmosphere",
+      "upper": "blue-gray rainy sky and mist with open readable space through the play path",
+      "midground": "low layered rooftops, distant tower silhouette kept small, lantern glow and neon accents mostly below the center line",
+      "ground": "chunky wet street strip with a clean curb lip and subtle reflections",
+      "edges": "cherry branches, signs, or rooftops only at far edges and lower corners",
+      "palette": "blue-gray rain, teal shadows, pink neon, warm lantern orange",
+      "motion_hooks": "rain, drifting petals, neon flicker",
+      "negative": [
+        "giant Tokyo tower",
+        "readable Japanese text",
+        "huge sign in center",
+        "busy storefront blocking gameplay"
+      ]
+    },
+    "london": {
+      "name": "rainy London skyline",
+      "scene": "misty London-inspired city with classic wet-street mood",
+      "upper": "cool rainy blue sky with soft mist and open playable space",
+      "midground": "distant parliament-style silhouettes and bridges kept low and softened by rain haze",
+      "ground": "chunky wet stone street strip with a clean curb lip and small lamp reflections",
+      "edges": "lamp posts or roof edges only at far bottom edges",
+      "palette": "rain blue, slate teal, warm lamp gold, wet stone gray",
+      "motion_hooks": "rain streaks, fog, subtle lamp glow",
+      "negative": [
+        "giant clock tower in center",
+        "readable signs",
+        "foreground buildings covering center",
+        "photographic realism"
+      ]
+    },
+    "losAngeles": {
+      "name": "sunny Los Angeles coast",
+      "scene": "bright Southern California coast with open sky and distant palms",
+      "upper": "clear turquoise sky with soft haze and sparse clouds",
+      "midground": "low beachside skyline, distant hills, and palm silhouettes kept below the center line",
+      "ground": "chunky warm sand and boardwalk strip with a clean lip and small sunlit pixels",
+      "edges": "tiny palm clusters or beach props only at far lower edges",
+      "palette": "turquoise sky, pale sand, warm peach, palm green, soft blue ocean",
+      "motion_hooks": "sun glints, slow clouds, rare distant birds",
+      "negative": [
+        "large palm trunk",
+        "cars",
+        "people",
+        "readable billboards",
+        "dense city in center"
+      ]
+    },
+    "roughOcean": {
+      "name": "rough stormy ocean",
+      "scene": "stormy open sea with readable wave depth",
+      "upper": "teal-gray storm sky with distant rain bands and open low-detail space through the flight corridor",
+      "midground": "dark horizon, rolling ocean swells, whitecaps, and tiny far rocks kept low below the center line",
+      "ground": "chunky dark wet-water edge strip with a clean foam lip and sea-spray pixels",
+      "edges": "small rocks or broken buoy silhouettes at far lower edges only",
+      "palette": "storm teal, blue-gray, dark navy water, off-white foam, muted green shadows",
+      "motion_hooks": "sea spray, rain, subtle lightning tint",
+      "negative": [
+        "giant wave covering center",
+        "ship",
+        "kraken",
+        "foreground cliff wall",
+        "bright tropical water"
+      ]
+    }
+  }
+}

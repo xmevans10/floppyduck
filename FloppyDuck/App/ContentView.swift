@@ -128,14 +128,6 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button {
-                    manager.continueAsGuest()
-                } label: {
-                    Text("CONTINUE AS GUEST")
-                        .font(.custom(GK.pixelFontName, size: 8))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                .buttonStyle(.plain)
             }
         }
     }

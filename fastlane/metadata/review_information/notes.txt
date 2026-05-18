@@ -1,0 +1,7 @@
+The app starts in guest mode. No demo credentials are required.
+
+Classic is available from the home screen. VS Bot is available from the home screen and unlocks duck skins through bot wins. Head to Head includes Quick Play, Ranked, and Private Room. Quick Play and Ranked require Sign in with Apple. Private Room requires a second device with the join code.
+
+The Shop contains 10 non-consumable in-app purchases: 3 duck skins, 3 pipe skins, 2 backgrounds, and 2 battle banners. Restore Purchases is available in Settings and in shop tabs with premium items.
+
+Account deletion is available in Settings after signing in with Apple.

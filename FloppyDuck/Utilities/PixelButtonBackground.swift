@@ -123,3 +123,51 @@ struct PixelPanelBackground: View {
         }
     }
 }
+
+// MARK: - Pixel Outlined Text
+
+/// Renders text with a crisp multi-directional pixel outline using ZStack offset copies.
+/// Only the topmost fill layer is exposed to VoiceOver — shadow layers are hidden.
+struct PixelOutlinedText: View {
+    let text: String
+    let fontSize: CGFloat
+    var fillColor: Color = GK.Colors.titleCream
+    var outlineColor: Color = GK.Colors.pipeBorder
+    var outlineWidth: CGFloat = 2
+
+    var body: some View {
+        ZStack {
+            // Cardinal-direction shadow layers (crisp pixel outline, no blur)
+            Group {
+                shadowLayer(offsetX: -outlineWidth, offsetY: 0)
+                shadowLayer(offsetX:  outlineWidth, offsetY: 0)
+                shadowLayer(offsetX: 0, offsetY: -outlineWidth)
+                shadowLayer(offsetX: 0, offsetY:  outlineWidth)
+            }
+            .accessibilityHidden(true)
+
+            // Diagonal offsets for heavier outline weights
+            if outlineWidth >= 3 {
+                Group {
+                    shadowLayer(offsetX: -outlineWidth, offsetY: -outlineWidth)
+                    shadowLayer(offsetX:  outlineWidth, offsetY: -outlineWidth)
+                    shadowLayer(offsetX: -outlineWidth, offsetY:  outlineWidth)
+                    shadowLayer(offsetX:  outlineWidth, offsetY:  outlineWidth)
+                }
+                .accessibilityHidden(true)
+            }
+
+            // Main fill text (only this layer exposed to VoiceOver)
+            Text(text)
+                .font(.custom(GK.pixelFontName, size: fontSize))
+                .foregroundColor(fillColor)
+        }
+    }
+
+    private func shadowLayer(offsetX: CGFloat, offsetY: CGFloat) -> some View {
+        Text(text)
+            .font(.custom(GK.pixelFontName, size: fontSize))
+            .foregroundColor(outlineColor)
+            .offset(x: offsetX, y: offsetY)
+    }
+}

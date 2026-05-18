@@ -2,7 +2,13 @@ import { action, internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { findUserByAppleId, findUserByDeviceId, resolveUser, verifyAppleIdentityToken } from "./lib/identity";
+import {
+  findUserByAppleId,
+  findUserByDeviceId,
+  findUserByGameCenterPlayerId,
+  resolveUser,
+  verifyAppleIdentityToken,
+} from "./lib/identity";
 import {
   buildUserFromSnapshot,
   defaultUserStats,
@@ -72,6 +78,11 @@ const localStatsValidator = v.optional(
     beatenBots: v.optional(v.array(v.string())),
   }),
 );
+
+function gameCenterAlias(input: string) {
+  const username = normalizeUsername(input || "Player").slice(0, USERNAME_MAX_LENGTH).trim() || "Player";
+  return { username, usernameKey: usernameKey(username) };
+}
 
 function usernameKey(username: string) {
   return username.toLowerCase();
@@ -353,6 +364,120 @@ export const linkAppleWrite = internalMutation({
       sessionToken,
       sessionExpiresAt: Math.floor(sessionExpiresAt / 1000),
       appleUserId: args.appleUserId,
+      didMergeStats,
+    };
+  },
+});
+
+export const linkGameCenter = mutation({
+  args: {
+    gameCenterPlayerId: v.string(),
+    alias: v.string(),
+    deviceId: v.string(),
+    ...sessionTokenArg,
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const playerId = args.gameCenterPlayerId.trim();
+    if (!playerId) {
+      throw new ConvexError("Missing Game Center identity.");
+    }
+
+    const alias = gameCenterAlias(args.alias);
+    let gameCenterUser = await findUserByGameCenterPlayerId(ctx, playerId);
+    const deviceUser = await findUserByDeviceId(ctx, args.deviceId);
+
+    let userId: Id<"users">;
+    let didMergeStats = false;
+
+    if (gameCenterUser) {
+      userId = gameCenterUser._id;
+
+      const canMergeDeviceIntoGameCenter = Boolean(
+        deviceUser &&
+          deviceUser._id !== gameCenterUser._id &&
+          shouldMergeLocalStats(gameCenterUser) &&
+          !shouldMergeLocalStats(deviceUser),
+      );
+
+      if (canMergeDeviceIntoGameCenter && deviceUser) {
+        await ctx.db.patch(gameCenterUser._id, {
+          username: alias.username,
+          usernameKey: alias.usernameKey,
+          rating: deviceUser.rating,
+          gamesPlayed: deviceUser.gamesPlayed,
+          wins: deviceUser.wins,
+          losses: deviceUser.losses,
+          bestScore: deviceUser.bestScore,
+          totalScore: deviceUser.totalScore,
+          bread: deviceUser.bread,
+          totalBreadCollected: deviceUser.totalBreadCollected,
+          recentScores: deviceUser.recentScores,
+          beatenBots: deviceUser.beatenBots,
+          provider: "gameCenter",
+          gameCenterPlayerId: playerId,
+          deviceId: args.deviceId,
+          updatedAt: now,
+        });
+        didMergeStats = true;
+      } else {
+        await ctx.db.patch(gameCenterUser._id, {
+          username: alias.username,
+          usernameKey: alias.usernameKey,
+          provider: "gameCenter",
+          gameCenterPlayerId: playerId,
+          deviceId: args.deviceId,
+          updatedAt: now,
+        });
+      }
+    } else if (deviceUser) {
+      userId = deviceUser._id;
+      await ctx.db.patch(userId, {
+        username: alias.username,
+        usernameKey: alias.usernameKey,
+        provider: "gameCenter",
+        gameCenterPlayerId: playerId,
+        deviceId: args.deviceId,
+        updatedAt: now,
+      });
+      didMergeStats = true;
+    } else {
+      const defaults = defaultUserStats();
+      userId = await ctx.db.insert("users", {
+        deviceId: args.deviceId,
+        gameCenterPlayerId: playerId,
+        username: alias.username,
+        usernameKey: alias.usernameKey,
+        provider: "gameCenter",
+        ...defaults,
+        bread: TESTFLIGHT_STARTING_BREAD,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await upsertRating(ctx, userId, defaults.rating, now);
+    }
+
+    const sessionToken = crypto.randomUUID();
+    const sessionExpiresAt = now + 1000 * 60 * 60 * 24 * 30;
+
+    await ctx.db.insert("sessions", {
+      userId,
+      token: sessionToken,
+      createdAt: now,
+      expiresAt: sessionExpiresAt,
+    });
+
+    await upsertRating(ctx, userId, (await ctx.db.get(userId))!.rating, now);
+
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("Unable to load Game Center account.");
+    }
+
+    return {
+      profile: toPublicProfile(user),
+      sessionToken,
+      sessionExpiresAt: Math.floor(sessionExpiresAt / 1000),
       didMergeStats,
     };
   },

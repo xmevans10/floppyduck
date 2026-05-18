@@ -3,7 +3,7 @@ import UIKit
 
 /// Generates all game textures programmatically using pixel-art style rendering.
 /// Park theme with round mallard duck matching Flappy Bird proportions.
-final class TextureFactory {
+final class TextureFactory: @unchecked Sendable {
     static let shared = TextureFactory()
 
     /// Maximum textures to keep in cache before triggering eviction.
@@ -24,6 +24,7 @@ final class TextureFactory {
 
     private var cache: [String: SKTexture] = [:]
     private var cacheOrder: [String] = []   // LRU eviction order
+    private var uiImageCache: [String: UIImage] = [:]
     private let cacheLock = NSLock()
 
     /// Thread-safe cache read.
@@ -39,6 +40,7 @@ final class TextureFactory {
         defer { cacheLock.unlock() }
         cache.removeAll()
         cacheOrder.removeAll()
+        uiImageCache.removeAll()
     }
 
     /// Invalidates only pipe-related cached textures so a new pipe skin takes effect.
@@ -127,6 +129,22 @@ final class TextureFactory {
             cacheOrder.removeFirst()
             cache.removeValue(forKey: oldest)
         }
+    }
+
+    private func cachedUIImage(forKey key: String, make: () -> UIImage) -> UIImage {
+        cacheLock.lock()
+        if let cached = uiImageCache[key] {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+
+        let image = make()
+
+        cacheLock.lock()
+        uiImageCache[key] = image
+        cacheLock.unlock()
+        return image
     }
 
     // MARK: - Public API
@@ -249,22 +267,30 @@ final class TextureFactory {
 
     /// UIImage of duck for SwiftUI views (classic only — use skinDuckUIImage for skins)
     func duckUIImage(pixelScale: CGFloat = 3.0) -> UIImage {
-        return renderMallardDuck(wingPhase: 1, pixelSize: pixelScale)
+        cachedUIImage(forKey: "ui_duck_\(Int(pixelScale * 100))") {
+            renderMallardDuck(wingPhase: 1, pixelSize: pixelScale)
+        }
     }
 
     /// UIImage of pixel cloud for SwiftUI home background
     func cloudUIImage() -> UIImage {
-        return renderPixelCloud()
+        cachedUIImage(forKey: "ui_cloud") {
+            renderPixelCloud()
+        }
     }
 
     /// UIImage preview of a pipe skin for shop / collection cards.
     func pipeSkinPreviewUIImage(skin: PipeSkin, width: CGFloat = 30, height: CGFloat = 80) -> UIImage {
-        return renderPipe(width: width, height: height, skin: skin)
+        cachedUIImage(forKey: "ui_pipe_\(skin.rawValue)_\(Int(width * 100))_\(Int(height * 100))") {
+            renderPipe(width: width, height: height, skin: skin)
+        }
     }
 
     /// UIImage preview of a pipe cap for shop / collection cards.
     func pipeSkinCapPreviewUIImage(skin: PipeSkin) -> UIImage {
-        return renderPipeCap(skin: skin)
+        cachedUIImage(forKey: "ui_pipe_cap_\(skin.rawValue)") {
+            renderPipeCap(skin: skin)
+        }
     }
 
     // MARK: - Performance Textures
@@ -336,7 +362,9 @@ final class TextureFactory {
 
     /// UIImage of pixel hills for SwiftUI home background
     func hillsUIImage() -> UIImage {
-        return renderPixelHills()
+        cachedUIImage(forKey: "ui_hills") {
+            renderPixelHills()
+        }
     }
 
     // MARK: - Themed Parallax Textures
@@ -378,22 +406,25 @@ final class TextureFactory {
 
     /// UIImage of a skinned duck for SwiftUI (shop previews, home mascot).
     func skinDuckUIImage(skin: DuckSkin, pixelScale: CGFloat = 7.0) -> UIImage {
-        return renderSkinnedDuck(skin: skin, wingPhase: 1, pixelSize: pixelScale)
+        cachedUIImage(forKey: "ui_skin_\(skin.rawValue)_\(Int(pixelScale * 100))") {
+            renderSkinnedDuck(skin: skin, wingPhase: 1, pixelSize: pixelScale)
+        }
     }
 
     /// Flush cached textures for a skin (call when skin selection changes).
     func clearSkinCache() {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
         cache = cache.filter { !$0.key.hasPrefix("skin") }
+        cacheOrder.removeAll { $0.hasPrefix("skin") }
+        uiImageCache = uiImageCache.filter { !$0.key.hasPrefix("ui_skin_") }
     }
 
     /// Bread currency icon for SwiftUI (cached per scale)
-    private var breadUICache: [Int: UIImage] = [:]
     func breadUIImage(pixelScale: CGFloat = 4.0) -> UIImage {
-        let key = Int(pixelScale * 100)
-        if let cached = breadUICache[key] { return cached }
-        let img = renderBread(pixelSize: pixelScale)
-        breadUICache[key] = img
-        return img
+        cachedUIImage(forKey: "ui_bread_\(Int(pixelScale * 100))") {
+            renderBread(pixelSize: pixelScale)
+        }
     }
 
     /// Bread currency texture for SpriteKit
@@ -533,9 +564,23 @@ final class TextureFactory {
         }
     }
 
-    // MARK: - Pipes (classic green)
+    // MARK: - Pipes
 
     private func renderPipe(width: CGFloat, height: CGFloat, skin: PipeSkin = .classic) -> UIImage {
+        if skin == .sandCastle {
+            return renderSandCastlePipe(width: width, height: height, skin: skin)
+        }
+        return renderThemedPipe(width: width, height: height, skin: skin)
+    }
+
+    private func renderPipeCap(skin: PipeSkin = .classic) -> UIImage {
+        if skin == .sandCastle {
+            return renderSandCastlePipeCap(skin: skin)
+        }
+        return renderThemedPipeCap(skin: skin)
+    }
+
+    private func renderThemedPipe(width: CGFloat, height: CGFloat, skin: PipeSkin) -> UIImage {
         let size = CGSize(width: width, height: height)
         let borderW: CGFloat = 3
         let highlightW: CGFloat = 6
@@ -543,24 +588,45 @@ final class TextureFactory {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
-            c.setFillColor(skin.borderColor.cgColor)
-            c.fill(CGRect(origin: .zero, size: size))
+            c.interpolationQuality = .none
 
-            let body = CGRect(x: borderW, y: 0, width: width - borderW * 2, height: height)
-            c.setFillColor(skin.bodyColor.cgColor)
-            c.fill(body)
+            drawPipeBase(in: c, size: size, skin: skin, borderW: borderW, highlightW: highlightW)
 
-            let highlight = CGRect(x: borderW + 3, y: 0, width: highlightW, height: height)
-            c.setFillColor(skin.highlightColor.cgColor)
-            c.fill(highlight)
-
-            let shadow = CGRect(x: width - borderW - highlightW - 1, y: 0, width: highlightW, height: height)
-            c.setFillColor(skin.shadowColor.cgColor)
-            c.fill(shadow)
+            switch skin {
+            case .candy:
+                drawCandyPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .bamboo:
+                drawBambooPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .steel:
+                drawSteelPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .pixel:
+                drawRetroPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .neon:
+                drawNeonPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .royal:
+                drawRoyalPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .gold:
+                drawGoldPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .lava:
+                drawLavaPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .ice:
+                drawIcePipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .toxic:
+                drawToxicPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .classic:
+                drawBreadboxPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            case .turret, .cactus, .arcade, .trafficCone, .breadLoaf,
+                 .sodaCan, .mailbox, .totem, .castleTower, .pharaoh,
+                 .submarine, .rocket, .mushroom, .crystal, .bone,
+                 .bookshelf:
+                drawExpandedPipeDetails(in: c, width: width, height: height, borderW: borderW, skin: skin)
+            case .sandCastle:
+                break
+            }
         }
     }
 
-    private func renderPipeCap(skin: PipeSkin = .classic) -> UIImage {
+    private func renderThemedPipeCap(skin: PipeSkin) -> UIImage {
         let capW: CGFloat = GK.pipeWidth + 10
         let capH: CGFloat = 30
         let borderW: CGFloat = 3
@@ -569,6 +635,8 @@ final class TextureFactory {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let c = ctx.cgContext
+            c.interpolationQuality = .none
+
             c.setFillColor(skin.borderColor.cgColor)
             c.fill(CGRect(origin: .zero, size: size))
 
@@ -576,14 +644,772 @@ final class TextureFactory {
             c.setFillColor(skin.bodyColor.cgColor)
             c.fill(inner)
 
-            let hl = CGRect(x: borderW + 3, y: borderW, width: 6, height: capH - borderW * 2)
             c.setFillColor(skin.highlightColor.cgColor)
-            c.fill(hl)
-
-            let sh = CGRect(x: capW - borderW - 7, y: borderW, width: 6, height: capH - borderW * 2)
+            c.fill(CGRect(x: borderW + 3, y: borderW, width: 6, height: capH - borderW * 2))
             c.setFillColor(skin.shadowColor.cgColor)
-            c.fill(sh)
+            c.fill(CGRect(x: capW - borderW - 8, y: borderW, width: 6, height: capH - borderW * 2))
+
+            switch skin {
+            case .candy:
+                drawDiagonalStripes(in: c, color: UIColor.white.withAlphaComponent(0.55), width: capW, height: capH, spacing: 16)
+            case .bamboo:
+                drawHorizontalBand(in: c, y: 5, width: capW, color: skin.borderColor, height: 3)
+                drawHorizontalBand(in: c, y: capH - 8, width: capW, color: skin.borderColor, height: 3)
+            case .steel:
+                drawRivetRow(in: c, y: 8, width: capW, color: skin.borderColor)
+                drawRivetRow(in: c, y: capH - 11, width: capW, color: UIColor(red: 0.78, green: 0.80, blue: 0.84, alpha: 1))
+            case .pixel:
+                drawPixelNotches(in: c, width: capW, height: capH, color: skin.highlightColor)
+            case .neon:
+                c.setFillColor(UIColor(red: 0.20, green: 1.00, blue: 0.95, alpha: 1).cgColor)
+                c.fill(CGRect(x: 10, y: 13, width: capW - 20, height: 3))
+            case .royal:
+                drawTinyGems(in: c, y: 10, width: capW)
+            case .gold:
+                drawGoldBrickLines(in: c, width: capW, height: capH, borderW: borderW)
+            case .lava:
+                drawLavaCracks(in: c, width: capW, height: capH, borderW: borderW)
+            case .ice:
+                drawIceShardLines(in: c, width: capW, height: capH, borderW: borderW)
+            case .toxic:
+                drawHazardBands(in: c, width: capW, height: capH, borderW: borderW)
+            case .classic:
+                drawBreadboxCapDetails(in: c, width: capW, height: capH, borderW: borderW)
+            case .turret, .cactus, .arcade, .trafficCone, .breadLoaf,
+                 .sodaCan, .mailbox, .totem, .castleTower, .pharaoh,
+                 .submarine, .rocket, .mushroom, .crystal, .bone,
+                 .bookshelf:
+                drawExpandedCapDetails(in: c, width: capW, height: capH, borderW: borderW, skin: skin)
+            case .sandCastle:
+                break
+            }
         }
+    }
+
+    private func drawPipeBase(in c: CGContext, size: CGSize, skin: PipeSkin, borderW: CGFloat, highlightW: CGFloat) {
+        c.setFillColor(skin.borderColor.cgColor)
+        c.fill(CGRect(origin: .zero, size: size))
+
+        let body = CGRect(x: borderW, y: 0, width: size.width - borderW * 2, height: size.height)
+        c.setFillColor(skin.bodyColor.cgColor)
+        c.fill(body)
+
+        c.setFillColor(skin.highlightColor.cgColor)
+        c.fill(CGRect(x: borderW + 3, y: 0, width: highlightW, height: size.height))
+
+        c.setFillColor(skin.shadowColor.cgColor)
+        c.fill(CGRect(x: size.width - borderW - highlightW - 1, y: 0, width: highlightW, height: size.height))
+    }
+
+    private func drawCandyPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawDiagonalStripes(in: c, color: UIColor.white.withAlphaComponent(0.52), width: width, height: height, spacing: 28)
+        c.setFillColor(UIColor(red: 0.70, green: 0.12, blue: 0.25, alpha: 1).cgColor)
+        var y: CGFloat = 18
+        while y < height {
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 2))
+            y += 58
+        }
+    }
+
+    private func drawBambooPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let band = UIColor(red: 0.27, green: 0.34, blue: 0.10, alpha: 1)
+        var y: CGFloat = 28
+        while y < height {
+            drawHorizontalBand(in: c, y: y, width: width, color: band, height: 4)
+            c.setFillColor(UIColor(red: 0.82, green: 0.88, blue: 0.48, alpha: 1).cgColor)
+            c.fill(CGRect(x: borderW + 7, y: y + 5, width: 5, height: 14))
+            y += 64
+        }
+    }
+
+    private func drawSteelPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let seam = UIColor(red: 0.28, green: 0.30, blue: 0.34, alpha: 1)
+        var y: CGFloat = 34
+        while y < height {
+            c.setFillColor(seam.cgColor)
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 2))
+            drawRivetRow(in: c, y: y + 8, width: width, color: seam)
+            y += 72
+        }
+    }
+
+    private func drawRetroPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let cyan = UIColor(red: 0.10, green: 0.78, blue: 0.85, alpha: 1)
+        let magenta = UIColor(red: 0.88, green: 0.18, blue: 0.70, alpha: 1)
+        var y: CGFloat = 18
+        var flip = false
+        while y < height {
+            c.setFillColor((flip ? magenta : cyan).cgColor)
+            c.fill(CGRect(x: borderW + 15, y: y, width: 8, height: 8))
+            c.fill(CGRect(x: width - borderW - 25, y: y + 12, width: 8, height: 8))
+            flip.toggle()
+            y += 48
+        }
+    }
+
+    private func drawNeonPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let cyan = UIColor(red: 0.05, green: 1.00, blue: 0.95, alpha: 1)
+        let dark = UIColor(red: 0.10, green: 0.03, blue: 0.18, alpha: 1)
+        c.setFillColor(dark.cgColor)
+        c.fill(CGRect(x: borderW + 14, y: 0, width: 6, height: height))
+        c.setFillColor(cyan.cgColor)
+        var y: CGFloat = 22
+        while y < height {
+            c.fill(CGRect(x: borderW + 14, y: y, width: 6, height: 18))
+            c.fill(CGRect(x: width - borderW - 20, y: y + 28, width: 4, height: 14))
+            y += 86
+        }
+    }
+
+    private func drawRoyalPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let trim = UIColor(red: 0.95, green: 0.76, blue: 0.22, alpha: 1)
+        var y: CGFloat = 38
+        while y < height {
+            c.setFillColor(trim.cgColor)
+            c.fill(CGRect(x: borderW + 8, y: y, width: width - borderW * 2 - 16, height: 3))
+            drawTinyGems(in: c, y: y + 10, width: width)
+            y += 90
+        }
+    }
+
+    private func drawGoldPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawGoldBrickLines(in: c, width: width, height: height, borderW: borderW)
+        c.setFillColor(UIColor(red: 1.00, green: 0.95, blue: 0.48, alpha: 1).cgColor)
+        var y: CGFloat = 28
+        while y < height {
+            c.fill(CGRect(x: borderW + 8, y: y, width: 4, height: 12))
+            c.fill(CGRect(x: borderW + 5, y: y + 4, width: 10, height: 4))
+            y += 118
+        }
+    }
+
+    private func drawLavaPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawLavaCracks(in: c, width: width, height: height, borderW: borderW)
+        c.setFillColor(UIColor(red: 1.00, green: 0.78, blue: 0.10, alpha: 1).cgColor)
+        var y: CGFloat = 30
+        while y < height {
+            c.fill(CGRect(x: width / 2 - 2, y: y, width: 4, height: 22))
+            c.fill(CGRect(x: width / 2 + 2, y: y + 18, width: 9, height: 4))
+            y += 96
+        }
+    }
+
+    private func drawIcePipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawIceShardLines(in: c, width: width, height: height, borderW: borderW)
+        c.setFillColor(UIColor.white.withAlphaComponent(0.65).cgColor)
+        var y: CGFloat = 22
+        while y < height {
+            c.fill(CGRect(x: borderW + 8, y: y, width: 4, height: 24))
+            c.fill(CGRect(x: borderW + 12, y: y + 4, width: 7, height: 4))
+            y += 84
+        }
+    }
+
+    private func drawToxicPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawHazardBands(in: c, width: width, height: height, borderW: borderW)
+        let bubble = UIColor(red: 0.82, green: 1.00, blue: 0.28, alpha: 1)
+        var y: CGFloat = 26
+        while y < height {
+            c.setFillColor(bubble.cgColor)
+            c.fill(CGRect(x: borderW + 14, y: y, width: 6, height: 6))
+            c.fill(CGRect(x: width - borderW - 25, y: y + 34, width: 8, height: 8))
+            y += 92
+        }
+    }
+
+    private func drawDiagonalStripes(in c: CGContext, color: UIColor, width: CGFloat, height: CGFloat, spacing: CGFloat) {
+        c.setFillColor(color.cgColor)
+        var x: CGFloat = -height
+        while x < width {
+            c.saveGState()
+            c.translateBy(x: x, y: 0)
+            c.rotate(by: -.pi / 8)
+            c.fill(CGRect(x: 0, y: 0, width: 8, height: height * 2))
+            c.restoreGState()
+            x += spacing
+        }
+    }
+
+    private func drawHorizontalBand(in c: CGContext, y: CGFloat, width: CGFloat, color: UIColor, height: CGFloat) {
+        c.setFillColor(color.cgColor)
+        c.fill(CGRect(x: 3, y: y, width: width - 6, height: height))
+    }
+
+    private func drawRivetRow(in c: CGContext, y: CGFloat, width: CGFloat, color: UIColor) {
+        c.setFillColor(color.cgColor)
+        var x: CGFloat = 10
+        while x < width - 8 {
+            c.fill(CGRect(x: x, y: y, width: 5, height: 5))
+            x += 18
+        }
+    }
+
+    private func drawPixelNotches(in c: CGContext, width: CGFloat, height: CGFloat, color: UIColor) {
+        c.setFillColor(color.cgColor)
+        var x: CGFloat = 8
+        while x < width - 8 {
+            c.fill(CGRect(x: x, y: 6, width: 6, height: 6))
+            c.fill(CGRect(x: x + 6, y: height - 12, width: 6, height: 6))
+            x += 18
+        }
+    }
+
+    private func drawTinyGems(in c: CGContext, y: CGFloat, width: CGFloat) {
+        let gem = UIColor(red: 0.25, green: 0.85, blue: 1.00, alpha: 1)
+        c.setFillColor(gem.cgColor)
+        c.fill(CGRect(x: width / 2 - 3, y: y, width: 6, height: 6))
+        c.fill(CGRect(x: width / 2 - 1, y: y - 2, width: 2, height: 10))
+    }
+
+    private func drawGoldBrickLines(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let line = UIColor(red: 0.55, green: 0.38, blue: 0.10, alpha: 1)
+        c.setFillColor(line.cgColor)
+        var y: CGFloat = 20
+        var offset: CGFloat = 0
+        while y < height {
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 2))
+            var x: CGFloat = borderW + offset
+            while x < width - borderW {
+                c.fill(CGRect(x: x, y: y, width: 2, height: 20))
+                x += 22
+            }
+            offset = offset == 0 ? 11 : 0
+            y += 22
+        }
+    }
+
+    private func drawLavaCracks(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let crack = UIColor(red: 0.24, green: 0.07, blue: 0.04, alpha: 1)
+        c.setFillColor(crack.cgColor)
+        var y: CGFloat = 18
+        while y < height {
+            c.fill(CGRect(x: borderW + 18, y: y, width: 4, height: 22))
+            c.fill(CGRect(x: borderW + 22, y: y + 18, width: 12, height: 4))
+            c.fill(CGRect(x: width - borderW - 18, y: y + 42, width: 4, height: 18))
+            y += 108
+        }
+    }
+
+    private func drawIceShardLines(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let line = UIColor(red: 0.14, green: 0.42, blue: 0.58, alpha: 1)
+        c.setFillColor(line.cgColor)
+        var y: CGFloat = 18
+        while y < height {
+            c.fill(CGRect(x: borderW + 22, y: y, width: 3, height: 30))
+            c.fill(CGRect(x: borderW + 17, y: y + 8, width: 8, height: 3))
+            c.fill(CGRect(x: width - borderW - 24, y: y + 42, width: 3, height: 26))
+            y += 104
+        }
+    }
+
+    private func drawHazardBands(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let dark = UIColor(red: 0.16, green: 0.22, blue: 0.05, alpha: 1)
+        c.setFillColor(dark.cgColor)
+        var y: CGFloat = 16
+        while y < height {
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 4))
+            y += 42
+        }
+    }
+
+    private func drawBreadboxPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let plank = UIColor(red: 0.32, green: 0.17, blue: 0.07, alpha: 1)
+        let crumb = UIColor(red: 0.95, green: 0.70, blue: 0.30, alpha: 1)
+
+        var y: CGFloat = 22
+        while y < height {
+            c.setFillColor(plank.cgColor)
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 3))
+            y += 42
+        }
+
+        var x: CGFloat = borderW + 16
+        while x < width - borderW {
+            c.setFillColor(plank.cgColor)
+            c.fill(CGRect(x: x, y: 0, width: 2, height: height))
+            x += 18
+        }
+
+        c.setFillColor(crumb.cgColor)
+        y = 36
+        while y < height {
+            c.fill(CGRect(x: borderW + 10, y: y, width: 5, height: 4))
+            c.fill(CGRect(x: width - borderW - 22, y: y + 18, width: 4, height: 4))
+            y += 96
+        }
+    }
+
+    private func drawBreadboxCapDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let plank = UIColor(red: 0.32, green: 0.17, blue: 0.07, alpha: 1)
+        c.setFillColor(plank.cgColor)
+        c.fill(CGRect(x: borderW, y: height / 2 - 1, width: width - borderW * 2, height: 3))
+        c.fill(CGRect(x: width / 2 - 1, y: borderW, width: 3, height: height - borderW * 2))
+        c.setFillColor(UIColor(red: 0.95, green: 0.70, blue: 0.30, alpha: 1).cgColor)
+        c.fill(CGRect(x: 12, y: 8, width: 5, height: 4))
+        c.fill(CGRect(x: width - 18, y: height - 12, width: 4, height: 4))
+    }
+
+    private func drawExpandedPipeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat, skin: PipeSkin) {
+        switch skin {
+        case .turret:
+            drawSteelPipeDetails(in: c, width: width, height: height, borderW: borderW)
+            drawBarrelSlots(in: c, width: width, height: height, color: UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1))
+        case .cactus:
+            drawCactusNeedles(in: c, width: width, height: height, borderW: borderW)
+        case .arcade:
+            drawArcadeDetails(in: c, width: width, height: height, borderW: borderW)
+        case .trafficCone:
+            drawTrafficConeDetails(in: c, width: width, height: height, borderW: borderW)
+        case .breadLoaf:
+            drawBreadLoafDetails(in: c, width: width, height: height, borderW: borderW)
+        case .sodaCan:
+            drawSodaCanDetails(in: c, width: width, height: height, borderW: borderW)
+        case .mailbox:
+            drawMailboxDetails(in: c, width: width, height: height, borderW: borderW)
+        case .totem:
+            drawTotemDetails(in: c, width: width, height: height, borderW: borderW)
+        case .castleTower:
+            drawStoneBlocks(in: c, width: width, height: height, borderW: borderW)
+        case .pharaoh:
+            drawPharaohDetails(in: c, width: width, height: height, borderW: borderW)
+        case .submarine:
+            drawSubmarineDetails(in: c, width: width, height: height, borderW: borderW)
+        case .rocket:
+            drawRocketDetails(in: c, width: width, height: height, borderW: borderW)
+        case .mushroom:
+            drawMushroomDetails(in: c, width: width, height: height, borderW: borderW)
+        case .crystal:
+            drawCrystalDetails(in: c, width: width, height: height, borderW: borderW)
+        case .bone:
+            drawBoneDetails(in: c, width: width, height: height, borderW: borderW)
+        case .bookshelf:
+            drawBookshelfDetails(in: c, width: width, height: height, borderW: borderW)
+        default:
+            break
+        }
+    }
+
+    private func drawExpandedCapDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat, skin: PipeSkin) {
+        switch skin {
+        case .turret:
+            drawRivetRow(in: c, y: 8, width: width, color: skin.borderColor)
+            drawBarrelSlots(in: c, width: width, height: height, color: UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1))
+        case .cactus:
+            drawCactusNeedles(in: c, width: width, height: height, borderW: borderW)
+        case .arcade:
+            drawPixelNotches(in: c, width: width, height: height, color: UIColor(red: 1.00, green: 0.20, blue: 0.75, alpha: 1))
+        case .trafficCone:
+            drawTrafficConeDetails(in: c, width: width, height: height, borderW: borderW)
+        case .breadLoaf:
+            drawBreadLoafDetails(in: c, width: width, height: height, borderW: borderW)
+        case .sodaCan:
+            drawRivetRow(in: c, y: 8, width: width, color: UIColor.white.withAlphaComponent(0.55))
+        case .mailbox:
+            c.setFillColor(UIColor(red: 0.96, green: 0.84, blue: 0.20, alpha: 1).cgColor)
+            c.fill(CGRect(x: width - 18, y: 8, width: 9, height: 6))
+        case .totem:
+            drawTotemFace(in: c, x: width / 2 - 10, y: 6)
+        case .castleTower:
+            drawStoneBlocks(in: c, width: width, height: height, borderW: borderW)
+        case .pharaoh:
+            drawTinyGems(in: c, y: 10, width: width)
+            drawGoldBrickLines(in: c, width: width, height: height, borderW: borderW)
+        case .submarine:
+            drawPortholes(in: c, width: width, height: height)
+        case .rocket:
+            drawHazardBands(in: c, width: width, height: height, borderW: borderW)
+        case .mushroom:
+            drawMushroomSpots(in: c, width: width, height: height)
+        case .crystal:
+            drawIceShardLines(in: c, width: width, height: height, borderW: borderW)
+        case .bone:
+            drawBoneKnuckles(in: c, width: width, height: height, borderW: borderW)
+        case .bookshelf:
+            drawBookshelfDetails(in: c, width: width, height: height, borderW: borderW)
+        default:
+            break
+        }
+    }
+
+    private func drawBarrelSlots(in c: CGContext, width: CGFloat, height: CGFloat, color: UIColor) {
+        c.setFillColor(color.cgColor)
+        var y: CGFloat = 28
+        while y < height {
+            c.fill(CGRect(x: width / 2 - 11, y: y, width: 22, height: 5))
+            y += 78
+        }
+    }
+
+    private func drawCactusNeedles(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let needle = UIColor(red: 0.72, green: 0.92, blue: 0.52, alpha: 1)
+        c.setFillColor(needle.cgColor)
+        var y: CGFloat = 18
+        while y < height {
+            c.fill(CGRect(x: borderW + 12, y: y, width: 2, height: 8))
+            c.fill(CGRect(x: borderW + 19, y: y + 5, width: 2, height: 8))
+            c.fill(CGRect(x: width - borderW - 18, y: y + 20, width: 2, height: 8))
+            y += 54
+        }
+    }
+
+    private func drawArcadeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let screen = UIColor(red: 0.04, green: 0.78, blue: 0.86, alpha: 1)
+        let button = UIColor(red: 1.00, green: 0.20, blue: 0.72, alpha: 1)
+        var y: CGFloat = 24
+        while y < height {
+            c.setFillColor(screen.cgColor)
+            c.fill(CGRect(x: borderW + 13, y: y, width: width - borderW * 2 - 26, height: 18))
+            c.setFillColor(button.cgColor)
+            c.fill(CGRect(x: borderW + 16, y: y + 28, width: 6, height: 6))
+            c.fill(CGRect(x: borderW + 28, y: y + 28, width: 6, height: 6))
+            y += 90
+        }
+    }
+
+    private func drawTrafficConeDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let white = UIColor.white.withAlphaComponent(0.86)
+        var y: CGFloat = 18
+        while y < height {
+            c.setFillColor(white.cgColor)
+            c.fill(CGRect(x: borderW + 5, y: y, width: width - borderW * 2 - 10, height: 7))
+            y += 46
+        }
+    }
+
+    private func drawBreadLoafDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let slash = UIColor(red: 1.00, green: 0.76, blue: 0.38, alpha: 1)
+        var y: CGFloat = 20
+        while y < height {
+            c.setFillColor(slash.cgColor)
+            c.fill(CGRect(x: borderW + 18, y: y, width: 18, height: 5))
+            c.fill(CGRect(x: borderW + 14, y: y + 5, width: 6, height: 5))
+            y += 62
+        }
+    }
+
+    private func drawSodaCanDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        c.setFillColor(UIColor.white.withAlphaComponent(0.72).cgColor)
+        c.fill(CGRect(x: borderW + 10, y: 0, width: 6, height: height))
+        var y: CGFloat = 35
+        while y < height {
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 3))
+            y += 80
+        }
+    }
+
+    private func drawMailboxDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let flag = UIColor(red: 0.96, green: 0.84, blue: 0.20, alpha: 1)
+        var y: CGFloat = 34
+        while y < height {
+            c.setFillColor(flag.cgColor)
+            c.fill(CGRect(x: width - borderW - 14, y: y, width: 10, height: 7))
+            c.fill(CGRect(x: width - borderW - 6, y: y, width: 3, height: 22))
+            y += 92
+        }
+    }
+
+    private func drawTotemDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        var y: CGFloat = 28
+        while y < height {
+            drawTotemFace(in: c, x: width / 2 - 10, y: y)
+            y += 70
+        }
+    }
+
+    private func drawTotemFace(in c: CGContext, x: CGFloat, y: CGFloat) {
+        let eye = UIColor(red: 0.08, green: 0.55, blue: 0.70, alpha: 1)
+        let beak = UIColor(red: 0.95, green: 0.62, blue: 0.18, alpha: 1)
+        c.setFillColor(eye.cgColor)
+        c.fill(CGRect(x: x, y: y, width: 5, height: 5))
+        c.fill(CGRect(x: x + 15, y: y, width: 5, height: 5))
+        c.setFillColor(beak.cgColor)
+        c.fill(CGRect(x: x + 7, y: y + 10, width: 8, height: 5))
+    }
+
+    private func drawStoneBlocks(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let line = UIColor(red: 0.28, green: 0.28, blue: 0.30, alpha: 1)
+        c.setFillColor(line.cgColor)
+        var y: CGFloat = 18
+        var offset: CGFloat = 0
+        while y < height {
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 2))
+            var x = borderW + offset
+            while x < width - borderW {
+                c.fill(CGRect(x: x, y: y, width: 2, height: 18))
+                x += 18
+            }
+            offset = offset == 0 ? 9 : 0
+            y += 20
+        }
+    }
+
+    private func drawPharaohDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawGoldBrickLines(in: c, width: width, height: height, borderW: borderW)
+        let teal = UIColor(red: 0.06, green: 0.62, blue: 0.72, alpha: 1)
+        var y: CGFloat = 34
+        while y < height {
+            c.setFillColor(teal.cgColor)
+            c.fill(CGRect(x: width / 2 - 3, y: y, width: 6, height: 16))
+            c.fill(CGRect(x: width / 2 - 8, y: y + 5, width: 16, height: 4))
+            y += 104
+        }
+    }
+
+    private func drawSubmarineDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawRivetRow(in: c, y: 18, width: width, color: UIColor(red: 0.36, green: 0.28, blue: 0.09, alpha: 1))
+        drawPortholes(in: c, width: width, height: height)
+    }
+
+    private func drawPortholes(in c: CGContext, width: CGFloat, height: CGFloat) {
+        let glass = UIColor(red: 0.22, green: 0.78, blue: 0.92, alpha: 1)
+        let rim = UIColor(red: 0.24, green: 0.18, blue: 0.07, alpha: 1)
+        var y: CGFloat = 38
+        while y < height {
+            c.setFillColor(rim.cgColor)
+            c.fill(CGRect(x: width / 2 - 9, y: y, width: 18, height: 18))
+            c.setFillColor(glass.cgColor)
+            c.fill(CGRect(x: width / 2 - 5, y: y + 4, width: 10, height: 10))
+            y += 84
+        }
+    }
+
+    private func drawRocketDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawHazardBands(in: c, width: width, height: height, borderW: borderW)
+        let red = UIColor(red: 0.85, green: 0.12, blue: 0.15, alpha: 1)
+        c.setFillColor(red.cgColor)
+        var y: CGFloat = 24
+        while y < height {
+            c.fill(CGRect(x: borderW + 8, y: y, width: 8, height: 22))
+            c.fill(CGRect(x: width - borderW - 16, y: y, width: 8, height: 22))
+            y += 94
+        }
+    }
+
+    private func drawMushroomDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawMushroomSpots(in: c, width: width, height: height)
+        c.setFillColor(UIColor(red: 0.62, green: 0.40, blue: 0.22, alpha: 1).cgColor)
+        var y: CGFloat = 40
+        while y < height {
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 3))
+            y += 76
+        }
+    }
+
+    private func drawMushroomSpots(in c: CGContext, width: CGFloat, height: CGFloat) {
+        c.setFillColor(UIColor.white.withAlphaComponent(0.82).cgColor)
+        var y: CGFloat = 20
+        while y < height {
+            c.fill(CGRect(x: width / 2 - 11, y: y, width: 8, height: 8))
+            c.fill(CGRect(x: width / 2 + 7, y: y + 20, width: 7, height: 7))
+            y += 72
+        }
+    }
+
+    private func drawCrystalDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawIceShardLines(in: c, width: width, height: height, borderW: borderW)
+        let shine = UIColor.white.withAlphaComponent(0.75)
+        c.setFillColor(shine.cgColor)
+        var y: CGFloat = 22
+        while y < height {
+            c.fill(CGRect(x: borderW + 9, y: y, width: 4, height: 18))
+            c.fill(CGRect(x: width - borderW - 18, y: y + 36, width: 3, height: 16))
+            y += 88
+        }
+    }
+
+    private func drawBoneDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        drawBoneKnuckles(in: c, width: width, height: height, borderW: borderW)
+        c.setFillColor(UIColor(red: 0.55, green: 0.45, blue: 0.30, alpha: 1).cgColor)
+        var y: CGFloat = 26
+        while y < height {
+            c.fill(CGRect(x: borderW + 12, y: y, width: width - borderW * 2 - 24, height: 3))
+            y += 58
+        }
+    }
+
+    private func drawBoneKnuckles(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let light = UIColor(red: 0.96, green: 0.88, blue: 0.66, alpha: 1)
+        c.setFillColor(light.cgColor)
+        var y: CGFloat = 16
+        while y < height {
+            c.fill(CGRect(x: borderW + 6, y: y, width: 8, height: 8))
+            c.fill(CGRect(x: width - borderW - 14, y: y + 9, width: 8, height: 8))
+            y += 82
+        }
+    }
+
+    private func drawBookshelfDetails(in c: CGContext, width: CGFloat, height: CGFloat, borderW: CGFloat) {
+        let colors = [
+            UIColor(red: 0.85, green: 0.18, blue: 0.18, alpha: 1),
+            UIColor(red: 0.18, green: 0.48, blue: 0.82, alpha: 1),
+            UIColor(red: 0.92, green: 0.70, blue: 0.18, alpha: 1),
+            UIColor(red: 0.20, green: 0.62, blue: 0.30, alpha: 1)
+        ]
+        var y: CGFloat = 14
+        var row = 0
+        while y < height {
+            c.setFillColor(UIColor(red: 0.22, green: 0.10, blue: 0.04, alpha: 1).cgColor)
+            c.fill(CGRect(x: borderW, y: y, width: width - borderW * 2, height: 3))
+            var x = borderW + 7
+            var i = 0
+            while x < width - borderW - 7 {
+                c.setFillColor(colors[(row + i) % colors.count].cgColor)
+                c.fill(CGRect(x: x, y: y + 5, width: 7, height: 22))
+                x += 10
+                i += 1
+            }
+            row += 1
+            y += 42
+        }
+    }
+
+    private func renderSandCastlePipe(width: CGFloat, height: CGFloat, skin: PipeSkin) -> UIImage {
+        let size = CGSize(width: width, height: height)
+        let outline: CGFloat = 3
+        let blockH: CGFloat = 24
+        let blockW: CGFloat = 18
+        let mortar = UIColor(red: 0.54, green: 0.34, blue: 0.11, alpha: 1)
+        let chip = UIColor(red: 0.74, green: 0.49, blue: 0.18, alpha: 1)
+        let sparkle = UIColor(red: 1.00, green: 0.90, blue: 0.52, alpha: 1)
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            c.interpolationQuality = .none
+
+            c.setFillColor(skin.borderColor.cgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+
+            let body = CGRect(x: outline, y: 0, width: width - outline * 2, height: height)
+            c.setFillColor(skin.bodyColor.cgColor)
+            c.fill(body)
+
+            c.setFillColor(skin.highlightColor.cgColor)
+            c.fill(CGRect(x: outline + 4, y: 0, width: 7, height: height))
+            c.setFillColor(skin.shadowColor.cgColor)
+            c.fill(CGRect(x: width - outline - 12, y: 0, width: 9, height: height))
+            c.setFillColor(UIColor(red: 0.48, green: 0.31, blue: 0.11, alpha: 1).cgColor)
+            c.fill(CGRect(x: width - outline - 4, y: 0, width: 2, height: height))
+
+            var y: CGFloat = 8
+            var row = 0
+            while y < height {
+                c.setFillColor(mortar.cgColor)
+                c.fill(CGRect(x: outline, y: y, width: body.width, height: 2))
+
+                let offset = row.isMultiple(of: 2) ? 0 : blockW / 2
+                var x = outline + offset
+                while x < width - outline {
+                    c.fill(CGRect(x: x, y: y, width: 2, height: min(blockH, height - y)))
+                    x += blockW
+                }
+
+                row += 1
+                y += blockH
+            }
+
+            c.setFillColor(sparkle.cgColor)
+            var sparkleY: CGFloat = 18
+            while sparkleY < height {
+                c.fill(CGRect(x: outline + 7, y: sparkleY, width: 2, height: 8))
+                c.fill(CGRect(x: outline + 12, y: sparkleY + 4, width: 2, height: 4))
+                sparkleY += 96
+            }
+
+            c.setFillColor(chip.cgColor)
+            var chipY: CGFloat = 44
+            while chipY < height {
+                c.fill(CGRect(x: width - outline - 22, y: chipY, width: 6, height: 2))
+                c.fill(CGRect(x: width - outline - 18, y: chipY + 2, width: 2, height: 3))
+                c.fill(CGRect(x: outline + 22, y: chipY + 40, width: 8, height: 2))
+                c.fill(CGRect(x: outline + 20, y: chipY + 42, width: 2, height: 2))
+                chipY += 132
+            }
+
+            drawSandShell(in: c, origin: CGPoint(x: outline + 13, y: 140), mirrored: false)
+            drawSandStarfish(in: c, origin: CGPoint(x: width - outline - 25, y: 250))
+            drawSandShell(in: c, origin: CGPoint(x: width - outline - 24, y: 430), mirrored: true)
+        }
+    }
+
+    private func renderSandCastlePipeCap(skin: PipeSkin) -> UIImage {
+        let capW: CGFloat = GK.pipeWidth + 10
+        let capH: CGFloat = 30
+        let outline: CGFloat = 3
+        let lipH: CGFloat = 12
+        let merlonW: CGFloat = 11
+        let gapW: CGFloat = 8
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: capW, height: capH))
+
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            c.interpolationQuality = .none
+
+            c.setFillColor(skin.borderColor.cgColor)
+            c.fill(CGRect(x: 0, y: 0, width: capW, height: capH))
+
+            c.setFillColor(skin.bodyColor.cgColor)
+            c.fill(CGRect(x: outline, y: capH - lipH - outline, width: capW - outline * 2, height: lipH))
+
+            var x = outline
+            while x < capW - outline {
+                c.fill(CGRect(x: x, y: outline, width: min(merlonW, capW - outline - x), height: capH - lipH - outline))
+                x += merlonW + gapW
+            }
+
+            c.setFillColor(skin.highlightColor.cgColor)
+            c.fill(CGRect(x: outline + 4, y: outline + 2, width: 5, height: capH - outline * 2))
+            c.fill(CGRect(x: outline + 15, y: capH - lipH - outline + 3, width: 18, height: 3))
+
+            c.setFillColor(skin.shadowColor.cgColor)
+            c.fill(CGRect(x: capW - outline - 10, y: outline, width: 7, height: capH - outline * 2))
+
+            c.setFillColor(UIColor(red: 0.54, green: 0.34, blue: 0.11, alpha: 1).cgColor)
+            c.fill(CGRect(x: outline, y: capH - lipH - outline, width: capW - outline * 2, height: 2))
+            c.fill(CGRect(x: outline + 23, y: capH - lipH, width: 2, height: lipH - outline))
+            c.fill(CGRect(x: outline + 43, y: capH - lipH, width: 2, height: lipH - outline))
+        }
+    }
+
+    private func drawSandShell(in c: CGContext, origin: CGPoint, mirrored: Bool) {
+        let outline = UIColor(red: 0.36, green: 0.19, blue: 0.12, alpha: 1)
+        let shell = UIColor(red: 0.96, green: 0.57, blue: 0.50, alpha: 1)
+        let light = UIColor(red: 1.00, green: 0.78, blue: 0.70, alpha: 1)
+        let shade = UIColor(red: 0.72, green: 0.32, blue: 0.34, alpha: 1)
+        let sx: CGFloat = mirrored ? -1 : 1
+
+        func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ color: UIColor) {
+            c.setFillColor(color.cgColor)
+            c.fill(CGRect(x: origin.x + x * sx - (mirrored ? w : 0), y: origin.y + y, width: w, height: h))
+        }
+
+        r(2, 4, 16, 8, outline)
+        r(0, 8, 20, 6, outline)
+        r(4, 2, 12, 12, shell)
+        r(2, 8, 16, 5, shell)
+        r(6, 4, 3, 9, light)
+        r(11, 4, 3, 9, shade)
+        r(4, 13, 14, 2, outline)
+    }
+
+    private func drawSandStarfish(in c: CGContext, origin: CGPoint) {
+        let outline = UIColor(red: 0.36, green: 0.16, blue: 0.10, alpha: 1)
+        let star = UIColor(red: 0.95, green: 0.40, blue: 0.30, alpha: 1)
+        let light = UIColor(red: 1.00, green: 0.64, blue: 0.48, alpha: 1)
+
+        func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ color: UIColor) {
+            c.setFillColor(color.cgColor)
+            c.fill(CGRect(x: origin.x + x, y: origin.y + y, width: w, height: h))
+        }
+
+        r(8, 0, 5, 22, outline)
+        r(0, 8, 21, 5, outline)
+        r(3, 3, 15, 15, outline)
+        r(9, 3, 3, 16, star)
+        r(3, 9, 15, 3, star)
+        r(6, 6, 9, 9, star)
+        r(7, 5, 3, 3, light)
+        r(4, 10, 3, 2, light)
     }
 
     // MARK: - Ground (pixel-art park grass + dirt)

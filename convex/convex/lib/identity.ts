@@ -65,8 +65,8 @@ export async function resolveUser(ctx: any,
     if (session && !session.revokedAt && session.expiresAt > now) {
       const user = await ctx.db.get(session.userId);
       if (user) {
-        if (options.requireLinked && user.provider !== "apple") {
-          throw new ConvexError("Ranked requires Sign in with Apple.");
+        if (options.requireLinked && user.provider !== "apple" && user.provider !== "gameCenter") {
+          throw new ConvexError("Ranked requires Game Center sign in.");
         }
         return user;
       }
@@ -113,6 +113,13 @@ export async function findUserByAppleId(ctx: any, appleUserId: string) {
   return await ctx.db
     .query("users")
     .withIndex("by_appleUserId", (q: any) => q.eq("appleUserId", appleUserId))
+    .first();
+}
+
+export async function findUserByGameCenterPlayerId(ctx: any, gameCenterPlayerId: string) {
+  return await ctx.db
+    .query("users")
+    .withIndex("by_gameCenterPlayerId", (q: any) => q.eq("gameCenterPlayerId", gameCenterPlayerId))
     .first();
 }
 

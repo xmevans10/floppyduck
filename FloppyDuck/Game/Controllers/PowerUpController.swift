@@ -291,22 +291,26 @@ final class PowerUpController {
 
     // MARK: - Bread Magnet
 
-    /// Attracts nearby bread toward the duck. Call every frame while `isBreadMagnetActive`.
-    func applyBreadMagnetEffect() {
+    /// Attracts nearby bread toward the duck using cached bread records.
+    /// Call every frame while `isBreadMagnetActive`.
+    /// - Parameter breadRecords: Cached active bread records from the scene
+    ///   (avoids per-frame child-tree scans with string-name checks).
+    func applyBreadMagnetEffect(breadRecords: [ActiveBreadRecord]) {
         guard let duck else { return }
         let magnetRadius: CGFloat = 120
         let magnetStrength: CGFloat = 3.0
 
-        for child in pipeLayer.children where child.name == "bread" {
-            let breadWorldPos = child.convert(CGPoint.zero, to: worldNode)
+        for record in breadRecords {
+            guard let breadNode = record.node else { continue }
+            let breadWorldPos = breadNode.convert(CGPoint.zero, to: worldNode)
             let dx = duck.position.x - breadWorldPos.x
             let dy = duck.position.y - breadWorldPos.y
             let distance = sqrt(dx * dx + dy * dy)
 
             if distance < magnetRadius && distance > 1 {
                 let factor = magnetStrength * (1.0 - distance / magnetRadius)
-                child.position.x += dx / distance * factor
-                child.position.y += dy / distance * factor
+                breadNode.position.x += dx / distance * factor
+                breadNode.position.y += dy / distance * factor
             }
         }
     }

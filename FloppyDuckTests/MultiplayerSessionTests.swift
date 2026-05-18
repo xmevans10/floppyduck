@@ -276,6 +276,10 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
         []
     }
 
+    func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] {
+        []
+    }
+
     func syncBeatenBots(_ botIds: [String]) async throws {
         // Not needed for these tests.
     }

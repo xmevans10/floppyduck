@@ -39,50 +39,6 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        // Player name
-                        settingsPanel {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("PLAYER NAME")
-                                    .font(.custom(GK.pixelFontName, size: 8))
-                                    .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
-
-                                PixelTextField(
-                                    text: $manager.playerName,
-                                    pixelFontName: GK.pixelFontName,
-                                    fontSize: 14,
-                                    onReturn: { syncUsername() }
-                                )
-                                .frame(height: 44)
-                                .padding(.horizontal, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.white)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(GK.Colors.panelBorder.opacity(0.2), lineWidth: 2)
-                                        )
-                                )
-                                .disabled(usernameSynced)
-
-                                if usernameSyncing {
-                                    HStack(spacing: 4) {
-                                        ProgressView().scaleEffect(0.6)
-                                        Text("checking...")
-                                            .font(.custom(GK.pixelFontName, size: 7))
-                                            .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
-                                    }
-                                } else if let error = usernameError {
-                                    Text(error)
-                                        .font(.custom(GK.pixelFontName, size: 7))
-                                        .foregroundColor(.red)
-                                } else if usernameSynced {
-                                    Text("Name saved")
-                                        .font(.custom(GK.pixelFontName, size: 7))
-                                        .foregroundColor(GK.Colors.buttonGreen)
-                                }
-                            }
-                        }
-
                         // Account
                         settingsPanel {
                             VStack(alignment: .leading, spacing: 10) {
@@ -123,9 +79,9 @@ struct SettingsView: View {
                                     .buttonStyle(.plain)
                                 } else {
                                     Button {
-                                        Task { await auth.signInWithApple() }
+                                        Task { await auth.signInWithGameCenter() }
                                     } label: {
-                                        Text("SIGN IN WITH APPLE")
+                                        Text("SIGN IN WITH GAME CENTER")
                                             .font(.custom(GK.pixelFontName, size: 8))
                                             .foregroundColor(.white)
                                             .frame(maxWidth: .infinity)
@@ -138,9 +94,9 @@ struct SettingsView: View {
 
                                     if auth.needsCloudRestore {
                                         Button {
-                                            Task { await auth.signInWithApple() }
+                                            Task { await auth.signInWithGameCenter() }
                                         } label: {
-                                            Text("RESTORE CLOUD PROFILE")
+                                            Text("RESTORE GAME CENTER PROFILE")
                                                 .font(.custom(GK.pixelFontName, size: 8))
                                                 .foregroundColor(.white)
                                                 .frame(maxWidth: .infinity)
@@ -317,7 +273,7 @@ struct SettingsView: View {
                 Task { await auth.deleteAccount() }
             }
         } message: {
-            Text("This will permanently delete your account, all stats, purchases history, and cloud data. You will start fresh as a new guest. This cannot be undone.")
+            Text("This will permanently delete your account, all stats, purchase history, and cloud data. You will need Game Center to sign in again. This cannot be undone.")
         }
         .onChange(of: manager.soundEnabled) { _, _ in
             SoundManager.shared.refreshAudioPreference()

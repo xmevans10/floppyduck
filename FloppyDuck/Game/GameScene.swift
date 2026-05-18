@@ -2,6 +2,23 @@ import SpriteKit
 import SwiftUI
 import GameKit
 
+// MARK: - Performance Record Types
+
+/// Cached pipe record — maintained at spawn/cleanup instead of scanning pipeLayer.children.
+/// Eliminates repeated SpriteKit child-tree iteration with string-name checks every frame.
+struct ActivePipeRecord {
+    weak var node: SKNode?
+    let gapCenterY: CGFloat    // Y of the scoreTrigger center (for BotController AI targeting)
+    let name: String            // pipe name (e.g. "pipe_3") for score dedup in didBegin
+}
+
+/// Cached bread record — maintained at spawn/collect/cleanup instead of scanning pipeLayer.children.
+/// Eliminates per-frame string-name checks and userData dictionary lookups.
+struct ActiveBreadRecord {
+    weak var node: SKNode?
+    let baseY: CGFloat          // Original Y position for absolute sine-bob
+}
+
 // MARK: - Game Phase
 
 enum GamePhase {
@@ -59,6 +76,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let pipeLayer = SKNode()
     private let groundLayer = SKNode()
     private let foregroundLayer = SKNode()   // Enhanced ground decorations (grass blades, pebbles)
+
+    // PERF: Cached records — maintained at spawn/collect/cleanup to avoid per-frame
+    // pipeLayer.children scans, string-name checks, and userData dictionary lookups.
+    private var activePipes: [ActivePipeRecord] = []
+    private var activeBreads: [ActiveBreadRecord] = []
     private let hudLayer = SKNode()
 
     // Controllers
@@ -85,6 +107,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
 #if DEBUG
     private var debugFrameTimes: [Double] = []
+    /// Only log frames when `-DebugFrameLog` is passed as a launch argument.
+    /// Keeps local debug play smooth by default.
+    private var debugFrameLogEnabled: Bool = {
+        ProcessInfo.processInfo.arguments.contains("-DebugFrameLog")
+            || ProcessInfo.processInfo.environment["DEBUG_FRAME_LOG"] == "1"
+    }()
 #endif
 
     private let performanceSessionId = UUID().uuidString
@@ -108,6 +136,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private static let slowFrameThreshold: TimeInterval = 1.0 / 50.0
     private static let droppedFrameThreshold: TimeInterval = 1.0 / 30.0
     private static let severeFrameThreshold: TimeInterval = 1.0 / 20.0
+
+    // Tap-correlated performance counters (added to game-over summary)
+    private var performanceTapCount: Int = 0
+    private var performanceTapTimestamps: [TimeInterval] = []  // last 20 tap times
+    private var performanceSlowFramesAfterTap: Int = 0
+    private var performanceDroppedFramesAfterTap: Int = 0
+    /// Frames following a tap within this window are counted as tap-correlated.
+    private static let tapCorrelationWindow: TimeInterval = 1.0 / 15.0  // ~66ms / ~4 frames
 
     // Progressive difficulty
     private let difficulty = DifficultyManager()
@@ -599,6 +635,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // nodes at currentPipeSpeed so speed changes apply instantly to all.
         pipeLayer.addChild(pipeNode)
 
+        // PERF: Cache pipe record for O(1) lookup in update loop & Bot AI — avoids
+        // scanning pipeLayer.children with string-name checks every frame.
+        activePipes.append(ActivePipeRecord(node: pipeNode, gapCenterY: gapY, name: pipeNode.name ?? "pipe_\(currentPipeIndex)"))
+
         // Spawn pending power-up collectible between pipes (free-floating in pipeLayer)
         if let kind = powerUpCtrl.consumePendingKind() {
             spawnPowerUpCollectible(afterPipeX: pipeNode.position.x, gapY: gapY, gapHeight: effectiveGap, kind: kind)
@@ -719,6 +759,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             // per-node SKActions (eliminates ~6 action evaluations per frame).
 
             pipeLayer.addChild(breadNode)
+
+            // PERF: Cache bread record — avoids per-frame string-name checks and
+            // userData dictionary lookups in the update loop.
+            activeBreads.append(ActiveBreadRecord(node: breadNode, baseY: breadY))
         }
     }
 
@@ -726,7 +770,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func collectBread(node: SKNode) {
         node.removeFromParent()
         breadCollected += 1
-        SoundManager.shared.play(.score)
+        SoundManager.shared.play(.bread)
         Haptic.score()
 
         // Track bread collected while magnet is active (for achievement)
@@ -790,16 +834,21 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         guard phase == .playing, let duck else { return }
 
         let impulse = powerUpCtrl.effectiveFlapImpulse
-
         duck.physicsBody?.velocity = CGVector(dx: 0, dy: impulse)
         Haptic.flap()
         SoundManager.shared.play(.flap)
-
         duck.removeAction(forKey: "wings")
         duck.run(cachedFlutterAction, withKey: "wings")
+
+        // Track tap timing for post-game performance correlation
+        performanceTapCount += 1
+        performanceTapTimestamps.append(CACurrentMediaTime())
+        if performanceTapTimestamps.count > 20 {
+            performanceTapTimestamps.removeFirst()
+        }
     }
 
-    private func startPlaying() {
+    func startPlaying() {
         phase = .playing
         duck?.removeAction(forKey: "float")
         duck?.physicsBody?.isDynamic = true
@@ -810,10 +859,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
 #if DEBUG
-        let totalNodes = children.reduce(0) { $0 + $1.children.count + 1 }
-        let midgroundNodes = parallax.debugScatteredCount()
-        let physicsCount = countPhysicsBodies()
-        print("[Scene] ▶️ GAME START — nodes:\(totalNodes) midground:\(midgroundNodes) physicsBodies:\(physicsCount) pipes:0 mode:\(mode.rawValue)")
+        if debugFrameLogEnabled {
+            let totalNodes = children.reduce(0) { $0 + $1.children.count + 1 }
+            let midgroundNodes = parallax.debugScatteredCount()
+            let physicsCount = countPhysicsBodies()
+            print("[Scene] ▶️ GAME START — nodes:\(totalNodes) midground:\(midgroundNodes) physicsBodies:\(physicsCount) pipes:0 mode:\(mode.rawValue)")
+        }
 #endif
 
         gameDelegate?.gameDidStart()
@@ -823,29 +874,31 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     override func update(_ currentTime: TimeInterval) {
 #if DEBUG
-        let frameStart = CACurrentMediaTime()
+        let frameStart = debugFrameLogEnabled ? CACurrentMediaTime() : 0
         defer {
-            let elapsed = CACurrentMediaTime() - frameStart
-            debugFrameTimes.append(elapsed)
-            if debugFrameTimes.count >= 60 {
-                let avg = debugFrameTimes.reduce(0, +) / Double(debugFrameTimes.count)
-                let maxT = debugFrameTimes.max() ?? 0
-                let minT = debugFrameTimes.min() ?? 0
+            if debugFrameLogEnabled {
+                let elapsed = CACurrentMediaTime() - frameStart
+                debugFrameTimes.append(elapsed)
+                if debugFrameTimes.count >= 60 {
+                    let avg = debugFrameTimes.reduce(0, +) / Double(debugFrameTimes.count)
+                    let maxT = debugFrameTimes.max() ?? 0
+                    let minT = debugFrameTimes.min() ?? 0
 
-                let totalNodes = children.reduce(0) { $0 + $1.children.count + 1 }
-                let pipeCount = pipeLayer.children.count
-                let fps = 1.0 / avg
+                    let totalNodes = children.reduce(0) { $0 + $1.children.count + 1 }
+                    let pipeCount = activePipes.count
+                    let fps = 1.0 / avg
 
-                print("[Scene] FPS:\(String(format: "%.1f", fps))  avg:\(String(format: "%.2f", avg*1000))ms  min:\(String(format: "%.2f", minT*1000))ms  max:\(String(format: "%.2f", maxT*1000))ms  nodes:\(totalNodes)  pipes:\(pipeCount)")
+                    print("[Scene] FPS:\(String(format: "%.1f", fps))  avg:\(String(format: "%.2f", avg*1000))ms  min:\(String(format: "%.2f", minT*1000))ms  max:\(String(format: "%.2f", maxT*1000))ms  nodes:\(totalNodes)  pipes:\(pipeCount)")
 
-                if maxT > 0.016 {
-                    print("[Scene] ⚠️ SLOW FRAME: \(String(format: "%.2f", maxT*1000))ms — nodes:\(totalNodes) pipes:\(pipeCount)")
+                    if maxT > 0.016 {
+                        print("[Scene] ⚠️ SLOW FRAME: \(String(format: "%.2f", maxT*1000))ms — nodes:\(totalNodes) pipes:\(pipeCount)")
+                    }
+                    if maxT > 0.033 {
+                        print("[Scene] 🔴 DROPPED FRAME: \(String(format: "%.2f", maxT*1000))ms (>30ms)")
+                    }
+
+                    debugFrameTimes.removeAll(keepingCapacity: true)
                 }
-                if maxT > 0.033 {
-                    print("[Scene] 🔴 DROPPED FRAME: \(String(format: "%.2f", maxT*1000))ms (>30ms)")
-                }
-
-                debugFrameTimes.removeAll(keepingCapacity: true)
             }
         }
 #endif
@@ -888,9 +941,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // --- GhostDuck visual: maintain alpha while active ---
         powerUpCtrl.applyGhostAlpha()
 
-        // --- BreadMagnet: attract nearby bread each frame ---
+        // --- BreadMagnet: attract nearby bread using cached records ---
         if powerUpCtrl.isBreadMagnetActive {
-            powerUpCtrl.applyBreadMagnetEffect()
+            powerUpCtrl.applyBreadMagnetEffect(breadRecords: activeBreads)
         }
 
         // Spawn pipes
@@ -909,36 +962,58 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Bread bob uses a shared sine wave instead of per-node SKActions.
         let dx = currentPipeSpeed * CGFloat(dt)
         breadBobTime += dt
-        // PERF: Absolute sine bob — no drift, no multiplication by dt.
-        // Each bread node stores its base Y in userData["baseY"].
         let bobPhase = CGFloat(sin(breadBobTime * 7.5)) * 5  // ~1.2 Hz, ±5 pt amplitude
         let duckPos = duck?.position ?? .zero
-        let breadCollectRadius: CGFloat = 30  // forgiving hitbox for satisfying collection
-
-        // PERF: Tighter off-screen cleanup (pipeWidth + 20 instead of pipeWidth * 2)
-        // and absolute sine-bob for bread (no drift, no dt multiplication).
+        let breadCollectRadius: CGFloat = 30
         let cleanupX = -(GK.pipeWidth + 20)
-        for child in pipeLayer.children {
-            child.position.x -= dx
 
-            // PERF: Distance-based bread collection (no physics body needed)
-            if child.name == "bread" {
-                // Absolute sine bob using stored base Y — no drift over time
-                if let baseY = child.userData?["baseY"] as? CGFloat {
-                    child.position.y = baseY + bobPhase
-                }
+        // PERF: Iterate cached records instead of scanning pipeLayer.children.
+        // Pipes and bread are tracked separately — no string-name checks per frame.
+        // Remove records when nodes are cleaned up or (bread) collected.
 
-                // Check collection distance to duck
-                let bx = child.position.x - duckPos.x
-                let by = child.position.y - duckPos.y
-                if bx * bx + by * by < breadCollectRadius * breadCollectRadius {
-                    collectBread(node: child)
-                    continue
-                }
+        // --- Move pipes ---
+        var pipeIdx = 0
+        while pipeIdx < activePipes.count {
+            guard let pipeNode = activePipes[pipeIdx].node else {
+                activePipes.remove(at: pipeIdx)
+                continue
+            }
+            pipeNode.position.x -= dx
+
+            if pipeNode.position.x < cleanupX {
+                pipeNode.removeFromParent()
+                activePipes.remove(at: pipeIdx)
+            } else {
+                pipeIdx += 1
+            }
+        }
+
+        // --- Move & collect bread ---
+        var breadIdx = 0
+        while breadIdx < activeBreads.count {
+            guard let breadNode = activeBreads[breadIdx].node else {
+                activeBreads.remove(at: breadIdx)
+                continue
+            }
+            breadNode.position.x -= dx
+
+            // Absolute sine bob using stored base Y — no drift over time
+            breadNode.position.y = activeBreads[breadIdx].baseY + bobPhase
+
+            // Distance-based collection (no physics body)
+            let bx = breadNode.position.x - duckPos.x
+            let by = breadNode.position.y - duckPos.y
+            if bx * bx + by * by < breadCollectRadius * breadCollectRadius {
+                collectBread(node: breadNode)
+                activeBreads.remove(at: breadIdx)
+                continue
             }
 
-            if child.position.x < cleanupX {
-                child.removeFromParent()
+            if breadNode.position.x < cleanupX {
+                breadNode.removeFromParent()
+                activeBreads.remove(at: breadIdx)
+            } else {
+                breadIdx += 1
             }
         }
 
@@ -961,10 +1036,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        // Bot AI — only makes flap decisions; physics/collision/scoring
-        // are handled by the same SpriteKit infrastructure as the player.
+        // Bot AI — uses cached pipe records instead of scanning children.
         if mode == .vsBot {
-            botController?.update(pipeNodes: pipeLayer.children)
+            botController?.update(pipeRecords: activePipes)
         }
 
         // Stream position to opponent via GameKit
@@ -984,6 +1058,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         performanceSlowFrames = 0
         performanceDroppedFrames = 0
         performanceSevereFrames = 0
+        performanceTapCount = 0
+        performanceTapTimestamps.removeAll(keepingCapacity: true)
+        performanceSlowFramesAfterTap = 0
+        performanceDroppedFramesAfterTap = 0
         resetPerformanceWindow()
         performanceSummarySent = false
     }
@@ -1013,32 +1091,30 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         performanceWindowIntervalSum += interval
         performanceWindowWorstInterval = max(performanceWindowWorstInterval, interval)
 
-        if interval > Self.slowFrameThreshold {
-            performanceSlowFrames += 1
-            performanceWindowSlowFrames += 1
-        }
-        if interval > Self.droppedFrameThreshold {
-            performanceDroppedFrames += 1
-            performanceWindowDroppedFrames += 1
-        }
-        if interval > Self.severeFrameThreshold {
-            performanceSevereFrames += 1
-            performanceWindowSevereFrames += 1
+        // Classify frame performance
+        let isSlow = interval > Self.slowFrameThreshold
+        let isDropped = interval > Self.droppedFrameThreshold
+        let isSevere = interval > Self.severeFrameThreshold
+
+        if isSlow { performanceSlowFrames += 1; performanceWindowSlowFrames += 1 }
+        if isDropped { performanceDroppedFrames += 1; performanceWindowDroppedFrames += 1 }
+        if isSevere { performanceSevereFrames += 1; performanceWindowSevereFrames += 1 }
+
+        // Tap correlation: check if the current frame follows a recent tap
+        if isSlow || isDropped {
+            let now = currentTime
+            let isAfterTap = performanceTapTimestamps.contains { now - $0 < Self.tapCorrelationWindow }
+            if isAfterTap {
+                if isSlow { performanceSlowFramesAfterTap += 1 }
+                if isDropped { performanceDroppedFramesAfterTap += 1 }
+            }
         }
 
+        // PERF: No more per-interval PostHog samples during gameplay — accumulate
+        // counters in memory and send only the game-over summary.
         guard currentTime - performanceLastSampleAt >= Self.performanceSampleInterval,
               performanceWindowFrameCount > 0 else { return }
 
-        AnalyticsManager.shared.trackGamePerformanceSample(properties: performanceProperties(
-            duration: currentTime - performanceLastSampleAt,
-            frameCount: performanceWindowFrameCount,
-            intervalSum: performanceWindowIntervalSum,
-            worstInterval: performanceWindowWorstInterval,
-            slowFrames: performanceWindowSlowFrames,
-            droppedFrames: performanceWindowDroppedFrames,
-            severeFrames: performanceWindowSevereFrames,
-            eventKind: "sample"
-        ))
         performanceLastSampleAt = currentTime
         resetPerformanceWindow()
     }
@@ -1090,8 +1166,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             "dropped_frame_rate": Double(droppedFrames) / Double(max(frameCount, 1)),
             "node_count": totalNodeCount(),
             "physics_body_count": countPhysicsBodies(),
-            "pipe_layer_count": pipeLayer.children.count,
+            "pipe_layer_count": activePipes.count,
             "power_up_active": !powerUpCtrl.activePowerUps.isEmpty,
+            "tap_count": performanceTapCount,
+            "slow_frames_after_tap": performanceSlowFramesAfterTap,
+            "dropped_frames_after_tap": performanceDroppedFramesAfterTap,
             "os_version": UIDevice.current.systemVersion
         ]
     }
@@ -1457,6 +1536,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     func resetGame() {
         pipeLayer.removeAllChildren()
+        activePipes.removeAll()
+        activeBreads.removeAll()
         pipeLayer.isPaused = false
         groundLayer.isPaused = false
         backgroundLayer.isPaused = false
@@ -1808,6 +1889,10 @@ final class GameKitSession: NSObject {
     private var isConnecting = false
     private var activeSessionCode: String?
 
+    /// Dedicated queue for encoding + sending — moves serialization and
+    /// GameKit IPC off the SpriteKit render thread.
+    private let sendQueue = DispatchQueue(label: "com.floppyduck.gksession", qos: .userInitiated)
+
     var connected: Bool { isConnected && match != nil }
 
     func connect(sessionCode: String, timeout: TimeInterval = 15) {
@@ -1858,10 +1943,13 @@ final class GameKitSession: NSObject {
     }
 
     func sendPosition(_ pos: GhostDuckPosition) {
-        let now = CACurrentMediaTime()
-        guard now - lastSendTime >= sendInterval else { return }
-        lastSendTime = now
-        send(data: encodePosition(pos), mode: .unreliable)
+        sendQueue.async { [weak self] in
+            guard let self else { return }
+            let now = CACurrentMediaTime()
+            guard now - self.lastSendTime >= self.sendInterval else { return }
+            self.lastSendTime = now
+            self.send(data: self.encodePosition(pos), mode: .unreliable)
+        }
     }
 
     func sendScore(_ score: UInt16) {

@@ -16,6 +16,20 @@ enum Haptic {
 
     private static var isEnabled: Bool { _isEnabled }
 
+    // PERF: Coalesced re-prepare — avoids calling prepare() on the hot tap path.
+    // Each generator type tracks its last prepare time and skips re-prepare within
+    // a short window, since prepare() is a synchronous IPC call (~0.5–1 ms each).
+    private static var lastPrepareTime: [ObjectIdentifier: TimeInterval] = [:]
+    private static let prepareThrottleInterval: TimeInterval = 0.3
+
+    private static func throttledPrepare(_ generator: Any, key: ObjectIdentifier) {
+        let now = CACurrentMediaTime()
+        guard now - (lastPrepareTime[key] ?? 0) >= prepareThrottleInterval else { return }
+        lastPrepareTime[key] = now
+        (generator as? UIImpactFeedbackGenerator)?.prepare()
+        (generator as? UINotificationFeedbackGenerator)?.prepare()
+    }
+
     /// Call when the user toggles the haptics setting to update the cached value.
     static func refreshPreference() {
         _isEnabled = UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool ?? true
@@ -33,32 +47,38 @@ enum Haptic {
     static func flap() {
         guard isEnabled else { return }
         impactLight.impactOccurred()
+        throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
     }
 
     static func score() {
         guard isEnabled else { return }
         impactMedium.impactOccurred()
+        throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
     }
 
     static func death() {
         guard isEnabled else { return }
         notification.notificationOccurred(.error)
+        throttledPrepare(notification, key: ObjectIdentifier(notification))
     }
 
     static func buttonTap() {
         guard isEnabled else { return }
         impactLight.impactOccurred()
+        throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
     }
 
     static func matchFound() {
         guard isEnabled else { return }
         notification.notificationOccurred(.success)
+        throttledPrepare(notification, key: ObjectIdentifier(notification))
     }
 
     /// Every 5 pipes scored — satisfying mid-game beat
     static func milestone() {
         guard isEnabled else { return }
         impactHeavy.impactOccurred()
+        throttledPrepare(impactHeavy, key: ObjectIdentifier(impactHeavy))
     }
 
     /// New personal best
@@ -75,36 +95,42 @@ enum Haptic {
     static func win() {
         guard isEnabled else { return }
         notification.notificationOccurred(.success)
+        throttledPrepare(notification, key: ObjectIdentifier(notification))
     }
 
     /// Lost a VS Bot match
     static func lose() {
         guard isEnabled else { return }
         notification.notificationOccurred(.warning)
+        throttledPrepare(notification, key: ObjectIdentifier(notification))
     }
 
     /// Splash screen — heavy pop when duck appears
     static func splashImpact() {
         guard isEnabled else { return }
         impactHeavy.impactOccurred(intensity: 1.0)
+        throttledPrepare(impactHeavy, key: ObjectIdentifier(impactHeavy))
     }
 
     /// Splash screen — satisfying coin-collect thud at mid-spin
     static func splashCoin() {
         guard isEnabled else { return }
         impactMedium.impactOccurred(intensity: 0.9)
+        throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
     }
 
     /// Splash screen — medium punch when title pops in
     static func splashTitlePop() {
         guard isEnabled else { return }
         impactMedium.impactOccurred(intensity: 0.8)
+        throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
     }
 
     /// Splash screen — light tap on shimmer sweep
     static func splashShimmer() {
         guard isEnabled else { return }
         impactLight.impactOccurred(intensity: 0.5)
+        throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
     }
 
     /// Legacy alias for backward compat

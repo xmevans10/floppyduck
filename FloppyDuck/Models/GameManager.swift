@@ -283,11 +283,22 @@ final class GameManager: ObservableObject {
         mergedStats.wins = max(stats.wins, profile.stats.wins)
         mergedStats.losses = max(stats.losses, profile.stats.losses)
         mergedStats.totalScore = max(stats.totalScore, profile.stats.totalScore)
+        mergedStats.elo = max(stats.elo, profile.stats.elo)
         mergedStats.peakElo = max(stats.peakElo, profile.stats.peakElo)
+        mergedStats.winStreak = max(stats.winStreak, profile.stats.winStreak)
         mergedStats.bestWinStreak = max(stats.bestWinStreak, profile.stats.bestWinStreak)
         mergedStats.beatenBots = Array(Set(stats.beatenBots + profile.stats.beatenBots))
+        mergedStats.recentScores = mergeRecentScores(stats.recentScores, profile.stats.recentScores)
         stats = mergedStats
         saveStats()
+    }
+
+    private func mergeRecentScores(_ local: [Int], _ remote: [Int]) -> [Int] {
+        Array(Set(local + remote))
+            .filter { $0 > 0 }
+            .sorted(by: >)
+            .prefix(20)
+            .map { $0 }
     }
 
     func awardAchievementBread(_ amount: Int) {
