@@ -8,7 +8,7 @@ import SwiftUI
 
 struct BotLadderView: View {
     @EnvironmentObject var manager: GameManager
-    @State private var cloudOffset: CGFloat = 0
+
 
     private let bots = BotCharacter.all
     private let icons = PixelIconFactory.shared
@@ -300,65 +300,4 @@ struct BotLadderView: View {
         }
     }
 
-    // MARK: - 8-Bit Background (matches HomeView)
-
-    private var eightBitBackground: some View {
-        GeometryReader { geo in
-            ZStack {
-                LinearGradient(
-                    stops: [
-                        .init(color: Color(red: 0.22, green: 0.50, blue: 0.85), location: 0.0),
-                        .init(color: Color(red: 0.38, green: 0.65, blue: 0.90), location: 0.3),
-                        .init(color: Color(red: 0.58, green: 0.80, blue: 0.94), location: 0.6),
-                        .init(color: Color(red: 0.78, green: 0.92, blue: 0.97), location: 0.85),
-                        .init(color: Color(red: 0.90, green: 0.95, blue: 0.98), location: 1.0),
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-
-                HStack(spacing: 60) {
-                    ForEach(0..<6, id: \.self) { i in
-                        Image(uiImage: factory.cloudUIImage())
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: [70, 90, 55, 80, 65, 95][i],
-                                   height: [28, 36, 22, 32, 26, 38][i])
-                            .opacity([0.7, 0.85, 0.6, 0.75, 0.65, 0.8][i])
-                            .offset(y: [0, -20, 15, -35, 5, -15][i])
-                    }
-                }
-                .offset(x: cloudOffset)
-                .onAppear {
-                    guard !UIAccessibility.isReduceMotionEnabled else { return }
-                    withAnimation(.linear(duration: 30).repeatForever(autoreverses: false)) {
-                        cloudOffset = -300
-                    }
-                }
-                .frame(maxHeight: geo.size.height * 0.4, alignment: .top)
-                .padding(.top, 40)
-
-                VStack {
-                    Spacer()
-                    Image(uiImage: factory.hillsUIImage())
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(height: 80)
-                        .opacity(0.5)
-                        .offset(y: -50)
-                }
-
-                VStack(spacing: 0) {
-                    Spacer()
-                    Rectangle().fill(Color(red: 0.28, green: 0.52, blue: 0.16)).frame(height: 3)
-                    Rectangle().fill(Color(red: 0.40, green: 0.72, blue: 0.22)).frame(height: 14)
-                    ZStack {
-                        Rectangle().fill(Color(red: 0.78, green: 0.70, blue: 0.50))
-                        Rectangle().fill(Color(red: 0.72, green: 0.64, blue: 0.44).opacity(0.4))
-                    }
-                    .frame(height: 45)
-                }
-            }
-        }
-    }
 }

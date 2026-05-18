@@ -17,8 +17,22 @@ export const run = internalMutation({
       .collect();
 
     for (const entry of queueEntries) {
+      // Purge stale "searching" entries (player force-quit)
       if (entry.status === "searching" && now - entry.createdAt > STALE_QUEUE_MS) {
         await ctx.db.delete(entry._id);
+      }
+      // Purge "matched" entries older than the abandoned-match window —
+      // these were never cleaned up after match resolution.
+      if (entry.status === "matched" && now - entry.createdAt > ABANDONED_MATCH_MS) {
+        await ctx.db.delete(entry._id);
+      }
+    }
+
+    // Purge stale rooms that have been "waiting" for >2 min (host left without cancelling).
+    const rooms = await ctx.db.query("rooms").collect();
+    for (const room of rooms) {
+      if (room.status === "waiting" && now - room.createdAt > STALE_QUEUE_MS) {
+        await ctx.db.delete(room._id);
       }
     }
 

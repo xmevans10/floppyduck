@@ -37,8 +37,6 @@ struct GameContainerView: View {
     @State private var countUpTimer: Timer?
     @State private var gameKitBridge: HeadToHeadGameKitBridge?
 
-    private let icons = PixelIconFactory.shared
-
     private var isBotLadder: Bool { config.botCharacterId != nil }
     private var isHeadToHead: Bool { config.mode == .headToHead }
     private var isBattleRoyale: Bool { config.mode == .battleRoyale }

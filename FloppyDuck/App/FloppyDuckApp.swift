@@ -1,7 +1,6 @@
 import SwiftUI
 import PostHog
 import Sentry
-import GameKit
 
 @main
 struct FloppyDuckApp: App {

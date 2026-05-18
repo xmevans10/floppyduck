@@ -132,13 +132,6 @@ async function ensureUsernameAvailable(ctx: any, key: string, selfId?: Id<"users
   if (existingKeyMatch && existingKeyMatch._id !== selfId) {
     throw new ConvexError("That username is already taken.");
   }
-
-  const legacyMatches = await ctx.db.query("users").collect();
-  for (const user of legacyMatches) {
-    if (user._id !== selfId && usernameKey(normalizeUsername(user.username)) === key) {
-      throw new ConvexError("That username is already taken.");
-    }
-  }
 }
 
 export const bootstrapGuest = mutation({

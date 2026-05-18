@@ -40,7 +40,6 @@ final class PowerUpController {
 
     // Shield (visual node managed by addShieldVisual/removeShieldVisual)
     private var shieldCooldown: Bool = false
-    private var shieldCooldownAction: SKAction?
 
     // Speed modifier grace period — smooth lerp instead of snap-back
     // when slowMotion or speedBurst expires.

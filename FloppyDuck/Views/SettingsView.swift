@@ -5,9 +5,6 @@ struct SettingsView: View {
     @EnvironmentObject var auth: AuthManager
     @State private var showResetConfirm = false
     @State private var showDeleteAccountConfirm = false
-    @State private var usernameSynced = false
-    @State private var usernameError: String?
-    @State private var usernameSyncing = false
     private let icons = PixelIconFactory.shared
 
     var body: some View {
@@ -286,41 +283,6 @@ struct SettingsView: View {
         }
         .onChange(of: manager.hapticsEnabled) { _, _ in
             Haptic.refreshPreference()
-        }
-    }
-
-    // MARK: - Username Sync
-
-    private func syncUsername() {
-        guard !usernameSynced else { return }
-        let name = manager.playerName.trimmingCharacters(in: .whitespaces)
-        guard name.count >= 2 else {
-            usernameError = "Name must be 2–16 characters."
-            return
-        }
-
-        usernameSyncing = true
-        usernameError = nil
-        Task {
-            do {
-                let confirmed = try await ConvexClient.shared.updateUsername(name)
-                await MainActor.run {
-                    manager.playerName = confirmed
-                    usernameSynced = true
-                    usernameSyncing = false
-                    usernameError = nil
-                }
-            } catch let error as ConvexError {
-                await MainActor.run {
-                    usernameError = error.localizedDescription
-                    usernameSyncing = false
-                }
-            } catch {
-                await MainActor.run {
-                    usernameError = "Couldn't reach server. Try again."
-                    usernameSyncing = false
-                }
-            }
         }
     }
 

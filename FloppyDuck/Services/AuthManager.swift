@@ -299,15 +299,6 @@ final class AuthManager: ObservableObject {
         return alias.isEmpty ? "Player" : String(alias.prefix(16))
     }
 
-    /// Checks the Apple ID credential state for a given user ID.
-    private static func appleCredentialState(for appleUserId: String) async -> ASAuthorizationAppleIDProvider.CredentialState {
-        await withCheckedContinuation { continuation in
-            ASAuthorizationAppleIDProvider().getCredentialState(forUserID: appleUserId) { state, _ in
-                continuation.resume(returning: state)
-            }
-        }
-    }
-
     func signOut() async {
         if identity?.sessionToken != nil {
             do {

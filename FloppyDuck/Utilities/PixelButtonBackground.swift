@@ -99,31 +99,6 @@ struct PixelRoundedRect: Shape {
     }
 }
 
-/// A reusable pixel-art container for rectangular elements (replaces RoundedRectangle in some contexts)
-struct PixelPanelBackground: View {
-    let fillColor: Color
-    let borderColor: Color
-    let cornerNotch: CGFloat
-
-    init(fillColor: Color = Color.black.opacity(0.15),
-         borderColor: Color = Color.black.opacity(0.25),
-         cornerNotch: CGFloat = 3) {
-        self.fillColor = fillColor
-        self.borderColor = borderColor
-        self.cornerNotch = cornerNotch
-    }
-
-    var body: some View {
-        ZStack {
-            PixelRoundedRect()
-                .fill(borderColor)
-            PixelRoundedRect()
-                .fill(fillColor)
-                .padding(2)
-        }
-    }
-}
-
 // MARK: - Pixel Outlined Text
 
 /// Renders text with a crisp multi-directional pixel outline using ZStack offset copies.

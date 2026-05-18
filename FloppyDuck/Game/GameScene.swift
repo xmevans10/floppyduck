@@ -95,11 +95,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // Score (Item 2: optional safety)
     private var scoreLabel: SKLabelNode?
-    private var scoreShadow: SKLabelNode?
     private var scoreOutlines: [SKLabelNode] = []
-
-    // Ground tile width (used by ground physics only; visual tiles owned by ParallaxManager)
-    private let groundTileWidth: CGFloat = GK.worldWidth * 2
 
     // Pipe spawning
     private var pipeTimer: TimeInterval = 0
