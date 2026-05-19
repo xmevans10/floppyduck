@@ -96,7 +96,9 @@ struct GameContainerView: View {
     var body: some View {
         ZStack {
             if let scene {
-                OptimizedGameView(scene: scene)
+                SpriteView(scene: scene,
+                           preferredFramesPerSecond: 60,
+                           options: [.ignoresSiblingOrder, .shouldCullNonVisibleNodes])
                     .ignoresSafeArea()
             }
 

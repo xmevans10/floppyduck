@@ -405,6 +405,7 @@ private struct AuthChoicePage: View {
     let onBack: () -> Void
 
     @State private var buttonsAppeared = false
+    @State private var videoAppeared = false
 
     private var anyBusy: Bool { busyAction != nil }
 
@@ -418,23 +419,42 @@ private struct AuthChoicePage: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
 
-                Spacer().frame(height: max(10, geo.size.height * 0.22))
+                Spacer().frame(height: max(10, geo.size.height * 0.08))
 
-                Text("ONE LAST THING")
-                    .font(.custom(GK.pixelFontName, size: 22))
+                // Looping gameplay preview
+                LoopingVideoView(resourceName: "gameplay_preview", fileExtension: "mp4")
+                    .frame(width: 160, height: 160)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.white.opacity(0.4), lineWidth: 2)
+                    )
+                    .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    .scaleEffect(videoAppeared ? 1 : 0.8)
+                    .opacity(videoAppeared ? 1 : 0)
+                    .onAppear {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
+                            videoAppeared = true
+                        }
+                    }
+                    .padding(.bottom, 20)
+
+                Text("READY TO PLAY?")
+                    .font(.custom(GK.pixelFontName, size: 18))
                     .foregroundColor(.white)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: 3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: -3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: -3)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: 2)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: -2)
+                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: -2)
                     .padding(.bottom, 6)
 
-                PixelOutlinedText(text: "SYNC YOUR PROGRESS", fontSize: 9,
-                                  fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1.5)
-                    .padding(.bottom, 24)
+                Text("Choose how to get started")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(GK.Colors.titleCream.opacity(0.8))
+                    .padding(.bottom, 28)
 
                 // Auth buttons
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     authOptionButton(
                         icon: .trophy,
                         title: "GAME CENTER",
@@ -451,7 +471,7 @@ private struct AuthChoicePage: View {
                         icon: .play,
                         title: "PLAY AS GUEST",
                         subtitle: "Jump right in, sign in later",
-                        color: Color(red: 0.45, green: 0.45, blue: 0.50),
+                        color: Color(white: 0.35),
                         isBusy: busyAction == .guest,
                         action: onGuest
                     )
@@ -459,38 +479,22 @@ private struct AuthChoicePage: View {
                     .opacity(buttonsAppeared ? 1 : 0)
                     .animation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.2), value: buttonsAppeared)
                 }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 34)
                 .onAppear {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                         buttonsAppeared = true
                     }
                 }
 
-                // Fine print on a subtle card
-                Text("Game Center syncs your scores across devices\nand enables ranked multiplayer.")
-                    .font(.custom(GK.pixelFontName, size: 7))
-                    .foregroundColor(GK.Colors.titleCream)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.25))
-                    )
-                    .padding(.horizontal, 30)
-                    .padding(.top, 16)
-
                 if let statusMessage {
                     Text(statusMessage)
-                        .font(.custom(GK.pixelFontName, size: 8))
+                        .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(GK.Colors.scoreYellow)
                         .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: 1)
                         .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: 1)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: -1)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: -1)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 30)
-                        .padding(.top, 8)
+                        .padding(.top, 10)
                 }
 
                 Spacer()
@@ -510,19 +514,17 @@ private struct AuthChoicePage: View {
                     .interpolation(.none)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 20, height: 20)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.custom(GK.pixelFontName, size: 10))
+                        .font(.custom(GK.pixelFontName, size: 9))
                         .foregroundColor(.white)
                         .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: 1)
                         .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: 1)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: -1)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: -1)
                     Text(subtitle)
-                        .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(GK.Colors.titleCream)
+                        .font(.custom(GK.pixelFontName, size: 6.5))
+                        .foregroundColor(GK.Colors.titleCream.opacity(0.85))
                 }
 
                 Spacer()
@@ -530,22 +532,21 @@ private struct AuthChoicePage: View {
                 if isBusy {
                     ProgressView().tint(.white)
                 } else {
-                    Image(uiImage: PixelIconFactory.shared.image(for: .play, pixelScale: 2.0))
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 14, height: 14)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.6))
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.vertical, 13)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(color)
-                    .shadow(color: color.opacity(0.5), radius: 0, x: 0, y: 3)
+                    .shadow(color: color.opacity(0.4), radius: 0, x: 0, y: 3)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
