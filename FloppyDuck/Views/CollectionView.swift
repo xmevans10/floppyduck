@@ -532,21 +532,17 @@ struct CollectionView: View {
             bannerManager.select(banner)
         } label: {
             VStack(spacing: 10) {
-                // Banner preview — small pattern swatch
+                // Banner preview — shows actual banner art
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(banner.secondaryColor)
+                    Image(banner.imageName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
                         .frame(height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                    // Simplified pattern preview stripe
+                    // Subtle color overlay
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(
-                            LinearGradient(
-                                colors: [banner.primaryColor.opacity(0.6), banner.secondaryColor],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(banner.primaryColor.opacity(0.15))
                         .frame(height: 60)
 
                     if selected {

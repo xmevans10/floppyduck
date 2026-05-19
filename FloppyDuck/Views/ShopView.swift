@@ -498,19 +498,26 @@ struct ShopView: View {
             }
         } label: {
             VStack(spacing: 8) {
-                // Banner pattern preview
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(banner.secondaryColor)
-                    .frame(height: 70)
-                    .overlay(
-                        BannerPatternView(banner: banner, offset: 0)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    )
-                    .overlay(
+                // Banner art preview
+                ZStack {
+                    Image(banner.imageName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 70)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    if !owned && !banner.isFree {
+                        // Locked overlay
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(selected ? banner.primaryColor : Color.clear, lineWidth: 2)
-                    )
-                    .opacity(owned || banner.isFree ? 1 : 0.6)
+                            .fill(Color.black.opacity(0.35))
+                            .frame(height: 70)
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(selected ? banner.primaryColor : Color.clear, lineWidth: 2)
+                )
+                .opacity(owned || banner.isFree ? 1 : 0.7)
 
                 Text(banner.displayName)
                     .font(.custom(GK.pixelFontName, size: 9))

@@ -156,6 +156,11 @@ enum BattleBanner: String, CaseIterable, Identifiable, Codable {
         primaryColor.opacity(0.6)
     }
 
+    /// Asset catalog image name for the banner background art.
+    var imageName: String {
+        "banner_\(rawValue)"
+    }
+
     // MARK: - Purchase
 
     var purchaseKind: BannerPurchaseKind {
