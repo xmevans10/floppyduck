@@ -217,6 +217,14 @@ struct GameContainerView: View {
                 newScene.spawnGhostDuck()
                 gkSession.sendSkinId(SkinManager.shared.selectedSkin.rawValue)
             }
+            gkBridge.onDisconnected = { [weak gkSession] in
+                // If GameKit failed permanently, spawn the ghost anyway so
+                // the opponent is at least visible via Convex score polling.
+                if gkSession?.didFailPermanently == true {
+                    print("[GameKit] Fallback — spawning ghost duck without P2P")
+                    newScene.spawnGhostDuck()
+                }
+            }
             gkBridge.onOpponentSkinId = { skinId in
                 if let skin = DuckSkin(rawValue: skinId) {
                     newScene.setGhostDuckSkin(skin)

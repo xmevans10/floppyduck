@@ -1928,12 +1928,22 @@ final class GameKitSession: NSObject {
     private var isConnected = false
     private var isConnecting = false
     private var activeSessionCode: String?
+    private var connectTask: Task<Void, Never>?
+
+    /// Maximum number of matchmaking attempts before giving up.
+    private static let maxRetries = 3
+    /// Seconds to wait for `findMatch` on each attempt before retrying.
+    private static let perAttemptTimeout: TimeInterval = 8
 
     /// Dedicated queue for encoding + sending — moves serialization and
     /// GameKit IPC off the SpriteKit render thread.
     private let sendQueue = DispatchQueue(label: "com.floppyduck.gksession", qos: .userInitiated)
 
     var connected: Bool { isConnected && match != nil }
+
+    /// Whether GameKit matchmaking failed after all retries, so the caller
+    /// can fall back to Convex-based ghost sync.
+    private(set) var didFailPermanently = false
 
     func connect(sessionCode: String, timeout: TimeInterval = 15) {
         if activeSessionCode == sessionCode, isConnecting || connected {
@@ -1945,6 +1955,7 @@ final class GameKitSession: NSObject {
         }
 
         activeSessionCode = sessionCode
+        didFailPermanently = false
 
         guard GKLocalPlayer.local.isAuthenticated else {
             delegate?.gameKitSessionDidDisconnect(error: SessionError.notAuthenticated)
@@ -1954,31 +1965,88 @@ final class GameKitSession: NSObject {
         isConnecting = true
 
         let groupId = Self.playerGroup(for: sessionCode)
+        print("[GameKit] Starting matchmaking with group \(groupId) (code: \(sessionCode))")
+
+        connectTask = Task { [weak self] in
+            guard let self else { return }
+
+            for attempt in 1...Self.maxRetries {
+                guard !Task.isCancelled else { break }
+                print("[GameKit] Attempt \(attempt)/\(Self.maxRetries) — finding match…")
+
+                do {
+                    let foundMatch = try await self.findMatchWithTimeout(
+                        groupId: groupId,
+                        timeout: Self.perAttemptTimeout
+                    )
+
+                    guard !Task.isCancelled else { break }
+
+                    // Verify all expected players are connected.
+                    if foundMatch.expectedPlayerCount != 0 {
+                        print("[GameKit] Match returned with \(foundMatch.expectedPlayerCount) expected player(s) still pending — retrying")
+                        foundMatch.disconnect()
+                        GKMatchmaker.shared().cancel()
+                        continue
+                    }
+
+                    await MainActor.run {
+                        self.match = foundMatch
+                        foundMatch.delegate = self
+                        self.isConnected = true
+                        self.isConnecting = false
+                        print("[GameKit] Connected — players: \(foundMatch.players.count)")
+                        self.delegate?.gameKitSessionDidConnect()
+                    }
+                    return  // Success — exit retry loop
+                } catch is CancellationError {
+                    break
+                } catch {
+                    print("[GameKit] Attempt \(attempt) failed: \(error.localizedDescription)")
+                    GKMatchmaker.shared().cancel()
+
+                    if attempt < Self.maxRetries, !Task.isCancelled {
+                        // Brief pause before retrying so both players' requests
+                        // have a chance to overlap on Apple's servers.
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                    }
+                }
+            }
+
+            guard !Task.isCancelled else { return }
+
+            // All retries exhausted — notify delegate so the view can fall back.
+            await MainActor.run {
+                self.isConnecting = false
+                self.didFailPermanently = true
+                print("[GameKit] All \(Self.maxRetries) attempts exhausted — matchmaking failed")
+                self.delegate?.gameKitSessionDidDisconnect(error: SessionError.noMatch)
+            }
+        }
+    }
+
+    /// Calls the modern async `findMatch(for:)` API with a per-attempt timeout.
+    private func findMatchWithTimeout(groupId: Int, timeout: TimeInterval) async throws -> GKMatch {
         let request = GKMatchRequest()
         request.minPlayers = 2
         request.maxPlayers = 2
         request.playerGroup = groupId
         request.defaultNumberOfPlayers = 2
 
-        print("[GameKit] Starting matchmaking with group \(groupId)")
+        return try await withThrowingTaskGroup(of: GKMatch.self) { group in
+            group.addTask {
+                try await GKMatchmaker.shared().findMatch(for: request)
+            }
 
-        GKMatchmaker.shared().findMatch(for: request) { [weak self] match, error in
-            guard let self else { return }
-            self.isConnecting = false
-            if let error = error {
-                print("[GameKit] Matchmaking failed: \(error.localizedDescription)")
-                self.delegate?.gameKitSessionDidDisconnect(error: error)
-                return
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                GKMatchmaker.shared().cancel()
+                throw SessionError.timeout
             }
-            guard let match = match else {
-                self.delegate?.gameKitSessionDidDisconnect(error: SessionError.noMatch)
-                return
-            }
-            self.match = match
-            match.delegate = self
-            self.isConnected = true
-            print("[GameKit] Connected — players: \(match.players.count)")
-            self.delegate?.gameKitSessionDidConnect()
+
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
     }
 
@@ -2005,6 +2073,11 @@ final class GameKitSession: NSObject {
     }
 
     func disconnect() {
+        connectTask?.cancel()
+        connectTask = nil
+        if isConnecting {
+            GKMatchmaker.shared().cancel()
+        }
         match?.disconnect()
         match?.delegate = nil
         match = nil
@@ -2158,11 +2231,13 @@ extension GameKitSession {
     enum SessionError: Error, LocalizedError {
         case notAuthenticated
         case noMatch
+        case timeout
 
         var errorDescription: String? {
             switch self {
             case .notAuthenticated: return "Sign in to Game Center to play multiplayer."
             case .noMatch: return "Could not find a match."
+            case .timeout: return "Matchmaking timed out."
             }
         }
     }
