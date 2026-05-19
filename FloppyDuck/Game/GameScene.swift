@@ -307,6 +307,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         powerUpCtrl.setDuckTextures(duckTextures)
 
+        // In bot-ladder mode, doublePoints is suppressed (score stays 1:1 with pipes)
+        if mode == .vsBot {
+            powerUpCtrl.excludedKinds = [.doublePoints]
+        }
+
         // Bot controller (vsBot = sprite + AI, headToHead = score HUD only)
         if mode == .vsBot || mode == .headToHead {
             let bc = BotController(worldNode: worldNode, hudLayer: hudLayer)

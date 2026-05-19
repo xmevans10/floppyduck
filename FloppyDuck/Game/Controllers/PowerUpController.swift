@@ -81,6 +81,12 @@ final class PowerUpController {
         self.duck = duck
     }
 
+    /// Power-up kinds that should never spawn (forwarded to the spawn manager).
+    var excludedKinds: Set<PowerUpKind> {
+        get { spawner.excludedKinds }
+        set { spawner.excludedKinds = newValue }
+    }
+
     // MARK: - Per-Frame Update
 
     /// Tick power-up timers and speed modifier; call once per frame from the game update loop.

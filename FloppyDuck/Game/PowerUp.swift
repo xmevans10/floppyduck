@@ -201,6 +201,9 @@ final class PowerUpSpawnManager {
     private var pipesUntilNextSpawn: Int
     private var lastSpawnedKind: PowerUpKind?
 
+    /// Power-up kinds that should never spawn (e.g. doublePoints in bot games).
+    var excludedKinds: Set<PowerUpKind> = []
+
     init() {
         pipesUntilNextSpawn = Int.random(in: 1...2)  // first spawn comes early
     }
@@ -239,6 +242,8 @@ final class PowerUpSpawnManager {
         }()
 
         var weights: [(PowerUpKind, Double)] = PowerUpKind.allCases.map { kind in
+            // Skip excluded kinds entirely
+            if excludedKinds.contains(kind) { return (kind, 0.0) }
             var w = kind.spawnWeight
             if !kind.isPositive {
                 w *= debuffBoost
