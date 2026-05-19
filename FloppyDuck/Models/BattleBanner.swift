@@ -156,9 +156,9 @@ enum BattleBanner: String, CaseIterable, Identifiable, Codable {
         primaryColor.opacity(0.6)
     }
 
-    /// Asset catalog image name for the banner background art.
-    var imageName: String {
-        "banner_\(rawValue)"
+    /// Asset catalog name for the seamless pattern tile (Kenney CC0).
+    var patternTileName: String {
+        "pattern_\(rawValue)"
     }
 
     // MARK: - Purchase

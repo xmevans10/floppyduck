@@ -532,18 +532,11 @@ struct CollectionView: View {
             bannerManager.select(banner)
         } label: {
             VStack(spacing: 10) {
-                // Banner preview — shows actual banner art
+                // Banner preview — small pattern swatch
                 ZStack {
-                    Image(banner.imageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                    BannerPatternView(banner: banner, offset: 0)
                         .frame(height: 60)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                    // Subtle color overlay
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(banner.primaryColor.opacity(0.15))
-                        .frame(height: 60)
 
                     if selected {
                         Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))

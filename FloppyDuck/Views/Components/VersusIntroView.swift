@@ -309,58 +309,88 @@ struct VersusIntroView: View {
     }
 }
 
+
 // MARK: - Banner Pattern View
 
-/// Renders the player's selected battle banner as a rich pixel art background image
-/// with a subtle slow-zoom animation, color-tinted glow overlay, and vignette edge.
+/// Renders the player's selected battle banner using a seamless tiled pattern
+/// (Kenney CC0 pixel art tiles) tinted with the banner's colors, scrolling
+/// vertically, with gradient overlay and vignette for a rich, attention-grabbing look.
 struct BannerPatternView: View {
     let banner: BattleBanner
     let offset: CGFloat
 
-    /// Maps the continuous scroll offset to a gentle 1.0→1.15 zoom pulse.
-    private var zoomScale: CGFloat {
-        let cycle = abs(offset).truncatingRemainder(dividingBy: 600) / 600
-        return 1.0 + 0.15 * sin(cycle * .pi * 2)
-    }
+    /// Tile size in points (the 64×64 pattern assets tile at this interval).
+    private let tileSize: CGFloat = 64
 
-    /// Slow vertical drift for parallax feel.
-    private var panOffset: CGFloat {
-        let cycle = offset.truncatingRemainder(dividingBy: 300)
-        return cycle * 0.05
+    /// Seamless scroll offset that wraps at the tile boundary.
+    private var scrollY: CGFloat {
+        offset.truncatingRemainder(dividingBy: tileSize)
     }
 
     var body: some View {
         GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
             ZStack {
-                // Base color fallback
-                banner.secondaryColor
-
-                // Main banner art image
-                Image(banner.imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .scaleEffect(zoomScale)
-                    .offset(y: panOffset)
-                    .clipped()
-
-                // Color-tinted glow overlay — reinforces the banner's signature hue
+                // 1) Rich gradient base
                 LinearGradient(
                     colors: [
-                        banner.primaryColor.opacity(0.25),
-                        Color.clear,
-                        banner.secondaryColor.opacity(0.3)
+                        banner.secondaryColor,
+                        banner.secondaryColor.opacity(0.8),
+                        Color.black.opacity(0.85)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
 
-                // Vignette edges for drama
+                // 2) Tiled pattern — scrolls vertically, tinted with banner color
+                Image(banner.patternTileName)
+                    .resizable(resizingMode: .tile)
+                    .frame(
+                        width: w + tileSize * 2,
+                        height: h + tileSize * 2
+                    )
+                    .colorMultiply(banner.primaryColor)
+                    .opacity(0.55)
+                    .offset(x: -tileSize, y: -tileSize + scrollY)
+                    .frame(width: w, height: h)
+                    .clipped()
+
+                // 3) Second pattern layer — offset half-tile, subtler, for depth
+                Image(banner.patternTileName)
+                    .resizable(resizingMode: .tile)
+                    .frame(
+                        width: w + tileSize * 2,
+                        height: h + tileSize * 2
+                    )
+                    .colorMultiply(banner.primaryColor)
+                    .opacity(0.2)
+                    .blendMode(.screen)
+                    .offset(
+                        x: -tileSize + tileSize * 0.5,
+                        y: -tileSize + scrollY * 0.6 + tileSize * 0.5
+                    )
+                    .frame(width: w, height: h)
+                    .clipped()
+
+                // 4) Center radial glow in banner's color
                 RadialGradient(
-                    colors: [Color.clear, Color.black.opacity(0.5)],
+                    colors: [
+                        banner.primaryColor.opacity(0.3),
+                        Color.clear
+                    ],
                     center: .center,
-                    startRadius: geo.size.height * 0.3,
-                    endRadius: geo.size.height * 0.8
+                    startRadius: 10,
+                    endRadius: h * 0.55
+                )
+
+                // 5) Vignette edges for cinematic depth
+                RadialGradient(
+                    colors: [Color.clear, Color.black.opacity(0.45)],
+                    center: .center,
+                    startRadius: h * 0.25,
+                    endRadius: h * 0.75
                 )
             }
         }
