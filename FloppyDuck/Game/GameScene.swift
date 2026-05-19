@@ -1223,7 +1223,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 playerPipesPassed.insert(pipeName)
             }
 
-            let points = powerUpCtrl.isDoublePointsActive ? 2 : 1
+            let points = (powerUpCtrl.isDoublePointsActive && mode != .vsBot) ? 2 : 1
             score += points
             updateScore()
             Haptic.score()
