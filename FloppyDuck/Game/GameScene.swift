@@ -367,11 +367,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         groundBody.physicsBody?.contactTestBitMask = GK.duckCategory | GK.botCategory
         worldNode.addChild(groundBody)
 
-        // Ceiling
+        // Ceiling — physical barrier only, no death contact
         let ceiling = SKNode()
         ceiling.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight + 20)
         ceiling.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: GK.worldWidth * 2, height: 2))
         ceiling.physicsBody?.isDynamic = false
+        ceiling.physicsBody?.categoryBitMask = GK.ceilingCategory
+        ceiling.physicsBody?.contactTestBitMask = 0
+        ceiling.physicsBody?.collisionBitMask = GK.duckCategory | GK.botCategory
         worldNode.addChild(ceiling)
     }
 
@@ -389,7 +392,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         sprite.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory
         // Only collide with ground — pipe contacts trigger game over via didBegin(_:)
         // but must NOT physically push the duck (causes progressive leftward drift).
-        sprite.physicsBody?.collisionBitMask = GK.groundCategory
+        sprite.physicsBody?.collisionBitMask = GK.groundCategory | GK.ceilingCategory
         sprite.physicsBody?.allowsRotation = false
         sprite.physicsBody?.restitution = 0
         sprite.physicsBody?.linearDamping = 0
