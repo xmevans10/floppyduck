@@ -46,6 +46,7 @@ struct FloppyDuckApp: App {
             AnalyticsManager.configure()
             AnalyticsManager.shared.trackAppOpen()
             SoundManager.shared.prepare()
+            Haptic.warmUp()
         }
 
         let manager = GameManager()

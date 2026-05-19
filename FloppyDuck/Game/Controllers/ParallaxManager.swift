@@ -635,27 +635,12 @@ final class ParallaxManager {
                                     size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         skyNode.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight / 2)
         skyNode.zPosition = -100
-        skyNode.texture = createSkyGradientTexture()
+        skyNode.texture = TextureFactory.shared.skyGradientTexture(theme: theme)
         skyNode.blendMode = .replace
         backgroundLayer.addChild(skyNode)
     }
 
     private func createSkyGradientTexture() -> SKTexture {
-        let size = CGSize(width: 1, height: Int(GK.worldHeight))
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let image = renderer.image { ctx in
-            let colors = theme.gradientColors.map { UIColor($0).cgColor } as CFArray
-            let space = CGColorSpaceCreateDeviceRGB()
-            guard let gradient = CGGradient(colorsSpace: space, colors: colors, locations: nil) else { return }
-            ctx.cgContext.drawLinearGradient(
-                gradient,
-                start: CGPoint(x: 0, y: size.height),
-                end:   CGPoint(x: 0, y: 0),
-                options: []
-            )
-        }
-        let tex = SKTexture(image: image)
-        tex.filteringMode = .linear
-        return tex
+        TextureFactory.shared.skyGradientTexture(theme: theme)
     }
 }

@@ -673,6 +673,11 @@ actor ConvexClient: MultiplayerBackendClient {
             entries.append(own)
         }
 
+        print("[ConvexClient] getHighScoreLeaderboard rawValue type: \(type(of: value)), items count: \(items.count), parsed entries: \(entries.count)")
+        if items.count > 0 && entries.isEmpty {
+            print("[ConvexClient] WARNING: all items failed to parse. First item: \(items[0])")
+        }
+
         return entries
     }
 

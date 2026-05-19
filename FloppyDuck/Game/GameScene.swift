@@ -250,8 +250,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.gravity = CGVector(dx: 0, dy: GK.gravity / 60)
         physicsWorld.contactDelegate = self
 
-        // Pre-warm haptics. Audio is prepared once at app launch.
-        Haptic.warmUp()
         // Item 11: Set active skin for per-skin sound variants
         SoundManager.shared.setActiveSkin(playerSkin)
         // Set active theme so music matches the selected background
@@ -1751,7 +1749,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func showTutorialIfNeeded() {
         let key = "hasSeenTutorial"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
+        DispatchQueue.global(qos: .utility).async {
+            UserDefaults.standard.set(true, forKey: key)
+        }
+        // Defer overlay creation to after first frame render to avoid main-thread hitch
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.createTutorialOverlay()
+        }
+    }
+
+    private func createTutorialOverlay() {
 
         let overlay = SKNode()
         overlay.zPosition = 400

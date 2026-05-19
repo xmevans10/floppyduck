@@ -257,6 +257,7 @@ final class GameManager: ObservableObject {
             score: result.localScore,
             opponentScore: result.opponentScore
         )
+        syncStatsToServer()
     }
 
     func applyBattleRoyaleResult(_ state: BattleRoyaleState, score: Int) {
@@ -271,6 +272,7 @@ final class GameManager: ObservableObject {
         stats.totalBreadCollected += state.local.prize
         saveStats()
         AnalyticsManager.shared.trackGameCompleted(mode: GameMode.battleRoyale.rawValue, score: score, won: state.local.placement == 1)
+        syncStatsToServer()
     }
 
     func applyRemoteProfile(_ profile: RemotePlayerProfile) {
@@ -336,22 +338,24 @@ final class GameManager: ObservableObject {
 
     // MARK: - Existing Stats APIs
 
+    private func syncStatsToServer() {
+        Task { [weak self] in
+            guard let self else { return }
+            let snapshot = LocalStatsSnapshot(
+                username: playerName,
+                stats: stats
+            )
+            try? await ConvexClient.shared.syncStats(snapshot)
+        }
+    }
+
     func recordGame(score: Int, won: Bool? = nil) {
-        let previousBest = stats.bestScore
         stats.recordGame(score: score, won: won)
         checkDailyStreak()
         saveStats()
         let mode = activeGameConfig?.mode.rawValue ?? "classic"
         AnalyticsManager.shared.trackGameCompleted(mode: mode, score: score, won: won)
-        if stats.bestScore > previousBest {
-            Task { [weak self, snapshotStats = stats] in
-                let snapshot = LocalStatsSnapshot(
-                    username: self?.playerName ?? "Player",
-                    stats: snapshotStats
-                )
-                try? await ConvexClient.shared.syncStats(snapshot)
-            }
-        }
+        syncStatsToServer()
     }
 
     func checkDailyStreak() {

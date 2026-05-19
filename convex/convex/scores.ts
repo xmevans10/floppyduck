@@ -18,35 +18,29 @@ export const leaderboard = query({
   handler: async (ctx, args) => {
     const topN = Math.max(1, Math.min(100, Math.floor(args.limit ?? 50)));
 
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_bestScore")
+      .order("desc")
+      .collect();
+
     const entries: HighScoreEntry[] = [];
     const seenIdentityIds = new Set<string>();
-    let cursor: string | null = null;
 
-    while (entries.length < topN) {
-      const batch = await ctx.db
-        .query("users")
-        .withIndex("by_bestScore")
-        .order("desc")
-        .paginate({ numItems: topN, cursor });
+    for (const user of users) {
+      if (entries.length >= topN) break;
+      const identityId = scoreIdentityId(user);
+      if (!identityId) continue;
+      if (seenIdentityIds.has(identityId)) continue;
+      if (!user.bestScore || user.bestScore <= 0) continue;
+      seenIdentityIds.add(identityId);
 
-      for (const user of batch.page) {
-        const identityId = scoreIdentityId(user);
-        if (!identityId) continue;
-        if (seenIdentityIds.has(identityId)) continue;
-        if (!user.bestScore || user.bestScore <= 0) continue;
-        seenIdentityIds.add(identityId);
-
-        entries.push({
-          userId: user._id,
-          username: user.username,
-          bestScore: user.bestScore,
-          rank: entries.length + 1,
-        });
-        if (entries.length >= topN) break;
-      }
-
-      if (batch.isDone) break;
-      cursor = batch.continueCursor;
+      entries.push({
+        userId: user._id,
+        username: user.username,
+        bestScore: user.bestScore,
+        rank: entries.length + 1,
+      });
     }
 
     const requestUser = await resolveRequestUser(ctx, args);

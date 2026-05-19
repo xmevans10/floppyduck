@@ -72,10 +72,13 @@ const localStatsValidator = v.optional(
     bestScore: v.optional(v.number()),
     totalScore: v.optional(v.number()),
     elo: v.optional(v.number()),
+    peakElo: v.optional(v.number()),
     bread: v.optional(v.number()),
     totalBreadCollected: v.optional(v.number()),
     recentScores: v.optional(v.array(v.number())),
     beatenBots: v.optional(v.array(v.string())),
+    winStreak: v.optional(v.number()),
+    bestWinStreak: v.optional(v.number()),
   }),
 );
 

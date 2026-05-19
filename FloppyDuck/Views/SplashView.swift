@@ -97,6 +97,14 @@ struct SplashView: View {
 
     private func finish() {
         guard !isFinished else { return }
+        // If preWarm hasn't finished yet, poll until it does to avoid
+        // first-game stutter from on-demand texture renders on the main thread.
+        guard TextureFactory.shared.isPreWarmed else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
+                finish()
+            }
+            return
+        }
         isFinished = true
     }
 }

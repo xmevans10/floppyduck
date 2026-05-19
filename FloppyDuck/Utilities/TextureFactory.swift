@@ -101,6 +101,14 @@ final class TextureFactory: @unchecked Sendable {
             _ = self.glowCircleTexture(radius: 80, color: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.6))
             _ = self.glowCircleTexture(radius: 30, color: UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 0.65))
 
+            // Pre-warm sky gradient textures for all themes.
+            // Each first-call triggers UIGraphicsImageRenderer on the background
+            // thread; without this, the first game's ParallaxManager.setup() blocks
+            // the main thread for ~12-20ms per gradient render.
+            for theme in BackgroundTheme.allCases {
+                _ = self.skyGradientTexture(theme: theme)
+            }
+
             DispatchQueue.main.async {
                 self.isPreWarmed = true
             }
@@ -1782,7 +1790,26 @@ final class TextureFactory: @unchecked Sendable {
             }
         }
     }
-
-
+    func skyGradientTexture(theme: BackgroundTheme) -> SKTexture {
+        let key = "sky_gradient_\(theme.rawValue)"
+        if let cached = cachedTexture(forKey: key) { return cached }
+        let size = CGSize(width: 1, height: Int(GK.worldHeight))
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { ctx in
+            let colors = theme.gradientColors.map { UIColor($0).cgColor } as CFArray
+            let space = CGColorSpaceCreateDeviceRGB()
+            guard let gradient = CGGradient(colorsSpace: space, colors: colors, locations: nil) else { return }
+            ctx.cgContext.drawLinearGradient(
+                gradient,
+                start: CGPoint(x: 0, y: size.height),
+                end:   CGPoint(x: 0, y: 0),
+                options: []
+            )
+        }
+        let tex = SKTexture(image: image)
+        tex.filteringMode = .linear
+        cacheStore(key, tex)
+        return tex
+    }
 
 }
