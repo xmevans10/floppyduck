@@ -100,6 +100,8 @@ struct LeaderboardView: View {
             let isCurrentEmpty = currentEntries().isEmpty
             log.debug("mode changed to \(newMode.rawValue), entries empty=\(isCurrentEmpty)")
             if isCurrentEmpty {
+                isLoading = true
+                errorMessage = nil
                 Task { await loadLeaderboard() }
             } else {
                 log.debug("mode change — cached entries=\(entriesCount())")
