@@ -9,6 +9,10 @@ enum Haptic {
     private static let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
     private static let notification = UINotificationFeedbackGenerator()
 
+    /// Dedicated serial queue for haptic feedback — keeps UIImpactFeedbackGenerator
+    /// IPC (~0.5-2ms) off the main/render thread to prevent tap-correlated micro-stutters.
+    private static let hapticQueue = DispatchQueue(label: "com.floppyduck.haptics", qos: .userInteractive)
+
     /// Cached preference — avoids UserDefaults lookup on every haptic call.
     private static var _isEnabled: Bool = {
         UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool ?? true
@@ -46,14 +50,18 @@ enum Haptic {
 
     static func flap() {
         guard isEnabled else { return }
-        impactLight.impactOccurred()
-        throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
+        hapticQueue.async {
+            impactLight.impactOccurred()
+            throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
+        }
     }
 
     static func score() {
         guard isEnabled else { return }
-        impactMedium.impactOccurred()
-        throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
+        hapticQueue.async {
+            impactMedium.impactOccurred()
+            throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
+        }
     }
 
     static func death() {
@@ -77,8 +85,10 @@ enum Haptic {
     /// Every 5 pipes scored — satisfying mid-game beat
     static func milestone() {
         guard isEnabled else { return }
-        impactHeavy.impactOccurred()
-        throttledPrepare(impactHeavy, key: ObjectIdentifier(impactHeavy))
+        hapticQueue.async {
+            impactHeavy.impactOccurred()
+            throttledPrepare(impactHeavy, key: ObjectIdentifier(impactHeavy))
+        }
     }
 
     /// New personal best

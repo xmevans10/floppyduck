@@ -19,6 +19,13 @@ struct ActiveBreadRecord {
     let baseY: CGFloat          // Original Y position for absolute sine-bob
 }
 
+/// Cached power-up collectible record — maintained at spawn/collect/cleanup.
+/// Without explicit tracking, power-up nodes in pipeLayer are stationary
+/// (only activePipes and activeBreads are moved in the update loop).
+struct ActivePowerUpRecord {
+    weak var node: SKNode?
+}
+
 // MARK: - Game Phase
 
 enum GamePhase {
@@ -81,6 +88,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // pipeLayer.children scans, string-name checks, and userData dictionary lookups.
     private var activePipes: [ActivePipeRecord] = []
     private var activeBreads: [ActiveBreadRecord] = []
+    private var activePowerUpCollectibles: [ActivePowerUpRecord] = []
     private let hudLayer = SKNode()
 
     // Controllers
@@ -680,6 +688,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let collectible = makePowerUpCollectible(kind: kind)
         collectible.position = CGPoint(x: afterPipeX + xOffset, y: y)
         pipeLayer.addChild(collectible)
+        activePowerUpCollectibles.append(ActivePowerUpRecord(node: collectible))
     }
 
     private func makePowerUpCollectible(kind: PowerUpKind) -> SKNode {
@@ -1010,6 +1019,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 activeBreads.remove(at: breadIdx)
             } else {
                 breadIdx += 1
+            }
+        }
+
+        // --- Move power-up collectibles ---
+        var puIdx = 0
+        while puIdx < activePowerUpCollectibles.count {
+            guard let puNode = activePowerUpCollectibles[puIdx].node else {
+                // Node was collected (removeFromParent in PowerUpController) or deallocated
+                activePowerUpCollectibles.remove(at: puIdx)
+                continue
+            }
+            puNode.position.x -= dx
+
+            if puNode.position.x < cleanupX {
+                puNode.removeFromParent()
+                activePowerUpCollectibles.remove(at: puIdx)
+            } else {
+                puIdx += 1
             }
         }
 
@@ -1534,6 +1561,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         pipeLayer.removeAllChildren()
         activePipes.removeAll()
         activeBreads.removeAll()
+        activePowerUpCollectibles.removeAll()
         pipeLayer.isPaused = false
         groundLayer.isPaused = false
         backgroundLayer.isPaused = false

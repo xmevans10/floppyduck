@@ -237,10 +237,11 @@ final class AuthManager: ObservableObject {
     }
 
     private static func authenticateGameCenterPlayer() async throws -> GKLocalPlayer {
-        if GKLocalPlayer.local.isAuthenticated {
-            return GKLocalPlayer.local
-        }
-
+        // Always go through the authenticateHandler so the system can present
+        // biometric verification (Face ID / Touch ID) when appropriate.
+        // Returning early on isAuthenticated would skip the system auth UI,
+        // meaning a new app session could silently reuse a stale GK identity
+        // without the user confirming via Face ID.
         return try await withCheckedThrowingContinuation { continuation in
             var didResume = false
             GKLocalPlayer.local.authenticateHandler = { viewController, error in

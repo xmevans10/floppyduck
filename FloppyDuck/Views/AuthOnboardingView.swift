@@ -4,6 +4,7 @@ import SwiftUI
 
 private enum OnboardingAuthAction {
     case gameCenter
+    case guest
 }
 
 // MARK: - Pages Enum
@@ -68,6 +69,13 @@ struct AuthOnboardingView: View {
                             busyAction = .gameCenter
                             Task {
                                 await auth.signInWithGameCenter()
+                                busyAction = nil
+                            }
+                        },
+                        onGuest: {
+                            busyAction = .guest
+                            Task {
+                                await auth.continueAsGuest()
                                 busyAction = nil
                             }
                         },
@@ -392,6 +400,7 @@ private struct HowToPlayPage: View {
 private struct AuthChoicePage: View {
     @Binding var busyAction: OnboardingAuthAction?
     let onGameCenter: () -> Void
+    let onGuest: () -> Void
     let statusMessage: String?
     let onBack: () -> Void
 
@@ -420,7 +429,7 @@ private struct AuthChoicePage: View {
                     .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: -3)
                     .padding(.bottom, 6)
 
-                PixelOutlinedText(text: "SIGN IN WITH GAME CENTER", fontSize: 9,
+                PixelOutlinedText(text: "SYNC YOUR PROGRESS", fontSize: 9,
                                   fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1.5)
                     .padding(.bottom, 24)
 
@@ -428,8 +437,8 @@ private struct AuthChoicePage: View {
                 VStack(spacing: 12) {
                     authOptionButton(
                         icon: .trophy,
-                        title: "CONTINUE",
-                        subtitle: "Use your Game Center name",
+                        title: "GAME CENTER",
+                        subtitle: "Sync scores & play ranked",
                         color: GK.Colors.buttonBlue,
                         isBusy: busyAction == .gameCenter,
                         action: onGameCenter
@@ -437,6 +446,18 @@ private struct AuthChoicePage: View {
                     .scaleEffect(buttonsAppeared ? 1 : 0.85)
                     .opacity(buttonsAppeared ? 1 : 0)
                     .animation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.1), value: buttonsAppeared)
+
+                    authOptionButton(
+                        icon: .play,
+                        title: "PLAY AS GUEST",
+                        subtitle: "Jump right in, sign in later",
+                        color: Color(red: 0.45, green: 0.45, blue: 0.50),
+                        isBusy: busyAction == .guest,
+                        action: onGuest
+                    )
+                    .scaleEffect(buttonsAppeared ? 1 : 0.85)
+                    .opacity(buttonsAppeared ? 1 : 0)
+                    .animation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.2), value: buttonsAppeared)
                 }
                 .padding(.horizontal, 30)
                 .onAppear {
@@ -446,7 +467,7 @@ private struct AuthChoicePage: View {
                 }
 
                 // Fine print on a subtle card
-                Text("Your Game Center alias is your in-game name.")
+                Text("Game Center syncs your scores across devices\nand enables ranked multiplayer.")
                     .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(GK.Colors.titleCream)
                     .multilineTextAlignment(.center)
