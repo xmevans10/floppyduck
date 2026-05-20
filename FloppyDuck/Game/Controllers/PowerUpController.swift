@@ -60,6 +60,10 @@ final class PowerUpController {
     /// Called when a power-up enters the "wearing off" warning phase.
     var onPowerUpWearingOff: ((PowerUpKind) -> Void)?
 
+    /// Called when foggy activates (true) or deactivates (false).
+    /// GameScene uses this to add/remove the fog overlay sprite.
+    var onFoggyStateChanged: ((Bool) -> Void)?
+
     /// Override for collected-label parent node. When set, labels are added here
     /// instead of worldNode — prevents shake during death screen-shake.
     weak var labelParentOverride: SKNode?
@@ -144,6 +148,9 @@ final class PowerUpController {
         if hasActive(.heavyDuck) {
             gravity *= 1.5
         }
+        if hasActive(.featherweight) {
+            gravity *= 0.6
+        }
         if hasActive(.dizzyDuck) {
             gravity = -gravity
         }
@@ -186,6 +193,12 @@ final class PowerUpController {
 
     /// Whether heavy duck gravity boost is active.
     var isHeavyDuckActive: Bool { hasActive(.heavyDuck) }
+
+    /// Whether the foggy debuff (visibility reduction) is active.
+    var isFoggyActive: Bool { hasActive(.foggy) }
+
+    /// Whether the featherweight buff (reduced gravity) is active.
+    var isFeatherweightActive: Bool { hasActive(.featherweight) }
 
     // MARK: - Spawn Flow
 
@@ -238,12 +251,22 @@ final class PowerUpController {
         node.removeFromParent()
 
         onPowerUpCollected?(kind)
-        showCollectedLabel(kind: kind)
-        activate(kind: kind)
+
+        // Mystery box: resolve to a random power-up (good or bad)
+        let resolvedKind: PowerUpKind
+        if kind == .mysteryBox {
+            let candidates = PowerUpKind.allCases.filter { $0 != .mysteryBox }
+            resolvedKind = candidates.randomElement() ?? .shield
+        } else {
+            resolvedKind = kind
+        }
+
+        showCollectedLabel(kind: resolvedKind)
+        activate(kind: resolvedKind)
 
         Haptic.score()
 
-        if kind.isPositive {
+        if resolvedKind.isPositive {
             SoundManager.shared.play(.powerUp)
         } else {
             SoundManager.shared.play(.debuff)
@@ -339,6 +362,11 @@ final class PowerUpController {
         }
         expiryWarningActive.removeAll()
 
+        // Remove fog overlay on death
+        if hasActive(.foggy) {
+            onFoggyStateChanged?(false)
+        }
+
         duck?.alpha = 1.0
         duck?.colorBlendFactor = 0
         duck?.removeAction(forKey: "duckScaleAnim")
@@ -353,6 +381,10 @@ final class PowerUpController {
     func reset() {
         for powerUp in activePowerUps {
             stopExpiryWarning(for: powerUp.kind)
+        }
+        // Remove foggy overlay if active
+        if hasActive(.foggy) {
+            onFoggyStateChanged?(false)
         }
         activePowerUps.removeAll()
         expiryWarningActive.removeAll()
@@ -386,8 +418,10 @@ final class PowerUpController {
             activateGhostDuck()
         case .tinyDuck, .jumboDuck:
             applyDuckScale()
+        case .foggy:
+            onFoggyStateChanged?(true)
         default:
-            break
+            break  // featherweight, mysteryBox (resolved before here), etc. — modifier-only
         }
     }
 
@@ -406,8 +440,10 @@ final class PowerUpController {
             deactivateGhostDuck()
         case .tinyDuck, .jumboDuck:
             applyDuckScale()
+        case .foggy:
+            onFoggyStateChanged?(false)
         default:
-            break
+            break  // featherweight — gravity modifier auto-stops when removed from activePowerUps
         }
     }
 
@@ -518,6 +554,21 @@ final class PowerUpController {
                 SKAction.moveBy(x: 2, y: 0, duration: 0.04),
             ])
             duck.run(SKAction.repeatForever(shrinkShake), withKey: "expiryWarn_jumboDuck")
+
+        case .featherweight:
+            // Sky blue pulse as gravity returns to normal
+            let tintOn = SKAction.colorize(with: UIColor(red: 0.55, green: 0.76, blue: 0.94, alpha: 1), colorBlendFactor: 0.3, duration: 0.15)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_featherweight")
+
+        case .foggy:
+            // Gray blink as fog starts to lift
+            let tintOn = SKAction.colorize(with: UIColor(red: 0.5, green: 0.53, blue: 0.59, alpha: 1), colorBlendFactor: 0.3, duration: 0.12)
+            let tintOff = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.12)
+            duck.run(SKAction.repeatForever(SKAction.sequence([tintOn, tintOff])), withKey: "expiryWarn_foggy")
+
+        case .mysteryBox:
+            break  // Mystery box is resolved instantly — never has an active duration
         }
     }
 
@@ -548,6 +599,10 @@ final class PowerUpController {
             break
         case .tinyDuck, .megaFlap, .jumboDuck:
             duck.colorBlendFactor = 0
+        case .featherweight, .foggy:
+            duck.colorBlendFactor = 0
+        case .mysteryBox:
+            break  // instant — no warning to stop
         }
     }
 

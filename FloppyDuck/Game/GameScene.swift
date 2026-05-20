@@ -175,6 +175,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // Death effects (Item 6)
     private var deathVignette: SKSpriteNode?
+    private var fogOverlay: SKSpriteNode?
 
     // Bot ladder win guard
     private var botLadderWinTriggered = false
@@ -305,6 +306,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         powerUpCtrl.onShieldConsumed = { [weak self] in
             self?.shieldsUsed += 1
+        }
+        powerUpCtrl.onFoggyStateChanged = { [weak self] isActive in
+            guard let self else { return }
+            if isActive {
+                self.showFogOverlay()
+            } else {
+                self.removeFogOverlay()
+            }
         }
         powerUpCtrl.setDuckTextures(duckTextures)
 
@@ -742,6 +751,28 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         return collectible
     }
 
+    // MARK: - Foggy Overlay
+
+    private func showFogOverlay() {
+        guard fogOverlay == nil else { return }
+        let fog = SKSpriteNode(color: UIColor(red: 0.12, green: 0.12, blue: 0.16, alpha: 0.65), size: self.size)
+        fog.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        fog.zPosition = 450   // above game content, below death overlay / HUD
+        fog.alpha = 0
+        addChild(fog)
+        fogOverlay = fog
+        fog.run(SKAction.fadeAlpha(to: 1.0, duration: 0.3))
+    }
+
+    private func removeFogOverlay() {
+        guard let fog = fogOverlay else { return }
+        fog.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: 0.4),
+            SKAction.removeFromParent()
+        ]))
+        fogOverlay = nil
+    }
+
     // MARK: - Bread Collectibles
 
     /// Spawns 1–2 bread slices between the current pipe and the next expected pipe position.
@@ -761,16 +792,19 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let breadX = afterPipeX + xOffset + CGFloat(i) * 20
             let breadY = CGFloat.random(in: minBreadY...maxBreadY)
 
-            let breadTexture = PixelIconFactory.shared.skTexture(for: .bread)
+            // 7% chance: golden loaf worth 10 bread
+            let isLoaf = CGFloat.random(in: 0...1) < PowerUpKind.loafChance
+            let breadTexture = PixelIconFactory.shared.skTexture(for: isLoaf ? .loafBread : .bread)
             let breadNode = SKSpriteNode(texture: breadTexture)
-            breadNode.setScale(0.8)  // Bug #7 fix: larger bread for visibility
+            breadNode.setScale(isLoaf ? 0.9 : 0.8)  // loaf slightly larger
             breadNode.position = CGPoint(x: breadX, y: breadY)
             breadNode.zPosition = 25
-            breadNode.name = "bread"
+            breadNode.name = isLoaf ? "loaf" : "bread"
 
             // Store base Y for absolute sine-bob in update() — no drift over time.
             breadNode.userData = breadNode.userData ?? NSMutableDictionary()
             breadNode.userData?["baseY"] = breadY
+            if isLoaf { breadNode.userData?["loaf"] = true }
 
             // PERF: No physics body on bread — collection uses distance checks in
             // update() (eliminates ~6 physics bodies from the simulation per frame).
@@ -788,7 +822,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     /// Called when duck contacts a bread node.
     private func collectBread(node: SKNode) {
         node.removeFromParent()
-        breadCollected += 1
+        let isLoaf = node.userData?["loaf"] as? Bool == true
+        let value = isLoaf ? PowerUpKind.loafBreadValue : 1
+        breadCollected += value
         SoundManager.shared.play(.bread)
         Haptic.score()
 
@@ -803,9 +839,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         breadPopupPoolIndex += 1
 
         popup.removeAllActions()
+        popup.text = isLoaf ? "+\(PowerUpKind.loafBreadValue)" : "+1"
+        popup.fontColor = isLoaf ? UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1) : .white
         popup.alpha = 1.0
         popup.isHidden = false
-        popup.setScale(1.0)
+        popup.setScale(isLoaf ? 1.3 : 1.0)
         popup.position = CGPoint(x: duck.position.x + 28, y: duck.position.y + 28)
 
         let floatUp = SKAction.moveBy(x: 0, y: 35, duration: 0.5)
@@ -840,6 +878,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             duck?.removeAllActions()
             deathVignette?.removeFromParent()
             deathVignette = nil
+            fogOverlay?.removeFromParent()
+            fogOverlay = nil
             gameDelegate?.gameDidQuickRetry(score: score)
             resetGame()
         default:
@@ -1661,9 +1701,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         startWingAnimation()
         updateScore()
 
-        // Clean up death vignette if still present
+        // Clean up death vignette and fog overlay if still present
         deathVignette?.removeFromParent()
         deathVignette = nil
+        fogOverlay?.removeFromParent()
+        fogOverlay = nil
 
         // Reset bot controller
         if mode == .vsBot {

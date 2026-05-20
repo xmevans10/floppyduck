@@ -24,13 +24,18 @@ enum PowerUpKind: String, CaseIterable {
     // More power-ups
     case tinyDuck      // Duck shrinks to 50% for 5 seconds — tiny hitbox
     case megaFlap      // Flap impulse +30% for next pipe — super bouncy
+    case featherweight // Gravity ×0.6 for 4 seconds — floaty duck
+    case mysteryBox    // Instantly activates a random other power-up
+
+    // More debuffs
+    case foggy         // Dark fog overlay obscures vision for 3 seconds
 
     var isPositive: Bool {
         switch self {
         case .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck, .doublePoints,
-             .tinyDuck, .megaFlap:
+             .tinyDuck, .megaFlap, .featherweight, .mysteryBox:
             return true
-        case .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck, .jumboDuck:
+        case .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck, .jumboDuck, .foggy:
             return false
         }
     }
@@ -50,6 +55,9 @@ enum PowerUpKind: String, CaseIterable {
         case .jumboDuck:    return "JUMBO"
         case .tinyDuck:     return "TINY"
         case .megaFlap:     return "MEGA"
+        case .featherweight: return "FEATHER"
+        case .mysteryBox:   return "???"
+        case .foggy:        return "FOGGY"
         }
     }
 
@@ -68,6 +76,9 @@ enum PowerUpKind: String, CaseIterable {
         case .jumboDuck:    return .jumboDuck
         case .tinyDuck:     return .tinyDuck
         case .megaFlap:     return .megaFlap
+        case .featherweight: return .featherweight
+        case .mysteryBox:   return .mysteryBox
+        case .foggy:        return .foggy
         }
     }
 
@@ -87,6 +98,9 @@ enum PowerUpKind: String, CaseIterable {
         case .jumboDuck:    return 4.0
         case .tinyDuck:     return 5.0
         case .megaFlap:     return 0      // next 1 pipe
+        case .featherweight: return 4.0
+        case .mysteryBox:   return 0      // instant — resolves to another kind
+        case .foggy:        return 3.0
         }
     }
 
@@ -98,7 +112,7 @@ enum PowerUpKind: String, CaseIterable {
         case .doublePoints: return 5
         case .pipeSqueeze:  return 3
         case .megaFlap:     return 2
-        default:            return nil
+        default:            return nil  // featherweight, mysteryBox, foggy are time-based or instant
         }
     }
 
@@ -121,6 +135,9 @@ enum PowerUpKind: String, CaseIterable {
         case .jumboDuck:    return 1.4
         case .tinyDuck:     return 1.6
         case .megaFlap:     return 1.4
+        case .featherweight: return 1.2
+        case .mysteryBox:   return 0.6   // rare — exciting when it appears
+        case .foggy:        return 1.0
         }
     }
 
@@ -140,11 +157,18 @@ enum PowerUpKind: String, CaseIterable {
         case .jumboDuck:    return UIColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 1)   // orange
         case .tinyDuck:     return UIColor(red: 0.4, green: 0.8, blue: 1.0, alpha: 1)   // light blue
         case .megaFlap:     return UIColor(red: 1.0, green: 0.7, blue: 0.2, alpha: 1)   // amber
+        case .featherweight: return UIColor(red: 0.55, green: 0.76, blue: 0.94, alpha: 1) // sky blue
+        case .mysteryBox:   return UIColor(red: 0.96, green: 0.78, blue: 0.20, alpha: 1) // gold
+        case .foggy:        return UIColor(red: 0.5, green: 0.53, blue: 0.59, alpha: 1)  // dark gray
         }
     }
 
     /// SpriteKit node size for the collectible.
     static let collectibleSize: CGFloat = 24
+
+    /// Bread-loaf collectible: chance for a bread to become a golden loaf worth 10×.
+    static let loafChance: CGFloat = 0.07
+    static let loafBreadValue: Int = 10
 }
 
 // MARK: - Active Power-Up State
