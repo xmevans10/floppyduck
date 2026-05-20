@@ -15,6 +15,9 @@ struct GameContainerView: View {
     @State private var showBotLadderCelebration: Bool = false
     @State private var celebrationPulse: Bool = false
     @State private var countdownValue: Int = 3
+    @State private var countdownScale: CGFloat = 0.001
+    @State private var countdownFlashOpacity: Double = 0
+    @State private var countdownLabel: String = "3"
 
     // Match sync states (head-to-head)
     @State private var matchResult: MultiplayerMatchResult?
@@ -151,6 +154,7 @@ struct GameContainerView: View {
         let newScene = GameScene(
             seed: config.seed,
             mode: config.mode,
+            powerUpsEnabled: config.powerUpsEnabled,
             skin: skin,
             botSkin: config.botSkin,
             botDifficulty: config.botDifficulty,
@@ -658,10 +662,11 @@ struct GameContainerView: View {
             opponentName: config.opponentName ?? "OPPONENT",
             opponentAccent: bot?.accentColor ?? Color.red
         ) {
-            scene?.isReadyToStart = true
-            withAnimation(.easeOut(duration: 0.2)) {
-                phase = .ready
+            // VS intro done → run 3-2-1-QUACK countdown on the game map
+            withAnimation(.easeOut(duration: 0.15)) {
+                phase = .countdown
             }
+            runMapCountdown()
         }
     }
 
@@ -752,10 +757,83 @@ struct GameContainerView: View {
     // MARK: - Countdown
 
     private var countdownOverlay: some View {
-        Text("\(countdownValue)")
-            .font(.custom(GK.pixelFontName, size: 56))
-            .foregroundColor(.white)
-            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
+        ZStack {
+            // Dim backdrop so numbers read clearly over the map
+            Color.black.opacity(0.25)
+                .ignoresSafeArea()
+
+            // Number / QUACK text
+            Group {
+                if countdownLabel == "QUACK!" {
+                    Text("QUACK!")
+                        .font(.custom(GK.pixelFontName, size: 48))
+                        .foregroundColor(GK.Colors.scoreYellow)
+                        .shadow(color: Color.red, radius: 6)
+                        .shadow(color: Color.red.opacity(0.6), radius: 18)
+                        .shadow(color: .black, radius: 0, x: 3, y: 3)
+                } else {
+                    Text(countdownLabel)
+                        .font(.custom(GK.pixelFontName, size: 72))
+                        .foregroundColor(.white)
+                        .shadow(color: GK.Colors.scoreYellow, radius: 6)
+                        .shadow(color: GK.Colors.scoreYellow.opacity(0.5), radius: 16)
+                        .shadow(color: .black, radius: 0, x: 4, y: 4)
+                }
+            }
+            .scaleEffect(countdownScale)
+
+            // Screen flash on QUACK
+            Color.white.opacity(countdownFlashOpacity)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Runs the "3, 2, 1, QUACK!" sequence over the game map, then auto-starts gameplay.
+    private func runMapCountdown() {
+        let beats: [(String, TimeInterval)] = [
+            ("3", 0.3),
+            ("2", 1.0),
+            ("1", 1.7),
+            ("QUACK!", 2.4)
+        ]
+
+        for (label, delay) in beats {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                countdownLabel = label
+                countdownScale = 0.001
+
+                if label == "QUACK!" {
+                    withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.4, blendDuration: 0.05)) {
+                        countdownScale = 1.0
+                    }
+                    SoundManager.shared.play(.quack)
+                    Haptic.win()
+
+                    // Flash
+                    withAnimation(.easeOut(duration: 0.04)) {
+                        countdownFlashOpacity = 0.6
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            countdownFlashOpacity = 0
+                        }
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.05)) {
+                        countdownScale = 1.0
+                    }
+                    SoundManager.shared.play(.countTick)
+                    Haptic.score()
+                }
+            }
+        }
+
+        // Dismiss and auto-start gameplay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.1) {
+            scene?.isReadyToStart = true
+            scene?.startPlaying()
+        }
     }
 
     // MARK: - Game Over Overlay
