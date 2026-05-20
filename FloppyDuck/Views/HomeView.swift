@@ -275,11 +275,22 @@ struct HomeView: View {
 
     private var playSection: some View {
         VStack(spacing: 10) {
-            // Classic — always available
+            // Classic — no power-ups, pure vanilla experience
             subModeButton(
                 icon: .classic,
                 title: "CLASSIC",
-                subtitle: "Solo Run",
+                subtitle: "No Power-Ups",
+                color: GK.Colors.buttonGreen
+            ) {
+                SoundManager.shared.play(.button)
+                manager.startGame(GameModeConfig(mode: .classic, powerUpsEnabled: false))
+            }
+
+            // Arcade — solo run with power-ups
+            subModeButton(
+                icon: .star,
+                title: "ARCADE",
+                subtitle: "Power-Ups Enabled",
                 color: GK.Colors.buttonGreen
             ) {
                 SoundManager.shared.play(.button)

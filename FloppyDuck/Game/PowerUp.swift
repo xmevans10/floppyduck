@@ -230,7 +230,7 @@ final class PowerUpSpawnManager {
 
     // MARK: - Weighted Random
 
-    private func weightedRandomPowerUp(tier: DifficultyTier) -> PowerUpKind {
+    private func weightedRandomPowerUp(tier: DifficultyTier) -> PowerUpKind? {
         // At higher tiers, debuffs become more common
         let debuffBoost: Double = {
             switch tier {
@@ -261,7 +261,7 @@ final class PowerUpSpawnManager {
         }
 
         let totalWeight = weights.reduce(0.0) { $0 + $1.1 }
-        guard totalWeight > 0 else { return .breadMagnet }
+        guard totalWeight > 0 else { return nil }
 
         var roll = Double.random(in: 0..<totalWeight)
         for (kind, weight) in weights {
@@ -269,6 +269,6 @@ final class PowerUpSpawnManager {
             if roll <= 0 { return kind }
         }
 
-        return weights.last?.0 ?? .breadMagnet
+        return weights.first(where: { $0.1 > 0 })?.0
     }
 }

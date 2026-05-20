@@ -70,6 +70,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private let factory = TextureFactory.shared
     private let mode: GameMode
+    private let powerUpsEnabled: Bool
     private let playerSkin: DuckSkin
     private let botSkin: DuckSkin?
     private let botDiff: BotDifficulty?
@@ -218,6 +219,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     init(seed: Int = Int.random(in: 1...999999),
          mode: GameMode = .classic,
+         powerUpsEnabled: Bool = true,
          skin: DuckSkin = .classic,
          botSkin: DuckSkin? = nil,
          botDifficulty: BotDifficulty? = nil,
@@ -225,6 +227,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
          targetScore: Int? = nil) {
         self.prng = SeededRandom(seed: seed)
         self.mode = mode
+        self.powerUpsEnabled = powerUpsEnabled
         self.playerSkin = skin
         self.botSkin = botSkin
         self.botDiff = botDifficulty
@@ -308,6 +311,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // In bot-ladder mode, doublePoints is suppressed (score stays 1:1 with pipes)
         if mode == .vsBot {
             powerUpCtrl.excludedKinds = [.doublePoints]
+        }
+
+        // Classic (no power-ups) mode: exclude all power-up kinds
+        if !powerUpsEnabled {
+            powerUpCtrl.excludedKinds = Set(PowerUpKind.allCases)
         }
 
         // Bot controller (vsBot = sprite + AI, headToHead = score HUD only)

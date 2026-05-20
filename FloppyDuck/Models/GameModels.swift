@@ -19,6 +19,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let id: UUID
     let mode: GameMode
     let seed: Int
+    let powerUpsEnabled: Bool
     let opponentName: String?
     let opponentSkinId: String?
     let botDifficulty: BotDifficulty?
@@ -37,6 +38,7 @@ struct GameModeConfig: Identifiable, Hashable {
 
     init(mode: GameMode,
          seed: Int = Int.random(in: 1...999999),
+         powerUpsEnabled: Bool = true,
          opponentName: String? = nil,
          opponentSkinId: String? = nil,
          botDifficulty: BotDifficulty? = nil,
@@ -53,6 +55,7 @@ struct GameModeConfig: Identifiable, Hashable {
         self.id = UUID()
         self.mode = mode
         self.seed = seed
+        self.powerUpsEnabled = powerUpsEnabled
         self.opponentName = opponentName
         self.opponentSkinId = opponentSkinId
         self.botDifficulty = botDifficulty
