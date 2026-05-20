@@ -64,6 +64,12 @@ final class PowerUpController {
     /// GameScene uses this to add/remove the fog overlay sprite.
     var onFoggyStateChanged: ((Bool) -> Void)?
 
+    /// Called when a mystery box is collected. The callback receives the
+    /// pre-selected `PowerUpKind` and a `completion` block. The receiver
+    /// should play the slot-machine animation and then call `completion()`
+    /// to apply the power-up.
+    var onMysteryBoxCollected: ((PowerUpKind, @escaping () -> Void) -> Void)?
+
     /// Override for collected-label parent node. When set, labels are added here
     /// instead of worldNode — prevents shake during death screen-shake.
     weak var labelParentOverride: SKNode?
@@ -142,9 +148,15 @@ final class PowerUpController {
 
     // MARK: - Gameplay Modifiers
 
+    /// Base gravity from difficulty tier without any player power-up modifiers.
+    /// This is used for the global `physicsWorld.gravity` so bots and other
+    /// physics bodies are never affected by the player's power-ups.
+    var baseGravity: CGFloat { difficulty.effectiveGravity }
+
     /// Gravity adjusted for active power-ups (dizzyDuck inverts, heavyDuck amplifies).
+    /// Applied only to the player duck's velocity each frame, never globally.
     var effectiveGravity: CGFloat {
-        var gravity = difficulty.effectiveGravity
+        var gravity = baseGravity
         if hasActive(.heavyDuck) {
             gravity *= 1.5
         }
@@ -252,15 +264,32 @@ final class PowerUpController {
 
         onPowerUpCollected?(kind)
 
-        // Mystery box: resolve to a random power-up (good or bad)
-        let resolvedKind: PowerUpKind
+        // Mystery box: resolve to a random power-up, but defer activation
+        // so the slot-machine animation can play first.
         if kind == .mysteryBox {
             let candidates = PowerUpKind.allCases.filter { $0 != .mysteryBox }
-            resolvedKind = candidates.randomElement() ?? .shield
-        } else {
-            resolvedKind = kind
+            let resolvedKind = candidates.randomElement() ?? .shield
+
+            if let callback = onMysteryBoxCollected {
+                callback(resolvedKind) { [weak self] in
+                    guard let self else { return }
+                    self.showCollectedLabel(kind: resolvedKind)
+                    self.activate(kind: resolvedKind)
+                    Haptic.score()
+                    SoundManager.shared.play(resolvedKind.isPositive ? .powerUp : .debuff)
+                }
+            } else {
+                // Fallback: instant if no animation callback registered
+                showCollectedLabel(kind: resolvedKind)
+                activate(kind: resolvedKind)
+                Haptic.score()
+                SoundManager.shared.play(resolvedKind.isPositive ? .powerUp : .debuff)
+            }
+            return
         }
 
+        // Non-mystery-box: resolve and activate immediately
+        let resolvedKind = kind
         showCollectedLabel(kind: resolvedKind)
         activate(kind: resolvedKind)
 

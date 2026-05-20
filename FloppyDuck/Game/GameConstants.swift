@@ -121,6 +121,12 @@ enum GK {
         static let buttonRed     = Color(red: 0.85, green: 0.30, blue: 0.30)
         static let buttonBlue    = Color(red: 0.30, green: 0.55, blue: 0.85)
 
+        // Game mode tints — each mode gets a distinct color, no duplicates
+        static let classicTint    = Color(red: 0.43, green: 0.66, blue: 0.19)  // #6DA830 — warm retro green
+        static let arcadeTint     = Color(red: 0.78, green: 0.30, blue: 0.87)  // #C84DDD — magenta / power-up flash
+        static let vsBotTint      = Color(red: 0.30, green: 0.55, blue: 0.85)  // #4D8CD9 — tech blue (matches buttonBlue)
+        static let headToHeadTint = Color(red: 0.90, green: 0.55, blue: 0.16)  // #E58C29 — competitive orange (matches buttonOrange)
+
         // Text
         static let titleWhite   = Color.white
         static let titleOutline  = Color(red: 0.31, green: 0.24, blue: 0.14)

@@ -27,7 +27,7 @@ struct MultiplayerModesView: View {
                 HStack {
                     backButton
                     Spacer()
-                    Text("HEAD TO HEAD")
+                    Text("MULTIPLAYER")
                         .font(.custom(GK.pixelFontName, size: 16))
                         .foregroundColor(.white)
                         .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
@@ -327,7 +327,7 @@ struct MatchmakingView: View {
 
     private var modeTitle: String {
         switch mode {
-        case .quickPlay: return "HEAD TO HEAD"
+        case .quickPlay: return "MULTIPLAYER"
         case .ranked: return "RANKED"
         case .privateRoom: return "PRIVATE ROOM"
         case .battleRoyale: return "BATTLE ROYALE"

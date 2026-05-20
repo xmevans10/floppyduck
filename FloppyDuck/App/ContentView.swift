@@ -60,6 +60,8 @@ struct ContentView: View {
     @ViewBuilder
     private func destinationView(for route: AppRoute) -> some View {
         switch route {
+        case .singlePlayerModes:
+            SinglePlayerModesView()
         case .multiplayerModes:
             MultiplayerModesView()
         case .matchmaking(let mode):

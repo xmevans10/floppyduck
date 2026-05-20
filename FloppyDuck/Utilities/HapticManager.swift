@@ -56,6 +56,24 @@ enum Haptic {
         }
     }
 
+    /// Quick tick — used for slot-machine cycling and countdown ticks.
+    static func light() {
+        guard isEnabled else { return }
+        hapticQueue.async {
+            impactLight.impactOccurred()
+            throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
+        }
+    }
+
+    /// Medium emphasis — used for reveals, power-up collection.
+    static func medium() {
+        guard isEnabled else { return }
+        hapticQueue.async {
+            impactMedium.impactOccurred()
+            throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
+        }
+    }
+
     static func score() {
         guard isEnabled else { return }
         hapticQueue.async {

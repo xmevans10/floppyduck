@@ -25,6 +25,7 @@
 		49818A54D2311A8C429F104E /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCE68166C3B433188B01FDE /* HapticManager.swift */; };
 		52928A5D99AFDD8C805F878A /* BattleBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04256D4EFAB614B2184DDDCE /* BattleBanner.swift */; };
 		535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */; };
+		C37CFCC84552426EBB049D87 /* SinglePlayerModesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B0ADBBCFC5947F1B54DF780 /* SinglePlayerModesView.swift */; };
 		5A036B38A42A68B2A8E40347 /* MedalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0494021C7FBFABF4BD6618 /* MedalTests.swift */; };
 		722DC57A583E4629413B2ABF /* BotLadderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */; };
 		74C7BB1EBED11D4C50F70D9C /* BotController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01256F5F2501C40E0B8C7A2F /* BotController.swift */; };
@@ -170,6 +171,7 @@
 		5AF25026FF4DAD8B84CD3AF5 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		6536C0571E3D58450DECC837 /* GameContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameContainerView.swift; sourceTree = "<group>"; };
 		6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchmakingView.swift; sourceTree = "<group>"; };
+		5B0ADBBCFC5947F1B54DF780 /* SinglePlayerModesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SinglePlayerModesView.swift; sourceTree = "<group>"; };
 		6F57D6444D8C2281BB9B5DEA /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		709E16E4587997D58A88C22F /* BotCharacter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCharacter.swift; sourceTree = "<group>"; };
 		7A771ACFDBD10F0C11BA9444 /* BackgroundTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTheme.swift; sourceTree = "<group>"; };
@@ -307,6 +309,7 @@
 				5631A2E41C3ECFE3139D9B36 /* AchievementsView.swift */,
 				6536C0571E3D58450DECC837 /* GameContainerView.swift */,
 				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
+				5B0ADBBCFC5947F1B54DF780 /* SinglePlayerModesView.swift */,
 				A47652A08D5F52D04D2A070A /* StatsView.swift */,
 				CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */,
 				D10000000000000000000001 /* SplashView.swift */,
@@ -761,6 +764,7 @@
 				DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */,
 				C10000000000000000000004 /* AuthOnboardingView.swift in Sources */,
 				535FCF26C1A992F9F8C90357 /* MatchmakingView.swift in Sources */,
+				C37CFCC84552426EBB049D87 /* SinglePlayerModesView.swift in Sources */,
 				99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */,
 				B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */,
 				D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */,

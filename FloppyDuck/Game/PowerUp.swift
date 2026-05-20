@@ -122,22 +122,22 @@ enum PowerUpKind: String, CaseIterable {
     /// Spawn probability weight (higher = more likely).
     var spawnWeight: Double {
         switch self {
-        case .shield:       return 1.0
-        case .pipeExpander: return 1.2
-        case .breadMagnet:  return 2.0
+        case .shield:       return 1.5
+        case .pipeExpander: return 1.5
+        case .breadMagnet:  return 1.0
         case .slowMotion:   return 1.5
-        case .ghostDuck:    return 0.8
+        case .ghostDuck:    return 1.0
         case .doublePoints: return 1.0
+        case .tinyDuck:     return 1.0
+        case .megaFlap:     return 1.5
+        case .featherweight: return 1.33
+        case .mysteryBox:   return 3.0
         case .pipeSqueeze:  return 1.5
         case .speedBurst:   return 1.2
-        case .dizzyDuck:    return 1.0
-        case .heavyDuck:    return 1.2
-        case .jumboDuck:    return 1.4
-        case .tinyDuck:     return 1.6
-        case .megaFlap:     return 1.4
-        case .featherweight: return 1.2
-        case .mysteryBox:   return 0.6   // rare — exciting when it appears
-        case .foggy:        return 1.0
+        case .dizzyDuck:    return 1.2
+        case .heavyDuck:    return 1.0
+        case .jumboDuck:    return 0.8
+        case .foggy:        return 1.2
         }
     }
 

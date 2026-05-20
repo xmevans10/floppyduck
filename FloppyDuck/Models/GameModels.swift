@@ -4,6 +4,7 @@ import SwiftUI
 // MARK: - Navigation
 
 enum AppRoute: Hashable {
+    case singlePlayerModes
     case multiplayerModes
     case matchmaking(MatchmakingMode)
     case stats
@@ -89,7 +90,7 @@ enum GameMode: String, Hashable {
     var shareDisplayName: String {
         switch self {
         case .classic:      return "Classic"
-        case .headToHead:   return "Head to Head"
+        case .headToHead:   return "Multiplayer"
         case .vsBot:        return "VS Bot"
         case .battleRoyale: return "Battle Royale"
         }

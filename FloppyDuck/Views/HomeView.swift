@@ -275,34 +275,23 @@ struct HomeView: View {
 
     private var playSection: some View {
         VStack(spacing: 10) {
-            // Classic — no power-ups, pure vanilla experience
+            // Single Player — navigates to sub-screen (Classic / Arcade)
             subModeButton(
                 icon: .classic,
-                title: "CLASSIC",
-                subtitle: "No Power-Ups",
-                color: GK.Colors.buttonGreen
+                title: "SINGLE PLAYER",
+                subtitle: "Classic · Arcade",
+                color: GK.Colors.classicTint
             ) {
                 SoundManager.shared.play(.button)
-                manager.startGame(GameModeConfig(mode: .classic, powerUpsEnabled: false))
+                manager.navigate(to: .singlePlayerModes)
             }
 
-            // Arcade — solo run with power-ups
-            subModeButton(
-                icon: .star,
-                title: "ARCADE",
-                subtitle: "Power-Ups Enabled",
-                color: GK.Colors.buttonGreen
-            ) {
-                SoundManager.shared.play(.button)
-                manager.startGame(GameModeConfig(mode: .classic))
-            }
-
-            // VS Bot ladder — sign in required
+            // VS Bot — navigates to bot ladder
             subModeButton(
                 icon: .bot,
                 title: "VS BOT",
                 subtitle: isGuest ? "Sign in to unlock" : "Bot Ladder",
-                color: GK.Colors.buttonBlue,
+                color: GK.Colors.vsBotTint,
                 locked: isGuest
             ) {
                 if isGuest {
@@ -313,12 +302,12 @@ struct HomeView: View {
                 }
             }
 
-            // Head to Head — always accessible (Quick Play available inside)
+            // Multiplayer — navigates to sub-screen (Quick Play / Ranked / etc.)
             subModeButton(
                 icon: .headToHead,
-                title: "HEAD TO HEAD",
-                subtitle: "Quick / Ranked / Room",
-                color: GK.Colors.buttonOrange
+                title: "MULTIPLAYER",
+                subtitle: "Quick · Ranked · Room",
+                color: GK.Colors.headToHeadTint
             ) {
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .multiplayerModes)

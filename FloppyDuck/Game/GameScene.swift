@@ -315,6 +315,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 self.removeFogOverlay()
             }
         }
+        powerUpCtrl.onMysteryBoxCollected = { [weak self] resolvedKind, completion in
+            self?.showMysteryBoxAnimation(resolvedKind: resolvedKind, completion: completion)
+        }
         powerUpCtrl.setDuckTextures(duckTextures)
 
         // In bot-ladder mode, doublePoints is suppressed (score stays 1:1 with pipes)
@@ -773,6 +776,133 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         fogOverlay = nil
     }
 
+    // MARK: - Mystery Box Slot Animation
+
+    /// Plays a compact slot-machine roulette near the top of the screen
+    /// so it doesn't block gameplay. Cycles through power-up icons (fast → slow),
+    /// lands on `resolvedKind`, fires `completion` instantly at reveal.
+    private func showMysteryBoxAnimation(resolvedKind: PowerUpKind, completion: @escaping () -> Void) {
+        let goldColor = UIColor(red: 0.96, green: 0.78, blue: 0.20, alpha: 1)
+        // 25% smaller overall
+        let pixelScale: CGFloat = 3.0
+        let anchorY = size.height - 150
+
+        // --- Slot window (gold border) ---
+        let boxSize = CGSize(width: 58, height: 68)
+        let boxBg = SKSpriteNode(color: goldColor, size: boxSize)
+        boxBg.zPosition = 1
+
+        // --- Inner dark face ---
+        let innerSize = CGSize(width: 51, height: 60)
+        let inner = SKSpriteNode(color: UIColor(red: 0.10, green: 0.10, blue: 0.14, alpha: 1), size: innerSize)
+        inner.zPosition = 2
+
+        // --- Icon sprite (cycled) ---
+        let iconTexture = PixelIconFactory.shared.skTexture(for: .mysteryBox, pixelScale: pixelScale)
+        let iconSprite = SKSpriteNode(texture: iconTexture)
+        iconSprite.setScale(1.2)
+        iconSprite.zPosition = 3
+
+        // --- Container ---
+        let container = SKNode()
+        container.position = CGPoint(x: size.width / 2, y: anchorY)
+        container.zPosition = 999
+        container.addChild(boxBg)
+        container.addChild(inner)
+        container.addChild(iconSprite)
+        container.alpha = 0
+        hudLayer.addChild(container)
+
+        // --- Show: drop-in from above ---
+        container.setScale(0.6)
+        container.run(SKAction.group([
+            SKAction.fadeAlpha(to: 1.0, duration: 0.18),
+            SKAction.sequence([
+                SKAction.scale(to: 1.08, duration: 0.12),
+                SKAction.scale(to: 0.94, duration: 0.08),
+                SKAction.scale(to: 1.0, duration: 0.06),
+            ]),
+        ]))
+
+        // --- Build cycling sequence ---
+        let candidates = PowerUpKind.allCases.filter { $0 != .mysteryBox }
+        let displayOrder = candidates.shuffled()
+        var cycleTextures: [SKTexture] = []
+        let fastFrames = 14
+        let mediumFrames = 7
+        let slowFrames = 5
+
+        for i in 0..<fastFrames {
+            cycleTextures.append(PixelIconFactory.shared.skTexture(for: displayOrder[i % displayOrder.count].pixelIcon, pixelScale: pixelScale))
+        }
+        for i in 0..<mediumFrames {
+            cycleTextures.append(PixelIconFactory.shared.skTexture(for: displayOrder[i % displayOrder.count].pixelIcon, pixelScale: pixelScale))
+        }
+        for i in 0..<(slowFrames - 1) {
+            cycleTextures.append(PixelIconFactory.shared.skTexture(for: displayOrder[i % displayOrder.count].pixelIcon, pixelScale: pixelScale))
+        }
+        cycleTextures.append(PixelIconFactory.shared.skTexture(for: resolvedKind.pixelIcon, pixelScale: pixelScale))
+
+        // Build sequence with variable delays + SFX + haptics
+        var actions: [SKAction] = []
+        for (i, tex) in cycleTextures.enumerated() {
+            let isFast = i < fastFrames
+            let isMedium = i < fastFrames + mediumFrames && i >= fastFrames
+            let delay: TimeInterval = isFast ? 0.06 : (isMedium ? 0.10 : 0.16)
+            let isLast = i == cycleTextures.count - 1
+
+            actions.append(SKAction.run { iconSprite.texture = tex })
+
+            if !isLast {
+                actions.append(SKAction.wait(forDuration: delay))
+                // Tick SFX every 2nd frame + light haptic each tick
+                if i % 2 == 0 {
+                    actions.append(SKAction.run {
+                        SoundManager.shared.play(.countTick)
+                        Haptic.light()
+                    })
+                }
+            }
+        }
+
+        // Reveal: flash + bounce + immediate activation + coin sound + haptic
+        let revealFlash = SKAction.run {
+            let flash = SKSpriteNode(color: goldColor.withAlphaComponent(0.4), size: innerSize)
+            flash.position = .zero
+            flash.zPosition = 5
+            container.addChild(flash)
+            flash.run(SKAction.sequence([
+                SKAction.fadeOut(withDuration: 0.3),
+                SKAction.removeFromParent()
+            ]))
+            iconSprite.run(SKAction.sequence([
+                SKAction.scale(to: 1.6, duration: 0.12),
+                SKAction.scale(to: 1.1, duration: 0.18),
+            ]))
+            SoundManager.shared.play(.coin)
+            Haptic.medium()
+            // Activate power-up immediately — no delay
+            completion()
+        }
+        actions.append(revealFlash)
+
+        // Dismiss after a brief hold so the player sees what they got
+        let dismiss = SKAction.group([
+            SKAction.fadeAlpha(to: 0.0, duration: 0.25),
+            SKAction.scale(to: 0.5, duration: 0.25),
+        ])
+        let cleanup = SKAction.run {
+            container.removeFromParent()
+        }
+
+        iconSprite.run(SKAction.sequence(actions))
+        container.run(SKAction.sequence([
+            SKAction.wait(forDuration: 2.2),
+            dismiss,
+            cleanup,
+        ]))
+    }
+
     // MARK: - Bread Collectibles
 
     /// Spawns 1–2 bread slices between the current pipe and the next expected pipe position.
@@ -987,11 +1117,21 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // --- Power-up tick: expire finished effects, update speed modifier ---
         powerUpCtrl.update(dt: dt, currentTime: currentTime)
 
-        // --- Difficulty-driven gravity (only set when value changes) ---
-        let newGravity = powerUpCtrl.effectiveGravity
-        if newGravity != lastAppliedGravity {
-            physicsWorld.gravity = CGVector(dx: 0, dy: newGravity / 60)
-            lastAppliedGravity = newGravity
+        // --- Gravity: apply base (no power-up effects) to physics world ---
+        // Uses baseGravity so the bot is never affected by the player's
+        // dizzyDuck / heavyDuck / featherweight power-ups.
+        let baseG = powerUpCtrl.baseGravity
+        if baseG != lastAppliedGravity {
+            physicsWorld.gravity = CGVector(dx: 0, dy: baseG / 60)
+            lastAppliedGravity = baseG
+        }
+
+        // Player-only power-up gravity modifier: apply the delta between
+        // effectiveGravity and baseGravity to the player duck's velocity
+        // so power-ups only affect the player, never the bot.
+        let playerGravityDelta = (powerUpCtrl.effectiveGravity - baseG) / 60 * CGFloat(dt)
+        if playerGravityDelta != 0, let duck, let body = duck.physicsBody {
+            body.velocity.dy += playerGravityDelta
         }
 
         // --- Pipe speed (grace period handled by PowerUpController) ---
