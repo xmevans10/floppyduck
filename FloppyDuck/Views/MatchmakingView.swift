@@ -336,7 +336,7 @@ struct MatchmakingView: View {
 
     private var searchingContent: some View {
         VStack(spacing: 12) {
-            Image(uiImage: TextureFactory.shared.duckUIImage(pixelScale: 3.0))
+            Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: SkinManager.shared.selectedSkin, pixelScale: 3.0))
                 .interpolation(.none)
                 .resizable()
                 .frame(width: 50, height: 38)
@@ -747,7 +747,9 @@ struct MatchmakingView: View {
                 await manager.cancelMatchmaking()
             }
             await MainActor.run {
-                manager.goHome()
+                if !manager.path.isEmpty {
+                    manager.path.removeLast()
+                }
             }
         }
     }

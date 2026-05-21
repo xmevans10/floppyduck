@@ -2,6 +2,7 @@ import SwiftUI
 import SpriteKit
 import StoreKit
 import GameKit
+import UIKit
 
 struct GameContainerView: View {
     let config: GameModeConfig
@@ -39,6 +40,7 @@ struct GameContainerView: View {
     @State private var showBread: Bool = false
     @State private var countUpTimer: Timer?
     @State private var gameKitBridge: HeadToHeadGameKitBridge?
+    @State private var sharePayload: SharePayload?
 
     private var isBotLadder: Bool { config.botCharacterId != nil }
     private var isHeadToHead: Bool { config.mode == .headToHead }
@@ -143,6 +145,9 @@ struct GameContainerView: View {
             opponentPollTask?.cancel()
             battleRoyalePollTask?.cancel()
             battleRoyaleReportTask?.cancel()
+        }
+        .sheet(item: $sharePayload) { payload in
+            ActivityView(activityItems: payload.activityItems)
         }
         .statusBarHidden(true)
     }
@@ -1220,11 +1225,8 @@ struct GameContainerView: View {
         if let appStoreURL = GK.appStoreURL {
             items.append(appStoreURL)
         }
-        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(vc, animated: true)
-        }
+        AnalyticsManager.shared.trackShareSheetOpened(mode: config.mode.rawValue, score: score)
+        sharePayload = SharePayload(activityItems: items)
     }
 
     // MARK: - Achievement Processing
@@ -1264,6 +1266,21 @@ struct GameContainerView: View {
 
         am.save()
     }
+}
+
+private struct SharePayload: Identifiable {
+    let id = UUID()
+    let activityItems: [Any]
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Scene Bridge
