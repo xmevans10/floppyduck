@@ -147,6 +147,7 @@ final class BotController {
         body.categoryBitMask = GK.botCategory
         body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.scoreCategory
         body.collisionBitMask = 0          // Ghost — no physical collisions
+        body.fieldBitMask = 0              // Exclude from player-only gravity field
         body.allowsRotation = false
         body.restitution = 0
         body.linearDamping = 0

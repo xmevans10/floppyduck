@@ -843,6 +843,7 @@ final class PowerUpController {
         body.allowsRotation = false
         body.restitution = 0
         body.linearDamping = 0
+        body.fieldBitMask = duck.physicsBody?.fieldBitMask ?? GK.playerGravityFieldCategory
         body.isDynamic = duck.physicsBody?.isDynamic ?? true
         if let velocity = duck.physicsBody?.velocity {
             body.velocity = velocity

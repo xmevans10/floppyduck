@@ -102,6 +102,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var duck: SKSpriteNode?
     private var duckTextures: [SKTexture] = []
 
+    // Player-only gravity field (power-up modifiers applied only to player)
+    private var playerGravityField: SKFieldNode?
+
     // Score (Item 2: optional safety)
     private var scoreLabel: SKLabelNode?
     private var scoreOutlines: [SKLabelNode] = []
@@ -276,6 +279,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         )
         parallax.setup()
 
+        // Player-only gravity field — applies power-up gravity modifiers
+        // (dizzyDuck, heavyDuck, featherweight) only to the player duck.
+        // The bot duck is excluded via fieldBitMask = 0 in BotController.
+        let field = SKFieldNode.linearGravityField(withVector: vector_float3(0, 1, 0))
+        field.strength = 0
+        field.categoryBitMask = GK.playerGravityFieldCategory
+        field.isEnabled = true
+        worldNode.addChild(field)
+        playerGravityField = field
+
         setupGroundPhysics()
         setupDuck()
         setupHUD()
@@ -411,6 +424,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Only collide with ground — pipe contacts trigger game over via didBegin(_:)
         // but must NOT physically push the duck (causes progressive leftward drift).
         sprite.physicsBody?.collisionBitMask = GK.groundCategory | GK.ceilingCategory
+        sprite.physicsBody?.fieldBitMask = GK.playerGravityFieldCategory   // player-only gravity field
         sprite.physicsBody?.allowsRotation = false
         sprite.physicsBody?.restitution = 0
         sprite.physicsBody?.linearDamping = 0
@@ -1126,13 +1140,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             lastAppliedGravity = baseG
         }
 
-        // Player-only power-up gravity modifier: apply the delta between
-        // effectiveGravity and baseGravity to the player duck's velocity
-        // so power-ups only affect the player, never the bot.
-        let playerGravityDelta = (powerUpCtrl.effectiveGravity - baseG) / 60 * CGFloat(dt)
-        if playerGravityDelta != 0, let duck, let body = duck.physicsBody {
-            body.velocity.dy += playerGravityDelta
-        }
+        // Player-only power-up gravity modifier via SKFieldNode.
+        // The field's categoryBitMask only matches the player duck's
+        // fieldBitMask, so the bot is never affected.
+        let gravityDelta = Float(powerUpCtrl.effectiveGravity - baseG) / 60
+        playerGravityField?.strength = gravityDelta
 
         // --- Pipe speed (grace period handled by PowerUpController) ---
         currentPipeSpeed = powerUpCtrl.effectivePipeSpeed
@@ -1816,6 +1828,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         body.categoryBitMask = GK.duckCategory
         body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.powerUpCategory
         body.collisionBitMask = GK.groundCategory   // Ground only — no pipe collision (prevents drift)
+        body.fieldBitMask = GK.playerGravityFieldCategory   // player-only gravity field
         body.allowsRotation = false
         body.restitution = 0
         body.linearDamping = 0
