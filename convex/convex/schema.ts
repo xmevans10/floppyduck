@@ -94,20 +94,6 @@ export default defineSchema({
     .index("by_roomCode", ["roomCode"])
     .index("by_status_createdAt", ["status", "createdAt"]),
 
-  livePositions: defineTable({
-    matchId: v.id("matches"),
-    userId: v.id("users"),
-    x: v.number(),
-    y: v.number(),
-    velY: v.number(),
-    rotation: v.number(),
-    wingPhase: v.number(),
-    score: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_matchId_userId", ["matchId", "userId"])
-    .index("by_matchId", ["matchId"]),
-
   battleRoyaleLobbies: defineTable({
     status: v.union(v.literal("open"), v.literal("active"), v.literal("finished"), v.literal("cancelled")),
     seed: v.number(),

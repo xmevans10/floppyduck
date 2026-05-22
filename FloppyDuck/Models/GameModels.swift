@@ -352,15 +352,6 @@ struct QueueTicket: Hashable, Codable {
     let roomCode: String?
 }
 
-struct LivePosition: Hashable, Codable, Sendable {
-    let x: Double
-    let y: Double
-    let velY: Double
-    let rotation: Double
-    let wingPhase: Int
-    let score: Int
-}
-
 struct ReadyState: Hashable, Codable, Sendable {
     let p1Ready: Double?
     let p2Ready: Double?

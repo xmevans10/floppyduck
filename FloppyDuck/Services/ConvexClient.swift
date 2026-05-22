@@ -42,11 +42,6 @@ protocol MultiplayerBackendClient: Sendable {
 
     func abandonMatch(matchId: String) async throws
 
-    func upsertLivePosition(matchId: String,
-                            x: Double, y: Double,
-                            velY: Double, rotation: Double,
-                            wingPhase: Int, score: Int) async throws
-    func getOpponentPosition(matchId: String) async throws -> LivePosition?
     func markReady(matchId: String) async throws
     func scheduleStart(matchId: String, startAtMs: Double) async throws
     func getReadyState(matchId: String) async throws -> ReadyState
@@ -96,11 +91,6 @@ extension MultiplayerBackendClient {
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
     func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] { [] }
     func abandonMatch(matchId: String) async throws {}
-    func upsertLivePosition(matchId: String,
-                            x: Double, y: Double,
-                            velY: Double, rotation: Double,
-                            wingPhase: Int, score: Int) async throws {}
-    func getOpponentPosition(matchId: String) async throws -> LivePosition? { nil }
     func markReady(matchId: String) async throws {}
     func scheduleStart(matchId: String, startAtMs: Double) async throws {}
     func getReadyState(matchId: String) async throws -> ReadyState { ReadyState(p1Ready: nil, p2Ready: nil, startAtMs: nil, status: "active") }
@@ -687,35 +677,6 @@ actor ConvexClient: MultiplayerBackendClient {
         _ = try await mutationRaw("matches:abandonMatch", args: [
             "matchId": matchId,
         ])
-    }
-
-    func upsertLivePosition(matchId: String,
-                            x: Double, y: Double,
-                            velY: Double, rotation: Double,
-                            wingPhase: Int, score: Int) async throws {
-        _ = try await mutationRaw("livePositions:upsertPosition", args: [
-            "matchId": matchId,
-            "x": x,
-            "y": y,
-            "velY": velY,
-            "rotation": rotation,
-            "wingPhase": wingPhase,
-            "score": score,
-        ])
-    }
-
-    func getOpponentPosition(matchId: String) async throws -> LivePosition? {
-        let value = try await queryRaw("livePositions:getOpponentPosition", args: ["matchId": matchId])
-        guard let dict = dictionary(from: value) else { return nil }
-
-        return LivePosition(
-            x: double(in: dict, keys: ["x"]) ?? 0,
-            y: double(in: dict, keys: ["y"]) ?? 0,
-            velY: double(in: dict, keys: ["velY"]) ?? 0,
-            rotation: double(in: dict, keys: ["rotation"]) ?? 0,
-            wingPhase: int(in: dict, keys: ["wingPhase"]) ?? 0,
-            score: int(in: dict, keys: ["score"]) ?? 0
-        )
     }
 
     func markReady(matchId: String) async throws {

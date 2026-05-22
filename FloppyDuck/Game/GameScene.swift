@@ -355,8 +355,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 // Use the bot's own skin if provided, otherwise fall back to player skin.
                 let effectiveBotSkin = botSkin ?? playerSkin
                 bc.setup(skin: effectiveBotSkin, difficulty: botDiff, deathScore: targetScore)
-            } else if mode == .headToHead {
-                bc.setup(skin: opponentDuckSkin ?? playerSkin)
             }
             bc.setupScoreHUD(mode: mode, opponentName: opponentName)
             bc.onScoreChanged = { [weak self] newScore in
@@ -531,40 +529,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         botController?.setScore(max(0, score))
     }
 
-    func setGhostPosition(x: CGFloat, y: CGFloat, velY: CGFloat, rotation: CGFloat, wingPhase: Int) {
-        botController?.setGhostPosition(x: x, y: y, velY: velY, rotation: rotation, wingPhase: wingPhase)
-    }
-
-    func spawnGhostDuck() {
-        guard mode == .headToHead, botController?.sprite == nil else { return }
-        let skin = opponentDuckSkin ?? playerSkin
-        botController?.setup(skin: skin)
-    }
-
-    func setGhostDuckSkin(_ skin: DuckSkin) {
-        opponentDuckSkin = skin
-        if botController?.sprite == nil {
-            botController?.setup(skin: skin)
-        } else {
-            botController?.reset(skin: skin)
-        }
-    }
-
     func battleRoyaleSnapshot() -> (y: CGFloat, rotation: CGFloat, wingPhase: Int)? {
         guard let duck else { return nil }
         return (duck.position.y, duck.zRotation, Int(currentWingPhase))
-    }
-
-    func liveMatchSnapshot() -> (x: CGFloat, y: CGFloat, velY: CGFloat, rotation: CGFloat, wingPhase: UInt8, score: Int)? {
-        guard let duck else { return nil }
-        return (
-            duck.position.x,
-            duck.position.y,
-            duck.physicsBody?.velocity.dy ?? 0,
-            duck.zRotation,
-            currentWingPhase,
-            score
-        )
     }
 
     func debugDuckAlpha() -> CGFloat? {
@@ -1290,10 +1257,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             botController?.update(pipeRecords: activePipes)
         }
 
-        // Ghost smoothing (opponent position interpolated by LiveMatchTransport)
-        if mode == .headToHead, phase == .playing {
-            botController?.updateGhostSmoothing(dt: dt)
-        }
     }
 
     // MARK: - Performance Tracking
@@ -2112,17 +2075,6 @@ final class GhostDuckRenderer {
         }
         return Int(hash % 7)
     }
-}
-
-// MARK: - Ghost Duck Position (used by LiveMatchTransport)
-
-struct GhostDuckPosition {
-    let x: Float
-    let y: Float
-    let velY: Float
-    let rotation: Float
-    let wingPhase: UInt8
-    let score: UInt16
 }
 
 // MARK: - GameKit Session (identity wrapper only)

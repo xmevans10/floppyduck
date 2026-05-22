@@ -96,14 +96,6 @@ export const run = internalMutation({
     }
 
     await cleanupBattleRoyale(ctx, now);
-
-    // Delete livePositions older than 10 minutes.
-    const stalePositions = await ctx.db.query("livePositions").collect();
-    for (const pos of stalePositions) {
-      if (now - pos.updatedAt > 10 * 60 * 1000) {
-        await ctx.db.delete(pos._id);
-      }
-    }
   },
 });
 

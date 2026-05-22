@@ -51,7 +51,6 @@ struct GameContainerView: View {
     @State private var headToHeadFailureMessage: String?
     @State private var headToHeadStartTask: Task<Void, Never>?
     @State private var headToHeadReadyPollTask: Task<Void, Never>?
-    @State private var liveTransport: LiveMatchTransport?
 
     private var isBotLadder: Bool { config.botCharacterId != nil }
     private var isHeadToHead: Bool { config.mode == .headToHead }
@@ -164,7 +163,6 @@ struct GameContainerView: View {
             battleRoyaleReportTask?.cancel()
             headToHeadStartTask?.cancel()
             headToHeadReadyPollTask?.cancel()
-            liveTransport?.stop()
         }
         .sheet(item: $sharePayload) { payload in
             ActivityView(activityItems: payload.activityItems)
@@ -217,7 +215,6 @@ struct GameContainerView: View {
                 }
             },
             onEnd: { finalScore in
-                liveTransport?.stop()
                 handleGameEnd(finalScore: finalScore, scene: newScene)
             },
             onBotScore: { bs in
@@ -247,23 +244,6 @@ struct GameContainerView: View {
         scene = newScene
 
         if isHeadToHead {
-            if let skinId = config.opponentSkinId, let skin = DuckSkin(rawValue: skinId) {
-                print("[HeadToHead] spawning opponent ghost with assignment skin:\(skinId)")
-                newScene.setGhostDuckSkin(skin)
-            } else {
-                print("[HeadToHead] spawning opponent ghost with default skin")
-                newScene.spawnGhostDuck()
-            }
-            newScene.setOpponentScore(0)
-        }
-
-        if isHeadToHead {
-            // Create LiveMatchTransport for real-time position sync via Convex
-            let transport = LiveMatchTransport(client: ConvexClient.shared,
-                                               matchId: config.matchId ?? "")
-            transport.attach(scene: newScene)
-            liveTransport = transport
-
             // Start ready-state polling via Convex
             startHeadToHeadReadyPolling()
 
@@ -286,18 +266,21 @@ struct GameContainerView: View {
               !headToHeadReadySent,
               headToHeadFailureMessage == nil,
               let matchId = config.matchId else {
+            print("[HeadToHead] ready check deferred — intro:\(headToHeadIntroFinished) sent:\(headToHeadReadySent) failed:\(headToHeadFailureMessage ?? "nil") matchId:\(config.matchId ?? "nil")")
             return
         }
 
         headToHeadReadySent = true
         headToHeadGateMessage = "READY"
-        print("[HeadToHead] sending local ready via Convex")
+        print("[HeadToHead] sending local ready via Convex markReady(matchId:\(matchId))")
         recordHeadToHeadDiagnostic(event: "ready_sent", message: "Local ready sent via Convex.")
 
         Task {
             do {
                 try await ConvexClient.shared.markReady(matchId: matchId)
+                print("[HeadToHead] markReady succeeded")
             } catch {
+                print("[HeadToHead] markReady FAILED: \(error.localizedDescription)")
                 recordHeadToHeadDiagnostic(
                     event: "ready_failed",
                     level: "error",
@@ -308,18 +291,33 @@ struct GameContainerView: View {
     }
 
     private func startHeadToHeadReadyPolling() {
-        guard isHeadToHead, let matchId = config.matchId else { return }
+        guard isHeadToHead, let matchId = config.matchId else {
+            print("[HeadToHead] ready polling skipped — isH2H:\(isHeadToHead) matchId:\(config.matchId ?? "nil")")
+            return
+        }
 
+        print("[HeadToHead] starting ready-state polling for match \(matchId)")
         headToHeadReadyPollTask?.cancel()
+
+        let pollingStart = Date()
+        let timeoutSeconds: TimeInterval = 30
+
         headToHeadReadyPollTask = Task {
+            var pollCount = 0
             while !Task.isCancelled {
+                pollCount += 1
                 do {
                     let state = try await ConvexClient.shared.getReadyState(matchId: matchId)
+
+                    if pollCount <= 3 || pollCount % 10 == 0 {
+                        print("[HeadToHead] poll #\(pollCount) — p1Ready:\(state.p1Ready ?? -1) p2Ready:\(state.p2Ready ?? -1) startAtMs:\(state.startAtMs ?? -1) status:\(state.status)")
+                    }
 
                     await MainActor.run {
                         if !headToHeadBothReady && state.p1Ready != nil && state.p2Ready != nil {
                             headToHeadBothReady = true
                             headToHeadGateMessage = "OPPONENT READY"
+                            print("[HeadToHead] both players ready!")
                             recordHeadToHeadDiagnostic(event: "both_ready", message: "Both players ready.")
 
                             if config.isGameKitHost {
@@ -329,18 +327,28 @@ struct GameContainerView: View {
 
                         if let startMs = state.startAtMs, !headToHeadCountdownScheduled {
                             let delay = max(0, (startMs - Date().timeIntervalSince1970 * 1000) / 1000)
+                            print("[HeadToHead] startAtMs received: \(startMs), delay: \(delay)s")
                             scheduleHeadToHeadCountdown(after: delay)
                         }
                     }
                 } catch is CancellationError {
                     return
                 } catch {
-                    // Transient poll failures should not interrupt the handshake.
+                    print("[HeadToHead] ready poll #\(pollCount) error: \(error.localizedDescription)")
                     recordHeadToHeadDiagnostic(
                         event: "ready_poll_error",
                         level: "warning",
                         message: error.localizedDescription
                     )
+                }
+
+                // Timeout fallback: if we've been polling >30s with no progress, auto-start
+                if !headToHeadCountdownScheduled && Date().timeIntervalSince(pollingStart) > timeoutSeconds {
+                    print("[HeadToHead] ready poll timeout (\(timeoutSeconds)s) — force-starting game")
+                    await MainActor.run {
+                        scheduleHeadToHeadCountdown(after: 0.6)
+                    }
+                    return
                 }
 
                 try? await Task.sleep(nanoseconds: 200_000_000) // 5 Hz
@@ -355,13 +363,14 @@ struct GameContainerView: View {
               !headToHeadCountdownScheduled,
               headToHeadFailureMessage == nil,
               let matchId = config.matchId else {
+            print("[HeadToHead] host start deferred — host:\(config.isGameKitHost) bothReady:\(headToHeadBothReady) scheduled:\(headToHeadCountdownScheduled) failed:\(headToHeadFailureMessage ?? "nil")")
             return
         }
 
         let now = Date().timeIntervalSince1970 * 1000
         let startAtMs = now + headToHeadStartDelay * 1000
 
-        print("[HeadToHead] host scheduling startAtMs:\(startAtMs)")
+        print("[HeadToHead] host scheduling startAtMs:\(startAtMs) delay:\(headToHeadStartDelay)s")
         recordHeadToHeadDiagnostic(
             event: "start_scheduled",
             message: "Host scheduled start.",
@@ -371,7 +380,9 @@ struct GameContainerView: View {
         Task {
             do {
                 try await ConvexClient.shared.scheduleStart(matchId: matchId, startAtMs: startAtMs)
+                print("[HeadToHead] scheduleStart succeeded")
             } catch {
+                print("[HeadToHead] scheduleStart FAILED: \(error.localizedDescription)")
                 recordHeadToHeadDiagnostic(
                     event: "schedule_start_failed",
                     level: "error",
@@ -404,7 +415,6 @@ struct GameContainerView: View {
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard phase != .gameOver else { return }
-                liveTransport?.start()
                 withAnimation(.easeOut(duration: 0.15)) {
                     phase = .countdown
                 }
@@ -448,7 +458,6 @@ struct GameContainerView: View {
         )
         headToHeadStartTask?.cancel()
         headToHeadReadyPollTask?.cancel()
-        liveTransport?.stop()
         manager.dismissGame()
 
         if !manager.path.isEmpty {
@@ -1602,5 +1611,3 @@ private final class GameSceneBridge: GameSceneDelegate {
     func gameDidWinBotLadder(score: Int) { onBotLadderWin(score) }
     func gameDidQuickRetry(score: Int) { onQuickRetry(score) }
 }
-
-

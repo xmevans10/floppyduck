@@ -88,10 +88,6 @@ final class BotController {
     /// Skin used for the current bot sprite (needed for reset).
     private var currentSkin: DuckSkin?
 
-    private var ghostTargetPosition: CGPoint?
-    private var ghostTargetRotation: CGFloat?
-    private var ghostTargetWingPhase: Int?
-    private var hasReceivedGhostPosition = false
 
     // MARK: - Score HUD
 
@@ -319,40 +315,6 @@ final class BotController {
         onBotDied?()
     }
 
-    // MARK: - Ghost Position Sync (GameKit)
-
-    func setGhostPosition(x: CGFloat, y: CGFloat, velY: CGFloat, rotation: CGFloat, wingPhase: Int) {
-        guard let bot = sprite else { return }
-
-        let target = CGPoint(x: x, y: y)
-        ghostTargetPosition = target
-        ghostTargetRotation = rotation
-        ghostTargetWingPhase = wingPhase
-        bot.physicsBody?.velocity = CGVector(dx: 0, dy: velY)
-
-        if !hasReceivedGhostPosition {
-            bot.position = target
-            bot.zRotation = rotation
-            hasReceivedGhostPosition = true
-        }
-    }
-
-    func updateGhostSmoothing(dt: TimeInterval) {
-        guard let bot = sprite,
-              let targetPosition = ghostTargetPosition,
-              let targetRotation = ghostTargetRotation else { return }
-
-        let t = min(max(CGFloat(dt) * 18, 0), 1)
-        bot.position.x += (targetPosition.x - bot.position.x) * t
-        bot.position.y += (targetPosition.y - bot.position.y) * t
-        bot.zRotation += (targetRotation - bot.zRotation) * t
-
-        let idx = min(max(ghostTargetWingPhase ?? 1, 0), 2)
-        if idx < textures.count {
-            bot.texture = textures[idx]
-        }
-    }
-
     // MARK: - Score HUD
 
     /// Refreshes the on-screen bot score label text.
@@ -377,10 +339,6 @@ final class BotController {
         score = 0
         doomed = false
         reachedCeiling = false
-        hasReceivedGhostPosition = false
-        ghostTargetPosition = nil
-        ghostTargetRotation = nil
-        ghostTargetWingPhase = nil
         pipesPassed.removeAll()
         setup(skin: skin, difficulty: diff, deathScore: deathScore)
         updateScoreHUD()

@@ -84,7 +84,7 @@ final class GameModelTests: XCTestCase {
     }
 
     @MainActor
-    func testStartHeadToHeadBuildsGameKitConfig() {
+    func testStartHeadToHeadBuildsScoreOnlyConfig() {
         let manager = GameManager(initialStats: PlayerStats())
         let assignment = MultiplayerMatchAssignment(
             matchId: "match-host",
@@ -106,7 +106,9 @@ final class GameModelTests: XCTestCase {
         XCTAssertFalse(config?.powerUpsEnabled ?? true)
         XCTAssertEqual(config?.gameKitSessionCode, "654321")
         XCTAssertTrue(config?.isGameKitHost == true)
-        XCTAssertNotNil(manager.gameKitSession)
+        XCTAssertEqual(config?.matchId, "match-host")
+        XCTAssertEqual(config?.opponentName, "Rival")
+        XCTAssertEqual(config?.opponentSkinId, "robot")
     }
 
     func testMultiplayerMatchStateDefaultsOpponentSkin() {
@@ -133,21 +135,17 @@ final class GameModelTests: XCTestCase {
         XCTAssertTrue((0...Int(Int32.max)).contains(first))
     }
 
-    func testGhostDuckPositionStructProperties() {
-        let pos = GhostDuckPosition(
-            x: 42.5,
-            y: 180.25,
-            velY: -12.75,
-            rotation: 0.35,
-            wingPhase: 2,
-            score: 9
+    func testReadyStateCarriesScoreOnlyStartHandshake() {
+        let state = ReadyState(
+            p1Ready: 100,
+            p2Ready: 200,
+            startAtMs: 300,
+            status: "active"
         )
-        XCTAssertEqual(pos.x, 42.5)
-        XCTAssertEqual(pos.y, 180.25)
-        XCTAssertEqual(pos.velY, -12.75)
-        XCTAssertEqual(pos.rotation, 0.35)
-        XCTAssertEqual(pos.wingPhase, 2)
-        XCTAssertEqual(pos.score, 9)
+        XCTAssertEqual(state.p1Ready, 100)
+        XCTAssertEqual(state.p2Ready, 200)
+        XCTAssertEqual(state.startAtMs, 300)
+        XCTAssertEqual(state.status, "active")
     }
 
     func testBattleRoyaleModeMetadata() {

@@ -29,7 +29,7 @@ final class GameSceneTests: XCTestCase {
     }
 
     @MainActor
-    func testHeadToHeadGhostUsesBotOpacityAndPlayerFullOpacity() {
+    func testHeadToHeadUsesScoreHudWithoutGhostSprite() {
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         let scene = GameScene(
             seed: 12345,
@@ -44,6 +44,6 @@ final class GameSceneTests: XCTestCase {
         view.presentScene(scene)
 
         XCTAssertEqual(scene.debugDuckAlpha(), 1.0)
-        XCTAssertEqual(scene.debugGhostDuckAlpha() ?? 0, 0.45, accuracy: 0.001)
+        XCTAssertNil(scene.debugGhostDuckAlpha())
     }
 }

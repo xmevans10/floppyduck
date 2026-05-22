@@ -41,7 +41,6 @@
 		A10000000000000000000002 /* PlayerStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* PlayerStatsTests.swift */; };
 		A10000000000000000000099 /* MultiplayerFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000099 /* MultiplayerFlowTests.swift */; };
 		A10000000000000000000101 /* GameSceneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000101 /* GameSceneTests.swift */; };
-		A23447AFD2B1A30F57BB0EAE /* LiveMatchTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A902A04A55A82BD7CB53093B /* LiveMatchTransport.swift */; };
 		A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709E16E4587997D58A88C22F /* BotCharacter.swift */; };
 		A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D35655334C23B66037D828D /* GameModels.swift */; };
 		AAF2774F842E3A0EE7661F7E /* PipeSkinManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9470B99E437E109110C09E26 /* PipeSkinManager.swift */; };
@@ -192,7 +191,6 @@
 		A20000000000000000000099 /* MultiplayerFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerFlowTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000101 /* GameSceneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneTests.swift; sourceTree = "<group>"; };
 		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
-		A902A04A55A82BD7CB53093B /* LiveMatchTransport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveMatchTransport.swift; sourceTree = "<group>"; };
 		AEC0FA57DB4A1F4290C01227 /* DifficultyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DifficultyManagerTests.swift; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293040 /* FloppyDuck.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FloppyDuck.entitlements; sourceTree = "<group>"; };
 		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
@@ -456,7 +454,6 @@
 				C20000000000000000000003 /* AppleSignInCoordinator.swift */,
 				8A120B6A75AD6A50169B1E8A /* ConvexClient.swift */,
 				PH0000000000000000000005 /* AnalyticsManager.swift */,
-				A902A04A55A82BD7CB53093B /* LiveMatchTransport.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -806,7 +803,6 @@
 				2207B7BAF82148B0BE7D5DE8 /* ThemePreviewView.swift in Sources */,
 				2C6BFFF71B1F4F47AAA17A63 /* PatchNotesOverlay.swift in Sources */,
 				0BE2C5C15BDB95BDB4513ACC /* OptimizedGameView.swift in Sources */,
-				A23447AFD2B1A30F57BB0EAE /* LiveMatchTransport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
