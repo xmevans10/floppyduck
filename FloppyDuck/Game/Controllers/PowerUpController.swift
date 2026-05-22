@@ -36,7 +36,7 @@ final class PowerUpController {
     /// Kind queued by the spawn manager, attached to the next pipe.
     private(set) var pendingPowerUpKind: PowerUpKind?
 
-    private let spawner = PowerUpSpawnManager()
+    private let spawner: PowerUpSpawnManager
 
     // Shield (visual node managed by addShieldVisual/removeShieldVisual)
     private var shieldCooldown: Bool = false
@@ -80,11 +80,13 @@ final class PowerUpController {
     init(worldNode: SKNode,
          pipeLayer: SKNode,
          duck: SKSpriteNode?,
-         difficulty: DifficultyManager) {
+         difficulty: DifficultyManager,
+         seed: Int? = nil) {
         self.worldNode = worldNode
         self.pipeLayer = pipeLayer
         self.duck = duck
         self.difficulty = difficulty
+        self.spawner = PowerUpSpawnManager(seed: seed)
     }
 
     /// Re-bind after a duck is recreated (e.g. quick-retry resets the sprite).
@@ -96,6 +98,10 @@ final class PowerUpController {
     var excludedKinds: Set<PowerUpKind> {
         get { spawner.excludedKinds }
         set { spawner.excludedKinds = newValue }
+    }
+
+    func debugQueuePowerUpForNextPipe(_ kind: PowerUpKind) {
+        pendingPowerUpKind = kind
     }
 
     // MARK: - Per-Frame Update
@@ -268,7 +274,7 @@ final class PowerUpController {
         // Mystery box: resolve to a random power-up, but defer activation
         // so the slot-machine animation can play first.
         if kind == .mysteryBox {
-            let resolvedKind = PowerUpKind.randomMysteryBoxReward()
+            let resolvedKind = spawner.randomMysteryBoxReward()
 
             if let callback = onMysteryBoxCollected {
                 callback(resolvedKind) { [weak self] in

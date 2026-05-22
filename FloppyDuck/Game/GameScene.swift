@@ -65,11 +65,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     var botScore: Int { botController?.score ?? 0 }
 
     private var prng: SeededRandom
+    private var powerUpPrng: SeededRandom
     private var gapPositions: [CGFloat] = []
     private var pipeIndex: Int = 0
 
     private let factory = TextureFactory.shared
     private let mode: GameMode
+    private let prngSeed: Int
     private let powerUpsEnabled: Bool
     private let playerSkin: DuckSkin
     private let botSkin: DuckSkin?
@@ -231,6 +233,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
          opponentName: String? = nil,
          targetScore: Int? = nil) {
         self.prng = SeededRandom(seed: seed)
+        self.powerUpPrng = SeededRandom(seed: Self.powerUpSeed(from: seed))
+        self.prngSeed = seed
         self.mode = mode
         self.powerUpsEnabled = powerUpsEnabled
         self.playerSkin = skin
@@ -311,7 +315,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             worldNode: worldNode,
             pipeLayer: pipeLayer,
             duck: duck,
-            difficulty: difficulty
+            difficulty: difficulty,
+            seed: Self.powerUpSeed(from: prngSeed)
         )
         powerUpCtrl.labelParentOverride = self
         powerUpCtrl.onPowerUpCollected = { [weak self] kind in
@@ -542,6 +547,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         botController?.sprite?.alpha
     }
 
+    func debugActivePowerUpCollectibleCount() -> Int {
+        activePowerUpCollectibles.compactMap(\.node).filter { $0.parent != nil }.count
+    }
+
+    func debugActiveBreadCount() -> Int {
+        activeBreads.compactMap(\.node).filter { $0.parent != nil }.count
+    }
+
+    func debugQueuePowerUpForNextPipe(_ kind: PowerUpKind) {
+        powerUpCtrl.debugQueuePowerUpForNextPipe(kind)
+    }
+
     func updateBattleRoyaleGhosts(_ ghosts: [BattleRoyaleGhost]) {
         battleRoyaleGhostRenderer?.update(ghosts)
     }
@@ -668,12 +685,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Head-to-head v1 keeps the competitive map pipe-only so the shared
         // seed fully defines gameplay.
-        guard mode != .headToHead else { return }
-
         // Spawn pending power-up collectible between pipes (free-floating in pipeLayer)
         if let kind = powerUpCtrl.consumePendingKind() {
             spawnPowerUpCollectible(afterPipeX: pipeNode.position.x, gapY: gapY, gapHeight: effectiveGap, kind: kind)
         }
+
+        guard mode != .headToHead else { return }
 
         // Spawn bread collectibles between pipes (~40% chance, reduced from 60%)
         if CGFloat.random(in: 0...1) < 0.4 {
@@ -688,7 +705,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     /// PowerUpController handles activation, effects, and lifecycle.
     private func spawnPowerUpCollectible(afterPipeX: CGFloat, gapY: CGFloat, gapHeight: CGFloat, kind: PowerUpKind) {
         let spacing = max(currentPipeSpeed * CGFloat(GK.pipeSpawnInterval), GK.pipeWidth * 2)
-        let xOffset = CGFloat.random(in: (spacing * 0.22)...(spacing * 0.78))
+        let xOffset = seededPowerUpCGFloat(in: (spacing * 0.22)...(spacing * 0.78))
 
         let minY = GK.groundHeight + 48
         let maxY = GK.worldHeight - 52
@@ -698,15 +715,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // 75% in the pipe gap (flight corridor), 25% weighted toward gap region
         let y: CGFloat
-        if CGFloat.random(in: 0...1) < 0.75, gapBottom < gapTop {
-            y = CGFloat.random(in: gapBottom...gapTop)
+        if seededPowerUpCGFloat(in: 0...1) < 0.75, gapBottom < gapTop {
+            y = seededPowerUpCGFloat(in: gapBottom...gapTop)
         } else {
             let nearBottom = max(minY, gapY - gapHeight * 0.8)
             let nearTop = min(maxY, gapY + gapHeight * 0.8)
             if nearBottom < nearTop {
-                y = CGFloat.random(in: nearBottom...nearTop)
+                y = seededPowerUpCGFloat(in: nearBottom...nearTop)
             } else if gapBottom < gapTop {
-                y = CGFloat.random(in: gapBottom...gapTop)
+                y = seededPowerUpCGFloat(in: gapBottom...gapTop)
             } else {
                 y = gapY  // fallback dead center
             }
@@ -1769,6 +1786,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let newSeed = Int.random(in: 1...999999)
         prng = SeededRandom(seed: newSeed)
+        powerUpPrng = SeededRandom(seed: Self.powerUpSeed(from: newSeed))
         gapPositions = prng.generateGapPositions()
 
         // Reset progressive difficulty
@@ -2020,6 +2038,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             if node.physicsBody != nil { count += 1 }
         }
         return count
+    }
+
+    private func seededPowerUpCGFloat(in range: ClosedRange<CGFloat>) -> CGFloat {
+        powerUpPrng.nextInRange(min: range.lowerBound, max: range.upperBound)
+    }
+
+    private static func powerUpSeed(from seed: Int) -> Int {
+        let derived = seed ^ 0x5f3759df
+        return derived == 0 ? 1 : derived
     }
 }
 

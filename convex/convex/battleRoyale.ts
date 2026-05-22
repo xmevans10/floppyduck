@@ -14,7 +14,8 @@ const MIN_PLAYERS_TO_START = 10;
 const START_AFTER_MS = 60 * 1000;
 const CANCEL_AFTER_MS = 5 * 60 * 1000;
 const STALE_AFTER_MS = 30 * 1000;
-const PAYOUTS = [0.40, 0.25, 0.15, 0.10, 0.05];
+// Fractions of the post-rake prize pool. Sum to 1.0 so the 5% sink is not applied twice.
+const PAYOUTS = [0.40, 0.25, 0.15, 0.12, 0.08];
 
 function randomSeed() {
   return Math.floor(Math.random() * 999_999) + 1;

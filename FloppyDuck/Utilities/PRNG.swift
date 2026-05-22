@@ -20,6 +20,20 @@ struct SeededRandom {
     mutating func nextFloat() -> CGFloat {
         CGFloat(next()) / CGFloat(UInt32.max)
     }
+
+    /// Returns a double in [0, 1)
+    mutating func nextDouble() -> Double {
+        Double(next()) / Double(UInt32.max)
+    }
+
+    /// Returns an integer in a closed range.
+    mutating func nextInt(in range: ClosedRange<Int>) -> Int {
+        let lower = range.lowerBound
+        let upper = range.upperBound
+        guard lower < upper else { return lower }
+        let width = UInt32(upper - lower + 1)
+        return lower + Int(next() % width)
+    }
     
     /// Returns a value in [min, max]
     mutating func nextInRange(min: CGFloat, max: CGFloat) -> CGFloat {

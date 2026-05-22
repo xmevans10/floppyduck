@@ -24,13 +24,13 @@ final class DifficultyManagerTests: XCTestCase {
         XCTAssertEqual(DifficultyTier.forScore(15), .medium)
         XCTAssertEqual(DifficultyTier.forScore(19), .medium)
 
-        // Hard: 20–29
+        // Hard: 20–39
         XCTAssertEqual(DifficultyTier.forScore(20), .hard)
         XCTAssertEqual(DifficultyTier.forScore(25), .hard)
-        XCTAssertEqual(DifficultyTier.forScore(29), .hard)
+        XCTAssertEqual(DifficultyTier.forScore(39), .hard)
 
-        // Expert: 30+
-        XCTAssertEqual(DifficultyTier.forScore(30), .expert)
+        // Expert: 40+
+        XCTAssertEqual(DifficultyTier.forScore(40), .expert)
         XCTAssertEqual(DifficultyTier.forScore(100), .expert)
     }
 
@@ -66,7 +66,7 @@ final class DifficultyManagerTests: XCTestCase {
         dm.update(score: 20)
         let hardSpeed = dm.effectivePipeSpeed
 
-        dm.update(score: 30)
+        dm.update(score: 40)
         let expertSpeed = dm.effectivePipeSpeed
 
         XCTAssertLessThan(easySpeed, mediumSpeed)
@@ -88,7 +88,7 @@ final class DifficultyManagerTests: XCTestCase {
         dm.update(score: 20)
         let hardGap = dm.effectivePipeGap
 
-        dm.update(score: 30)
+        dm.update(score: 40)
         let expertGap = dm.effectivePipeGap
 
         XCTAssertGreaterThan(easyGap, mediumGap)
@@ -110,7 +110,7 @@ final class DifficultyManagerTests: XCTestCase {
         dm.update(score: 20)
         let hardFlap = dm.effectiveFlapImpulse
 
-        dm.update(score: 30)
+        dm.update(score: 40)
         let expertFlap = dm.effectiveFlapImpulse
 
         XCTAssertLessThan(easyFlap, mediumFlap)
@@ -130,7 +130,7 @@ final class DifficultyManagerTests: XCTestCase {
         dm.update(score: 20)
         let hardGravity = dm.effectiveGravity
 
-        dm.update(score: 30)
+        dm.update(score: 40)
         let expertGravity = dm.effectiveGravity
 
         // Gravity is negative; stronger gravity is more negative
@@ -176,7 +176,7 @@ final class DifficultyManagerTests: XCTestCase {
         let baseRatio = dm.effectiveFlapImpulse / abs(dm.effectiveGravity)
 
         // Each higher tier should keep the ratio within 10% of the base
-        for score in [10, 20, 30] {
+        for score in [10, 20, 40] {
             dm.update(score: score)
             let ratio = dm.effectiveFlapImpulse / abs(dm.effectiveGravity)
             let deviation = abs(ratio - baseRatio) / baseRatio

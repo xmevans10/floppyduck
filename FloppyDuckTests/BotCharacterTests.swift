@@ -6,8 +6,8 @@ final class BotCharacterTests: XCTestCase {
 
     // MARK: - Ladder Integrity
 
-    func testEightBotsInLadder() {
-        XCTAssertEqual(BotCharacter.all.count, 8)
+    func testBotCountInLadder() {
+        XCTAssertEqual(BotCharacter.all.count, 14)
     }
 
     func testAllBotsHaveUniqueIds() {
@@ -18,6 +18,11 @@ final class BotCharacterTests: XCTestCase {
     func testAllBotsHaveUniqueSkins() {
         let skins = BotCharacter.all.map { $0.skin }
         XCTAssertEqual(skins.count, Set(skins).count, "Each bot must have a different skin")
+    }
+
+    func testAllBotsHaveUniqueThemes() {
+        let themes = BotCharacter.all.map { $0.theme }
+        XCTAssertEqual(themes.count, Set(themes).count, "Each bot must have a different arena theme")
     }
 
     // MARK: - Difficulty Progression

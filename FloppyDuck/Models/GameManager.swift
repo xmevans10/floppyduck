@@ -121,7 +121,7 @@ final class GameManager: ObservableObject {
         let config = GameModeConfig(
             mode: .headToHead,
             seed: matchAssignment.seed,
-            powerUpsEnabled: false,
+            powerUpsEnabled: true,
             opponentName: matchAssignment.opponentName,
             opponentSkinId: matchAssignment.opponentSkinId,
             matchId: matchAssignment.matchId,
@@ -278,7 +278,7 @@ final class GameManager: ObservableObject {
         syncStatsToServer()
     }
 
-    func applyBattleRoyaleResult(_ state: BattleRoyaleState, score: Int) {
+    func applyBattleRoyaleResult(_ state: BattleRoyaleState, score: Int, collectedBread: Int = 0) {
         stats.gamesPlayed += 1
         stats.bestScore = max(stats.bestScore, score)
         stats.totalScore += score
@@ -286,8 +286,9 @@ final class GameManager: ObservableObject {
         if stats.recentScores.count > 20 {
             stats.recentScores = Array(stats.recentScores.suffix(20))
         }
-        stats.bread += state.local.prize
-        stats.totalBreadCollected += state.local.prize
+        let reward = state.local.prize + max(0, collectedBread)
+        stats.bread += reward
+        stats.totalBreadCollected += reward
         saveStats()
         AnalyticsManager.shared.trackGameCompleted(mode: GameMode.battleRoyale.rawValue, score: score, won: state.local.placement == 1)
         syncStatsToServer()
@@ -367,8 +368,8 @@ final class GameManager: ObservableObject {
         }
     }
 
-    func recordGame(score: Int, won: Bool? = nil) {
-        stats.recordGame(score: score, won: won)
+    func recordGame(score: Int, won: Bool? = nil, collectedBread: Int = 0) {
+        stats.recordGame(score: score, won: won, collectedBread: collectedBread)
         checkDailyStreak()
         saveStats()
         let mode = activeGameConfig?.mode.rawValue ?? "classic"
@@ -479,8 +480,14 @@ final class GameManager: ObservableObject {
 
         // Sync the deduction to the Convex backend so the remote
         // value doesn't overwrite local on next profile load.
-        Task { [amount] in
-            _ = try? await ConvexClient.shared.spendBread(amount)
+        let localBalanceAfterSpend = stats.bread
+        Task { [weak self, amount, localBalanceAfterSpend] in
+            guard let remoteBread = try? await ConvexClient.shared.spendBread(amount) else { return }
+            await MainActor.run {
+                guard let self, self.stats.bread == localBalanceAfterSpend else { return }
+                self.stats.bread = remoteBread
+                self.saveStats()
+            }
         }
 
         return true

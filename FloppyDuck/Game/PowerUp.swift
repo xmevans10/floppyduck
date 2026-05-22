@@ -181,12 +181,33 @@ enum PowerUpKind: String, CaseIterable {
         return weightedRandom(from: candidates) ?? .shield
     }
 
+    static func randomMysteryBoxReward(rng: inout SeededRandom) -> PowerUpKind {
+        let wantsPositive = rng.nextDouble() < mysteryBoxPositiveChance
+        let candidates = allCases.filter { kind in
+            kind != .mysteryBox && kind.isPositive == wantsPositive
+        }
+        return weightedRandom(from: candidates, rng: &rng) ?? .shield
+    }
+
     private static func weightedRandom(from candidates: [PowerUpKind]) -> PowerUpKind? {
         let weighted = candidates.map { ($0, max($0.spawnWeight, 0)) }
         let totalWeight = weighted.reduce(0) { $0 + $1.1 }
         guard totalWeight > 0 else { return candidates.randomElement() }
 
         var roll = Double.random(in: 0..<totalWeight)
+        for (kind, weight) in weighted {
+            roll -= weight
+            if roll <= 0 { return kind }
+        }
+        return weighted.last?.0
+    }
+
+    private static func weightedRandom(from candidates: [PowerUpKind], rng: inout SeededRandom) -> PowerUpKind? {
+        let weighted = candidates.map { ($0, max($0.spawnWeight, 0)) }
+        let totalWeight = weighted.reduce(0) { $0 + $1.1 }
+        guard totalWeight > 0 else { return candidates.first }
+
+        var roll = rng.nextDouble() * totalWeight
         for (kind, weight) in weighted {
             roll -= weight
             if roll <= 0 { return kind }
@@ -254,12 +275,22 @@ final class PowerUpSpawnManager {
 
     private var pipesUntilNextSpawn: Int
     private var lastSpawnedKind: PowerUpKind?
+    private let seed: Int?
+    private var rng: SeededRandom?
 
     /// Power-up kinds that should never spawn (e.g. doublePoints in bot games).
     var excludedKinds: Set<PowerUpKind> = []
 
-    init() {
-        pipesUntilNextSpawn = Int.random(in: 1...2)  // first spawn comes early
+    init(seed: Int? = nil) {
+        self.seed = seed
+        if let seed {
+            var seeded = SeededRandom(seed: seed)
+            self.rng = seeded
+            pipesUntilNextSpawn = seeded.nextInt(in: 1...2)  // first spawn comes early
+            self.rng = seeded
+        } else {
+            pipesUntilNextSpawn = Int.random(in: 1...2)  // first spawn comes early
+        }
     }
 
     /// Called each time a pipe is scored. Returns a PowerUpKind to spawn, or nil.
@@ -268,7 +299,7 @@ final class PowerUpSpawnManager {
         guard pipesUntilNextSpawn <= 0 else { return nil }
 
         // Reset countdown
-        pipesUntilNextSpawn = Int.random(in: minSpawnInterval...maxSpawnInterval)
+        pipesUntilNextSpawn = randomInt(in: minSpawnInterval...maxSpawnInterval)
 
         // Choose a power-up using weighted random selection
         let kind = weightedRandomPowerUp(tier: tier)
@@ -278,8 +309,20 @@ final class PowerUpSpawnManager {
 
     /// Reset for a new game.
     func reset() {
-        pipesUntilNextSpawn = Int.random(in: 1...2)
+        if let seed {
+            rng = SeededRandom(seed: seed)
+        }
+        pipesUntilNextSpawn = randomInt(in: 1...2)
         lastSpawnedKind = nil
+    }
+
+    func randomMysteryBoxReward() -> PowerUpKind {
+        if var seeded = rng {
+            let result = PowerUpKind.randomMysteryBoxReward(rng: &seeded)
+            rng = seeded
+            return result
+        }
+        return PowerUpKind.randomMysteryBoxReward()
     }
 
     // MARK: - Weighted Random
@@ -317,12 +360,30 @@ final class PowerUpSpawnManager {
         let totalWeight = weights.reduce(0.0) { $0 + $1.1 }
         guard totalWeight > 0 else { return nil }
 
-        var roll = Double.random(in: 0..<totalWeight)
+        var roll = randomDouble(upTo: totalWeight)
         for (kind, weight) in weights {
             roll -= weight
             if roll <= 0 { return kind }
         }
 
         return weights.first(where: { $0.1 > 0 })?.0
+    }
+
+    private func randomInt(in range: ClosedRange<Int>) -> Int {
+        if var seeded = rng {
+            let value = seeded.nextInt(in: range)
+            rng = seeded
+            return value
+        }
+        return Int.random(in: range)
+    }
+
+    private func randomDouble(upTo upperBound: Double) -> Double {
+        if var seeded = rng {
+            let value = seeded.nextDouble() * upperBound
+            rng = seeded
+            return value
+        }
+        return Double.random(in: 0..<upperBound)
     }
 }

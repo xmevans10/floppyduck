@@ -84,7 +84,7 @@ final class GameModelTests: XCTestCase {
     }
 
     @MainActor
-    func testStartHeadToHeadBuildsScoreOnlyConfig() {
+    func testStartHeadToHeadBuildsPowerUpConfig() {
         let manager = GameManager(initialStats: PlayerStats())
         let assignment = MultiplayerMatchAssignment(
             matchId: "match-host",
@@ -103,7 +103,7 @@ final class GameModelTests: XCTestCase {
         let config = manager.activeGameConfig
         XCTAssertEqual(config?.mode, .headToHead)
         XCTAssertEqual(config?.seed, 12345)
-        XCTAssertFalse(config?.powerUpsEnabled ?? true)
+        XCTAssertTrue(config?.powerUpsEnabled == true)
         XCTAssertEqual(config?.gameKitSessionCode, "654321")
         XCTAssertTrue(config?.isGameKitHost == true)
         XCTAssertEqual(config?.matchId, "match-host")

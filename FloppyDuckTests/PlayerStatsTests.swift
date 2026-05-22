@@ -335,6 +335,21 @@ final class PlayerStatsTests: XCTestCase {
         XCTAssertEqual(stats2.bread, 1, "Classic score 0 → max(1, 0) = 1 bread")
     }
 
+    func testRecordGameAddsCollectedBreadToSpendableBalance() {
+        var stats = PlayerStats()
+
+        stats.recordGame(score: 7, collectedBread: 4)
+
+        XCTAssertEqual(stats.bread, 11)
+        XCTAssertEqual(stats.totalBreadCollected, 11)
+    }
+
+    func testBreadEconomyUsesSameScoreRewardFormula() {
+        XCTAssertEqual(BreadEconomy.scoreReward(score: 10, won: true), 10)
+        XCTAssertEqual(BreadEconomy.scoreReward(score: 10, won: false), 5)
+        XCTAssertEqual(BreadEconomy.scoreReward(score: 0, won: nil), 1)
+    }
+
     // MARK: - ELO / Match Results
 
     func testApplyRankedResultWithDeltaOnly() {

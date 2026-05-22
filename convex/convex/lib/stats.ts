@@ -50,6 +50,14 @@ export function shouldMergeLocalStats(user: Doc<"users">) {
   return user.gamesPlayed === 0 && user.wins === 0 && user.losses === 0;
 }
 
+export function scoreBreadReward(score: number, didWin: boolean, didDraw: boolean) {
+  return didDraw
+    ? Math.max(1, score)
+    : didWin
+      ? Math.max(3, score)
+      : Math.max(1, Math.floor(score / 2));
+}
+
 export function applyMatchStatsToUser(user: Doc<"users">,
                                       score: number,
                                       didWin: boolean,
@@ -58,11 +66,7 @@ export function applyMatchStatsToUser(user: Doc<"users">,
   const wins = didDraw ? user.wins : user.wins + (didWin ? 1 : 0);
   const losses = didDraw ? user.losses : user.losses + (didWin ? 0 : 1);
 
-  const breadGain = didDraw
-    ? Math.max(1, score)
-    : didWin
-      ? Math.max(3, score)
-      : Math.max(1, Math.floor(score / 2));
+  const breadGain = scoreBreadReward(score, didWin, didDraw);
 
   const recentScores = [
     ...user.recentScores,

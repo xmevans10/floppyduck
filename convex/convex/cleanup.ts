@@ -2,6 +2,7 @@ import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { cleanupBattleRoyale } from "./battleRoyale";
+import { scoreBreadReward } from "./lib/stats";
 
 const STALE_QUEUE_MS = 30 * 1000;
 const ABANDONED_MATCH_MS = 5 * 60 * 1000;
@@ -138,12 +139,11 @@ async function resolveMatchAndRatings(
   }
 
   if (p1) {
-    const breadGain =
-      match.p1Score > match.p2Score
-        ? Math.max(3, match.p1Score)
-        : match.p1Score === match.p2Score
-          ? Math.max(1, match.p1Score)
-          : Math.max(1, Math.floor(match.p1Score / 2));
+    const breadGain = scoreBreadReward(
+      match.p1Score,
+      match.p1Score > match.p2Score,
+      match.p1Score === match.p2Score,
+    );
 
     await ctx.db.patch(p1._id, {
       gamesPlayed: p1.gamesPlayed + 1,
@@ -160,12 +160,11 @@ async function resolveMatchAndRatings(
   }
 
   if (p2) {
-    const breadGain =
-      match.p2Score > match.p1Score
-        ? Math.max(3, match.p2Score)
-        : match.p1Score === match.p2Score
-          ? Math.max(1, match.p2Score)
-          : Math.max(1, Math.floor(match.p2Score / 2));
+    const breadGain = scoreBreadReward(
+      match.p2Score,
+      match.p2Score > match.p1Score,
+      match.p1Score === match.p2Score,
+    );
 
     await ctx.db.patch(p2._id, {
       gamesPlayed: p2.gamesPlayed + 1,

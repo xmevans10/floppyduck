@@ -62,6 +62,7 @@ struct GameContainerView: View {
     private var battleRoyalePrize: Int { battleRoyaleState?.local.prize ?? 0 }
     private var battleRoyalePending: Bool { isBattleRoyale && battleRoyalePlacement == nil }
     private let headToHeadStartDelay: TimeInterval = 0.6
+    private var collectedBreadEarned: Int { scene?.totalBreadCollected ?? 0 }
 
     private var ladderWon: Bool {
         // The player wins a bot-ladder match only when the bot died FIRST
@@ -93,20 +94,22 @@ struct GameContainerView: View {
 
     private var breadEarned: Int {
         if isBattleRoyale {
-            return battleRoyalePrize
+            return battleRoyalePrize + collectedBreadEarned
         }
 
         if config.mode == .headToHead {
-            if headToHeadDidDraw { return max(1, score) }
-            return headToHeadDidWin ? max(3, score) : max(1, score / 2)
+            if headToHeadDidDraw {
+                return BreadEconomy.gameReward(score: score, won: nil, collectedBread: collectedBreadEarned)
+            }
+            return BreadEconomy.gameReward(score: score, won: headToHeadDidWin, collectedBread: collectedBreadEarned)
         }
 
         if config.mode == .vsBot {
             let won = isBotLadder ? ladderWon : score > botFinalScore
-            return won ? max(3, score) : max(1, score / 2)
+            return BreadEconomy.gameReward(score: score, won: won, collectedBread: collectedBreadEarned)
         }
 
-        return max(1, score)
+        return BreadEconomy.gameReward(score: score, won: nil, collectedBread: collectedBreadEarned)
     }
 
     var body: some View {
@@ -228,8 +231,7 @@ struct GameContainerView: View {
                 // The scene already called resetGame() so we just need to
                 // book-keep stats and reset container state.
                 let gameBread = newScene.totalBreadCollected
-                manager.stats.addBreadCollected(gameBread)
-                manager.recordGame(score: finalScore, won: nil)
+                manager.recordGame(score: finalScore, won: nil, collectedBread: gameBread)
                 resetGameOverState()
                 score = 0
                 botFinalScore = 0
@@ -521,11 +523,9 @@ struct GameContainerView: View {
             SkinManager.shared.unlockBotReward(bot.skin)
         }
 
-        // Record bread collected this game
         let gameBread = scene.totalBreadCollected
-        manager.stats.addBreadCollected(gameBread)
 
-        manager.recordGame(score: finalScore, won: true)
+        manager.recordGame(score: finalScore, won: true, collectedBread: gameBread)
 
         // Fire achievement events
         processAchievements(score: finalScore, scene: scene)
@@ -579,11 +579,9 @@ struct GameContainerView: View {
             won = nil
         }
 
-        // Record bread collected this game into lifetime total
         let gameBread = scene.totalBreadCollected
-        manager.stats.addBreadCollected(gameBread)
 
-        manager.recordGame(score: finalScore, won: won)
+        manager.recordGame(score: finalScore, won: won, collectedBread: gameBread)
 
         // --- Fire achievement events ---
         processAchievements(score: finalScore, scene: scene)
@@ -759,7 +757,7 @@ struct GameContainerView: View {
                     scene.updateBattleRoyaleGhosts(latest.ghosts)
                     if !battleRoyaleResultApplied {
                         battleRoyaleResultApplied = true
-                        manager.applyBattleRoyaleResult(latest, score: finalScore)
+                        manager.applyBattleRoyaleResult(latest, score: finalScore, collectedBread: scene.totalBreadCollected)
                     }
                 }
                 finishingMatch = false
@@ -1438,7 +1436,7 @@ struct GameContainerView: View {
                         .interpolation(.none)
                         .resizable()
                         .frame(width: 20, height: 16)
-                    Text(isBattleRoyale ? "+\(breadEarned) PRIZE" : "+\(breadEarned)")
+                    Text(isBattleRoyale ? "+\(breadEarned) BREAD" : "+\(breadEarned)")
                         .font(.custom(GK.pixelFontName, size: 10))
                         .foregroundColor(GK.Colors.breadGold)
                     Spacer()

@@ -103,6 +103,20 @@ enum GameMode: String, Hashable {
     }
 }
 
+enum BreadEconomy {
+    static func scoreReward(score: Int, won: Bool? = nil) -> Int {
+        if let won {
+            return won ? max(3, score) : max(1, score / 2)
+        }
+
+        return max(1, score)
+    }
+
+    static func gameReward(score: Int, won: Bool? = nil, collectedBread: Int = 0) -> Int {
+        scoreReward(score: score, won: won) + max(0, collectedBread)
+    }
+}
+
 enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
     case quickPlay
     case ranked
@@ -719,7 +733,7 @@ struct PlayerStats: Codable, Hashable {
         return Double(totalScore) / Double(gamesPlayed)
     }
 
-    mutating func recordGame(score: Int, won: Bool? = nil) {
+    mutating func recordGame(score: Int, won: Bool? = nil, collectedBread: Int = 0) {
         gamesPlayed += 1
         totalScore += score
         if score > bestScore { bestScore = score }
@@ -732,20 +746,22 @@ struct PlayerStats: Codable, Hashable {
                 wins += 1
                 winStreak += 1
                 if winStreak > bestWinStreak { bestWinStreak = winStreak }
-                bread += max(3, score)
             } else {
                 losses += 1
                 winStreak = 0
-                bread += max(1, score / 2)
             }
-        } else {
-            bread += max(1, score)
         }
+
+        let reward = BreadEconomy.gameReward(score: score, won: won, collectedBread: collectedBread)
+        bread += reward
+        totalBreadCollected += reward
     }
 
-    /// Records bread collected from a single game into lifetime total.
+    /// Records bread pickups into both spendable balance and lifetime total.
     mutating func addBreadCollected(_ amount: Int) {
-        totalBreadCollected += amount
+        let safeAmount = max(0, amount)
+        bread += safeAmount
+        totalBreadCollected += safeAmount
     }
 
     mutating func applyMatchResult(_ result: MultiplayerMatchResult) {

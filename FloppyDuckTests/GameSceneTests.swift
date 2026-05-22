@@ -46,4 +46,28 @@ final class GameSceneTests: XCTestCase {
         XCTAssertEqual(scene.debugDuckAlpha(), 1.0)
         XCTAssertNil(scene.debugGhostDuckAlpha())
     }
+
+    @MainActor
+    func testHeadToHeadSpawnsPowerUpsButNotBread() {
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = GameScene(
+            seed: 12345,
+            mode: .headToHead,
+            powerUpsEnabled: true,
+            skin: .classic,
+            botDifficulty: nil,
+            opponentName: "Rival",
+            targetScore: nil
+        )
+
+        view.presentScene(scene)
+        scene.debugQueuePowerUpForNextPipe(.ghostDuck)
+        scene.startPlaying()
+        for frame in 1...120 {
+            scene.update(TimeInterval(frame) / 60.0)
+        }
+
+        XCTAssertEqual(scene.debugActivePowerUpCollectibleCount(), 1)
+        XCTAssertEqual(scene.debugActiveBreadCount(), 0)
+    }
 }

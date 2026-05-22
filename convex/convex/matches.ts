@@ -11,7 +11,7 @@ const identityArgs = {
 
 const K_FACTOR = 32;
 
-// Server-side score cap — expert tier starts at 30, 500 is absurdly generous.
+// Server-side score cap — expert tier starts at 40, 500 is absurdly generous.
 const MAX_SCORE = 500;
 
 export const reportScore = mutation({

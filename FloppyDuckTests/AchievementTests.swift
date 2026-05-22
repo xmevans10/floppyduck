@@ -100,8 +100,11 @@ final class AchievementTests: XCTestCase {
         let result4 = progress.check(event: .botBeaten(totalBeaten: 4), stats: stats, skinsOwned: 1)
         XCTAssertTrue(result4.contains(.ladderClimber))
 
-        let result8 = progress.check(event: .botBeaten(totalBeaten: 8), stats: stats, skinsOwned: 1)
-        XCTAssertTrue(result8.contains(.topDuck))
+        let resultBeforeComplete = progress.check(event: .botBeaten(totalBeaten: BotCharacter.all.count - 1), stats: stats, skinsOwned: 1)
+        XCTAssertFalse(resultBeforeComplete.contains(.topDuck))
+
+        let resultComplete = progress.check(event: .botBeaten(totalBeaten: BotCharacter.all.count), stats: stats, skinsOwned: 1)
+        XCTAssertTrue(resultComplete.contains(.topDuck))
     }
 
     // MARK: - Power-Up Achievements

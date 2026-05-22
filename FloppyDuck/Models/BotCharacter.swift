@@ -21,7 +21,7 @@ struct BotCharacter: Identifiable, Hashable {
     let theme: BackgroundTheme   // fixed arena theme for this bot's world
     let taunt: String            // shown before match
 
-    /// All 8 bots in ladder order (easiest → hardest).
+    /// All bots in ladder order (easiest → hardest).
     /// Each bot navigates the center of every pipe gap, then dies on pipe targetScore+1.
     /// Fixed seeds mean the player always faces the same course per bot.
     static let all: [BotCharacter] = [
@@ -30,6 +30,11 @@ struct BotCharacter: Identifiable, Hashable {
             difficulty: BotDifficulty(noiseRange: 45, flapStrength: 0.60, errorRate: 0.30),
             accentColor: Color(red: 0.95, green: 0.85, blue: 0.30), targetScore: 10,
             seed: 101001, skin: .sailor, theme: .day, taunt: "Quack quack! I'm just learning!"),
+        BotCharacter(
+            id: "nibbles", name: "NIBBLES", title: "Tree Hopper", elo: 200,
+            difficulty: BotDifficulty(noiseRange: 40, flapStrength: 0.64, errorRate: 0.25),
+            accentColor: Color(red: 0.62, green: 0.38, blue: 0.20), targetScore: 12,
+            seed: 201101, skin: .squirrel, theme: .sunset, taunt: "Hope you packed snacks for the climb."),
         BotCharacter(
             id: "waddles", name: "WADDLES", title: "Casual", elo: 300,
             difficulty: BotDifficulty(noiseRange: 35, flapStrength: 0.68, errorRate: 0.20),
@@ -41,25 +46,50 @@ struct BotCharacter: Identifiable, Hashable {
             accentColor: Color(red: 0.40, green: 0.75, blue: 0.30), targetScore: 18,
             seed: 503003, skin: .pirate, theme: .lagoon, taunt: "Arr! No one passes through MY pipes!"),
         BotCharacter(
+            id: "sprocket", name: "SPROCKET", title: "Circuit Rider", elo: 600,
+            difficulty: BotDifficulty(noiseRange: 21, flapStrength: 0.79, errorRate: 0.10),
+            accentColor: Color(red: 0.40, green: 0.70, blue: 0.90), targetScore: 20,
+            seed: 604104, skin: .robot, theme: .neonCity, taunt: "Beep. Boop. Calculating your wipeout."),
+        BotCharacter(
             id: "drake", name: "DRAKE", title: "Competitor", elo: 700,
             difficulty: BotDifficulty(noiseRange: 18, flapStrength: 0.82, errorRate: 0.08),
             accentColor: Color(red: 0.90, green: 0.55, blue: 0.16), targetScore: 22,
             seed: 704004, skin: .dinosaur, theme: .jungle, taunt: "Time to show you how it's done."),
+        BotCharacter(
+            id: "chipper", name: "CHIPPER", title: "Timber Pro", elo: 800,
+            difficulty: BotDifficulty(noiseRange: 15, flapStrength: 0.85, errorRate: 0.06),
+            accentColor: Color(red: 0.70, green: 0.38, blue: 0.20), targetScore: 25,
+            seed: 805105, skin: .lumberquack, theme: .mountain, taunt: "These pipes are coming down one way or another."),
         BotCharacter(
             id: "feathers", name: "FEATHERS", title: "Skilled", elo: 900,
             difficulty: BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0.05),
             accentColor: Color(red: 0.90, green: 0.45, blue: 0.65), targetScore: 28,
             seed: 905005, skin: .alien, theme: .space, taunt: "Your puny Earth skills won't save you."),
         BotCharacter(
+            id: "shade", name: "SHADE", title: "Silent Wing", elo: 1000,
+            difficulty: BotDifficulty(noiseRange: 10, flapStrength: 0.90, errorRate: 0.04),
+            accentColor: Color(red: 0.18, green: 0.18, blue: 0.24), targetScore: 31,
+            seed: 1006106, skin: .ninja, theme: .pixelTokyo, taunt: "You will hear only one flap before defeat."),
+        BotCharacter(
             id: "mallory", name: "MALLORY", title: "Expert", elo: 1100,
             difficulty: BotDifficulty(noiseRange: 8, flapStrength: 0.92, errorRate: 0.03),
             accentColor: Color(red: 0.60, green: 0.35, blue: 0.80), targetScore: 35,
             seed: 116006, skin: .wizard, theme: .night, taunt: "I've foreseen your defeat in the stars."),
         BotCharacter(
+            id: "webster", name: "WEBSTER", title: "Cave Stalker", elo: 1200,
+            difficulty: BotDifficulty(noiseRange: 6, flapStrength: 0.94, errorRate: 0.02),
+            accentColor: Color(red: 0.36, green: 0.18, blue: 0.46), targetScore: 40,
+            seed: 1207107, skin: .spider, theme: .cave, taunt: "The dark is full of tiny mistakes."),
+        BotCharacter(
             id: "goose", name: "GOOSE", title: "Menace", elo: 1300,
             difficulty: BotDifficulty(noiseRange: 5, flapStrength: 0.95, errorRate: 0.01),
             accentColor: Color(red: 0.85, green: 0.25, blue: 0.25), targetScore: 45,
             seed: 137007, skin: .devil, theme: .volcano, taunt: "HONK. You're going DOWN."),
+        BotCharacter(
+            id: "reginald", name: "REGINALD", title: "Royal Guard", elo: 1400,
+            difficulty: BotDifficulty(noiseRange: 4, flapStrength: 0.965, errorRate: 0.005),
+            accentColor: Color(red: 0.82, green: 0.10, blue: 0.14), targetScore: 52,
+            seed: 1408108, skin: .bearskin, theme: .london, taunt: "Mind the gap. Then mind the pipe."),
         BotCharacter(
             id: "the_duck", name: "THE DUCK", title: "Final Boss", elo: 1500,
             difficulty: BotDifficulty(noiseRange: 3, flapStrength: 0.98, errorRate: 0.00),

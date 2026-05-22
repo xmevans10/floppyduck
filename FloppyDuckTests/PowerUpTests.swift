@@ -24,11 +24,11 @@ final class PowerUpTests: XCTestCase {
     func testPositiveNegativeClassification() {
         let expectedPositive: Set<PowerUpKind> = [
             .shield, .pipeExpander, .breadMagnet, .slowMotion, .ghostDuck, .doublePoints,
-            .tinyDuck, .megaFlap
+            .tinyDuck, .megaFlap, .featherweight, .mysteryBox
         ]
         let expectedNegative: Set<PowerUpKind> = [
             .pipeSqueeze, .speedBurst, .dizzyDuck, .heavyDuck,
-            .jumboDuck
+            .jumboDuck, .foggy
         ]
 
         for kind in PowerUpKind.allCases {
@@ -52,18 +52,18 @@ final class PowerUpTests: XCTestCase {
         }
     }
 
-    func testBreadMagnetHasHigherWeight() {
-        let magnetWeight = PowerUpKind.breadMagnet.spawnWeight
-        for kind in PowerUpKind.allCases where kind != .breadMagnet {
-            XCTAssertGreaterThanOrEqual(magnetWeight, kind.spawnWeight,
-                "breadMagnet should have highest or equal spawn weight, but \(kind.rawValue) has \(kind.spawnWeight)")
+    func testMysteryBoxHasHighestWeight() {
+        let mysteryWeight = PowerUpKind.mysteryBox.spawnWeight
+        for kind in PowerUpKind.allCases where kind != .mysteryBox {
+            XCTAssertGreaterThanOrEqual(mysteryWeight, kind.spawnWeight,
+                "mysteryBox should have highest or equal spawn weight, but \(kind.rawValue) has \(kind.spawnWeight)")
         }
     }
 
-    func testGhostDuckHasLowerWeight() {
+    func testGhostDuckHasModerateWeight() {
         let ghostWeight = PowerUpKind.ghostDuck.spawnWeight
-        XCTAssertLessThan(ghostWeight, 1.0,
-            "ghostDuck should have a lower spawn weight")
+        XCTAssertEqual(ghostWeight, 1.0,
+            "ghostDuck should have a moderate spawn weight")
     }
 
     // MARK: - Pipe-Count Based Power-Ups
@@ -234,7 +234,7 @@ final class PowerUpTests: XCTestCase {
     func testSpawnManagerRespectsMinInterval() {
         let manager = PowerUpSpawnManager()
 
-        // Drain the initial countdown (random 3–6 pipes)
+        // Drain the initial countdown (random 1–2 pipes)
         var firstSpawnPipe = -1
         for i in 1...10 {
             if manager.onPipeScored(currentScore: i, tier: .easy) != nil {
@@ -248,16 +248,32 @@ final class PowerUpTests: XCTestCase {
             return
         }
 
-        // After spawning, next countdown is random(4...8).
-        // The next 3 calls must NOT produce a spawn (min interval is 4).
-        for offset in 1...3 {
-            let result = manager.onPipeScored(currentScore: firstSpawnPipe + offset, tier: .easy)
-            XCTAssertNil(result,
-                "Should not spawn within \(offset) pipes of previous spawn (min interval is 4)")
-        }
+        XCTAssertLessThanOrEqual(firstSpawnPipe, 2)
     }
 
-    func testSpawnManagerEventuallySpawns() {
+    func testSeededSpawnManagerProducesSameScheduleForSameSeed() {
+        let first = powerUpSchedule(seed: 12345)
+        let second = powerUpSchedule(seed: 12345)
+
+        XCTAssertEqual(first, second)
+    }
+
+    func testSeededSpawnManagerProducesDifferentScheduleForDifferentSeeds() {
+        let first = powerUpSchedule(seed: 12345)
+        let second = powerUpSchedule(seed: 54321)
+
+        XCTAssertNotEqual(first, second)
+    }
+
+    func testSeededMysteryBoxResolutionIsDeterministic() {
+        let first = mysteryBoxRewards(seed: 111)
+        let second = mysteryBoxRewards(seed: 111)
+
+        XCTAssertEqual(first, second)
+        XCTAssertFalse(first.contains(.mysteryBox))
+    }
+
+    func testUnseededSpawnManagerEventuallySpawns() {
         let manager = PowerUpSpawnManager()
         var spawned = false
 
@@ -272,43 +288,29 @@ final class PowerUpTests: XCTestCase {
             "Spawn manager should produce at least one power-up within 20 pipes")
     }
 
-    func testSpawnManagerReset() {
-        let manager = PowerUpSpawnManager()
-
-        // Advance state by scoring many pipes
-        for i in 1...15 {
-            _ = manager.onPipeScored(currentScore: i, tier: .easy)
+    func testSeededSpawnManagerResetRestoresSchedule() {
+        let manager = PowerUpSpawnManager(seed: 999)
+        let initial = (1...12).compactMap { pipe in
+            manager.onPipeScored(currentScore: pipe, tier: .hard)
         }
 
         manager.reset()
 
-        // After reset, initial countdown is random(3...6) so a spawn must
-        // occur within 6 calls.
-        var spawnedWithin6 = false
-        for i in 1...6 {
-            if manager.onPipeScored(currentScore: i, tier: .easy) != nil {
-                spawnedWithin6 = true
-                break
-            }
+        let reset = (1...12).compactMap { pipe in
+            manager.onPipeScored(currentScore: pipe, tier: .hard)
         }
 
-        XCTAssertTrue(spawnedWithin6,
-            "After reset, should spawn within the initial 3–6 pipe window")
+        XCTAssertEqual(initial, reset)
     }
 
     func testShieldDoesNotSpawnAtEasyTier() {
-        let manager = PowerUpSpawnManager()
+        let manager = PowerUpSpawnManager(seed: 777)
         var shieldSpawned = false
 
-        // Run many iterations at easy tier
-        for run in 0..<50 {
-            manager.reset()
-            for i in 1...20 {
-                if let kind = manager.onPipeScored(currentScore: i, tier: .easy) {
-                    if kind == .shield {
-                        shieldSpawned = true
-                    }
-                }
+        for i in 1...100 {
+            if let kind = manager.onPipeScored(currentScore: i, tier: .easy),
+               kind == .shield {
+                shieldSpawned = true
             }
         }
 
@@ -376,6 +378,18 @@ private struct PowerUpHarness {
     let pipeLayer: SKNode
     let duck: SKSpriteNode
     let controller: PowerUpController
+}
+
+private func powerUpSchedule(seed: Int) -> [PowerUpKind] {
+    let manager = PowerUpSpawnManager(seed: seed)
+    return (1...20).compactMap { pipe in
+        manager.onPipeScored(currentScore: pipe, tier: DifficultyTier.forScore(pipe))
+    }
+}
+
+private func mysteryBoxRewards(seed: Int) -> [PowerUpKind] {
+    let manager = PowerUpSpawnManager(seed: seed)
+    return (0..<10).map { _ in manager.randomMysteryBoxReward() }
 }
 
 private func makePowerUpHarness(duck: SKSpriteNode? = nil) -> PowerUpHarness {

@@ -21,7 +21,7 @@ enum AchievementId: String, CaseIterable, Codable {
     // Bot ladder
     case botSlayer        // Beat first bot
     case ladderClimber    // Beat 4 bots
-    case topDuck          // Beat all 8 bots
+    case topDuck          // Beat every bot on the ladder
 
     // Power-ups
     case shieldBreaker    // Use 10 shields total
@@ -103,7 +103,7 @@ enum AchievementId: String, CaseIterable, Codable {
         case .veteran:        return "Play 500 games"
         case .botSlayer:      return "Beat your first bot"
         case .ladderClimber:  return "Beat 4 bots on the ladder"
-        case .topDuck:        return "Beat all 8 bots on the ladder"
+        case .topDuck:        return "Beat all \(BotCharacter.all.count) bots on the ladder"
         case .shieldBreaker:  return "Use 10 shields total"
         case .ghostRider:     return "Phase through 5 pipes in one ghost duck"
         case .magnetMogul:    return "Collect 50 bread with magnet active"
@@ -271,7 +271,7 @@ struct AchievementProgress: Codable, Equatable {
         case .botBeaten(let totalBeaten):
             if totalBeaten >= 1 { newlyUnlocked.append(contentsOf: tryUnlock(.botSlayer)) }
             if totalBeaten >= 4 { newlyUnlocked.append(contentsOf: tryUnlock(.ladderClimber)) }
-            if totalBeaten >= 8 { newlyUnlocked.append(contentsOf: tryUnlock(.topDuck)) }
+            if totalBeaten >= BotCharacter.all.count { newlyUnlocked.append(contentsOf: tryUnlock(.topDuck)) }
 
         case .shieldUsed:
             shieldsUsed += 1

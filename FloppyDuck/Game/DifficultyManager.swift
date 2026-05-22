@@ -7,14 +7,14 @@ import SpriteKit
 enum DifficultyTier: Int, CaseIterable, Comparable {
     case easy   = 0   // score 0–9
     case medium = 1   // score 10–19
-    case hard   = 2   // score 20–29
-    case expert = 3   // score 30+
+    case hard   = 2   // score 20–39
+    case expert = 3   // score 40+
 
     static func forScore(_ score: Int) -> DifficultyTier {
         switch score {
         case 0..<10:  return .easy
         case 10..<20: return .medium
-        case 20..<30: return .hard
+        case 20..<40: return .hard
         default:      return .expert
         }
     }
@@ -52,7 +52,7 @@ final class DifficultyManager {
     /// Steepness of the log curve.  Higher → faster initial ramp.
     private let k: CGFloat = 0.12
     /// Score at which difficulty reaches 100 %.
-    private let refScore: CGFloat = 38
+    private let refScore: CGFloat = 48
 
     // MARK: - Parameter Ranges  (min at score 0 → max at refScore)
 

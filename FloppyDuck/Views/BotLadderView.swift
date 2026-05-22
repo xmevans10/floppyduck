@@ -47,7 +47,7 @@ struct BotLadderView: View {
                                 let realIdx = bots.count - 1 - index
                                 let beaten = manager.isBotBeaten(bot.id)
                                 let isNext = realIdx == manager.nextBotIndex
-                                let locked = realIdx > manager.nextBotIndex
+                                let locked = !beaten && realIdx > manager.nextBotIndex
 
                                 botCard(bot: bot, beaten: beaten, isNext: isNext, locked: locked,
                                         isBoss: realIdx == bots.count - 1)
