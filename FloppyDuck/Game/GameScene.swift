@@ -227,6 +227,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
          skin: DuckSkin = .classic,
          botSkin: DuckSkin? = nil,
          botDifficulty: BotDifficulty? = nil,
+         backgroundTheme: BackgroundTheme? = nil,
          opponentName: String? = nil,
          targetScore: Int? = nil) {
         self.prng = SeededRandom(seed: seed)
@@ -237,8 +238,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         self.botDiff = botDifficulty
         self.opponentName = opponentName
         self.targetScore = targetScore
-        // Use player's selected background theme (purchased in shop)
-        self.backgroundTheme = ThemeManager.shared.selectedTheme
+        self.backgroundTheme = backgroundTheme ?? ThemeManager.shared.selectedTheme
         super.init(size: CGSize(width: GK.worldWidth, height: GK.worldHeight))
         self.scaleMode = .aspectFill
         self.gapPositions = prng.generateGapPositions()
@@ -261,6 +261,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         SoundManager.shared.setActiveSkin(playerSkin)
         // Set active theme so music matches the selected background
         SoundManager.shared.setActiveTheme(backgroundTheme)
+
+        worldNode.name = "worldNode"
+        pipeLayer.name = "pipeLayer"
 
         addChild(worldNode)
         worldNode.addChild(backgroundLayer)
@@ -352,6 +355,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 // Use the bot's own skin if provided, otherwise fall back to player skin.
                 let effectiveBotSkin = botSkin ?? playerSkin
                 bc.setup(skin: effectiveBotSkin, difficulty: botDiff, deathScore: targetScore)
+            } else if mode == .headToHead {
+                bc.setup(skin: opponentDuckSkin ?? playerSkin)
             }
             bc.setupScoreHUD(mode: mode, opponentName: opponentName)
             bc.onScoreChanged = { [weak self] newScore in
@@ -519,7 +524,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
-    weak var gameKitSession: GameKitSession?
 
     /// Multiplayer-only update hook used by GameContainerView polling.
     func setOpponentScore(_ score: Int) {
@@ -539,24 +543,36 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     func setGhostDuckSkin(_ skin: DuckSkin) {
         opponentDuckSkin = skin
-        botController?.setup(skin: skin)
-    }
-
-    func sendGhostPosition() {
-        guard let duck = duck, let session = gameKitSession, session.connected else { return }
-        let pos = GhostDuckPosition(
-            x: Float(duck.position.x),
-            y: Float(duck.position.y),
-            velY: Float(duck.physicsBody?.velocity.dy ?? 0),
-            rotation: Float(duck.zRotation),
-            wingPhase: currentWingPhase
-        )
-        session.sendPosition(pos)
+        if botController?.sprite == nil {
+            botController?.setup(skin: skin)
+        } else {
+            botController?.reset(skin: skin)
+        }
     }
 
     func battleRoyaleSnapshot() -> (y: CGFloat, rotation: CGFloat, wingPhase: Int)? {
         guard let duck else { return nil }
         return (duck.position.y, duck.zRotation, Int(currentWingPhase))
+    }
+
+    func liveMatchSnapshot() -> (x: CGFloat, y: CGFloat, velY: CGFloat, rotation: CGFloat, wingPhase: UInt8, score: Int)? {
+        guard let duck else { return nil }
+        return (
+            duck.position.x,
+            duck.position.y,
+            duck.physicsBody?.velocity.dy ?? 0,
+            duck.zRotation,
+            currentWingPhase,
+            score
+        )
+    }
+
+    func debugDuckAlpha() -> CGFloat? {
+        duck?.alpha
+    }
+
+    func debugGhostDuckAlpha() -> CGFloat? {
+        botController?.sprite?.alpha
     }
 
     func updateBattleRoyaleGhosts(_ ghosts: [BattleRoyaleGhost]) {
@@ -682,6 +698,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // PERF: Cache pipe record for O(1) lookup in update loop & Bot AI — avoids
         // scanning pipeLayer.children with string-name checks every frame.
         activePipes.append(ActivePipeRecord(node: pipeNode, gapCenterY: gapY, name: pipeNode.name ?? "pipe_\(currentPipeIndex)"))
+
+        // Head-to-head v1 keeps the competitive map pipe-only so the shared
+        // seed fully defines gameplay.
+        guard mode != .headToHead else { return }
 
         // Spawn pending power-up collectible between pipes (free-floating in pipeLayer)
         if let kind = powerUpCtrl.consumePendingKind() {
@@ -1270,9 +1290,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             botController?.update(pipeRecords: activePipes)
         }
 
-        // Stream position to opponent via GameKit
+        // Ghost smoothing (opponent position interpolated by LiveMatchTransport)
         if mode == .headToHead, phase == .playing {
-            sendGhostPosition()
+            botController?.updateGhostSmoothing(dt: dt)
         }
     }
 
@@ -1793,6 +1813,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Clear power-up state (also resets speed modifier)
         powerUpCtrl.reset()
+        parallax.reset()
 
         // Reset cached physics / animation state
         lastAppliedGravity = 0
@@ -2093,7 +2114,7 @@ final class GhostDuckRenderer {
     }
 }
 
-// MARK: - GameKit Session (P2P multiplayer)
+// MARK: - Ghost Duck Position (used by LiveMatchTransport)
 
 struct GhostDuckPosition {
     let x: Float
@@ -2101,347 +2122,22 @@ struct GhostDuckPosition {
     let velY: Float
     let rotation: Float
     let wingPhase: UInt8
+    let score: UInt16
 }
 
-struct GhostDuckEvent {
-    enum Kind: UInt8 {
-        case started = 0
-        case finished = 1
-        case disconnected = 2
-    }
-    let kind: Kind
-    let finalScore: UInt16?
-}
+// MARK: - GameKit Session (identity wrapper only)
 
-protocol GameKitSessionDelegate: AnyObject {
-    func gameKitSessionDidConnect()
-    func gameKitSessionDidDisconnect(error: Error?)
-    func gameKitSession(didReceivePosition position: GhostDuckPosition)
-    func gameKitSession(didReceiveScore score: UInt16)
-    func gameKitSession(didReceiveEvent event: GhostDuckEvent)
-    func gameKitSession(didReceiveSkinId skinId: String)
-}
-
-final class GameKitSession: NSObject {
-    weak var delegate: GameKitSessionDelegate?
-
-    private var match: GKMatch?
-    private let sendInterval: TimeInterval = 1.0 / 20.0
-    private var lastSendTime: TimeInterval = 0
-    private var isConnected = false
-    private var isConnecting = false
-    private var activeSessionCode: String?
-    private var connectTask: Task<Void, Never>?
-
-    /// Maximum number of matchmaking attempts before giving up.
-    private static let maxRetries = 3
-    /// Seconds to wait for `findMatch` on each attempt before retrying.
-    private static let perAttemptTimeout: TimeInterval = 8
-
-    /// Dedicated queue for encoding + sending — moves serialization and
-    /// GameKit IPC off the SpriteKit render thread.
-    private let sendQueue = DispatchQueue(label: "com.floppyduck.gksession", qos: .userInitiated)
-
-    var connected: Bool { isConnected && match != nil }
-
-    /// Whether GameKit matchmaking failed after all retries, so the caller
-    /// can fall back to Convex-based ghost sync.
-    private(set) var didFailPermanently = false
-
-    func connect(sessionCode: String, timeout: TimeInterval = 15) {
-        if activeSessionCode == sessionCode, isConnecting || connected {
-            return
-        }
-
-        if activeSessionCode != sessionCode {
-            disconnect()
-        }
-
-        activeSessionCode = sessionCode
-        didFailPermanently = false
-
-        guard GKLocalPlayer.local.isAuthenticated else {
-            delegate?.gameKitSessionDidDisconnect(error: SessionError.notAuthenticated)
-            return
-        }
-
-        isConnecting = true
-
-        let groupId = Self.playerGroup(for: sessionCode)
-        print("[GameKit] Starting matchmaking with group \(groupId) (code: \(sessionCode))")
-
-        connectTask = Task { [weak self] in
-            guard let self else { return }
-
-            for attempt in 1...Self.maxRetries {
-                guard !Task.isCancelled else { break }
-                print("[GameKit] Attempt \(attempt)/\(Self.maxRetries) — finding match…")
-
-                do {
-                    let foundMatch = try await self.findMatchWithTimeout(
-                        groupId: groupId,
-                        timeout: Self.perAttemptTimeout
-                    )
-
-                    guard !Task.isCancelled else { break }
-
-                    // Verify all expected players are connected.
-                    if foundMatch.expectedPlayerCount != 0 {
-                        print("[GameKit] Match returned with \(foundMatch.expectedPlayerCount) expected player(s) still pending — retrying")
-                        foundMatch.disconnect()
-                        GKMatchmaker.shared().cancel()
-                        continue
-                    }
-
-                    await MainActor.run {
-                        self.match = foundMatch
-                        foundMatch.delegate = self
-                        self.isConnected = true
-                        self.isConnecting = false
-                        print("[GameKit] Connected — players: \(foundMatch.players.count)")
-                        self.delegate?.gameKitSessionDidConnect()
-                    }
-                    return  // Success — exit retry loop
-                } catch is CancellationError {
-                    break
-                } catch {
-                    print("[GameKit] Attempt \(attempt) failed: \(error.localizedDescription)")
-                    GKMatchmaker.shared().cancel()
-
-                    if attempt < Self.maxRetries, !Task.isCancelled {
-                        // Brief pause before retrying so both players' requests
-                        // have a chance to overlap on Apple's servers.
-                        try? await Task.sleep(nanoseconds: 500_000_000)
-                    }
-                }
-            }
-
-            guard !Task.isCancelled else { return }
-
-            // All retries exhausted — notify delegate so the view can fall back.
-            await MainActor.run {
-                self.isConnecting = false
-                self.didFailPermanently = true
-                print("[GameKit] All \(Self.maxRetries) attempts exhausted — matchmaking failed")
-                self.delegate?.gameKitSessionDidDisconnect(error: SessionError.noMatch)
-            }
-        }
-    }
-
-    /// Calls the modern async `findMatch(for:)` API with a per-attempt timeout.
-    private func findMatchWithTimeout(groupId: Int, timeout: TimeInterval) async throws -> GKMatch {
-        let request = GKMatchRequest()
-        request.minPlayers = 2
-        request.maxPlayers = 2
-        request.playerGroup = groupId
-        request.defaultNumberOfPlayers = 2
-
-        return try await withThrowingTaskGroup(of: GKMatch.self) { group in
-            group.addTask {
-                try await GKMatchmaker.shared().findMatch(for: request)
-            }
-
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                GKMatchmaker.shared().cancel()
-                throw SessionError.timeout
-            }
-
-            let result = try await group.next()!
-            group.cancelAll()
-            return result
-        }
-    }
-
-    func sendPosition(_ pos: GhostDuckPosition) {
-        sendQueue.async { [weak self] in
-            guard let self else { return }
-            let now = CACurrentMediaTime()
-            guard now - self.lastSendTime >= self.sendInterval else { return }
-            self.lastSendTime = now
-            self.send(data: self.encodePosition(pos), mode: .unreliable)
-        }
-    }
-
-    func sendScore(_ score: UInt16) {
-        send(data: encodeScore(score), mode: .reliable)
-    }
-
-    func sendEvent(_ event: GhostDuckEvent) {
-        send(data: encodeEvent(event), mode: .reliable)
-    }
-
-    func sendSkinId(_ skinId: String) {
-        send(data: encodeSkinId(skinId), mode: .reliable)
-    }
-
-    func disconnect() {
-        connectTask?.cancel()
-        connectTask = nil
-        if isConnecting {
-            GKMatchmaker.shared().cancel()
-        }
-        match?.disconnect()
-        match?.delegate = nil
-        match = nil
-        isConnected = false
-        isConnecting = false
-        activeSessionCode = nil
-    }
-
-    private func send(data: Data, mode: GKMatch.SendDataMode) {
-        guard let match, isConnected else { return }
-        do {
-            try match.sendData(toAllPlayers: data, with: mode)
-        } catch {
-            print("[GameKit] Send error: \(error.localizedDescription)")
-        }
-    }
-
+final class GameKitSession {
     static func playerGroup(for sessionCode: String) -> Int {
-        let positiveMask = UInt32(Int32.max)
-        if let numericCode = UInt32(sessionCode) {
-            return Int(numericCode & positiveMask)
+        guard sessionCode.count >= 6,
+              let code = Int(sessionCode.prefix(6)) else {
+            return 0
         }
-
-        var hash: UInt32 = 2_166_136_261
-        for byte in sessionCode.utf8 {
-            hash ^= UInt32(byte)
-            hash = hash &* 16_777_619
-        }
-        return Int(hash & positiveMask)
+        return code
     }
 
-    // MARK: - Encoding
-
-    private func encodePosition(_ pos: GhostDuckPosition) -> Data {
-        var data = Data()
-        data.append(0)
-        data.append(contentsOf: withUnsafeBytes(of: pos.x) { Data($0) })
-        data.append(contentsOf: withUnsafeBytes(of: pos.y) { Data($0) })
-        data.append(contentsOf: withUnsafeBytes(of: pos.velY) { Data($0) })
-        data.append(contentsOf: withUnsafeBytes(of: pos.rotation) { Data($0) })
-        data.append(pos.wingPhase)
-        return data
-    }
-
-    private func encodeScore(_ score: UInt16) -> Data {
-        var data = Data()
-        data.append(1)
-        data.append(contentsOf: withUnsafeBytes(of: score.littleEndian) { Data($0) })
-        return data
-    }
-
-    private func encodeEvent(_ event: GhostDuckEvent) -> Data {
-        var data = Data()
-        data.append(2)
-        data.append(event.kind.rawValue)
-        let score = event.finalScore ?? 0
-        data.append(contentsOf: withUnsafeBytes(of: score.littleEndian) { Data($0) })
-        return data
-    }
-
-    private func encodeSkinId(_ skinId: String) -> Data {
-        var data = Data()
-        data.append(3)
-        if let bytes = skinId.data(using: .utf8) {
-            data.append(UInt8(min(bytes.count, 255)))
-            data.append(bytes.prefix(255))
-        } else {
-            data.append(0)
-        }
-        return data
-    }
-}
-
-extension GameKitSession: GKMatchDelegate {
-    func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
-        guard data.count > 0 else { return }
-        let type = data[0]
-        let payload = data.dropFirst()
-
-        switch type {
-        case 0:
-            if let pos = decodePosition(payload) {
-                delegate?.gameKitSession(didReceivePosition: pos)
-            }
-        case 1:
-            if let score = decodeScore(payload) {
-                delegate?.gameKitSession(didReceiveScore: score)
-            }
-        case 2:
-            if let event = decodeEvent(payload) {
-                delegate?.gameKitSession(didReceiveEvent: event)
-            }
-        case 3:
-            if let skinId = decodeSkinId(payload) {
-                delegate?.gameKitSession(didReceiveSkinId: skinId)
-            }
-        default:
-            break
-        }
-    }
-
-    func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
-        print("[GameKit] Player \(player.alias) — state: \(state.rawValue)")
-        if state == .disconnected {
-            isConnected = false
-            delegate?.gameKitSessionDidDisconnect(error: nil)
-        }
-    }
-
-    func match(_ match: GKMatch, didFailWithError error: (any Error)?) {
-        print("[GameKit] Match failed: \(error?.localizedDescription ?? "unknown")")
-        isConnected = false
-        delegate?.gameKitSessionDidDisconnect(error: error)
-    }
-}
-
-extension GameKitSession {
-    private func decodePosition(_ data: Data) -> GhostDuckPosition? {
-        guard data.count >= 17 else { return nil }
-        let x: Float = data.subdata(in: 0..<4).withUnsafeBytes { $0.load(as: Float.self) }
-        let y: Float = data.subdata(in: 4..<8).withUnsafeBytes { $0.load(as: Float.self) }
-        let velY: Float = data.subdata(in: 8..<12).withUnsafeBytes { $0.load(as: Float.self) }
-        let rotation: Float = data.subdata(in: 12..<16).withUnsafeBytes { $0.load(as: Float.self) }
-        let wingPhase = data[16]
-        return GhostDuckPosition(x: x, y: y, velY: velY, rotation: rotation, wingPhase: wingPhase)
-    }
-
-    private func decodeScore(_ data: Data) -> UInt16? {
-        guard data.count >= 2 else { return nil }
-        return data.withUnsafeBytes { $0.load(as: UInt16.self).littleEndian }
-    }
-
-    private func decodeEvent(_ data: Data) -> GhostDuckEvent? {
-        guard data.count >= 1 else { return nil }
-        guard let kind = GhostDuckEvent.Kind(rawValue: data[0]) else { return nil }
-        let finalScore: UInt16? = data.count >= 3
-            ? data.subdata(in: 1..<3).withUnsafeBytes { $0.load(as: UInt16.self).littleEndian }
-            : nil
-        return GhostDuckEvent(kind: kind, finalScore: finalScore)
-    }
-
-    private func decodeSkinId(_ data: Data) -> String? {
-        guard data.count >= 2 else { return nil }
-        let len = Int(data[0])
-        guard data.count >= 1 + len else { return nil }
-        return String(data: data.subdata(in: 1..<1+len), encoding: .utf8)
-    }
-}
-
-extension GameKitSession {
-    enum SessionError: Error, LocalizedError {
-        case notAuthenticated
-        case noMatch
-        case timeout
-
-        var errorDescription: String? {
-            switch self {
-            case .notAuthenticated: return "Sign in to Game Center to play multiplayer."
-            case .noMatch: return "Could not find a match."
-            case .timeout: return "Matchmaking timed out."
-            }
-        }
-    }
+    func connect(sessionCode: String, timeout: TimeInterval = 15) {}
+    func disconnect() {}
+    var connected: Bool { false }
+    var debugSummary: String { "identity-only" }
 }

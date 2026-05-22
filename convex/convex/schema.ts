@@ -48,6 +48,7 @@ export default defineSchema({
     status: v.union(v.literal("searching"), v.literal("matched")),
     ticketId: v.string(),
     createdAt: v.number(),
+    lastSeenAt: v.number(),
     matchId: v.optional(v.id("matches")),
   })
     .index("by_ticketId", ["ticketId"])
@@ -81,6 +82,9 @@ export default defineSchema({
     ratingDeltaP2: v.optional(v.number()),
     roomCode: v.optional(v.string()),
     gameKitSessionCode: v.optional(v.string()),
+    p1Ready: v.optional(v.number()),
+    p2Ready: v.optional(v.number()),
+    startAtMs: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     finishedAt: v.optional(v.number()),
@@ -89,6 +93,20 @@ export default defineSchema({
     .index("by_p2UserId", ["p2UserId"])
     .index("by_roomCode", ["roomCode"])
     .index("by_status_createdAt", ["status", "createdAt"]),
+
+  livePositions: defineTable({
+    matchId: v.id("matches"),
+    userId: v.id("users"),
+    x: v.number(),
+    y: v.number(),
+    velY: v.number(),
+    rotation: v.number(),
+    wingPhase: v.number(),
+    score: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_matchId_userId", ["matchId", "userId"])
+    .index("by_matchId", ["matchId"]),
 
   battleRoyaleLobbies: defineTable({
     status: v.union(v.literal("open"), v.literal("active"), v.literal("finished"), v.literal("cancelled")),
@@ -148,4 +166,26 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_active_createdAt", ["active", "createdAt"]),
+
+  diagnosticEvents: defineTable({
+    userId: v.optional(v.id("users")),
+    deviceId: v.optional(v.string()),
+    category: v.string(),
+    event: v.string(),
+    level: v.union(v.literal("debug"), v.literal("info"), v.literal("warning"), v.literal("error")),
+    message: v.optional(v.string()),
+    matchId: v.optional(v.string()),
+    sessionCode: v.optional(v.string()),
+    playerGroup: v.optional(v.number()),
+    mode: v.optional(v.string()),
+    metadata: v.optional(v.array(v.object({
+      key: v.string(),
+      value: v.string(),
+    }))),
+    createdAt: v.number(),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_matchId_createdAt", ["matchId", "createdAt"])
+    .index("by_sessionCode_createdAt", ["sessionCode", "createdAt"])
+    .index("by_category_createdAt", ["category", "createdAt"]),
 });

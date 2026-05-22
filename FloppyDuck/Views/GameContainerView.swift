@@ -19,6 +19,8 @@ struct GameContainerView: View {
     @State private var countdownScale: CGFloat = 0.001
     @State private var countdownFlashOpacity: Double = 0
     @State private var countdownLabel: String = "3"
+    @State private var showCountdownOverlay: Bool = false
+    @State private var countdownOverlayOpacity: Double = 1.0
 
     // Match sync states (head-to-head)
     @State private var matchResult: MultiplayerMatchResult?
@@ -39,8 +41,17 @@ struct GameContainerView: View {
     @State private var showNewBest: Bool = false
     @State private var showBread: Bool = false
     @State private var countUpTimer: Timer?
-    @State private var gameKitBridge: HeadToHeadGameKitBridge?
     @State private var sharePayload: SharePayload?
+    @State private var headToHeadIntroFinished: Bool = false
+    @State private var headToHeadReadySent: Bool = false
+    @State private var headToHeadBothReady: Bool = false
+    @State private var headToHeadCountdownScheduled: Bool = false
+    @State private var headToHeadAbandoned: Bool = false
+    @State private var headToHeadGateMessage: String = "MATCHING..."
+    @State private var headToHeadFailureMessage: String?
+    @State private var headToHeadStartTask: Task<Void, Never>?
+    @State private var headToHeadReadyPollTask: Task<Void, Never>?
+    @State private var liveTransport: LiveMatchTransport?
 
     private var isBotLadder: Bool { config.botCharacterId != nil }
     private var isHeadToHead: Bool { config.mode == .headToHead }
@@ -51,6 +62,7 @@ struct GameContainerView: View {
     private var battleRoyalePlacement: Int? { battleRoyaleState?.local.placement }
     private var battleRoyalePrize: Int { battleRoyaleState?.local.prize ?? 0 }
     private var battleRoyalePending: Bool { isBattleRoyale && battleRoyalePlacement == nil }
+    private let headToHeadStartDelay: TimeInterval = 0.6
 
     private var ladderWon: Bool {
         // The player wins a bot-ladder match only when the bot died FIRST
@@ -114,7 +126,7 @@ struct GameContainerView: View {
             case .ready:
                 getReadyOverlay
             case .countdown:
-                countdownOverlay
+                EmptyView()
             case .gameOver:
                 Color.black.opacity(0.65)
                     .ignoresSafeArea()
@@ -126,6 +138,11 @@ struct GameContainerView: View {
                 EmptyView()
             }
 
+            if showCountdownOverlay {
+                countdownOverlay
+                    .opacity(countdownOverlayOpacity)
+                    .allowsHitTesting(false)
+            }
         }
         .onAppear {
             // VS modes get the Mortal-Kombat-style intro first
@@ -145,6 +162,9 @@ struct GameContainerView: View {
             opponentPollTask?.cancel()
             battleRoyalePollTask?.cancel()
             battleRoyaleReportTask?.cancel()
+            headToHeadStartTask?.cancel()
+            headToHeadReadyPollTask?.cancel()
+            liveTransport?.stop()
         }
         .sheet(item: $sharePayload) { payload in
             ActivityView(activityItems: payload.activityItems)
@@ -155,6 +175,14 @@ struct GameContainerView: View {
     // MARK: - Scene Setup
 
     private func setupScene() {
+        if isHeadToHead {
+            print("[HeadToHead] setupScene matchId:\(config.matchId ?? "nil") mode:\(config.matchmakingMode?.rawValue ?? "nil") seed:\(config.seed) host:\(config.isGameKitHost)")
+            recordHeadToHeadDiagnostic(
+                event: "setup_scene",
+                message: "Head-to-head scene setup started."
+            )
+        }
+
         let skin = SkinManager.shared.selectedSkin
         let newScene = GameScene(
             seed: config.seed,
@@ -163,6 +191,7 @@ struct GameContainerView: View {
             skin: skin,
             botSkin: config.botSkin,
             botDifficulty: config.botDifficulty,
+            backgroundTheme: config.backgroundTheme,
             opponentName: config.opponentName,
             targetScore: config.targetScore
         )
@@ -177,7 +206,6 @@ struct GameContainerView: View {
 
                 if isHeadToHead, let matchId = config.matchId {
                     // Debounce: only report if score changed AND at least 0.5s since last report.
-                    // Avoids spawning a Convex Task on every single pipe scored.
                     let now = Date()
                     if newScore != lastReportedScore && now.timeIntervalSince(lastReportTime) >= 0.5 {
                         lastReportedScore = newScore
@@ -189,6 +217,7 @@ struct GameContainerView: View {
                 }
             },
             onEnd: { finalScore in
+                liveTransport?.stop()
                 handleGameEnd(finalScore: finalScore, scene: newScene)
             },
             onBotScore: { bs in
@@ -217,39 +246,31 @@ struct GameContainerView: View {
         bridge = newBridge
         scene = newScene
 
-        if let gkSession = manager.gameKitSession {
-            newScene.gameKitSession = gkSession
-            let gkBridge = HeadToHeadGameKitBridge()
-            gkBridge.scene = newScene
-            gkBridge.onConnected = {
-                print("[GameKit] Connected — spawning ghost duck")
+        if isHeadToHead {
+            if let skinId = config.opponentSkinId, let skin = DuckSkin(rawValue: skinId) {
+                print("[HeadToHead] spawning opponent ghost with assignment skin:\(skinId)")
+                newScene.setGhostDuckSkin(skin)
+            } else {
+                print("[HeadToHead] spawning opponent ghost with default skin")
                 newScene.spawnGhostDuck()
-                gkSession.sendSkinId(SkinManager.shared.selectedSkin.rawValue)
             }
-            gkBridge.onDisconnected = { [weak gkSession] in
-                // If GameKit failed permanently, spawn the ghost anyway so
-                // the opponent is at least visible via Convex score polling.
-                if gkSession?.didFailPermanently == true {
-                    print("[GameKit] Fallback — spawning ghost duck without P2P")
-                    newScene.spawnGhostDuck()
-                }
-            }
-            gkBridge.onOpponentSkinId = { skinId in
-                if let skin = DuckSkin(rawValue: skinId) {
-                    newScene.setGhostDuckSkin(skin)
-                }
-            }
-            gkSession.delegate = gkBridge
-            gameKitBridge = gkBridge
-            if let sessionCode = config.gameKitSessionCode {
-                gkSession.connect(sessionCode: sessionCode)
-            }
+            newScene.setOpponentScore(0)
         }
 
-        if isHeadToHead,
-           let matchId = config.matchId {
-            startOpponentPolling(matchId: matchId, scene: newScene)
-            newScene.setOpponentScore(0)
+        if isHeadToHead {
+            // Create LiveMatchTransport for real-time position sync via Convex
+            let transport = LiveMatchTransport(client: ConvexClient.shared,
+                                               matchId: config.matchId ?? "")
+            transport.attach(scene: newScene)
+            liveTransport = transport
+
+            // Start ready-state polling via Convex
+            startHeadToHeadReadyPolling()
+
+            // Start opponent score/state polling via Convex
+            if let matchId = config.matchId {
+                startOpponentPolling(matchId: matchId, scene: newScene)
+            }
         }
 
         if isBattleRoyale,
@@ -257,6 +278,226 @@ struct GameContainerView: View {
             startBattleRoyalePolling(lobbyId: lobbyId, scene: newScene)
             startBattleRoyaleReporting(lobbyId: lobbyId, scene: newScene)
         }
+    }
+
+    private func sendHeadToHeadReadyIfPossible() {
+        guard isHeadToHead,
+              headToHeadIntroFinished,
+              !headToHeadReadySent,
+              headToHeadFailureMessage == nil,
+              let matchId = config.matchId else {
+            return
+        }
+
+        headToHeadReadySent = true
+        headToHeadGateMessage = "READY"
+        print("[HeadToHead] sending local ready via Convex")
+        recordHeadToHeadDiagnostic(event: "ready_sent", message: "Local ready sent via Convex.")
+
+        Task {
+            do {
+                try await ConvexClient.shared.markReady(matchId: matchId)
+            } catch {
+                recordHeadToHeadDiagnostic(
+                    event: "ready_failed",
+                    level: "error",
+                    message: error.localizedDescription
+                )
+            }
+        }
+    }
+
+    private func startHeadToHeadReadyPolling() {
+        guard isHeadToHead, let matchId = config.matchId else { return }
+
+        headToHeadReadyPollTask?.cancel()
+        headToHeadReadyPollTask = Task {
+            while !Task.isCancelled {
+                do {
+                    let state = try await ConvexClient.shared.getReadyState(matchId: matchId)
+
+                    await MainActor.run {
+                        if !headToHeadBothReady && state.p1Ready != nil && state.p2Ready != nil {
+                            headToHeadBothReady = true
+                            headToHeadGateMessage = "OPPONENT READY"
+                            recordHeadToHeadDiagnostic(event: "both_ready", message: "Both players ready.")
+
+                            if config.isGameKitHost {
+                                scheduleHostStartIfReady()
+                            }
+                        }
+
+                        if let startMs = state.startAtMs, !headToHeadCountdownScheduled {
+                            let delay = max(0, (startMs - Date().timeIntervalSince1970 * 1000) / 1000)
+                            scheduleHeadToHeadCountdown(after: delay)
+                        }
+                    }
+                } catch is CancellationError {
+                    return
+                } catch {
+                    // Transient poll failures should not interrupt the handshake.
+                    recordHeadToHeadDiagnostic(
+                        event: "ready_poll_error",
+                        level: "warning",
+                        message: error.localizedDescription
+                    )
+                }
+
+                try? await Task.sleep(nanoseconds: 200_000_000) // 5 Hz
+            }
+        }
+    }
+
+    private func scheduleHostStartIfReady() {
+        guard isHeadToHead,
+              config.isGameKitHost,
+              headToHeadBothReady,
+              !headToHeadCountdownScheduled,
+              headToHeadFailureMessage == nil,
+              let matchId = config.matchId else {
+            return
+        }
+
+        let now = Date().timeIntervalSince1970 * 1000
+        let startAtMs = now + headToHeadStartDelay * 1000
+
+        print("[HeadToHead] host scheduling startAtMs:\(startAtMs)")
+        recordHeadToHeadDiagnostic(
+            event: "start_scheduled",
+            message: "Host scheduled start.",
+            metadata: ["startAtMs": String(format: "%.0f", startAtMs), "delay": String(format: "%.3f", headToHeadStartDelay)]
+        )
+
+        Task {
+            do {
+                try await ConvexClient.shared.scheduleStart(matchId: matchId, startAtMs: startAtMs)
+            } catch {
+                recordHeadToHeadDiagnostic(
+                    event: "schedule_start_failed",
+                    level: "error",
+                    message: error.localizedDescription
+                )
+            }
+        }
+
+        scheduleHeadToHeadCountdown(after: headToHeadStartDelay)
+    }
+
+    private func scheduleHeadToHeadCountdown(after delay: TimeInterval) {
+        guard isHeadToHead,
+              !headToHeadCountdownScheduled,
+              headToHeadFailureMessage == nil else { return }
+
+        headToHeadCountdownScheduled = true
+        headToHeadGateMessage = "MATCH STARTING"
+        headToHeadReadyPollTask?.cancel()
+        print("[HeadToHead] scheduling map countdown after \(delay)s")
+        recordHeadToHeadDiagnostic(
+            event: "countdown_scheduled",
+            message: "Map countdown scheduled.",
+            metadata: ["delay": String(format: "%.3f", delay)]
+        )
+        headToHeadStartTask?.cancel()
+        headToHeadStartTask = Task {
+            let nanoseconds = UInt64(max(delay, 0) * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard phase != .gameOver else { return }
+                liveTransport?.start()
+                withAnimation(.easeOut(duration: 0.15)) {
+                    phase = .countdown
+                }
+                runMapCountdown()
+            }
+        }
+    }
+
+    private func handleHeadToHeadPreStartFailure(message: String) {
+        guard isHeadToHead, !headToHeadCountdownScheduled else { return }
+        headToHeadStartTask?.cancel()
+        headToHeadReadyPollTask?.cancel()
+        headToHeadFailureMessage = message
+        headToHeadGateMessage = message
+
+        recordHeadToHeadDiagnostic(
+            event: "pre_start_failed",
+            level: "error",
+            message: message
+        )
+
+        guard !headToHeadAbandoned, let matchId = config.matchId else { return }
+        headToHeadAbandoned = true
+        Task {
+            recordHeadToHeadDiagnostic(
+                event: "abandon_match_requested",
+                level: "warning",
+                message: "Abandoning Convex match after pre-start failure."
+            )
+            await manager.abandonHeadToHeadMatch(matchId: matchId)
+        }
+    }
+
+    private func retryHeadToHeadAfterP2PFailure() {
+        let mode = config.matchmakingMode ?? (config.isRanked ? .ranked : .quickPlay)
+        print("[HeadToHead] retry requested — mode:\(mode.rawValue)")
+        recordHeadToHeadDiagnostic(
+            event: "retry_requested",
+            message: "User requested retry.",
+            mode: mode.rawValue
+        )
+        headToHeadStartTask?.cancel()
+        headToHeadReadyPollTask?.cancel()
+        liveTransport?.stop()
+        manager.dismissGame()
+
+        if !manager.path.isEmpty {
+            manager.path.removeLast()
+        }
+        _ = manager.startMatchmaking(mode: mode)
+    }
+
+    private func headToHeadFailureMessage(for error: Error?) -> String {
+        guard let error else { return "CONNECTION FAILED" }
+        return error.localizedDescription.uppercased()
+    }
+
+    private func recordHeadToHeadDiagnostic(event: String,
+                                            level: String = "info",
+                                            message: String? = nil,
+                                            mode: String? = nil,
+                                            metadata: [String: String] = [:]) {
+        MultiplayerDiagnostics.record(
+            category: "head_to_head",
+            event: event,
+            level: level,
+            message: message,
+            matchId: config.matchId,
+            sessionCode: config.gameKitSessionCode,
+            mode: mode ?? config.matchmakingMode?.rawValue,
+            metadata: headToHeadDiagnosticMetadata(extra: metadata)
+        )
+    }
+
+    private func headToHeadDiagnosticMetadata(extra: [String: String] = [:]) -> [String: String] {
+        var metadata: [String: String] = [
+            "seed": String(config.seed),
+            "isGameKitHost": String(config.isGameKitHost),
+            "phase": String(describing: phase),
+            "introFinished": String(headToHeadIntroFinished),
+            "readySent": String(headToHeadReadySent),
+            "bothReady": String(headToHeadBothReady),
+            "countdownScheduled": String(headToHeadCountdownScheduled),
+            "abandoned": String(headToHeadAbandoned),
+            "failureMessage": headToHeadFailureMessage ?? "nil",
+            "gateMessage": headToHeadGateMessage,
+        ]
+        extra.forEach { metadata[$0.key] = $0.value }
+        return metadata
+    }
+
+    private func headToHeadStateSummary() -> String {
+        "phase:\(phase) intro:\(headToHeadIntroFinished) readySent:\(headToHeadReadySent) bothReady:\(headToHeadBothReady) countdown:\(headToHeadCountdownScheduled) failed:\(headToHeadFailureMessage ?? "nil") abandoned:\(headToHeadAbandoned)"
     }
 
     private func handleBotLadderWin(finalScore: Int, scene: GameScene) {
@@ -667,11 +908,19 @@ struct GameContainerView: View {
             opponentName: config.opponentName ?? "OPPONENT",
             opponentAccent: bot?.accentColor ?? Color.red
         ) {
-            // VS intro done → run 3-2-1-QUACK countdown on the game map
-            withAnimation(.easeOut(duration: 0.15)) {
-                phase = .countdown
+            // VS intro done → run 3-2-1-GO countdown on the game map
+            if isHeadToHead {
+                headToHeadIntroFinished = true
+                withAnimation(.easeOut(duration: 0.15)) {
+                    phase = .ready
+                }
+                sendHeadToHeadReadyIfPossible()
+            } else {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    phase = .countdown
+                }
+                runMapCountdown()
             }
-            runMapCountdown()
         }
     }
 
@@ -738,13 +987,38 @@ struct GameContainerView: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    pixelIcon(.tapHand, size: 22)
-                    Text("TAP TO FLAP")
-                        .font(.custom(GK.pixelFontName, size: 9))
-                        .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                if config.mode == .headToHead && !headToHeadCountdownScheduled {
+                    Text(headToHeadFailureMessage ?? headToHeadGateMessage)
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(headToHeadFailureMessage == nil ? GK.Colors.panelBorder.opacity(0.6) : GK.Colors.buttonRed)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 6)
+
+                    if headToHeadFailureMessage != nil {
+                        Button {
+                            retryHeadToHeadAfterP2PFailure()
+                        } label: {
+                            HStack(spacing: 6) {
+                                pixelIcon(.retry, size: 13)
+                                Text("RETRY")
+                                    .font(.custom(GK.pixelFontName, size: 8))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(GK.Colors.buttonBlue))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        pixelIcon(.tapHand, size: 22)
+                        Text("TAP TO FLAP")
+                            .font(.custom(GK.pixelFontName, size: 9))
+                            .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
+                    }
+                    .padding(.top, 6)
                 }
-                .padding(.top, 6)
             }
             .padding(24)
             .background(
@@ -767,10 +1041,10 @@ struct GameContainerView: View {
             Color.black.opacity(0.25)
                 .ignoresSafeArea()
 
-            // Number / QUACK text
+            // Number / GO text
             Group {
-                if countdownLabel == "QUACK!" {
-                    Text("QUACK!")
+                if countdownLabel == "GO!" {
+                    Text("GO!")
                         .font(.custom(GK.pixelFontName, size: 48))
                         .foregroundColor(GK.Colors.scoreYellow)
                         .shadow(color: Color.red, radius: 6)
@@ -787,20 +1061,30 @@ struct GameContainerView: View {
             }
             .scaleEffect(countdownScale)
 
-            // Screen flash on QUACK
+            // Screen flash on GO
             Color.white.opacity(countdownFlashOpacity)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
         }
     }
 
-    /// Runs the "3, 2, 1, QUACK!" sequence over the game map, then auto-starts gameplay.
+    /// Runs the "3, 2, 1, GO!" sequence over the game map, then auto-starts gameplay.
     private func runMapCountdown() {
+        let goBeat: TimeInterval = 3.0
+        let goFadeDuration: TimeInterval = 2.0
+        showCountdownOverlay = true
+        countdownOverlayOpacity = 1.0
+        countdownFlashOpacity = 0
+        countdownLabel = "3"
+        countdownScale = 0.001
+
+        SoundManager.shared.playMultiplayerCountdown()
+
         let beats: [(String, TimeInterval)] = [
-            ("3", 0.3),
+            ("3", 0.0),
             ("2", 1.0),
-            ("1", 1.7),
-            ("QUACK!", 2.4)
+            ("1", 2.0),
+            ("GO!", goBeat)
         ]
 
         for (label, delay) in beats {
@@ -808,12 +1092,18 @@ struct GameContainerView: View {
                 countdownLabel = label
                 countdownScale = 0.001
 
-                if label == "QUACK!" {
+                if label == "GO!" {
                     withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.4, blendDuration: 0.05)) {
                         countdownScale = 1.0
                     }
-                    SoundManager.shared.play(.quack)
                     Haptic.win()
+                    scene?.isReadyToStart = true
+                    scene?.startPlaying()
+                    phase = .playing
+
+                    withAnimation(.easeOut(duration: goFadeDuration)) {
+                        countdownOverlayOpacity = 0
+                    }
 
                     // Flash
                     withAnimation(.easeOut(duration: 0.04)) {
@@ -828,16 +1118,14 @@ struct GameContainerView: View {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.05)) {
                         countdownScale = 1.0
                     }
-                    SoundManager.shared.play(.countTick)
                     Haptic.score()
                 }
             }
         }
 
-        // Dismiss and auto-start gameplay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.1) {
-            scene?.isReadyToStart = true
-            scene?.startPlaying()
+        DispatchQueue.main.asyncAfter(deadline: .now() + goBeat + goFadeDuration) {
+            showCountdownOverlay = false
+            countdownOverlayOpacity = 1.0
         }
     }
 
@@ -1315,56 +1603,4 @@ private final class GameSceneBridge: GameSceneDelegate {
     func gameDidQuickRetry(score: Int) { onQuickRetry(score) }
 }
 
-private final class HeadToHeadGameKitBridge: GameKitSessionDelegate {
-    weak var scene: GameScene?
-    var onConnected: (() -> Void)?
-    var onDisconnected: (() -> Void)?
-    var onOpponentSkinId: ((String) -> Void)?
 
-    func gameKitSessionDidConnect() {
-        onConnected?()
-    }
-
-    func gameKitSessionDidDisconnect(error: Error?) {
-        onDisconnected?()
-    }
-
-    func gameKitSession(didReceivePosition position: GhostDuckPosition) {
-        Task { @MainActor in
-            scene?.setGhostPosition(
-                x: CGFloat(position.x),
-                y: CGFloat(position.y),
-                velY: CGFloat(position.velY),
-                rotation: CGFloat(position.rotation),
-                wingPhase: Int(position.wingPhase)
-            )
-        }
-    }
-
-    func gameKitSession(didReceiveScore score: UInt16) {
-        Task { @MainActor in
-            scene?.setOpponentScore(Int(score))
-        }
-    }
-
-    func gameKitSession(didReceiveEvent event: GhostDuckEvent) {
-        Task { @MainActor in
-            switch event.kind {
-            case .finished:
-                if let score = event.finalScore {
-                    scene?.setOpponentScore(Int(score))
-                }
-            case .disconnected:
-                onDisconnected?()
-            default:
-                break
-            }
-        }
-    }
-
-    func gameKitSession(didReceiveSkinId skinId: String) {
-        Task { @MainActor in
-            onOpponentSkinId?(skinId)
-        }
-    }
-}

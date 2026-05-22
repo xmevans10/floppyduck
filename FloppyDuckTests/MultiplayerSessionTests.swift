@@ -104,6 +104,29 @@ final class MultiplayerSessionTests: XCTestCase {
         let snapshot = await client.snapshot()
         XCTAssertEqual(snapshot.checkQueueCallCount, 2)
     }
+
+    func testAbandonMatchDelegatesToBackendAndClearsSession() async throws {
+        let expected = MultiplayerMatchAssignment(
+            matchId: "match-abandon",
+            seed: 42,
+            opponentName: "Opponent",
+            gameKitSessionCode: "123456",
+            mode: .quickPlay,
+            isRanked: false,
+            roomCode: nil,
+            isGameKitHost: true
+        )
+        let client = MockMultiplayerBackendClient(queueAssignment: expected)
+        let session = MultiplayerSession(client: client)
+
+        _ = try await session.queueForMatch(mode: .quickPlay, timeout: 2)
+        await session.abandonMatch(matchId: "match-abandon")
+        await session.cancelMatchmaking()
+
+        let snapshot = await client.snapshot()
+        XCTAssertEqual(snapshot.abandonedMatchIds, ["match-abandon"])
+        XCTAssertTrue(snapshot.leftQueueTicketIds.isEmpty)
+    }
 }
 
 private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
@@ -113,6 +136,7 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
         var lastJoinRoomCode: String?
         var leftRoomCodes: [String]
         var leftQueueTicketIds: [String?]
+        var abandonedMatchIds: [String]
         var checkQueueCallCount: Int
     }
 
@@ -130,6 +154,7 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
     private var lastJoinRoomCode: String?
     private var leftRoomCodes: [String] = []
     private var leftQueueTicketIds: [String?] = []
+    private var abandonedMatchIds: [String] = []
     private var checkQueueCallCount = 0
 
     init(queueAssignment: MultiplayerMatchAssignment? = nil,
@@ -147,6 +172,7 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
             lastJoinRoomCode: lastJoinRoomCode,
             leftRoomCodes: leftRoomCodes,
             leftQueueTicketIds: leftQueueTicketIds,
+            abandonedMatchIds: abandonedMatchIds,
             checkQueueCallCount: checkQueueCallCount
         )
     }
@@ -210,6 +236,10 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
         leftQueueTicketIds.append(ticketId)
     }
 
+    func heartbeatQueue(ticketId: String) async throws -> Bool {
+        true
+    }
+
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? {
         checkQueueCallCount += 1
         lastCheckQueueTicketId = ticketId
@@ -270,6 +300,10 @@ private actor MockMultiplayerBackendClient: MultiplayerBackendClient {
             newRating: nil,
             isRanked: mode.isRanked
         )
+    }
+
+    func abandonMatch(matchId: String) async throws {
+        abandonedMatchIds.append(matchId)
     }
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry] {

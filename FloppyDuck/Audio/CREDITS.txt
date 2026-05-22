@@ -20,6 +20,11 @@ All quack variants are licensed under CC0 (Public Domain), no attribution requir
 "quack_4" — martian (via Freesound, #547601)
 "quack_5" — DigPro120 (via Freesound, #558858)
 
+Skin Quack Variants
+-------------------
+
+"quack_bearskin" — user-provided source audio, converted to 44.1 kHz mono AAC
+
 Music
 -----
 

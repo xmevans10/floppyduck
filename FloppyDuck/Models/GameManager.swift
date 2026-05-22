@@ -8,8 +8,6 @@ final class GameManager: ObservableObject {
     @Published var stats: PlayerStats
     @Published var activeGameConfig: GameModeConfig? = nil
 
-    private(set) var gameKitSession: GameKitSession?
-
     // Settings
     @AppStorage("playerName") var playerName: String = "Player"
     @AppStorage("soundEnabled") var soundEnabled: Bool = true
@@ -82,17 +80,19 @@ final class GameManager: ObservableObject {
     /// Dismiss the game overlay and return home
     func dismissGame() {
         activeGameConfig = nil
-        gameKitSession?.disconnect()
-        gameKitSession = nil
     }
 
     // MARK: - Multiplayer Navigation
 
     @discardableResult
     func startMatchmaking(mode: MatchmakingMode) -> Bool {
-        if mode == .ranked && !ensureRankedAccess() {
-            return false
-        }
+        print("[Multiplayer] Starting matchmaking route — mode:\(mode.rawValue)")
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "start_route",
+            message: "Opening matchmaking route.",
+            mode: mode.rawValue
+        )
         path.append(AppRoute.matchmaking(mode))
         AnalyticsManager.shared.trackMultiplayerQueueStarted(mode: mode.rawValue)
         return true
@@ -101,21 +101,35 @@ final class GameManager: ObservableObject {
     func startHeadToHead(matchAssignment: MultiplayerMatchAssignment) {
         AnalyticsManager.shared.trackMultiplayerMatchFound(mode: matchAssignment.mode.rawValue)
 
-        if let sessionCode = matchAssignment.gameKitSessionCode {
-            gameKitSession = GameKitSession()
-            print("[GameKit] Prepared session for code \(sessionCode)")
-        }
+        print("[HeadToHead] Match assigned — matchId:\(matchAssignment.matchId) mode:\(matchAssignment.mode.rawValue) seed:\(matchAssignment.seed) host:\(matchAssignment.isGameKitHost) room:\(matchAssignment.roomCode ?? "nil") opponentSkin:\(matchAssignment.opponentSkinId ?? "nil")")
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "head_to_head_assignment",
+            message: "Head-to-head assignment received.",
+            matchId: matchAssignment.matchId,
+            sessionCode: matchAssignment.gameKitSessionCode,
+            mode: matchAssignment.mode.rawValue,
+            metadata: [
+                "seed": String(matchAssignment.seed),
+                "isGameKitHost": String(matchAssignment.isGameKitHost),
+                "isRanked": String(matchAssignment.isRanked),
+                "roomCode": matchAssignment.roomCode ?? "nil",
+                "opponentSkinId": matchAssignment.opponentSkinId ?? "nil",
+            ]
+        )
 
         let config = GameModeConfig(
             mode: .headToHead,
             seed: matchAssignment.seed,
+            powerUpsEnabled: false,
             opponentName: matchAssignment.opponentName,
             opponentSkinId: matchAssignment.opponentSkinId,
             matchId: matchAssignment.matchId,
             matchmakingMode: matchAssignment.mode,
             isRanked: matchAssignment.isRanked,
             roomCode: matchAssignment.roomCode,
-            gameKitSessionCode: matchAssignment.gameKitSessionCode
+            gameKitSessionCode: matchAssignment.gameKitSessionCode,
+            isGameKitHost: matchAssignment.isGameKitHost
         )
         startGame(config)
     }
@@ -245,6 +259,10 @@ final class GameManager: ObservableObject {
                 latestKnownResult: pendingFallback
             )
         }
+    }
+
+    func abandonHeadToHeadMatch(matchId: String) async {
+        await multiplayerSession.abandonMatch(matchId: matchId)
     }
 
     func applyMatchResult(_ result: MultiplayerMatchResult) {
@@ -441,6 +459,7 @@ final class GameManager: ObservableObject {
             botDifficulty: bot.difficulty,
             botCharacterId: bot.id,
             botSkin: bot.skin,
+            backgroundTheme: bot.theme,
             targetScore: bot.targetScore
         )
         startGame(config)
@@ -555,12 +574,29 @@ actor MultiplayerSession {
         currentRoomCode = nil
         currentBattleRoyaleLobbyId = nil
 #if DEBUG
-        print("[Multiplayer] 🎫 Joined queue — ticketId:\(ticket.ticketId) mode:\(mode.rawValue)")
+        print("[Multiplayer] 🎫 Joined queue — ticketId:\(ticket.ticketId) mode:\(mode.rawValue) timeout:\(timeout)s")
 #endif
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "queue_joined",
+            message: "Joined Convex matchmaking queue.",
+            mode: mode.rawValue,
+            metadata: ["ticketId": ticket.ticketId, "timeout": String(timeout)]
+        )
         let assignment = try await waitForMatch(timeout: timeout)
 #if DEBUG
-        print("[Multiplayer] ⚔️ Match found! matchId:\(assignment.matchId) vs \(assignment.opponentName) ranked:\(assignment.isRanked)")
+        print("[Multiplayer] ⚔️ Match found! \(describeAssignment(assignment))")
 #endif
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "assignment_found",
+            message: "Convex returned a head-to-head assignment.",
+            matchId: assignment.matchId,
+            sessionCode: assignment.gameKitSessionCode,
+            playerGroup: nil,
+            mode: assignment.mode.rawValue,
+            metadata: assignmentDiagnosticMetadata(assignment)
+        )
         return assignment
     }
 
@@ -577,6 +613,13 @@ actor MultiplayerSession {
 #if DEBUG
         print("[Multiplayer] 🏠 Room created — code:\(code)")
 #endif
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "private_room_created",
+            message: "Private room created.",
+            mode: MatchmakingMode.privateRoom.rawValue,
+            metadata: ["roomCode": code, "ticketId": ticket.ticketId]
+        )
         return code
     }
 
@@ -593,6 +636,13 @@ actor MultiplayerSession {
 #if DEBUG
         print("[Multiplayer] 🚪 Joined room — code:\(normalized)")
 #endif
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "private_room_joined",
+            message: "Private room joined.",
+            mode: MatchmakingMode.privateRoom.rawValue,
+            metadata: ["roomCode": normalized, "ticketId": currentTicket?.ticketId ?? "nil"]
+        )
     }
 
     func waitForPrivateRoomMatch(timeout: TimeInterval) async throws -> MultiplayerMatchAssignment {
@@ -606,6 +656,22 @@ actor MultiplayerSession {
 #if DEBUG
         print("[Multiplayer] ❌ Cancelling — mode:\(currentMode?.rawValue ?? "?") room:\(currentRoomCode ?? "none")")
 #endif
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "cancel_requested",
+            level: "warning",
+            message: "Cancelling matchmaking session.",
+            mode: currentMode?.rawValue,
+            metadata: [
+                "ticketId": currentTicket?.ticketId ?? "nil",
+                "roomCode": currentRoomCode ?? "nil",
+                "battleRoyaleLobbyId": currentBattleRoyaleLobbyId ?? "nil",
+            ]
+        )
+        guard currentMode != nil || currentTicket != nil || currentRoomCode != nil || currentBattleRoyaleLobbyId != nil else {
+            return
+        }
+
         do {
             if let code = currentRoomCode {
                 try await client.leaveRoom(code: code)
@@ -722,22 +788,61 @@ actor MultiplayerSession {
         return result
     }
 
+    func abandonMatch(matchId: String) async {
+        do {
+            try await client.abandonMatch(matchId: matchId)
+        } catch {
+#if DEBUG
+            print("[Multiplayer] ⚠️ Match abandon failed (non-fatal): \(error)")
+#endif
+        }
+
+        currentMode = nil
+        currentTicket = nil
+        currentRoomCode = nil
+        currentBattleRoyaleLobbyId = nil
+    }
+
     private func waitForMatch(timeout: TimeInterval) async throws -> MultiplayerMatchAssignment {
         let deadline = Date().addingTimeInterval(timeout)
+        var pollCount = 0
 
         while Date() < deadline {
             try Task.checkCancellation()
+            pollCount += 1
 
             let assignment: MultiplayerMatchAssignment?
             do {
                 if let roomCode = currentRoomCode {
+                    print("[Multiplayer] Poll \(pollCount) checkRoom code:\(roomCode)")
                     assignment = try await client.checkRoom(code: roomCode)
                 } else {
+                    print("[Multiplayer] Poll \(pollCount) checkQueue ticket:\(currentTicket?.ticketId ?? "nil") mode:\(currentMode?.rawValue ?? "nil")")
+                    if let ticketId = currentTicket?.ticketId {
+                        do {
+                            let _ = try await client.heartbeatQueue(ticketId: ticketId)
+                        } catch {
+                            // best-effort heartbeat; continue polling
+                        }
+                    }
                     assignment = try await client.checkQueue(ticketId: currentTicket?.ticketId, mode: currentMode)
                 }
             } catch let error as CancellationError {
                 throw error
             } catch {
+                print("[Multiplayer] Poll \(pollCount) failed: \(error.localizedDescription)")
+                MultiplayerDiagnostics.record(
+                    category: "matchmaking",
+                    event: "poll_failed",
+                    level: "warning",
+                    message: error.localizedDescription,
+                    mode: currentMode?.rawValue,
+                    metadata: [
+                        "pollCount": String(pollCount),
+                        "ticketId": currentTicket?.ticketId ?? "nil",
+                        "roomCode": currentRoomCode ?? "nil",
+                    ]
+                )
                 guard shouldRetryMatchPolling(after: error) else {
                     throw error
                 }
@@ -747,13 +852,56 @@ actor MultiplayerSession {
             }
 
             if let assignment {
+                print("[Multiplayer] Poll \(pollCount) returned assignment — \(describeAssignment(assignment))")
                 return assignment
+            }
+
+            if pollCount == 1 || pollCount % 5 == 0 {
+                MultiplayerDiagnostics.record(
+                    category: "matchmaking",
+                    event: "poll_waiting",
+                    message: "No Convex assignment yet.",
+                    mode: currentMode?.rawValue,
+                    metadata: [
+                        "pollCount": String(pollCount),
+                        "ticketId": currentTicket?.ticketId ?? "nil",
+                        "roomCode": currentRoomCode ?? "nil",
+                        "remainingSeconds": String(format: "%.1f", max(0, deadline.timeIntervalSinceNow)),
+                    ]
+                )
             }
 
             try await Task.sleep(nanoseconds: 1_000_000_000)
         }
 
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "poll_timeout",
+            level: "error",
+            message: "Timed out waiting for Convex assignment.",
+            mode: currentMode?.rawValue,
+            metadata: [
+                "pollCount": String(pollCount),
+                "ticketId": currentTicket?.ticketId ?? "nil",
+                "roomCode": currentRoomCode ?? "nil",
+            ]
+        )
         throw MultiplayerSessionError.timeout
+    }
+
+    private func describeAssignment(_ assignment: MultiplayerMatchAssignment) -> String {
+        return "matchId:\(assignment.matchId) mode:\(assignment.mode.rawValue) ranked:\(assignment.isRanked) seed:\(assignment.seed) host:\(assignment.isGameKitHost) room:\(assignment.roomCode ?? "nil") opponent:\(assignment.opponentName) skin:\(assignment.opponentSkinId ?? "nil")"
+    }
+
+    private func assignmentDiagnosticMetadata(_ assignment: MultiplayerMatchAssignment) -> [String: String] {
+        [
+            "seed": String(assignment.seed),
+            "opponentName": assignment.opponentName,
+            "opponentSkinId": assignment.opponentSkinId ?? "nil",
+            "isRanked": String(assignment.isRanked),
+            "roomCode": assignment.roomCode ?? "nil",
+            "isGameKitHost": String(assignment.isGameKitHost),
+        ]
     }
 
     private func shouldRetryMatchPolling(after error: Error) -> Bool {

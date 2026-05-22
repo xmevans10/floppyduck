@@ -48,6 +48,65 @@ final class GameModelTests: XCTestCase {
 
         XCTAssertNil(assignment.opponentSkinId)
         XCTAssertNil(assignment.gameKitSessionCode)
+        XCTAssertFalse(assignment.isGameKitHost)
+    }
+
+    func testConvexAssignmentParsesRealtimeMetadataAndHostRole() async {
+        let client = ConvexClient()
+        let value: [String: Any] = [
+            "found": true,
+            "assignment": [
+                "matchId": "match-42",
+                "seed": 8675309,
+                "opponentName": "Rival",
+                "opponentSkinId": "robot",
+                "gameKitSessionCode": "123456",
+                "mode": "ranked",
+                "isRanked": true,
+                "localPlayerSlot": "p1",
+                "isGameKitHost": true,
+            ] as [String: Any],
+        ]
+
+        let assignment = await client.parseAssignment(
+            value,
+            fallbackMode: .quickPlay,
+            fallbackRoomCode: nil
+        )
+
+        XCTAssertEqual(assignment?.matchId, "match-42")
+        XCTAssertEqual(assignment?.seed, 8675309)
+        XCTAssertEqual(assignment?.opponentSkinId, "robot")
+        XCTAssertEqual(assignment?.gameKitSessionCode, "123456")
+        XCTAssertEqual(assignment?.mode, .ranked)
+        XCTAssertTrue(assignment?.isRanked == true)
+        XCTAssertTrue(assignment?.isGameKitHost == true)
+    }
+
+    @MainActor
+    func testStartHeadToHeadBuildsGameKitConfig() {
+        let manager = GameManager(initialStats: PlayerStats())
+        let assignment = MultiplayerMatchAssignment(
+            matchId: "match-host",
+            seed: 12345,
+            opponentName: "Rival",
+            opponentSkinId: "robot",
+            gameKitSessionCode: "654321",
+            mode: .quickPlay,
+            isRanked: false,
+            roomCode: nil,
+            isGameKitHost: true
+        )
+
+        manager.startHeadToHead(matchAssignment: assignment)
+
+        let config = manager.activeGameConfig
+        XCTAssertEqual(config?.mode, .headToHead)
+        XCTAssertEqual(config?.seed, 12345)
+        XCTAssertFalse(config?.powerUpsEnabled ?? true)
+        XCTAssertEqual(config?.gameKitSessionCode, "654321")
+        XCTAssertTrue(config?.isGameKitHost == true)
+        XCTAssertNotNil(manager.gameKitSession)
     }
 
     func testMultiplayerMatchStateDefaultsOpponentSkin() {
@@ -72,6 +131,23 @@ final class GameModelTests: XCTestCase {
 
         XCTAssertEqual(first, second)
         XCTAssertTrue((0...Int(Int32.max)).contains(first))
+    }
+
+    func testGhostDuckPositionStructProperties() {
+        let pos = GhostDuckPosition(
+            x: 42.5,
+            y: 180.25,
+            velY: -12.75,
+            rotation: 0.35,
+            wingPhase: 2,
+            score: 9
+        )
+        XCTAssertEqual(pos.x, 42.5)
+        XCTAssertEqual(pos.y, 180.25)
+        XCTAssertEqual(pos.velY, -12.75)
+        XCTAssertEqual(pos.rotation, 0.35)
+        XCTAssertEqual(pos.wingPhase, 2)
+        XCTAssertEqual(pos.score, 9)
     }
 
     func testBattleRoyaleModeMetadata() {

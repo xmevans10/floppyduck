@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Onboarding Auth Action (file-private)
 
@@ -80,6 +81,8 @@ struct AuthOnboardingView: View {
                             }
                         },
                         statusMessage: auth.statusMessage,
+                        showGameCenterSettingsAction: auth.needsGameCenterSettingsRecovery,
+                        onOpenSettings: openSettings,
                         onBack: {
                             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                                 currentPage = .howToPlay
@@ -100,6 +103,14 @@ struct AuthOnboardingView: View {
                     .padding(.bottom, 28)
             }
         }
+        .onAppear {
+            auth.refreshGameCenterAuthenticationState(reason: "onboarding_appear")
+        }
+    }
+
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // MARK: - Cloud Layer (same pixel-art clouds as HomeView)
@@ -402,6 +413,8 @@ private struct AuthChoicePage: View {
     let onGameCenter: () -> Void
     let onGuest: () -> Void
     let statusMessage: String?
+    let showGameCenterSettingsAction: Bool
+    let onOpenSettings: () -> Void
     let onBack: () -> Void
 
     @State private var buttonsAppeared = false
@@ -481,16 +494,37 @@ private struct AuthChoicePage: View {
                     .padding(.top, 16)
 
                 if let statusMessage {
-                    Text(statusMessage)
-                        .font(.custom(GK.pixelFontName, size: 8))
-                        .foregroundColor(GK.Colors.scoreYellow)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: 1)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: 1)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: -1)
-                        .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: -1)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 30)
-                        .padding(.top, 8)
+                    VStack(spacing: 8) {
+                        Text(statusMessage)
+                            .font(.custom(GK.pixelFontName, size: 8))
+                            .foregroundColor(GK.Colors.scoreYellow)
+                            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: 1)
+                            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: 1)
+                            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 1, y: -1)
+                            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -1, y: -1)
+                            .multilineTextAlignment(.center)
+
+                        if showGameCenterSettingsAction {
+                            Button(action: onOpenSettings) {
+                                HStack(spacing: 6) {
+                                    Image(uiImage: PixelIconFactory.shared.image(for: .settings, pixelScale: 1.8))
+                                        .interpolation(.none)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 14, height: 14)
+                                    Text("OPEN SETTINGS")
+                                        .font(.custom(GK.pixelFontName, size: 8))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(GK.Colors.buttonBlue))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.top, 8)
                 }
 
                 Spacer()

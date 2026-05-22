@@ -23,6 +23,7 @@ protocol MultiplayerBackendClient: Sendable {
 
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket
     func leaveMatchmakingQueue(ticketId: String?) async throws
+    func heartbeatQueue(ticketId: String) async throws -> Bool
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment?
 
     func createRoom() async throws -> QueueTicket
@@ -38,6 +39,19 @@ protocol MultiplayerBackendClient: Sendable {
                      mode: MatchmakingMode,
                      fallbackOpponentScore: Int,
                      opponentName: String?) async throws -> MultiplayerMatchResult
+
+    func abandonMatch(matchId: String) async throws
+
+    func upsertLivePosition(matchId: String,
+                            x: Double, y: Double,
+                            velY: Double, rotation: Double,
+                            wingPhase: Int, score: Int) async throws
+    func getOpponentPosition(matchId: String) async throws -> LivePosition?
+    func markReady(matchId: String) async throws
+    func scheduleStart(matchId: String, startAtMs: Double) async throws
+    func getReadyState(matchId: String) async throws -> ReadyState
+
+    func recordDiagnosticEvent(_ event: MultiplayerDiagnosticEvent) async throws
 
     func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment
     func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int?
@@ -81,6 +95,87 @@ extension MultiplayerBackendClient {
                                   wingPhase: Int) async throws {}
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
     func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] { [] }
+    func abandonMatch(matchId: String) async throws {}
+    func upsertLivePosition(matchId: String,
+                            x: Double, y: Double,
+                            velY: Double, rotation: Double,
+                            wingPhase: Int, score: Int) async throws {}
+    func getOpponentPosition(matchId: String) async throws -> LivePosition? { nil }
+    func markReady(matchId: String) async throws {}
+    func scheduleStart(matchId: String, startAtMs: Double) async throws {}
+    func getReadyState(matchId: String) async throws -> ReadyState { ReadyState(p1Ready: nil, p2Ready: nil, startAtMs: nil, status: "active") }
+    func recordDiagnosticEvent(_ event: MultiplayerDiagnosticEvent) async throws {}
+}
+
+struct MultiplayerDiagnosticEvent: Sendable {
+    let category: String
+    let event: String
+    let level: String
+    let message: String?
+    let matchId: String?
+    let sessionCode: String?
+    let playerGroup: Int?
+    let mode: String?
+    let metadata: [String: String]
+
+    init(category: String,
+         event: String,
+         level: String = "info",
+         message: String? = nil,
+         matchId: String? = nil,
+         sessionCode: String? = nil,
+         playerGroup: Int? = nil,
+         mode: String? = nil,
+         metadata: [String: String] = [:]) {
+        self.category = category
+        self.event = event
+        self.level = level
+        self.message = message
+        self.matchId = matchId
+        self.sessionCode = sessionCode
+        self.playerGroup = playerGroup
+        self.mode = mode
+        self.metadata = metadata
+    }
+}
+
+enum MultiplayerDiagnostics {
+    static func record(category: String,
+                       event: String,
+                       level: String = "info",
+                       message: String? = nil,
+                       matchId: String? = nil,
+                       sessionCode: String? = nil,
+                       playerGroup: Int? = nil,
+                       mode: String? = nil,
+                       metadata: [String: String] = [:],
+                       echo: Bool = false) {
+        if echo {
+            print("[Diagnostics] \(category).\(event) \(message ?? "")")
+        }
+
+        let diagnostic = MultiplayerDiagnosticEvent(
+            category: category,
+            event: event,
+            level: level,
+            message: message,
+            matchId: matchId,
+            sessionCode: sessionCode,
+            playerGroup: playerGroup,
+            mode: mode,
+            metadata: metadata
+        )
+
+        Task.detached(priority: .utility) {
+            do {
+                try await ConvexClient.shared.recordDiagnosticEvent(diagnostic)
+            } catch {
+#if DEBUG
+                print("[Diagnostics] Upload failed: \(error.localizedDescription)")
+#endif
+            }
+        }
+    }
 }
 
 struct ConvexAuthContext: Sendable {
@@ -441,6 +536,14 @@ actor ConvexClient: MultiplayerBackendClient {
         _ = try await mutationRaw("matchmaking:leaveQueue", args: args)
     }
 
+    func heartbeatQueue(ticketId: String) async throws -> Bool {
+        let value = try await mutationRaw("matchmaking:heartbeatQueue", args: ["ticketId": ticketId])
+        if let dict = dictionary(from: value) {
+            return bool(in: dict, keys: ["found", "ok"]) ?? false
+        }
+        return false
+    }
+
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? {
         var args: [String: Any] = [:]
         if let ticketId {
@@ -580,6 +683,99 @@ actor ConvexClient: MultiplayerBackendClient {
         )
     }
 
+    func abandonMatch(matchId: String) async throws {
+        _ = try await mutationRaw("matches:abandonMatch", args: [
+            "matchId": matchId,
+        ])
+    }
+
+    func upsertLivePosition(matchId: String,
+                            x: Double, y: Double,
+                            velY: Double, rotation: Double,
+                            wingPhase: Int, score: Int) async throws {
+        _ = try await mutationRaw("livePositions:upsertPosition", args: [
+            "matchId": matchId,
+            "x": x,
+            "y": y,
+            "velY": velY,
+            "rotation": rotation,
+            "wingPhase": wingPhase,
+            "score": score,
+        ])
+    }
+
+    func getOpponentPosition(matchId: String) async throws -> LivePosition? {
+        let value = try await queryRaw("livePositions:getOpponentPosition", args: ["matchId": matchId])
+        guard let dict = dictionary(from: value) else { return nil }
+
+        return LivePosition(
+            x: double(in: dict, keys: ["x"]) ?? 0,
+            y: double(in: dict, keys: ["y"]) ?? 0,
+            velY: double(in: dict, keys: ["velY"]) ?? 0,
+            rotation: double(in: dict, keys: ["rotation"]) ?? 0,
+            wingPhase: int(in: dict, keys: ["wingPhase"]) ?? 0,
+            score: int(in: dict, keys: ["score"]) ?? 0
+        )
+    }
+
+    func markReady(matchId: String) async throws {
+        _ = try await mutationRaw("matches:markReady", args: [
+            "matchId": matchId,
+        ])
+    }
+
+    func scheduleStart(matchId: String, startAtMs: Double) async throws {
+        _ = try await mutationRaw("matches:scheduleStart", args: [
+            "matchId": matchId,
+            "startAtMs": startAtMs,
+        ])
+    }
+
+    func getReadyState(matchId: String) async throws -> ReadyState {
+        let value = try await queryRaw("matches:getReadyState", args: ["matchId": matchId])
+        guard let dict = dictionary(from: value) else {
+            return ReadyState(p1Ready: nil, p2Ready: nil, startAtMs: nil, status: "active")
+        }
+
+        return ReadyState(
+            p1Ready: double(in: dict, keys: ["p1Ready"]),
+            p2Ready: double(in: dict, keys: ["p2Ready"]),
+            startAtMs: double(in: dict, keys: ["startAtMs"]),
+            status: string(in: dict, keys: ["status"]) ?? "active"
+        )
+    }
+
+    func recordDiagnosticEvent(_ event: MultiplayerDiagnosticEvent) async throws {
+        var args: [String: Any] = [
+            "category": event.category,
+            "event": event.event,
+            "level": event.level,
+        ]
+
+        if let message = event.message {
+            args["message"] = message
+        }
+        if let matchId = event.matchId {
+            args["matchId"] = matchId
+        }
+        if let sessionCode = event.sessionCode {
+            args["sessionCode"] = sessionCode
+        }
+        if let playerGroup = event.playerGroup {
+            args["playerGroup"] = playerGroup
+        }
+        if let mode = event.mode {
+            args["mode"] = mode
+        }
+        if !event.metadata.isEmpty {
+            args["metadata"] = event.metadata
+                .sorted { $0.key < $1.key }
+                .map { ["key": $0.key, "value": $0.value] }
+        }
+
+        _ = try await mutationRaw("diagnostics:recordEvent", args: args)
+    }
+
     // MARK: - Battle Royale
 
     func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment {
@@ -648,6 +844,7 @@ actor ConvexClient: MultiplayerBackendClient {
             entries.append(own)
         }
 
+        entries.sort { $0.rank < $1.rank }
         return entries
     }
 
@@ -672,6 +869,8 @@ actor ConvexClient: MultiplayerBackendClient {
            !entries.contains(where: { $0.id == own.id }) {
             entries.append(own)
         }
+
+        entries.sort { $0.rank < $1.rank }
 
         print("[ConvexClient] getHighScoreLeaderboard rawValue type: \(type(of: value)), items count: \(items.count), parsed entries: \(entries.count)")
         if items.count > 0 && entries.isEmpty {
@@ -853,9 +1052,9 @@ actor ConvexClient: MultiplayerBackendClient {
         )
     }
 
-    private func parseAssignment(_ value: Any?,
-                                 fallbackMode: MatchmakingMode?,
-                                 fallbackRoomCode: String?) -> MultiplayerMatchAssignment? {
+    func parseAssignment(_ value: Any?,
+                         fallbackMode: MatchmakingMode?,
+                         fallbackRoomCode: String?) -> MultiplayerMatchAssignment? {
         if let dict = dictionary(from: value) {
             if let found = bool(in: dict, keys: ["found", "hasMatch"]), !found {
                 return nil
@@ -877,6 +1076,9 @@ actor ConvexClient: MultiplayerBackendClient {
             let ranked = bool(in: source, keys: ["isRanked", "ranked"]) ?? parsedMode.isRanked
             let roomCode = string(in: source, keys: ["roomCode", "room_code", "code"]) ?? fallbackRoomCode
             let gameKitCode = string(in: source, keys: ["gameKitSessionCode", "sessionCode", "gameKitCode"])
+            let localSlot = string(in: source, keys: ["localPlayerSlot", "playerSlot", "slot", "side"])?.lowercased()
+            let isHost = bool(in: source, keys: ["isGameKitHost", "gameKitHost", "isHost"])
+                ?? (localSlot == "p1" || localSlot == "host")
 
             return MultiplayerMatchAssignment(
                 matchId: matchId,
@@ -886,7 +1088,8 @@ actor ConvexClient: MultiplayerBackendClient {
                 gameKitSessionCode: gameKitCode,
                 mode: parsedMode,
                 isRanked: ranked,
-                roomCode: roomCode
+                roomCode: roomCode,
+                isGameKitHost: isHost
             )
         }
 
@@ -899,7 +1102,8 @@ actor ConvexClient: MultiplayerBackendClient {
                 gameKitSessionCode: nil,
                 mode: fallbackMode,
                 isRanked: fallbackMode.isRanked,
-                roomCode: fallbackRoomCode
+                roomCode: fallbackRoomCode,
+                isGameKitHost: false
             )
         }
 

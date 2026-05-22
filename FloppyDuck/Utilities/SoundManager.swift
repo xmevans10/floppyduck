@@ -1,4 +1,5 @@
 import AVFoundation
+import UIKit
 
 /// Available game sound effects — all synthesized from waveforms, no audio assets needed.
 enum GameSound: String {
@@ -44,6 +45,9 @@ final class SoundManager {
     private var themePlayTracks: [String: AVAudioPlayer] = [:]
     /// Per-theme synthesized menu music (keyed by theme rawValue).
     private var themeMenuTracks: [String: AVAudioPlayer] = [:]
+    /// Bundled music players keyed by file name. Preloaded during splash.
+    private var bundledMusicPlayers: [String: AVAudioPlayer] = [:]
+    private var multiplayerCountdownPlayer: AVAudioPlayer?
     /// Currently active background theme for music selection.
     private var activeTheme: BackgroundTheme = .day
 
@@ -73,6 +77,8 @@ final class SoundManager {
     private let audioQueue = DispatchQueue(label: "com.floppyduck.audio", qos: .userInitiated)
     private var didPrepareAudio = false
     private var didSetupSession = false
+    private var wantsMenuMusic = false
+    private var wantsPlayMusic = false
 
     /// Cached preference — avoids UserDefaults dictionary lookup on every play() call.
     private var _isEnabled: Bool = true
@@ -94,6 +100,25 @@ final class SoundManager {
         } else {
             _sfxVolume = 1.0
         }
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppBecameActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMediaServicesWereReset),
+            name: AVAudioSession.mediaServicesWereResetNotification,
+            object: AVAudioSession.sharedInstance()
+        )
     }
 
     /// Warm up the audio engine (call at app launch).
@@ -101,6 +126,42 @@ final class SoundManager {
         audioQueue.async { [weak self] in
             guard let self else { return }
             self.prepareIfNeeded()
+        }
+    }
+
+    /// Build all gameplay audio that would otherwise be created lazily during
+    /// the first run after install/update.
+    func preWarmGameplayAssets(completion: (() -> Void)? = nil) {
+        audioQueue.async { [weak self] in
+            guard let self else {
+                DispatchQueue.main.async { completion?() }
+                return
+            }
+            self.prepareIfNeeded()
+
+            for skin in DuckSkin.allCases {
+                self.buildSkinVariants(for: skin)
+            }
+
+            for theme in BackgroundTheme.allCases {
+                if let fileName = theme.gameplayMusicFile {
+                    _ = self.cachedBundledMusicPlayer(fileName: fileName, volume: self.effectivePlayVolume)
+                } else {
+                    self.ensureThemeMusic(for: theme)
+                }
+                if let fileName = theme.menuMusicFile {
+                    _ = self.cachedBundledMusicPlayer(fileName: fileName, volume: self.effectiveMenuVolume)
+                }
+            }
+
+            for fileName in Self.homeTrackFiles {
+                _ = self.cachedBundledMusicPlayer(fileName: fileName, volume: self.effectiveMenuVolume)
+            }
+            self.prepareMultiplayerCountdown()
+
+            DispatchQueue.main.async {
+                completion?()
+            }
         }
     }
 
@@ -165,11 +226,27 @@ final class SoundManager {
         }
     }
 
+    func playMultiplayerCountdown() {
+        guard isEnabled else { return }
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            self.prepareIfNeeded()
+            self.prepareMultiplayerCountdown()
+            guard let player = self.multiplayerCountdownPlayer else { return }
+            player.stop()
+            player.currentTime = 0
+            player.volume = 0.45 * self._sfxVolume
+            player.play()
+        }
+    }
+
     func startMenuMusic() {
         audioQueue.async { [weak self] in
             guard let self else { return }
             self.prepareIfNeeded()
             guard self.isEnabled else { return }
+            self.wantsMenuMusic = true
+            self.wantsPlayMusic = false
             // Stop any currently playing menu music
             self.bgmPlayer?.stop()
 
@@ -178,11 +255,10 @@ final class SoundManager {
             let file = files[self.homeTrackIndex % files.count]
             self.homeTrackIndex += 1
 
-            if let url = Bundle.main.url(forResource: file, withExtension: "m4a"),
-               let player = try? AVAudioPlayer(contentsOf: url) {
+            if let player = self.cachedBundledMusicPlayer(fileName: file, volume: self.effectiveMenuVolume) {
                 player.numberOfLoops = -1
                 player.volume = self.effectiveMenuVolume
-                player.prepareToPlay()
+                player.currentTime = 0
                 player.play()
                 self.bgmPlayer = player
                 return
@@ -201,7 +277,9 @@ final class SoundManager {
 
     func stopMenuMusic() {
         audioQueue.async { [weak self] in
-            self?.bgmPlayer?.stop()
+            guard let self else { return }
+            self.wantsMenuMusic = false
+            self.bgmPlayer?.stop()
         }
     }
 
@@ -212,11 +290,29 @@ final class SoundManager {
     private var effectiveMenuVolume: Float { _musicVolume * Self.normalizedMusicGain }
     private var effectivePlayVolume: Float { _musicVolume * Self.normalizedMusicGain }
 
+    private func cachedBundledMusicPlayer(fileName: String, volume: Float) -> AVAudioPlayer? {
+        if let player = bundledMusicPlayers[fileName] {
+            player.volume = volume
+            return player
+        }
+        guard let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
+              let player = try? AVAudioPlayer(contentsOf: url) else {
+            return nil
+        }
+        player.numberOfLoops = -1
+        player.volume = volume
+        player.prepareToPlay()
+        bundledMusicPlayers[fileName] = player
+        return player
+    }
+
     func startPlayMusic() {
         audioQueue.async { [weak self] in
             guard let self else { return }
             self.prepareIfNeeded()
             guard self.isEnabled else { return }
+            self.wantsPlayMusic = true
+            self.wantsMenuMusic = false
             // Stop menu BGM before starting gameplay BGM to prevent overlap
             self.bgmPlayer?.stop()
             // Stop any currently playing gameplay music
@@ -226,11 +322,10 @@ final class SoundManager {
 
             // Every theme now has a bundled gameplay track — no synthesized fallback needed.
             if let fileName = theme.gameplayMusicFile,
-               let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
-               let player = try? AVAudioPlayer(contentsOf: url) {
+               let player = self.cachedBundledMusicPlayer(fileName: fileName, volume: self.effectivePlayVolume) {
                 player.numberOfLoops = -1
                 player.volume = self.effectivePlayVolume
-                player.prepareToPlay()
+                player.currentTime = 0
                 player.play()
                 self.playBgmPlayer = player
                 return
@@ -249,7 +344,9 @@ final class SoundManager {
 
     func stopPlayMusic() {
         audioQueue.async { [weak self] in
-            self?.playBgmPlayer?.stop()
+            guard let self else { return }
+            self.wantsPlayMusic = false
+            self.playBgmPlayer?.stop()
         }
     }
 
@@ -319,6 +416,50 @@ final class SoundManager {
         }
     }
 
+    @objc private func handleAppBecameActive() {
+        audioQueue.async { [weak self] in
+            self?.restoreAudioAfterInterruption()
+        }
+    }
+
+    @objc private func handleAudioInterruption(_ notification: Notification) {
+        guard let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: rawType) else {
+            return
+        }
+
+        guard type == .ended else { return }
+        audioQueue.async { [weak self] in
+            self?.restoreAudioAfterInterruption()
+        }
+    }
+
+    @objc private func handleMediaServicesWereReset() {
+        audioQueue.async { [weak self] in
+            guard let self else { return }
+            self.didSetupSession = false
+            self.didPrepareAudio = false
+            self.players.removeAll()
+            self.playerPools.removeAll()
+            self.playerPoolIndexes.removeAll()
+            self.soundData.removeAll()
+            self.bgmPlayer = nil
+            self.playBgmPlayer = nil
+            self.menuTracks.removeAll()
+            self.playTracks.removeAll()
+            self.themePlayTracks.removeAll()
+            self.themeMenuTracks.removeAll()
+            self.bundledMusicPlayers.removeAll()
+            self.multiplayerCountdownPlayer = nil
+            self.quackPlayers.removeAll()
+            self.skinPlayerPools.removeAll()
+            self.skinPoolIndexes.removeAll()
+            self.skinBaseVolumes.removeAll()
+            self.sfxBaseVolumes.removeAll()
+            self.restoreAudioAfterInterruption()
+        }
+    }
+
     // MARK: - Setup
 
     private func prepareIfNeeded() {
@@ -332,10 +473,58 @@ final class SoundManager {
         loadQuackSounds()
     }
 
-    private func setupSession() {
-        guard !didSetupSession else { return }
+    private func setupSession(activate: Bool = false) {
+        guard !didSetupSession || activate else { return }
         didSetupSession = true
         try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        if activate {
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
+    }
+
+    private func restoreAudioAfterInterruption() {
+        setupSession(activate: true)
+        prepareIfNeeded()
+        refreshPreparedPlayers()
+
+        guard isEnabled else { return }
+        if wantsPlayMusic {
+            bgmPlayer?.stop()
+            if playBgmPlayer == nil {
+                if let fileName = activeTheme.gameplayMusicFile {
+                    playBgmPlayer = cachedBundledMusicPlayer(fileName: fileName, volume: effectivePlayVolume)
+                } else if !playTracks.isEmpty {
+                    playBgmPlayer = playTracks.first
+                }
+            }
+            playBgmPlayer?.volume = effectivePlayVolume
+            if playBgmPlayer?.isPlaying == false {
+                playBgmPlayer?.play()
+            }
+        } else if wantsMenuMusic {
+            playBgmPlayer?.stop()
+            if bgmPlayer == nil {
+                bgmPlayer = cachedBundledMusicPlayer(fileName: Self.homeTrackFiles[homeTrackIndex % Self.homeTrackFiles.count], volume: effectiveMenuVolume)
+                    ?? menuTracks.first
+            }
+            bgmPlayer?.volume = effectiveMenuVolume
+            if bgmPlayer?.isPlaying == false {
+                bgmPlayer?.play()
+            }
+        }
+    }
+
+    private func refreshPreparedPlayers() {
+        players.values.forEach { $0.prepareToPlay() }
+        playerPools.values.flatMap { $0 }.forEach { $0.prepareToPlay() }
+        skinPlayerPools.values.flatMap { $0 }.forEach { $0.prepareToPlay() }
+        menuTracks.forEach { $0.prepareToPlay() }
+        playTracks.forEach { $0.prepareToPlay() }
+        bundledMusicPlayers.values.forEach { $0.prepareToPlay() }
+        themePlayTracks.values.forEach { $0.prepareToPlay() }
+        themeMenuTracks.values.forEach { $0.prepareToPlay() }
+        multiplayerCountdownPlayer?.prepareToPlay()
+        quackPlayers.forEach { $0.prepareToPlay() }
     }
 
     private func buildSounds() {
@@ -424,6 +613,16 @@ final class SoundManager {
             }
         }
         playBgmPlayer = playTracks.first
+    }
+
+    private func prepareMultiplayerCountdown() {
+        guard multiplayerCountdownPlayer == nil else { return }
+        let url = Bundle.main.url(forResource: "multiplayer_countdown", withExtension: "wav")
+            ?? Bundle.main.url(forResource: "multiplayer_countdown", withExtension: "wav", subdirectory: "Audio")
+        guard let url, let player = try? AVAudioPlayer(contentsOf: url) else { return }
+        player.volume = 0.45 * _sfxVolume
+        player.prepareToPlay()
+        multiplayerCountdownPlayer = player
     }
 
     // MARK: - WAV Builder
@@ -788,6 +987,9 @@ final class SoundManager {
         case .squirrel:
             // Quick chitter
             return (wav(sine(freq: 1100, dur: 0.03, decay: 0.04) + sine(freq: 1500, dur: 0.02, decay: 0.03)), 0.18)
+        case .bearskin:
+            // Crisp ceremonial flap.
+            return (wav(chirp(f0: 260, f1: 520, dur: 0.06)), 0.22)
         case .classic:
             return (flapWav(), 0.22)
         }
@@ -844,6 +1046,9 @@ final class SoundManager {
         case .squirrel:
             // High chittering descend
             return (wav(chirp(f0: 900, f1: 120, dur: 0.22)), 0.32)
+        case .bearskin:
+            // Brass-band style falloff.
+            return (wav(chirp(f0: 620, f1: 120, dur: 0.24) + sine(freq: 310, dur: 0.14, decay: 0.18)), 0.34)
         case .classic:
             return (deathWav(), 0.36)
         }

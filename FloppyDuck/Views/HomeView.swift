@@ -74,6 +74,9 @@ struct HomeView: View {
             }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            auth.refreshGameCenterAuthenticationState(reason: "home_appear")
+        }
         .task {
             activeAnnouncements = (try? await ConvexClient.shared.fetchAnnouncements()) ?? []
 

@@ -8,6 +8,13 @@ const identityArgs = {
   sessionToken: v.optional(v.string()),
 };
 
+// How recent a queue entry's heartbeat must be to be eligible for matching.
+// MUST be tighter than the iOS poll-cadence × ~2 so a player who's about to
+// time out client-side is not paired server-side at the exact moment they
+// give up (otherwise their match becomes orphaned — see the recovery branch
+// in `joinQueue` below).
+const FRESHNESS_MS = 5_000;
+
 function randomSeed() {
   return Math.floor(Math.random() * 999_999) + 1;
 }
@@ -43,7 +50,26 @@ export const joinQueue = mutation({
 
     const active = existing.find((entry) => entry.status === "searching" && entry.mode === args.mode);
     if (active) {
+      await ctx.db.patch(active._id, { lastSeenAt: Date.now() });
       return { ticketId: active.ticketId };
+    }
+
+    // Recovery branch: the user's last queue entry for this mode is already
+    // "matched" but their client never picked up the assignment (e.g. their
+    // poll timed out client-side ~milliseconds before our matchmaker paired
+    // them). If the corresponding match is still "active", hand the original
+    // ticket back so the next `checkQueue` call returns the assignment — the
+    // partner is otherwise stranded waiting in GameKit for someone who never
+    // arrives.
+    const matched = existing.find(
+      (entry) => entry.status === "matched" && entry.matchId && entry.mode === args.mode,
+    );
+    if (matched && matched.matchId) {
+      const match = await ctx.db.get(matched.matchId);
+      if (match && match.status === "active") {
+        await ctx.db.patch(matched._id, { lastSeenAt: Date.now() });
+        return { ticketId: matched.ticketId };
+      }
     }
 
     const ticketId = args.ticketId ?? crypto.randomUUID();
@@ -55,13 +81,21 @@ export const joinQueue = mutation({
       status: "searching",
       ticketId,
       createdAt: now,
+      lastSeenAt: now,
     });
+
+    const cutoff = now - FRESHNESS_MS;
 
     const opponent = await ctx.db
       .query("matchmakingQueue")
       .withIndex("by_mode_status_createdAt", (q) => q.eq("mode", args.mode).eq("status", "searching"))
       .order("asc")
-      .filter((q) => q.neq(q.field("userId"), user._id))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("userId"), user._id),
+          q.gte(q.field("lastSeenAt"), cutoff),
+        ),
+      )
       .first();
 
     if (opponent) {
@@ -122,6 +156,26 @@ export const leaveQueue = mutation({
   },
 });
 
+export const heartbeatQueue = mutation({
+  args: {
+    ticketId: v.string(),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const queueEntry = await ctx.db
+      .query("matchmakingQueue")
+      .withIndex("by_ticketId", (q) => q.eq("ticketId", args.ticketId))
+      .first();
+
+    if (!queueEntry || queueEntry.status !== "searching") {
+      return { found: false };
+    }
+
+    await ctx.db.patch(queueEntry._id, { lastSeenAt: Date.now() });
+    return { found: true };
+  },
+});
+
 export const checkQueue = query({
   args: {
     ticketId: v.optional(v.string()),
@@ -163,6 +217,7 @@ export const checkQueue = query({
 
     const opponentId = match.p1UserId === currentUserId ? match.p2UserId : match.p1UserId;
     const opponent = await ctx.db.get(opponentId);
+    const localPlayerSlot = match.p1UserId === currentUserId ? "p1" : "p2";
 
     return {
       found: true,
@@ -172,6 +227,8 @@ export const checkQueue = query({
         opponentName: opponent?.username ?? "OPPONENT",
         opponentSkinId: opponent?.selectedSkin ?? undefined,
         gameKitSessionCode: match.gameKitSessionCode ?? undefined,
+        localPlayerSlot,
+        isGameKitHost: localPlayerSlot === "p1",
         mode: match.mode,
         isRanked: match.mode === "ranked",
       },
@@ -327,6 +384,7 @@ export const checkRoom = query({
 
     const opponentId = match.p1UserId === user._id ? match.p2UserId : match.p1UserId;
     const opponent = await ctx.db.get(opponentId);
+    const localPlayerSlot = match.p1UserId === user._id ? "p1" : "p2";
 
     return {
       found: true,
@@ -336,6 +394,8 @@ export const checkRoom = query({
         opponentName: opponent?.username ?? "OPPONENT",
         opponentSkinId: opponent?.selectedSkin ?? undefined,
         gameKitSessionCode: match.gameKitSessionCode ?? undefined,
+        localPlayerSlot,
+        isGameKitHost: localPlayerSlot === "p1",
         mode: "private",
         isRanked: false,
         roomCode: code,

@@ -272,6 +272,9 @@ struct SettingsView: View {
         } message: {
             Text("This will permanently delete your account, all stats, purchase history, and cloud data. You will need Game Center to sign in again. This cannot be undone.")
         }
+        .onAppear {
+            auth.refreshGameCenterAuthenticationState(reason: "settings_appear")
+        }
         .onChange(of: manager.soundEnabled) { _, _ in
             SoundManager.shared.refreshAudioPreference()
         }

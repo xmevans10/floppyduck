@@ -48,6 +48,7 @@ final class PowerUpController {
     // Expiry warning state — tracks which power-ups are in "wearing off" phase
     // so we only trigger the warning animation once per power-up.
     private var expiryWarningActive: Set<UUID> = []
+    private let duckExpiryBlinkKey = "expiryWarn_duckBlink"
 
     // MARK: - Callbacks
 
@@ -267,8 +268,7 @@ final class PowerUpController {
         // Mystery box: resolve to a random power-up, but defer activation
         // so the slot-machine animation can play first.
         if kind == .mysteryBox {
-            let candidates = PowerUpKind.allCases.filter { $0 != .mysteryBox }
-            let resolvedKind = candidates.randomElement() ?? .shield
+            let resolvedKind = PowerUpKind.randomMysteryBoxReward()
 
             if let callback = onMysteryBoxCollected {
                 callback(resolvedKind) { [weak self] in
@@ -376,7 +376,7 @@ final class PowerUpController {
 
     /// Maintains ghost transparency each frame while ghostDuck is active.
     func applyGhostAlpha() {
-        if hasActive(.ghostDuck) {
+        if hasActive(.ghostDuck), duck?.action(forKey: duckExpiryBlinkKey) == nil {
             duck?.alpha = 0.4
         }
     }
@@ -398,6 +398,7 @@ final class PowerUpController {
 
         duck?.alpha = 1.0
         duck?.colorBlendFactor = 0
+        duck?.removeAction(forKey: duckExpiryBlinkKey)
         duck?.removeAction(forKey: "duckScaleAnim")
         duck?.setScale(1.0)
         removeShieldVisual()
@@ -419,6 +420,8 @@ final class PowerUpController {
         expiryWarningActive.removeAll()
         removeShieldVisual()
         removeGhostGlow()
+        duck?.removeAction(forKey: duckExpiryBlinkKey)
+        duck?.alpha = 1.0
         duck?.removeAction(forKey: "duckScaleAnim")
         duck?.setScale(1.0)
         shieldCooldown = false
@@ -457,8 +460,8 @@ final class PowerUpController {
     // MARK: - Deactivation
 
     private func deactivate(_ powerUp: ActivePowerUp) {
-        stopExpiryWarning(for: powerUp.kind)
         expiryWarningActive.remove(powerUp.id)
+        stopExpiryWarning(for: powerUp.kind)
 
         switch powerUp.kind {
         case .shield:
@@ -494,15 +497,11 @@ final class PowerUpController {
     /// Dispatches to the correct per-type warning animation.
     private func startExpiryWarning(for powerUp: ActivePowerUp) {
         guard let duck else { return }
+        startDuckExpiryBlink(on: duck)
 
         switch powerUp.kind {
         case .dizzyDuck:
-            // Blink: rapid alpha flashing
-            let blink = SKAction.sequence([
-                SKAction.fadeAlpha(to: 0.25, duration: 0.1),
-                SKAction.fadeAlpha(to: 1.0, duration: 0.1),
-            ])
-            duck.run(SKAction.repeatForever(blink), withKey: "expiryWarn_dizzyDuck")
+            break  // Shared duck blink handles opacity warning.
 
         case .slowMotion:
             // Speed up wing flap to signal normal speed returning
@@ -511,12 +510,7 @@ final class PowerUpController {
             duck.run(SKAction.repeatForever(fastWing), withKey: "expiryWarn_slowMotion")
 
         case .ghostDuck:
-            // Flicker: oscillate between ghost-transparent and solid
-            let flicker = SKAction.sequence([
-                SKAction.fadeAlpha(to: 0.8, duration: 0.12),
-                SKAction.fadeAlpha(to: 0.2, duration: 0.12),
-            ])
-            duck.run(SKAction.repeatForever(flicker), withKey: "expiryWarn_ghostDuck")
+            break  // Shared duck blink handles opacity warning.
 
         case .speedBurst:
             // Vibrate/shake horizontally
@@ -606,10 +600,16 @@ final class PowerUpController {
         guard let duck else { return }
 
         duck.removeAction(forKey: "expiryWarn_\(kind.rawValue)")
+        if expiryWarningActive.isEmpty {
+            duck.removeAction(forKey: duckExpiryBlinkKey)
+            restoreDuckAlphaAfterExpiryBlink()
+        }
 
         switch kind {
         case .dizzyDuck:
-            duck.alpha = 1.0
+            if !hasActive(.ghostDuck) {
+                duck.alpha = 1.0
+            }
         case .slowMotion:
             // Restore normal wing animation speed
             restoreNormalWingAnimation()
@@ -633,6 +633,24 @@ final class PowerUpController {
         case .mysteryBox:
             break  // instant — no warning to stop
         }
+    }
+
+    /// Every expiring power-up gets the same readable duck blink when it reaches
+    /// the warning phase. Per-kind warnings below can layer extra color, shake,
+    /// or wing-speed cues on top of this shared signal.
+    private func startDuckExpiryBlink(on duck: SKSpriteNode) {
+        guard duck.action(forKey: duckExpiryBlinkKey) == nil else { return }
+
+        let blink = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.2, duration: 0.09),
+            SKAction.fadeAlpha(to: 1.0, duration: 0.09),
+        ])
+        duck.run(SKAction.repeatForever(blink), withKey: duckExpiryBlinkKey)
+    }
+
+    private func restoreDuckAlphaAfterExpiryBlink() {
+        guard let duck else { return }
+        duck.alpha = hasActive(.ghostDuck) ? 0.4 : 1.0
     }
 
     /// Returns duck textures for the fast-wing warning animation.

@@ -11,6 +11,7 @@ struct SplashView: View {
     @State private var subtitleOpacity: Double = 0
     @State private var subtitleScale: CGFloat = 0.6
     @State private var fadeOut: Double = 1.0
+    @State private var assetsReady = false
 
     // MARK: - Body
 
@@ -45,8 +46,7 @@ struct SplashView: View {
         }
         .opacity(fadeOut)
         .onAppear {
-            TextureFactory.shared.preWarm()
-            PixelIconFactory.shared.preWarm()
+            preWarmAssets()
             runSequence()
         }
         .onTapGesture { finish() }
@@ -95,11 +95,34 @@ struct SplashView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
     }
 
+    private func preWarmAssets() {
+        let group = DispatchGroup()
+
+        group.enter()
+        TextureFactory.shared.preWarm {
+            group.leave()
+        }
+
+        group.enter()
+        PixelIconFactory.shared.preWarm {
+            group.leave()
+        }
+
+        group.enter()
+        SoundManager.shared.preWarmGameplayAssets {
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            assetsReady = true
+        }
+    }
+
     private func finish() {
         guard !isFinished else { return }
-        // If preWarm hasn't finished yet, poll until it does to avoid
-        // first-game stutter from on-demand texture renders on the main thread.
-        guard TextureFactory.shared.isPreWarmed else {
+        // Hold the splash until first-run gameplay assets are actually cached
+        // and SpriteKit has preloaded textures onto the render side.
+        guard assetsReady && TextureFactory.shared.isPreWarmed else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
                 finish()
             }

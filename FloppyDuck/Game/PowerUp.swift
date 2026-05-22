@@ -169,12 +169,38 @@ enum PowerUpKind: String, CaseIterable {
     /// Bread-loaf collectible: chance for a bread to become a golden loaf worth 10×.
     static let loafChance: CGFloat = 0.07
     static let loafBreadValue: Int = 10
+
+    /// Mystery boxes should feel exciting more often than punishing.
+    static let mysteryBoxPositiveChance: Double = 0.66
+
+    static func randomMysteryBoxReward() -> PowerUpKind {
+        let wantsPositive = Double.random(in: 0..<1) < mysteryBoxPositiveChance
+        let candidates = allCases.filter { kind in
+            kind != .mysteryBox && kind.isPositive == wantsPositive
+        }
+        return weightedRandom(from: candidates) ?? .shield
+    }
+
+    private static func weightedRandom(from candidates: [PowerUpKind]) -> PowerUpKind? {
+        let weighted = candidates.map { ($0, max($0.spawnWeight, 0)) }
+        let totalWeight = weighted.reduce(0) { $0 + $1.1 }
+        guard totalWeight > 0 else { return candidates.randomElement() }
+
+        var roll = Double.random(in: 0..<totalWeight)
+        for (kind, weight) in weighted {
+            roll -= weight
+            if roll <= 0 { return kind }
+        }
+        return weighted.last?.0
+    }
 }
 
 // MARK: - Active Power-Up State
 
 /// Tracks an active (collected) power-up effect.
 struct ActivePowerUp: Identifiable {
+    private static let wearingOffProgressThreshold: CGFloat = 0.15
+
     let id = UUID()
     let kind: PowerUpKind
     let startTime: TimeInterval
@@ -202,14 +228,18 @@ struct ActivePowerUp: Identifiable {
     }
 
     /// Whether the power-up is in the "wearing off" warning phase.
-    /// Time-based: last 30% of duration. Pipe-count-based: last pipe remaining.
+    /// Time-based: last 15% of duration. Pipe-count-based: last usable charge,
+    /// since counts are discrete and most effects have too few charges for an
+    /// exact 15% threshold before reaching zero.
     func isWearingOff(currentTime: TimeInterval) -> Bool {
-        if let remaining = remainingPipes {
-            return remaining <= 1 && remaining > 0
+        if let remaining = remainingPipes, let initial = kind.initialPipeCount {
+            let warningCount = max(1, Int(ceil(CGFloat(initial) * Self.wearingOffProgressThreshold)))
+            return remaining <= warningCount && remaining > 0
         }
         guard kind.duration > 0 else { return false }
         let elapsed = currentTime - startTime
-        return elapsed >= kind.duration * 0.7 && elapsed < kind.duration
+        let warningStart = kind.duration * TimeInterval(1 - Self.wearingOffProgressThreshold)
+        return elapsed >= warningStart && elapsed < kind.duration
     }
 }
 

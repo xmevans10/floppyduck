@@ -26,6 +26,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let botDifficulty: BotDifficulty?
     let botCharacterId: String?
     let botSkin: DuckSkin?
+    let backgroundTheme: BackgroundTheme?
     let targetScore: Int?
 
     // Multiplayer metadata
@@ -34,6 +35,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let isRanked: Bool
     let roomCode: String?
     let gameKitSessionCode: String?
+    let isGameKitHost: Bool
     let battleRoyaleLobbyId: String?
     let battleRoyaleEntrantId: String?
 
@@ -45,12 +47,14 @@ struct GameModeConfig: Identifiable, Hashable {
          botDifficulty: BotDifficulty? = nil,
          botCharacterId: String? = nil,
          botSkin: DuckSkin? = nil,
+         backgroundTheme: BackgroundTheme? = nil,
          targetScore: Int? = nil,
          matchId: String? = nil,
          matchmakingMode: MatchmakingMode? = nil,
          isRanked: Bool = false,
          roomCode: String? = nil,
          gameKitSessionCode: String? = nil,
+         isGameKitHost: Bool = false,
          battleRoyaleLobbyId: String? = nil,
          battleRoyaleEntrantId: String? = nil) {
         self.id = UUID()
@@ -62,12 +66,14 @@ struct GameModeConfig: Identifiable, Hashable {
         self.botDifficulty = botDifficulty
         self.botCharacterId = botCharacterId
         self.botSkin = botSkin
+        self.backgroundTheme = backgroundTheme
         self.targetScore = targetScore
         self.matchId = matchId
         self.matchmakingMode = matchmakingMode
         self.isRanked = isRanked
         self.roomCode = roomCode
         self.gameKitSessionCode = gameKitSessionCode
+        self.isGameKitHost = isGameKitHost
         self.battleRoyaleLobbyId = battleRoyaleLobbyId
         self.battleRoyaleEntrantId = battleRoyaleEntrantId
     }
@@ -114,6 +120,10 @@ enum MatchmakingMode: String, Hashable, Codable, CaseIterable {
 
     var isRanked: Bool {
         self == .ranked
+    }
+
+    var requiresGameCenterP2P: Bool {
+        return false
     }
 
     var queueTimeout: TimeInterval {
@@ -342,6 +352,22 @@ struct QueueTicket: Hashable, Codable {
     let roomCode: String?
 }
 
+struct LivePosition: Hashable, Codable, Sendable {
+    let x: Double
+    let y: Double
+    let velY: Double
+    let rotation: Double
+    let wingPhase: Int
+    let score: Int
+}
+
+struct ReadyState: Hashable, Codable, Sendable {
+    let p1Ready: Double?
+    let p2Ready: Double?
+    let startAtMs: Double?
+    let status: String
+}
+
 struct MultiplayerMatchAssignment: Hashable, Codable {
     let matchId: String
     let seed: Int
@@ -351,6 +377,7 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
     let mode: MatchmakingMode
     let isRanked: Bool
     let roomCode: String?
+    let isGameKitHost: Bool
 
     init(matchId: String,
          seed: Int,
@@ -359,7 +386,8 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
          gameKitSessionCode: String? = nil,
          mode: MatchmakingMode,
          isRanked: Bool,
-         roomCode: String?) {
+         roomCode: String?,
+         isGameKitHost: Bool = false) {
         self.matchId = matchId
         self.seed = seed
         self.opponentName = opponentName
@@ -368,6 +396,7 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
         self.mode = mode
         self.isRanked = isRanked
         self.roomCode = roomCode
+        self.isGameKitHost = isGameKitHost
     }
 }
 

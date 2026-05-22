@@ -119,12 +119,11 @@ final class ParallaxManager {
 
         // Create sprite tiles for each layer
         for def in layerDefs {
-            guard let image = UIImage(named: def.assetName) else {
+            guard UIImage(named: def.assetName) != nil else {
                 print("⚠️ ParallaxManager: missing asset \(def.assetName)")
                 continue
             }
-            let tex = SKTexture(image: image)
-            tex.filteringMode = .nearest
+            let tex = factory.themedLayerTexture(theme: theme, assetName: def.assetName)
 
             let tileWidth = def.isGround ? groundTileWidth : aboveGroundTileWidth
             var tiles: [SKSpriteNode] = []
@@ -192,6 +191,36 @@ final class ParallaxManager {
 
         updateScatteredMidground(dt: dtF)
         updateRuntimeOverlays(dt: dtF)
+    }
+
+    /// Restore the visual map to its opening scroll position for a new run.
+    func reset() {
+        for def in layerDefs {
+            guard let tiles = layerTiles[def.assetName] else { continue }
+            let tileWidth = def.isGround ? groundTileWidth : aboveGroundTileWidth
+
+            for (index, tile) in tiles.enumerated() {
+                tile.removeAllActions()
+                tile.position = CGPoint(x: CGFloat(index) * tileWidth, y: def.yPosition)
+            }
+        }
+
+        let config = midgroundSpawnConfig
+        scatteredSprites.forEach { $0.sprite.removeFromParent() }
+        scatteredSprites.removeAll()
+        nextSpawnDistance = 0
+
+        if let config {
+            setupScatteredMidground(config)
+        }
+
+#if DEBUG
+        debugOverlapChecks = 0
+        debugOverlapSkips = 0
+        debugTreeSpawns = 0
+        debugSoloSpawns = 0
+        debugReportCounter = 0
+#endif
     }
 
     // MARK: - Scattered Midground

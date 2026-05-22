@@ -4,6 +4,7 @@ import SpriteKit
 
 final class GameSceneTests: XCTestCase {
 
+    @MainActor
     func testGameSceneDoesNotCrashOnPipeSpawn() {
         // Arrange
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -25,5 +26,24 @@ final class GameSceneTests: XCTestCase {
         // Verify pipes exist in the layer
         let pipeLayer = scene.childNode(withName: "worldNode")?.childNode(withName: "pipeLayer")
         XCTAssertNotNil(pipeLayer, "Pipe layer should exist")
+    }
+
+    @MainActor
+    func testHeadToHeadGhostUsesBotOpacityAndPlayerFullOpacity() {
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = GameScene(
+            seed: 12345,
+            mode: .headToHead,
+            powerUpsEnabled: false,
+            skin: .classic,
+            botDifficulty: nil,
+            opponentName: "Rival",
+            targetScore: nil
+        )
+
+        view.presentScene(scene)
+
+        XCTAssertEqual(scene.debugDuckAlpha(), 1.0)
+        XCTAssertEqual(scene.debugGhostDuckAlpha() ?? 0, 0.45, accuracy: 0.001)
     }
 }

@@ -205,6 +205,30 @@ final class PowerUpTests: XCTestCase {
         XCTAssertEqual(mid.progress(currentTime: 0.0), 0.0, accuracy: 0.001)
     }
 
+    func testTimeBasedPowerUpsWearOffAtLastFifteenPercent() {
+        let powerUp = ActivePowerUp(kind: .slowMotion, startTime: 10.0)
+
+        XCTAssertFalse(powerUp.isWearingOff(currentTime: 14.24),
+            "Slow motion should not warn before the final 15% of its 5s duration")
+        XCTAssertTrue(powerUp.isWearingOff(currentTime: 14.25),
+            "Slow motion should warn with 15% duration remaining")
+        XCTAssertFalse(powerUp.isWearingOff(currentTime: 15.0),
+            "Expired power-ups should no longer be in the warning phase")
+    }
+
+    func testPipeCountPowerUpsWearOffOnLastUsableCharge() {
+        var expander = ActivePowerUp(kind: .pipeExpander, startTime: 0.0, remainingPipes: 2)
+        XCTAssertFalse(expander.isWearingOff(currentTime: 0.0))
+
+        expander.remainingPipes = 1
+        XCTAssertTrue(expander.isWearingOff(currentTime: 0.0),
+            "Pipe-count power-ups should warn on the last usable charge")
+
+        expander.remainingPipes = 0
+        XCTAssertFalse(expander.isWearingOff(currentTime: 0.0),
+            "Expired pipe-count power-ups should no longer warn")
+    }
+
     // MARK: - SpawnManager
 
     func testSpawnManagerRespectsMinInterval() {

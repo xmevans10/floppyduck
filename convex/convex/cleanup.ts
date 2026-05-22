@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { cleanupBattleRoyale } from "./battleRoyale";
 
-const STALE_QUEUE_MS = 2 * 60 * 1000;
+const STALE_QUEUE_MS = 30 * 1000;
 const ABANDONED_MATCH_MS = 5 * 60 * 1000;
 
 export const run = internalMutation({
@@ -17,13 +17,14 @@ export const run = internalMutation({
       .collect();
 
     for (const entry of queueEntries) {
+      const lastActivity = entry.lastSeenAt ?? entry.createdAt;
       // Purge stale "searching" entries (player force-quit)
-      if (entry.status === "searching" && now - entry.createdAt > STALE_QUEUE_MS) {
+      if (entry.status === "searching" && now - lastActivity > STALE_QUEUE_MS) {
         await ctx.db.delete(entry._id);
       }
       // Purge "matched" entries older than the abandoned-match window —
       // these were never cleaned up after match resolution.
-      if (entry.status === "matched" && now - entry.createdAt > ABANDONED_MATCH_MS) {
+      if (entry.status === "matched" && now - lastActivity > ABANDONED_MATCH_MS) {
         await ctx.db.delete(entry._id);
       }
     }
@@ -95,6 +96,14 @@ export const run = internalMutation({
     }
 
     await cleanupBattleRoyale(ctx, now);
+
+    // Delete livePositions older than 10 minutes.
+    const stalePositions = await ctx.db.query("livePositions").collect();
+    for (const pos of stalePositions) {
+      if (now - pos.updatedAt > 10 * 60 * 1000) {
+        await ctx.db.delete(pos._id);
+      }
+    }
   },
 });
 

@@ -385,6 +385,8 @@ private actor TwoPlayerMock: MultiplayerBackendClient {
 
     func leaveMatchmakingQueue(ticketId: String?) async throws {}
 
+    func heartbeatQueue(ticketId: String) async throws -> Bool { true }
+
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? {
         queueAssignment
     }
@@ -482,6 +484,7 @@ private actor PendingFinalizationBackend: MultiplayerBackendClient {
     func deleteAccount() async throws {}
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket { QueueTicket(ticketId: "ticket", mode: mode, roomCode: nil) }
     func leaveMatchmakingQueue(ticketId: String?) async throws {}
+    func heartbeatQueue(ticketId: String) async throws -> Bool { true }
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? { nil }
     func createRoom() async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: "DUCKY") }
     func joinRoom(code: String) async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: code) }
@@ -578,6 +581,7 @@ private actor RetryingBootstrapBackend: MultiplayerBackendClient {
     func deleteAccount() async throws {}
     func joinMatchmakingQueue(mode: MatchmakingMode) async throws -> QueueTicket { QueueTicket(ticketId: "ticket", mode: mode, roomCode: nil) }
     func leaveMatchmakingQueue(ticketId: String?) async throws {}
+    func heartbeatQueue(ticketId: String) async throws -> Bool { true }
     func checkQueue(ticketId: String?, mode: MatchmakingMode?) async throws -> MultiplayerMatchAssignment? { nil }
     func createRoom() async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: "DUCKY") }
     func joinRoom(code: String) async throws -> QueueTicket { QueueTicket(ticketId: "room", mode: .privateRoom, roomCode: code) }

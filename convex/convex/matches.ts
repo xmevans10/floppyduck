@@ -122,6 +122,146 @@ export const finishMatch = mutation({
   },
 });
 
+export const abandonMatch = mutation({
+  args: {
+    matchId: v.id("matches"),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    const match = await ctx.db.get(args.matchId);
+
+    if (!match) {
+      throw new Error("Match not found.");
+    }
+
+    mustBeParticipant(match, user._id);
+
+    if (match.status === "finished") {
+      const p1 = await ctx.db.get(match.p1UserId);
+      const p2 = await ctx.db.get(match.p2UserId);
+      return buildPublicMatchState(match, user._id, p1, p2);
+    }
+
+    if (match.p1Score > 0 || match.p2Score > 0 || match.p1Finished || match.p2Finished) {
+      throw new ConvexError("Cannot abandon a match after gameplay starts.");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(match._id, {
+      p1Finished: true,
+      p2Finished: true,
+      status: "finished",
+      ratingDeltaP1: 0,
+      ratingDeltaP2: 0,
+      finishedAt: now,
+      updatedAt: now,
+    });
+
+    const updated = await ctx.db.get(match._id);
+    if (!updated) {
+      throw new Error("Match not found after abandon.");
+    }
+
+    const p1 = await ctx.db.get(updated.p1UserId);
+    const p2 = await ctx.db.get(updated.p2UserId);
+    return buildPublicMatchState(updated, user._id, p1, p2);
+  },
+});
+
+export const markReady = mutation({
+  args: {
+    matchId: v.id("matches"),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    const match = await ctx.db.get(args.matchId);
+
+    if (!match) {
+      throw new Error("Match not found.");
+    }
+
+    mustBeParticipant(match, user._id);
+    const side = userSide(match, user._id);
+
+    if (match.status !== "active") {
+      throw new Error("Match is not active.");
+    }
+
+    const now = Date.now();
+    const field = side === "p1" ? "p1Ready" : "p2Ready";
+    await ctx.db.patch(match._id, { [field]: now, updatedAt: now });
+
+    return { ok: true };
+  },
+});
+
+export const scheduleStart = mutation({
+  args: {
+    matchId: v.id("matches"),
+    startAtMs: v.number(),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    const match = await ctx.db.get(args.matchId);
+
+    if (!match) {
+      throw new Error("Match not found.");
+    }
+
+    mustBeParticipant(match, user._id);
+    const side = userSide(match, user._id);
+
+    // Only the host (p1) may schedule the start.
+    if (side !== "p1") {
+      throw new Error("Only the host can schedule the match start.");
+    }
+
+    if (match.status !== "active") {
+      throw new Error("Match is not active.");
+    }
+
+    // Both players must have signalled ready.
+    if (!match.p1Ready || !match.p2Ready) {
+      throw new Error("Both players must be ready before starting.");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(match._id, {
+      startAtMs: args.startAtMs,
+      updatedAt: now,
+    });
+
+    return { ok: true };
+  },
+});
+
+export const getReadyState = query({
+  args: {
+    matchId: v.id("matches"),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+    const match = await ctx.db.get(args.matchId);
+
+    if (!match) {
+      throw new Error("Match not found.");
+    }
+
+    mustBeParticipant(match, user._id);
+
+    return {
+      p1Ready: match.p1Ready ?? null,
+      p2Ready: match.p2Ready ?? null,
+      startAtMs: match.startAtMs ?? null,
+      status: match.status,
+    };
+  },
+});
+
 function buildPublicMatchState(match: Doc<"matches">,
                                userId: Doc<"users">["_id"],
                                p1: Doc<"users"> | null,

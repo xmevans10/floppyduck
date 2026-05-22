@@ -7,7 +7,7 @@ struct MultiplayerModesView: View {
     @State private var showFeatureSignInPrompt: Bool = false
     private let icons = PixelIconFactory.shared
 
-    private var isGuest: Bool { auth.isGuest }
+    private var needsGameCenterAuth: Bool { !auth.hasGameCenterMultiplayerAccess }
 
     var body: some View {
         ZStack {
@@ -39,56 +39,39 @@ struct MultiplayerModesView: View {
                 VStack(spacing: 12) {
                     modeButton(icon: .play,
                                title: "QUICK PLAY",
-                               subtitle: "Fast matchmaking") {
-                        manager.startMatchmaking(mode: .quickPlay)
+                               subtitle: needsGameCenterAuth ? "Game Center required" : "Fast matchmaking") {
+                        Task { await startHeadToHeadMode(.quickPlay) }
                     }
+                    .overlay(alignment: .topTrailing) {
+                        if needsGameCenterAuth {
+                            lockedBadge
+                        }
+                    }
+                    .opacity(needsGameCenterAuth ? 0.5 : 1.0)
 
                     modeButton(icon: .trophy,
                                title: "RANKED",
-                               subtitle: isGuest ? "Sign in to unlock" : "Competitive ELO") {
-                        if isGuest {
-                            showFeatureSignInPrompt = true
-                            return
-                        }
-                        if manager.startMatchmaking(mode: .ranked) {
-                            return
-                        }
-                        auth.showRankedSignInPrompt = true
+                               subtitle: needsGameCenterAuth ? "Game Center required" : "Competitive ELO") {
+                        Task { await startHeadToHeadMode(.ranked) }
                     }
                     .overlay(alignment: .topTrailing) {
-                        if isGuest {
-                            Text("LOCKED")
-                                .font(.custom(GK.pixelFontName, size: 6))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(Capsule().fill(GK.Colors.buttonRed))
-                                .offset(x: -6, y: 6)
+                        if needsGameCenterAuth {
+                            lockedBadge
                         }
                     }
-                    .opacity(isGuest ? 0.5 : 1.0)
+                    .opacity(needsGameCenterAuth ? 0.5 : 1.0)
 
                     modeButton(icon: .lock,
                                title: "PRIVATE ROOM",
-                               subtitle: isGuest ? "Sign in to unlock" : "Create or join by code") {
-                        if isGuest {
-                            showFeatureSignInPrompt = true
-                        } else {
-                            manager.startMatchmaking(mode: .privateRoom)
-                        }
+                               subtitle: needsGameCenterAuth ? "Game Center required" : "Create or join by code") {
+                        Task { await startHeadToHeadMode(.privateRoom) }
                     }
                     .overlay(alignment: .topTrailing) {
-                        if isGuest {
-                            Text("LOCKED")
-                                .font(.custom(GK.pixelFontName, size: 6))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(Capsule().fill(GK.Colors.buttonRed))
-                                .offset(x: -6, y: 6)
+                        if needsGameCenterAuth {
+                            lockedBadge
                         }
                     }
-                    .opacity(isGuest ? 0.5 : 1.0)
+                    .opacity(needsGameCenterAuth ? 0.5 : 1.0)
 
                     modeButton(icon: .trophy,
                                title: "BATTLE ROYALE",
@@ -100,12 +83,12 @@ struct MultiplayerModesView: View {
                 .padding(.horizontal, 28)
 
                 VStack(spacing: 6) {
-                    Text(auth.isAppleLinked ? "CURRENT ELO" : "GAME CENTER")
+                    Text(auth.hasGameCenterMultiplayerAccess ? "CURRENT ELO" : "GAME CENTER")
                         .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(.white.opacity(0.65))
 
-                    Text(auth.isAppleLinked ? "\(manager.stats.elo)" : "SIGN IN TO UNLOCK ALL MODES")
-                        .font(.custom(GK.pixelFontName, size: isGuest ? 9 : 16))
+                    Text(auth.hasGameCenterMultiplayerAccess ? "\(manager.stats.elo)" : "SIGN IN FOR HEAD-TO-HEAD")
+                        .font(.custom(GK.pixelFontName, size: needsGameCenterAuth ? 9 : 16))
                         .foregroundColor(GK.Colors.scoreYellow)
                 }
                 .padding(.top, 6)
@@ -114,23 +97,85 @@ struct MultiplayerModesView: View {
             }
         }
         .navigationBarHidden(true)
-        .alert("Sign In to Unlock", isPresented: $showFeatureSignInPrompt) {
+        .onAppear {
+            auth.refreshGameCenterAuthenticationState(reason: "multiplayer_modes_appear")
+        }
+        .alert("Game Center Required", isPresented: $showFeatureSignInPrompt) {
             Button("NOT NOW", role: .cancel) {}
+            if auth.needsGameCenterSettingsRecovery {
+                Button("OPEN SETTINGS") {
+                    openSettings()
+                }
+            }
             Button("SIGN IN WITH GAME CENTER") {
                 Task { await auth.signInWithGameCenter() }
             }
         } message: {
-            Text("Sign in with Game Center to access all game modes.")
+            Text(auth.statusMessage ?? "Quick Play, Ranked, and Private Room require Game Center for realtime head-to-head.")
         }
-        .alert("Ranked Requires Sign In", isPresented: $auth.showRankedSignInPrompt) {
+        .alert("Game Center Required", isPresented: $auth.showRankedSignInPrompt) {
             Button("NOT NOW", role: .cancel) {}
+            if auth.needsGameCenterSettingsRecovery {
+                Button("OPEN SETTINGS") {
+                    openSettings()
+                }
+            }
             Button("SIGN IN WITH GAME CENTER") {
                 Task {
                     await auth.signInWithGameCenter()
                 }
             }
         } message: {
-            Text("Ranked requires Game Center sign in.")
+            Text(auth.statusMessage ?? "Quick Play, Ranked, and Private Room require Game Center for realtime head-to-head.")
+        }
+    }
+
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    private var lockedBadge: some View {
+        Text("LOCKED")
+            .font(.custom(GK.pixelFontName, size: 6))
+            .foregroundColor(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(GK.Colors.buttonRed))
+            .offset(x: -6, y: 6)
+    }
+
+    @MainActor
+    private func startHeadToHeadMode(_ mode: MatchmakingMode) async {
+        print("[MultiplayerModesView] head-to-head mode tapped:\(mode.rawValue) needsGameCenterAuth:\(needsGameCenterAuth)")
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "head_to_head_mode_tapped",
+            message: "User tapped a head-to-head mode.",
+            mode: mode.rawValue,
+            metadata: ["needsGameCenterAuth": String(needsGameCenterAuth)]
+        )
+        guard await auth.ensureGameCenterAuthenticated() else {
+            MultiplayerDiagnostics.record(
+                category: "auth",
+                event: "head_to_head_auth_failed",
+                level: "error",
+                message: auth.statusMessage ?? "Game Center authentication failed.",
+                mode: mode.rawValue
+            )
+            showFeatureSignInPrompt = true
+            return
+        }
+
+        if !manager.startMatchmaking(mode: mode) {
+            MultiplayerDiagnostics.record(
+                category: "matchmaking",
+                event: "head_to_head_route_failed",
+                level: "error",
+                message: "GameManager refused to open matchmaking route.",
+                mode: mode.rawValue
+            )
+            showFeatureSignInPrompt = true
         }
     }
 
@@ -595,6 +640,13 @@ struct MatchmakingView: View {
         cancelPendingSearch()
         state = .searching
         isWorking = true
+        print("[MatchmakingView] startQueueSearch mode:\(mode.rawValue)")
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "queue_search_started",
+            message: "User started queue search.",
+            mode: mode.rawValue
+        )
 
         searchTask = Task {
             do {
@@ -610,6 +662,13 @@ struct MatchmakingView: View {
                 await MainActor.run {
                     isWorking = false
                     state = errorToState(error)
+                    MultiplayerDiagnostics.record(
+                        category: "matchmaking",
+                        event: "queue_search_failed",
+                        level: "error",
+                        message: error.localizedDescription,
+                        mode: mode.rawValue
+                    )
                 }
             }
         }
@@ -620,6 +679,13 @@ struct MatchmakingView: View {
         createdRoomCode = nil
         state = .searching
         isWorking = true
+        print("[MatchmakingView] createRoomAndWait")
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "private_room_create_started",
+            message: "User started private room creation.",
+            mode: mode.rawValue
+        )
 
         searchTask = Task {
             do {
@@ -641,6 +707,13 @@ struct MatchmakingView: View {
                 await MainActor.run {
                     isWorking = false
                     state = errorToState(error)
+                    MultiplayerDiagnostics.record(
+                        category: "matchmaking",
+                        event: "private_room_create_failed",
+                        level: "error",
+                        message: error.localizedDescription,
+                        mode: mode.rawValue
+                    )
                 }
             }
         }
@@ -651,6 +724,14 @@ struct MatchmakingView: View {
         state = .searching
         isWorking = true
         let code = roomCode
+        print("[MatchmakingView] joinRoomAndWait code:\(code)")
+        MultiplayerDiagnostics.record(
+            category: "matchmaking",
+            event: "private_room_join_started",
+            message: "User started private room join.",
+            mode: mode.rawValue,
+            metadata: ["roomCode": code]
+        )
 
         searchTask = Task {
             do {
@@ -672,6 +753,14 @@ struct MatchmakingView: View {
                 await MainActor.run {
                     isWorking = false
                     state = errorToState(error)
+                    MultiplayerDiagnostics.record(
+                        category: "matchmaking",
+                        event: "private_room_join_failed",
+                        level: "error",
+                        message: error.localizedDescription,
+                        mode: mode.rawValue,
+                        metadata: ["roomCode": code]
+                    )
                 }
             }
         }

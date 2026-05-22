@@ -258,6 +258,7 @@ enum ThemeRecipeCatalog {
                 MidgroundProp(assetName: "mountain_sprite_boulder",  heightPoints: 50,  weight: 2, scaleRange: 0.7...1.0),
                 MidgroundProp(assetName: "mountain_sprite_log",      heightPoints: 35,  weight: 2, scaleRange: 0.7...1.0),
                 MidgroundProp(assetName: "mountain_sprite_alpine_rock_cluster",      heightPoints: 80, weight: 1, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "mountain_sprite_pine_tree",                 heightPoints: 155, weight: 3, scaleRange: 0.7...1.15, isTree: true),
                 MidgroundProp(assetName: "mountain_sprite_pine_stump",                heightPoints: 75, weight: 1, scaleRange: 0.7...1.0),
                 MidgroundProp(assetName: "mountain_sprite_snow_dusted_trail_marker",  heightPoints: 90, weight: 1, scaleRange: 0.7...1.0),
             ],

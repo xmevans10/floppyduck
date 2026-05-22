@@ -9,7 +9,7 @@ final class TextureFactory: @unchecked Sendable {
     /// Maximum textures to keep in cache before triggering eviction.
     /// The themed background pass pre-warms substantially more large parallax textures,
     /// so keep a little extra headroom to avoid churning the selected theme on first play.
-    private static let maxCacheSize = 260
+    private static let maxCacheSize = 600
 
     private init() {
         // Clear cache on memory warning (iOS background pressure)
@@ -52,6 +52,8 @@ final class TextureFactory: @unchecked Sendable {
 
     /// Whether pre-warming has completed.
     private var _isPreWarmed: Bool = false
+    private var _isPreWarming: Bool = false
+    private var preWarmCompletions: [() -> Void] = []
     private let preWarmLock = NSLock()
     private(set) var isPreWarmed: Bool {
         get { preWarmLock.lock(); defer { preWarmLock.unlock() }; return _isPreWarmed }
@@ -61,15 +63,32 @@ final class TextureFactory: @unchecked Sendable {
     /// Pre-generates the most commonly used textures on a background thread.
     /// Call early (e.g. during SplashView) to avoid hitches on first game start.
     @MainActor
-    func preWarm() {
-        guard !isPreWarmed else { return }
+    func preWarm(completion: (() -> Void)? = nil) {
+        preWarmLock.lock()
+        if _isPreWarmed {
+            preWarmLock.unlock()
+            completion?()
+            return
+        }
+        if let completion {
+            preWarmCompletions.append(completion)
+        }
+        guard !_isPreWarming else {
+            preWarmLock.unlock()
+            return
+        }
+        _isPreWarming = true
+        preWarmLock.unlock()
+
         // Capture current selections on main thread before dispatching
         let currentSkin = SkinManager.shared.selectedSkin
         let currentPipeSkin = PipeSkinManager.shared.selectedSkin
         DispatchQueue.global(qos: .userInitiated).async { [self] in
+            var texturesToPreload: [SKTexture] = []
+
             // Pipes (still procedurally rendered)
-            _ = pipeTexture(height: 300, skinOverride: .classic)
-            _ = pipeCapTexture(skinOverride: .classic)
+            texturesToPreload.append(pipeTexture(height: 300, skinOverride: .classic))
+            texturesToPreload.append(pipeCapTexture(skinOverride: .classic))
 
             // Theme textures: pre-generated PNG layers per theme from asset catalog.
             // UIImage(named:) uses memory-mapped files — fast and cache-friendly.
@@ -78,39 +97,59 @@ final class TextureFactory: @unchecked Sendable {
             for theme in BackgroundTheme.allCases {
                 for assetName in theme.recipeAssetNames {
                     if UIImage(named: assetName) != nil {
-                        _ = self.themedLayerTexture(theme: theme, assetName: assetName)
+                        texturesToPreload.append(self.themedLayerTexture(theme: theme, assetName: assetName))
                     }
                 }
             }
 
-            // Pre-warm the player's currently equipped skin textures.
-            // Without this, the first flap in-game triggers a UIGraphicsImageRenderer
-            // render on the main thread — a hitch right when input latency matters most.
-            for phase in 0...2 {
-                _ = self.skinDuckTexture(skin: currentSkin, wingPhase: phase)
-                _ = self.skinBotDuckTexture(skin: currentSkin, wingPhase: phase)
+            // Pre-warm all duck skins because users can switch cosmetics before
+            // the first run of a fresh install/build.
+            for skin in DuckSkin.allCases {
+                for phase in 0...2 {
+                    texturesToPreload.append(self.skinDuckTexture(skin: skin, wingPhase: phase))
+                    texturesToPreload.append(self.skinBotDuckTexture(skin: skin, wingPhase: phase))
+                }
             }
 
-            // Pre-warm the player's currently equipped pipe skin textures.
-            _ = self.pipeTexture(height: 300, skinOverride: currentPipeSkin)
-            _ = self.pipeCapTexture(skinOverride: currentPipeSkin)
+            // Keep current selections adjacent in LRU order after the all-skins pass.
+            for phase in 0...2 {
+                texturesToPreload.append(self.skinDuckTexture(skin: currentSkin, wingPhase: phase))
+                texturesToPreload.append(self.skinBotDuckTexture(skin: currentSkin, wingPhase: phase))
+            }
+
+            // Pre-warm all pipe skins. Runtime pipe heights crop from these
+            // master textures, so this removes the expensive first render.
+            for pipeSkin in PipeSkin.allCases {
+                texturesToPreload.append(self.pipeTexture(height: 300, skinOverride: pipeSkin))
+                texturesToPreload.append(self.pipeCapTexture(skinOverride: pipeSkin))
+            }
+            texturesToPreload.append(self.pipeTexture(height: 300, skinOverride: currentPipeSkin))
+            texturesToPreload.append(self.pipeCapTexture(skinOverride: currentPipeSkin))
 
             // Pre-warm common power-up glow presets (shield, magnet, debuff).
             // Each first-call triggers a UIGraphicsImageRenderer render.
-            _ = self.glowCircleTexture(radius: 40, color: UIColor(red: 0.3, green: 1.0, blue: 0.3, alpha: 0.65))
-            _ = self.glowCircleTexture(radius: 80, color: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.6))
-            _ = self.glowCircleTexture(radius: 30, color: UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 0.65))
+            texturesToPreload.append(self.glowCircleTexture(radius: 40, color: UIColor(red: 0.3, green: 1.0, blue: 0.3, alpha: 0.65)))
+            texturesToPreload.append(self.glowCircleTexture(radius: 80, color: UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 0.6)))
+            texturesToPreload.append(self.glowCircleTexture(radius: 30, color: UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 0.65)))
 
             // Pre-warm sky gradient textures for all themes.
             // Each first-call triggers UIGraphicsImageRenderer on the background
             // thread; without this, the first game's ParallaxManager.setup() blocks
             // the main thread for ~12-20ms per gradient render.
             for theme in BackgroundTheme.allCases {
-                _ = self.skyGradientTexture(theme: theme)
+                texturesToPreload.append(self.skyGradientTexture(theme: theme))
             }
 
             DispatchQueue.main.async {
-                self.isPreWarmed = true
+                SKTexture.preload(texturesToPreload) {
+                    self.preWarmLock.lock()
+                    self._isPreWarmed = true
+                    self._isPreWarming = false
+                    let completions = self.preWarmCompletions
+                    self.preWarmCompletions.removeAll()
+                    self.preWarmLock.unlock()
+                    completions.forEach { $0() }
+                }
             }
         }
     }
@@ -1387,6 +1426,15 @@ final class TextureFactory: @unchecked Sendable {
                 spec: c(0.15, 0.30, 0.70), specHi: c(0.25, 0.45, 0.85),
                 bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
                 collar: .white)
+        case .bearskin:
+            // Ceremonial guard: classic mallard head with red tunic and white crossbelt.
+            p = DuckPalette(
+                head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
+                breast: c(0.78, 0.08, 0.12),
+                body: c(0.82, 0.10, 0.14), bodyHi: c(0.95, 0.18, 0.20),
+                spec: c(0.08, 0.08, 0.10), specHi: c(0.94, 0.92, 0.84),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.94, 0.92, 0.84))
         case .pirate:
             p = DuckPalette(
                 head: c(0.08, 0.42, 0.22), headHi: c(0.15, 0.58, 0.35),
@@ -1768,6 +1816,30 @@ final class TextureFactory: @unchecked Sendable {
             grid[3] = [C, C, B, t, T, t, T, t, T, t, B, C, C, C, C, C]
             grid[off + 3][3] = F; grid[off + 3][4] = F
             grid[off + 3][9] = F; grid[off + 3][10] = F
+        case .bearskin:
+            // Tall black bearskin cap + red guard tunic details.
+            let D = UIColor(red: 0.03, green: 0.03, blue: 0.04, alpha: 1)
+            let d = UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1)
+            let H = UIColor(red: 0.24, green: 0.24, blue: 0.26, alpha: 1)
+            let R = UIColor(red: 0.82, green: 0.10, blue: 0.14, alpha: 1)
+            let W = UIColor(red: 0.94, green: 0.92, blue: 0.84, alpha: 1)
+            let G = UIColor(red: 0.92, green: 0.76, blue: 0.20, alpha: 1)
+            grid[0] = [C, C, C, C, C, B, B, B, B, B, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, B, D, D, H, D, D, B, C, C, C, C, C]
+            grid[2] = [C, C, C, B, D, d, D, D, H, D, D, B, C, C, C, C]
+            grid[3] = [C, C, C, B, D, D, d, D, D, H, D, B, C, C, C, C]
+            grid[4] = [C, C, C, B, D, H, D, d, D, D, D, B, C, C, C, C]
+            grid[5] = [C, C, C, C, B, D, D, D, H, D, B, C, C, C, C, C]
+            grid[off + 7][3] = W
+            grid[off + 7][4] = R
+            grid[off + 7][5] = W
+            grid[off + 8][4] = W
+            grid[off + 8][5] = W
+            grid[off + 8][6] = R
+            grid[off + 8][7] = G
+            grid[off + 9][5] = W
+            grid[off + 9][6] = W
+            grid[off + 9][7] = R
         }
 
         let alpha: CGFloat = ghost ? 0.65 : 1.0

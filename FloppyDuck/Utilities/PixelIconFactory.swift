@@ -76,19 +76,22 @@ final class PixelIconFactory {
     private init() {}
 
     private var cache: [String: UIImage] = [:]
+    private var textureCache: [String: SKTexture] = [:]
     private let cacheLock = NSLock()
 
     /// Pre-renders commonly used icons on a background thread.
-    func preWarm() {
+    func preWarm(completion: (() -> Void)? = nil) {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
-            // Pre-render the most used icons at default scale
-            let criticalIcons: [PixelIcon] = [
-                .play, .headToHead, .bot, .classic, .stats,
-                .settings, .home, .retry, .share, .back,
-                .medalBronze, .medalSilver, .medalGold, .medalPlatinum,
-            ]
-            for icon in criticalIcons {
+            var texturesToPreload: [SKTexture] = []
+            for icon in PixelIcon.allCases {
                 _ = image(for: icon)
+                texturesToPreload.append(skTexture(for: icon))
+                texturesToPreload.append(skTexture(for: icon, pixelScale: 5.0))
+            }
+            DispatchQueue.main.async {
+                SKTexture.preload(texturesToPreload) {
+                    completion?()
+                }
             }
         }
     }
@@ -108,7 +111,21 @@ final class PixelIconFactory {
 
     /// Create an SKTexture from a pixel icon (for SpriteKit nodes).
     func skTexture(for icon: PixelIcon, pixelScale: CGFloat = 3.0) -> SKTexture {
-        SKTexture(image: image(for: icon, pixelScale: pixelScale))
+        let key = "\(icon.rawValue)_\(Int(pixelScale * 100))"
+        cacheLock.lock()
+        if let cached = textureCache[key] {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+
+        let texture = SKTexture(image: image(for: icon, pixelScale: pixelScale))
+        texture.filteringMode = .nearest
+
+        cacheLock.lock()
+        textureCache[key] = texture
+        cacheLock.unlock()
+        return texture
     }
 
     /// SwiftUI Image view of a pixel icon

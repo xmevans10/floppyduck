@@ -27,6 +27,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
     case lumberquack
     case spider
     case squirrel
+    case bearskin
 
     var id: String { rawValue }
 
@@ -49,6 +50,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .lumberquack: return "LUMBERQUACK"
         case .spider:      return "SPIDER"
         case .squirrel:    return "SQUIRREL"
+        case .bearskin:    return "GUARD"
         }
     }
 
@@ -71,6 +73,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .lumberquack: return "Timber!"
         case .spider:      return "Web Slinger"
         case .squirrel:    return "Nutty"
+        case .bearskin:    return "Quack, innit?"
         }
     }
 
@@ -78,7 +81,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .classic:
             return .free
-        case .cowboy, .dinosaur, .robot, .king, .lumberquack, .squirrel:
+        case .cowboy, .dinosaur, .robot, .king, .lumberquack, .squirrel, .bearskin:
             return .normal
         case .alien, .wizard, .devil, .ninja, .astronaut, .pharaoh, .spider:
             return .premium
@@ -111,6 +114,8 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
             return 150
         case .squirrel:
             return 175
+        case .bearskin:
+            return 185
         default:
             return nil
         }
@@ -149,6 +154,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .lumberquack: return (16, 15)
         case .spider:      return (16, 14)
         case .squirrel:    return (16, 15)
+        case .bearskin:    return (16, 17)
         }
     }
 
@@ -172,6 +178,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .lumberquack: return 4
         case .spider:      return 3
         case .squirrel:    return 4
+        case .bearskin:    return 6
         }
     }
 
@@ -201,6 +208,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .lumberquack: return Color(red: 0.85, green: 0.25, blue: 0.20)
         case .spider:      return Color(red: 0.40, green: 0.15, blue: 0.50)
         case .squirrel:    return Color(red: 0.60, green: 0.38, blue: 0.20)
+        case .bearskin:    return Color(red: 0.82, green: 0.10, blue: 0.14)
         }
     }
 }
