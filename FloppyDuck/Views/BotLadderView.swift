@@ -271,26 +271,18 @@ struct BotLadderView: View {
                                 .font(.custom(GK.pixelFontName, size: 6))
                                 .foregroundColor(GK.Colors.panelBorder.opacity(0.3))
                         } else {
-                            // Title + ELO
-                            HStack(spacing: 6) {
-                                Text(beaten ? "DEFEATED ✓" : bot.title.uppercased())
-                                    .font(.custom(GK.pixelFontName, size: 7))
-                                    .foregroundColor(
-                                        isNext ? .white.opacity(0.7) :
-                                        beaten ? GK.Colors.buttonGreen.opacity(0.8) :
-                                        GK.Colors.panelBorder.opacity(0.5))
+                            // Title line — clean, no ELO clutter
+                            Text(beaten ? "DEFEATED ✓" : bot.title.uppercased())
+                                .font(.custom(GK.pixelFontName, size: 7))
+                                .foregroundColor(
+                                    isNext ? .white.opacity(0.7) :
+                                    beaten ? GK.Colors.buttonGreen.opacity(0.8) :
+                                    GK.Colors.panelBorder.opacity(0.5))
 
-                                Text("ELO \(bot.elo)")
-                                    .font(.custom(GK.pixelFontName, size: 6))
-                                    .foregroundColor(
-                                        isNext ? .white.opacity(0.5) :
-                                        GK.Colors.panelBorder.opacity(0.3))
-                            }
-
-                            // Target score
+                            // Target score — only shown for current challenge
                             if isNext {
                                 Text("TARGET: \(bot.targetScore) PIPES")
-                                    .font(.custom(GK.pixelFontName, size: 6))
+                                    .font(.custom(GK.pixelFontName, size: 7))
                                     .foregroundColor(.white.opacity(0.6))
                                     .padding(.top, 1)
                             }

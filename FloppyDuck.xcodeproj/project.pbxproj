@@ -127,6 +127,8 @@
 		F200000000000000000004D /* theme_lagoon.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004D /* theme_lagoon.m4a */; };
 		F200000000000000000004E /* theme_losAngeles.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004E /* theme_losAngeles.m4a */; };
 		F200000000000000000004F /* theme_london.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004F /* theme_london.m4a */; };
+		F20000000000000000000050 /* theme_castle.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000050 /* theme_castle.m4a */; };
+		F20000000000000000000051 /* theme_clouds.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000051 /* theme_clouds.m4a */; };
 		F2000000000000000000052 /* quack_unicorn.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000052 /* quack_unicorn.m4a */; };
 		F2000000000000000000051 /* quack_princess.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000051 /* quack_princess.m4a */; };
 		F2000000000000000000050 /* quack_mermaid.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000050 /* quack_mermaid.m4a */; };
@@ -283,6 +285,8 @@
 		F100000000000000000004D /* theme_lagoon.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_lagoon.m4a; sourceTree = "<group>"; };
 		F100000000000000000004E /* theme_losAngeles.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_losAngeles.m4a; sourceTree = "<group>"; };
 		F100000000000000000004F /* theme_london.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_london.m4a; sourceTree = "<group>"; };
+		F10000000000000000000050 /* theme_castle.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_castle.m4a; sourceTree = "<group>"; };
+		F10000000000000000000051 /* theme_clouds.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_clouds.m4a; sourceTree = "<group>"; };
 		FBCE68166C3B433188B01FDE /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		FE0494021C7FBFABF4BD6618 /* MedalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedalTests.swift; sourceTree = "<group>"; };
 		FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotLadderView.swift; sourceTree = "<group>"; };
@@ -546,6 +550,8 @@
 				F100000000000000000004D /* theme_lagoon.m4a */,
 				F100000000000000000004E /* theme_losAngeles.m4a */,
 				F100000000000000000004F /* theme_london.m4a */,
+				F10000000000000000000050 /* theme_castle.m4a */,
+				F10000000000000000000051 /* theme_clouds.m4a */,
 			);
 			path = Music;
 			sourceTree = "<group>";
@@ -739,6 +745,8 @@
 				F200000000000000000004D /* theme_lagoon.m4a in Resources */,
 				F200000000000000000004E /* theme_losAngeles.m4a in Resources */,
 				F200000000000000000004F /* theme_london.m4a in Resources */,
+				F20000000000000000000050 /* theme_castle.m4a in Resources */,
+				F20000000000000000000051 /* theme_clouds.m4a in Resources */,
 				F20000000000000000000050 /* quack_lumberquack.m4a in Resources */,
 				F20000000000000000000051 /* quack_spider.m4a in Resources */,
 				F20000000000000000000052 /* quack_squirrel.m4a in Resources */,

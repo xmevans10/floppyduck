@@ -9,9 +9,9 @@ enum Haptic {
     private static let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
     private static let notification = UINotificationFeedbackGenerator()
 
-    /// Dedicated serial queue for haptic feedback — keeps UIImpactFeedbackGenerator
-    /// IPC (~0.5-2ms) off the main/render thread to prevent tap-correlated micro-stutters.
-    private static let hapticQueue = DispatchQueue(label: "com.floppyduck.haptics", qos: .userInteractive)
+    /// All haptic feedback dispatched to main thread — UIFeedbackGenerator
+    /// requires the main thread for reliable delivery on all iOS versions.
+    private static let hapticQueue = DispatchQueue.main
 
     /// Cached preference — avoids UserDefaults lookup on every haptic call.
     private static var _isEnabled: Bool = {
@@ -42,10 +42,12 @@ enum Haptic {
     /// Pre-warm all generators to eliminate first-call latency (~20ms saved).
     /// Call once at scene start / didMove(to:).
     static func warmUp() {
-        impactLight.prepare()
-        impactMedium.prepare()
-        impactHeavy.prepare()
-        notification.prepare()
+        hapticQueue.async {
+            impactLight.prepare()
+            impactMedium.prepare()
+            impactHeavy.prepare()
+            notification.prepare()
+        }
     }
 
     static func flap() {
@@ -84,20 +86,26 @@ enum Haptic {
 
     static func death() {
         guard isEnabled else { return }
-        notification.notificationOccurred(.error)
-        throttledPrepare(notification, key: ObjectIdentifier(notification))
+        hapticQueue.async {
+            notification.notificationOccurred(.error)
+            throttledPrepare(notification, key: ObjectIdentifier(notification))
+        }
     }
 
     static func buttonTap() {
         guard isEnabled else { return }
-        impactLight.impactOccurred()
-        throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
+        hapticQueue.async {
+            impactLight.impactOccurred()
+            throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
+        }
     }
 
     static func matchFound() {
         guard isEnabled else { return }
-        notification.notificationOccurred(.success)
-        throttledPrepare(notification, key: ObjectIdentifier(notification))
+        hapticQueue.async {
+            notification.notificationOccurred(.success)
+            throttledPrepare(notification, key: ObjectIdentifier(notification))
+        }
     }
 
     /// Every 5 pipes scored — satisfying mid-game beat
@@ -112,53 +120,67 @@ enum Haptic {
     /// New personal best
     static func newBest() {
         guard isEnabled else { return }
-        notification.notificationOccurred(.success)
-        // Double-tap for emphasis
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            impactHeavy.impactOccurred()
+        hapticQueue.async {
+            notification.notificationOccurred(.success)
+            // Double-tap for emphasis
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                impactHeavy.impactOccurred()
+            }
         }
     }
 
     /// Won a VS Bot / ladder match
     static func win() {
         guard isEnabled else { return }
-        notification.notificationOccurred(.success)
-        throttledPrepare(notification, key: ObjectIdentifier(notification))
+        hapticQueue.async {
+            notification.notificationOccurred(.success)
+            throttledPrepare(notification, key: ObjectIdentifier(notification))
+        }
     }
 
     /// Lost a VS Bot match
     static func lose() {
         guard isEnabled else { return }
-        notification.notificationOccurred(.warning)
-        throttledPrepare(notification, key: ObjectIdentifier(notification))
+        hapticQueue.async {
+            notification.notificationOccurred(.warning)
+            throttledPrepare(notification, key: ObjectIdentifier(notification))
+        }
     }
 
     /// Splash screen — heavy pop when duck appears
     static func splashImpact() {
         guard isEnabled else { return }
-        impactHeavy.impactOccurred(intensity: 1.0)
-        throttledPrepare(impactHeavy, key: ObjectIdentifier(impactHeavy))
+        hapticQueue.async {
+            impactHeavy.impactOccurred(intensity: 1.0)
+            throttledPrepare(impactHeavy, key: ObjectIdentifier(impactHeavy))
+        }
     }
 
     /// Splash screen — satisfying coin-collect thud at mid-spin
     static func splashCoin() {
         guard isEnabled else { return }
-        impactMedium.impactOccurred(intensity: 0.9)
-        throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
+        hapticQueue.async {
+            impactMedium.impactOccurred(intensity: 0.9)
+            throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
+        }
     }
 
     /// Splash screen — medium punch when title pops in
     static func splashTitlePop() {
         guard isEnabled else { return }
-        impactMedium.impactOccurred(intensity: 0.8)
-        throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
+        hapticQueue.async {
+            impactMedium.impactOccurred(intensity: 0.8)
+            throttledPrepare(impactMedium, key: ObjectIdentifier(impactMedium))
+        }
     }
 
     /// Splash screen — light tap on shimmer sweep
     static func splashShimmer() {
         guard isEnabled else { return }
-        impactLight.impactOccurred(intensity: 0.5)
-        throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
+        hapticQueue.async {
+            impactLight.impactOccurred(intensity: 0.5)
+            throttledPrepare(impactLight, key: ObjectIdentifier(impactLight))
+        }
     }
 
     /// Legacy alias for backward compat
@@ -169,12 +191,14 @@ enum Haptic {
     /// Enhanced death impact — stronger/longer shake feeling
     static func enhancedDeath() {
         guard isEnabled else { return }
-        impactHeavy.impactOccurred(intensity: 1.0)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            notification.notificationOccurred(.error)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-            impactMedium.impactOccurred()
+        hapticQueue.async {
+            impactHeavy.impactOccurred(intensity: 1.0)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                notification.notificationOccurred(.error)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                impactMedium.impactOccurred()
+            }
         }
     }
 }
