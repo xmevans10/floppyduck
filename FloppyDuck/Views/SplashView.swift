@@ -68,8 +68,10 @@ struct SplashView: View {
             }
         }
 
-        // 0.9 s — Quack SFX + haptic when title lands (harmonious with text)
-        after(0.90) {
+        // 0.75 s — Quack SFX + haptic right as the spring settles
+        // (spring response 0.55 + start 0.30 ≈ 0.85; firing slightly
+        //  early compensates for AVAudioPlayer decode latency ~50-100ms)
+        after(0.75) {
             playQuackOnce()
         }
 

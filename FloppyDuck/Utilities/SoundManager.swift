@@ -103,6 +103,12 @@ final class SoundManager {
 
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(handleAppWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(handleAppBecameActive),
             name: UIApplication.didBecomeActiveNotification,
             object: nil
@@ -428,8 +434,22 @@ final class SoundManager {
         }
     }
 
+    /// Fires before didBecomeActive — re-activate the audio session early
+    /// so playback resumes by the time the UI is visible.
+    @objc private func handleAppWillEnterForeground() {
+        // Activate session immediately on high-priority queue to cut perceived delay
+        DispatchQueue.global(qos: .userInteractive).async {
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
+        audioQueue.async { [weak self] in
+            self?.restoreAudioAfterInterruption()
+        }
+    }
+
     @objc private func handleAppBecameActive() {
         audioQueue.async { [weak self] in
+            // Ensure music is playing — covers cases where willEnterForeground
+            // doesn't fire (e.g. returning from notification shade).
             self?.restoreAudioAfterInterruption()
         }
     }

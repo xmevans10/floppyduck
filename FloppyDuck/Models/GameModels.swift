@@ -106,31 +106,18 @@ enum GameMode: String, Hashable {
 }
 
 enum BreadEconomy {
-    /// Diminishing-returns score reward.
-    /// Full value for the first 5 pipes, half for 6–15, quarter for 16+.
-    ///
-    /// Examples (solo classic):
-    ///   score  5 →  5 bread
-    ///   score 10 →  7 bread
-    ///   score 15 → 10 bread
-    ///   score 25 → 12 bread
-    ///   score 50 → 18 bread
-    ///
-    /// Win bonus adds +2 (min 3); loss halves (min 1).
+    /// Flat 1 loaf per completed run, regardless of score.
+    /// Keeps the economy tight — players need to keep coming back.
     static func scoreReward(score: Int, won: Bool? = nil) -> Int {
-        let t1 = min(score, 5)                       // 1 bread per pipe for first 5
-        let t2 = min(max(score - 5, 0), 10) / 2     // 0.5 per pipe for 6–15
-        let t3 = max(score - 15, 0) / 4             // 0.25 per pipe for 16+
-        let base = t1 + t2 + t3
-
-        if let won {
-            return won ? max(3, base + 2) : max(1, base / 2)
-        }
-        return max(1, base)
+        guard score > 0 else { return 0 }
+        return 1
     }
 
+    /// Total bread for a run — hard-capped at 1 loaf.
+    /// In-game bread pickups are purely cosmetic / fun; they don't stack.
     static func gameReward(score: Int, won: Bool? = nil, collectedBread: Int = 0) -> Int {
-        scoreReward(score: score, won: won) + max(0, collectedBread)
+        guard score > 0 else { return 0 }
+        return 1
     }
 }
 

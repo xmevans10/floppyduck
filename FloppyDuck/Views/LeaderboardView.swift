@@ -55,6 +55,11 @@ struct LeaderboardView: View {
             log.debug("task fired — mode=\(self.mode.rawValue)")
             await loadLeaderboard()
         }
+        .onAppear {
+            // Refresh every time the user taps into leaderboard —
+            // ensures high scores are always up-to-date.
+            Task { await loadLeaderboard() }
+        }
     }
 
     // MARK: - Subviews

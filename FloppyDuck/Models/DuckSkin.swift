@@ -207,7 +207,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
     var spriteSize: CGSize {
         let bodyWidth = GK.duckRadius * 2.8
         if let frameSize = productionFrameSize {
-            let scale = bodyWidth / Self.productionBodyPixelWidth
+            let scale = bodyWidth / productionBodyPixelWidth
             return CGSize(
                 width: CGFloat(frameSize.w) * scale,
                 height: CGFloat(frameSize.h) * scale
@@ -216,9 +216,17 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         return CGSize(width: bodyWidth, height: bodyWidth * CGFloat(canvasSize.h) / CGFloat(canvasSize.w))
     }
 
-    /// Finalized PNG frames are transparent canvases around the duck. Scale them by
-    /// the shared body width so hats, tails, and other cosmetics never resize the body.
-    private static let productionBodyPixelWidth: CGFloat = 253
+    /// How many pixels wide the duck body is inside this skin's production PNG.
+    /// Hand-drawn sprites standardize on 253 px; pixel-grid renders are wider
+    /// because the body fills the entire canvas at 19.7 px/col.
+    private var productionBodyPixelWidth: CGFloat {
+        switch self {
+        case .classic, .sailor, .golden, .spider:
+            return 315   // pixel-grid body fills entire 315 px frame
+        default:
+            return 253   // hand-drawn skins: body drawn at 253 px
+        }
+    }
 
     private var productionFrameSize: (w: Int, h: Int)? {
         switch self {
