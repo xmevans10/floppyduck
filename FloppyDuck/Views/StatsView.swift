@@ -40,7 +40,7 @@ struct StatsView: View {
                         }
 
                         HStack(spacing: 12) {
-                            statCard(title: "WIN %", value: String(format: "%.0f%%", manager.stats.winRate * 100), icon: .headToHead)
+                            statCard(title: "RANKED WIN %", value: String(format: "%.0f%%", manager.stats.winRate * 100), icon: .headToHead)
                             statCard(title: "ELO", value: "\(manager.stats.elo)", icon: .classic)
                         }
 
@@ -55,9 +55,6 @@ struct StatsView: View {
 
                         // --- NEW: Bot Ladder Progress ---
                         botLadderProgressPanel
-
-                        // --- NEW: Total Pipes Cleared ---
-                        totalPipesPanel
 
                         // Bread
                         HStack(spacing: 10) {
@@ -91,40 +88,6 @@ struct StatsView: View {
                         if !manager.stats.recentScores.isEmpty {
                             recentScoresChart
                         }
-
-                        // Leaderboard button
-                        Button {
-                            SoundManager.shared.play(.button)
-                            manager.navigate(to: .leaderboard)
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(uiImage: icons.image(for: .trophy))
-                                    .interpolation(.none)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 22, height: 22)
-                                Text("LEADERBOARD")
-                                    .font(.custom(GK.pixelFontName, size: 10))
-                                    .foregroundColor(.white)
-                                Spacer()
-                                Image(uiImage: icons.image(for: .play, pixelScale: 2.0))
-                                    .interpolation(.none)
-                                    .resizable()
-                                    .frame(width: 14, height: 14)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(GK.Colors.buttonBlue)
-                                    .shadow(color: GK.Colors.buttonBlue.opacity(0.5), radius: 0, x: 0, y: 3)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
-                            )
-                        }
-                        .buttonStyle(.plain)
 
                         // Average score
                         HStack {
@@ -190,18 +153,18 @@ struct StatsView: View {
 
     private var wlRecordPanel: some View {
         VStack(spacing: 6) {
-            Text("RECORD")
+            Text("RANKED RECORD")
                 .font(.custom(GK.pixelFontName, size: 7))
                 .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
 
             HStack(spacing: 4) {
-                Text("\(manager.stats.wins)W")
+                Text("\(manager.stats.rankedWins)W")
                     .font(.custom(GK.pixelFontName, size: 16))
                     .foregroundColor(GK.Colors.buttonGreen)
                 Text("-")
                     .font(.custom(GK.pixelFontName, size: 16))
                     .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
-                Text("\(manager.stats.losses)L")
+                Text("\(manager.stats.rankedLosses)L")
                     .font(.custom(GK.pixelFontName, size: 16))
                     .foregroundColor(Color(red: 0.85, green: 0.25, blue: 0.25))
             }
@@ -217,7 +180,7 @@ struct StatsView: View {
                 )
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Record: \(manager.stats.wins) wins, \(manager.stats.losses) losses")
+        .accessibilityLabel("Ranked record: \(manager.stats.rankedWins) wins, \(manager.stats.rankedLosses) losses")
     }
 
     // MARK: - Peak Elo
@@ -337,31 +300,6 @@ struct StatsView: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Bot ladder: \(beaten) of \(total) bots beaten")
-    }
-
-    // MARK: - Total Pipes Cleared
-
-    private var totalPipesPanel: some View {
-        HStack {
-            Text("TOTAL PIPES")
-                .font(.custom(GK.pixelFontName, size: 8))
-                .foregroundColor(GK.Colors.panelBorder.opacity(0.6))
-            Spacer()
-            Text("\(manager.stats.totalScore)")
-                .font(.custom(GK.pixelFontName, size: 16))
-                .foregroundColor(GK.Colors.panelBorder)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(GK.Colors.panelCream)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(GK.Colors.panelBorder, lineWidth: 2)
-                )
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Total pipes cleared: \(manager.stats.totalScore)")
     }
 
     // MARK: - Recent Scores

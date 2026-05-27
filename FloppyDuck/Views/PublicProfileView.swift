@@ -171,7 +171,7 @@ struct PublicProfileView: View {
                 }
 
                 HStack(spacing: 12) {
-                    statCard(title: "WIN %", value: String(format: "%.0f%%", profile.stats.winRate * 100), icon: .headToHead)
+                    statCard(title: "PvP WIN %", value: String(format: "%.0f%%", profile.stats.winRate * 100), icon: .headToHead)
                     statCard(title: "ELO", value: "\(profile.stats.elo)", icon: .classic)
                 }
 
@@ -255,7 +255,7 @@ struct PublicProfileView: View {
 
     private func wlRecordPanel(_ stats: PublicPlayerStats) -> some View {
         VStack(spacing: 6) {
-            Text("RECORD")
+            Text("PvP RECORD")
                 .font(.custom(GK.pixelFontName, size: 7))
                 .foregroundColor(GK.Colors.panelBorder.opacity(0.5))
 

@@ -393,7 +393,7 @@ struct HomeView: View {
                 manager.navigate(to: .stats)
             }
 
-            bottomButton(icon: .headToHead, label: "FRIENDS", locked: isGuest) {
+            bottomButton(icon: .star, label: "FRIENDS", locked: isGuest) {
                 if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .friends)

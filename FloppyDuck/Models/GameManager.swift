@@ -303,6 +303,8 @@ final class GameManager: ObservableObject {
         mergedStats.gamesPlayed = max(stats.gamesPlayed, profile.stats.gamesPlayed)
         mergedStats.wins = max(stats.wins, profile.stats.wins)
         mergedStats.losses = max(stats.losses, profile.stats.losses)
+        mergedStats.rankedWins = max(stats.rankedWins, profile.stats.rankedWins)
+        mergedStats.rankedLosses = max(stats.rankedLosses, profile.stats.rankedLosses)
         mergedStats.totalScore = max(stats.totalScore, profile.stats.totalScore)
         mergedStats.elo = max(stats.elo, profile.stats.elo)
         mergedStats.peakElo = max(stats.peakElo, profile.stats.peakElo)

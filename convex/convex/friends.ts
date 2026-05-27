@@ -55,18 +55,20 @@ export const searchUsers = query({
       results.push(toPublicProfile(exact));
     }
 
-    // Also search by prefix using a range scan on usernameKey
-    // We scan a reasonable number of users to find prefix matches
-    const allUsers = await ctx.db
+    // Prefix scan: iterate usernameKey index up to 10 results
+    const scanned = await ctx.db
       .query("users")
       .withIndex("by_usernameKey")
-      .collect();
+      .paginate({ numItems: 200 })
+      .map((page) => page.page);
 
-    for (const user of allUsers) {
+    const prefixUsers = scanned.flat();
+    for (const user of prefixUsers) {
       if (results.length >= 10) break;
       if (seen.has(user._id)) continue;
       if (user._id === requestUser._id) continue;
-      if (user.usernameKey.toLowerCase().startsWith(normalized)) {
+      const key = user.usernameKey ?? "";
+      if (key.toLowerCase().startsWith(normalized)) {
         seen.add(user._id);
         results.push(toPublicProfile(user));
       }

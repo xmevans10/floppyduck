@@ -183,6 +183,8 @@ struct LocalStatsSnapshot: Hashable, Codable {
     let gamesPlayed: Int
     let wins: Int
     let losses: Int
+    let rankedWins: Int
+    let rankedLosses: Int
     let bestScore: Int
     let totalScore: Int
     let elo: Int
@@ -199,6 +201,8 @@ struct LocalStatsSnapshot: Hashable, Codable {
         case gamesPlayed
         case wins
         case losses
+        case rankedWins
+        case rankedLosses
         case bestScore
         case totalScore
         case elo
@@ -216,6 +220,8 @@ struct LocalStatsSnapshot: Hashable, Codable {
         self.gamesPlayed = stats.gamesPlayed
         self.wins = stats.wins
         self.losses = stats.losses
+        self.rankedWins = stats.rankedWins
+        self.rankedLosses = stats.rankedLosses
         self.bestScore = stats.bestScore
         self.totalScore = stats.totalScore
         self.elo = stats.elo
@@ -234,6 +240,8 @@ struct LocalStatsSnapshot: Hashable, Codable {
         let gamesPlayed = try container.decodeIfPresent(Int.self, forKey: .gamesPlayed) ?? 0
         let wins = try container.decodeIfPresent(Int.self, forKey: .wins) ?? 0
         let losses = try container.decodeIfPresent(Int.self, forKey: .losses) ?? 0
+        let rankedWins = try container.decodeIfPresent(Int.self, forKey: .rankedWins) ?? 0
+        let rankedLosses = try container.decodeIfPresent(Int.self, forKey: .rankedLosses) ?? 0
         let bestScore = try container.decodeIfPresent(Int.self, forKey: .bestScore) ?? 0
         let totalScore = try container.decodeIfPresent(Int.self, forKey: .totalScore) ?? 0
         let elo = try container.decodeIfPresent(Int.self, forKey: .elo) ?? 1200
@@ -253,6 +261,8 @@ struct LocalStatsSnapshot: Hashable, Codable {
                 gamesPlayed: gamesPlayed,
                 wins: wins,
                 losses: losses,
+                rankedWins: rankedWins,
+                rankedLosses: rankedLosses,
                 bestScore: bestScore,
                 totalScore: totalScore,
                 elo: elo,
@@ -276,6 +286,8 @@ struct LocalStatsSnapshot: Hashable, Codable {
         try container.encode(gamesPlayed, forKey: .gamesPlayed)
         try container.encode(wins, forKey: .wins)
         try container.encode(losses, forKey: .losses)
+        try container.encode(rankedWins, forKey: .rankedWins)
+        try container.encode(rankedLosses, forKey: .rankedLosses)
         try container.encode(bestScore, forKey: .bestScore)
         try container.encode(totalScore, forKey: .totalScore)
         try container.encode(elo, forKey: .elo)
@@ -293,6 +305,8 @@ struct LocalStatsSnapshot: Hashable, Codable {
             gamesPlayed: gamesPlayed,
             wins: wins,
             losses: losses,
+            rankedWins: rankedWins,
+            rankedLosses: rankedLosses,
             bestScore: bestScore,
             totalScore: totalScore,
             elo: elo,
@@ -656,6 +670,8 @@ struct PlayerStats: Codable, Hashable {
     var gamesPlayed: Int = 0
     var wins: Int = 0
     var losses: Int = 0
+    var rankedWins: Int = 0
+    var rankedLosses: Int = 0
     var bestScore: Int = 0
     var totalScore: Int = 0
     var elo: Int = 1200
@@ -671,6 +687,8 @@ struct PlayerStats: Codable, Hashable {
         case gamesPlayed
         case wins
         case losses
+        case rankedWins
+        case rankedLosses
         case bestScore
         case totalScore
         case elo
@@ -686,6 +704,8 @@ struct PlayerStats: Codable, Hashable {
     init(gamesPlayed: Int = 0,
          wins: Int = 0,
          losses: Int = 0,
+         rankedWins: Int = 0,
+         rankedLosses: Int = 0,
          bestScore: Int = 0,
          totalScore: Int = 0,
          elo: Int = 1200,
@@ -699,6 +719,8 @@ struct PlayerStats: Codable, Hashable {
         self.gamesPlayed = gamesPlayed
         self.wins = wins
         self.losses = losses
+        self.rankedWins = rankedWins
+        self.rankedLosses = rankedLosses
         self.bestScore = bestScore
         self.totalScore = totalScore
         self.elo = elo
@@ -734,12 +756,16 @@ struct PlayerStats: Codable, Hashable {
         let totalBreadCollected = try container.decodeIfPresent(Int.self, forKey: .totalBreadCollected) ?? 0
         let recentScores = try container.decodeIfPresent([Int].self, forKey: .recentScores) ?? []
         let beatenBots = try container.decodeIfPresent([String].self, forKey: .beatenBots) ?? []
+        let rankedWins = try container.decodeIfPresent(Int.self, forKey: .rankedWins) ?? 0
+        let rankedLosses = try container.decodeIfPresent(Int.self, forKey: .rankedLosses) ?? 0
         let winStreak = try container.decodeIfPresent(Int.self, forKey: .winStreak) ?? 0
 
         self.init(
             gamesPlayed: gamesPlayed,
             wins: wins,
             losses: losses,
+            rankedWins: rankedWins,
+            rankedLosses: rankedLosses,
             bestScore: bestScore,
             totalScore: totalScore,
             elo: elo,
@@ -764,6 +790,8 @@ struct PlayerStats: Codable, Hashable {
         try container.encode(gamesPlayed, forKey: .gamesPlayed)
         try container.encode(wins, forKey: .wins)
         try container.encode(losses, forKey: .losses)
+        try container.encode(rankedWins, forKey: .rankedWins)
+        try container.encode(rankedLosses, forKey: .rankedLosses)
         try container.encode(bestScore, forKey: .bestScore)
         try container.encode(totalScore, forKey: .totalScore)
         try container.encode(elo, forKey: .elo)
@@ -776,9 +804,11 @@ struct PlayerStats: Codable, Hashable {
         try container.encode(bestWinStreak, forKey: .bestWinStreak)
     }
 
+    var rankedGames: Int { rankedWins + rankedLosses }
+
     var winRate: Double {
-        guard gamesPlayed > 0 else { return 0 }
-        return Double(wins) / Double(gamesPlayed)
+        guard rankedGames > 0 else { return 0 }
+        return Double(rankedWins) / Double(rankedGames)
     }
 
     var averageScore: Double {
@@ -827,6 +857,13 @@ struct PlayerStats: Codable, Hashable {
         }
 
         if result.isRanked {
+            if result.didDraw { return } // draws don't count for ranked record
+            if result.didWin {
+                rankedWins += 1
+            } else {
+                rankedLosses += 1
+            }
+
             if let newRating = result.newRating {
                 elo = newRating
             } else if let delta = result.ratingDelta {
