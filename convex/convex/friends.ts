@@ -48,28 +48,26 @@ export const searchUsers = query({
       .first();
 
     const results: any[] = [];
-  const seen = new Set<string>();
+    const seen = new Set<string>();
 
     if (exact && exact._id !== requestUser._id) {
-      seen.add(exact._id);
+      seen.add(exact._id as string);
       results.push(toPublicProfile(exact));
     }
 
-    // Prefix scan: iterate usernameKey index up to 10 results
+    // Prefix scan: iterate usernameKey index, first page
     const scanned = await ctx.db
       .query("users")
       .withIndex("by_usernameKey")
-      .paginate({ numItems: 200 })
-      .map((page) => page.page);
+      .paginate({ numItems: 200 });
 
-    const prefixUsers = scanned.flat();
-    for (const user of prefixUsers) {
+    for (const user of scanned.page) {
       if (results.length >= 10) break;
       if (seen.has(user._id)) continue;
       if (user._id === requestUser._id) continue;
       const key = user.usernameKey ?? "";
       if (key.toLowerCase().startsWith(normalized)) {
-        seen.add(user._id);
+        seen.add(user._id as string);
         results.push(toPublicProfile(user));
       }
     }
