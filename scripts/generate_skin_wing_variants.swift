@@ -220,6 +220,22 @@ func padded(_ image: RGBAImage, margin: Int) -> RGBAImage {
     return output
 }
 
+func trimmedToContent(_ image: RGBAImage) -> (RGBAImage, Bounds) {
+    let bounds = contentBounds(image)
+    var output = RGBAImage(width: bounds.width, height: bounds.height)
+    for y in 0..<bounds.height {
+        for x in 0..<bounds.width where image.alphaAt(x: bounds.minX + x, y: bounds.minY + y) > 0 {
+            let src = image.index(x: bounds.minX + x, y: bounds.minY + y)
+            let dst = output.index(x: x, y: y)
+            output.pixels[dst] = image.pixels[src]
+            output.pixels[dst + 1] = image.pixels[src + 1]
+            output.pixels[dst + 2] = image.pixels[src + 2]
+            output.pixels[dst + 3] = image.pixels[src + 3]
+        }
+    }
+    return (output, bounds)
+}
+
 func contentBounds(_ image: RGBAImage) -> Bounds {
     var bounds = Bounds(minX: image.width, minY: image.height, maxX: -1, maxY: -1)
     for y in 0..<image.height {
@@ -425,6 +441,142 @@ func connectedComponents(
     }
 
     return components
+}
+
+func removeDetachedAlphaArtifacts(from image: RGBAImage) -> RGBAImage {
+    let bounds = contentBounds(image)
+    let components = connectedComponents(in: image, searchBounds: bounds) { image, x, y in
+        image.alphaAt(x: x, y: y) > 0
+    }
+    guard let main = components.max(by: { $0.area < $1.area }) else { return image }
+
+    var keep = [Bool](repeating: false, count: image.width * image.height)
+    let keepAreaThreshold = max(80, main.area / 8)
+    let nearMainPadding = 12
+
+    func isNearMain(_ bounds: Bounds) -> Bool {
+        bounds.maxX >= main.bounds.minX - nearMainPadding
+            && bounds.minX <= main.bounds.maxX + nearMainPadding
+            && bounds.maxY >= main.bounds.minY - nearMainPadding
+            && bounds.minY <= main.bounds.maxY + nearMainPadding
+    }
+
+    func isDetachedLineArtifact(_ component: Component) -> Bool {
+        let longSide = max(component.bounds.width, component.bounds.height)
+        let shortSide = max(1, min(component.bounds.width, component.bounds.height))
+        return component.area < max(600, main.area / 5)
+            && shortSide <= 6
+            && longSide >= 40
+            && longSide >= shortSide * 4
+    }
+
+    for component in components where !isDetachedLineArtifact(component) && (component.area == main.area || component.area >= keepAreaThreshold || isNearMain(component.bounds)) {
+        for y in component.bounds.minY...component.bounds.maxY {
+            for x in component.bounds.minX...component.bounds.maxX where image.alphaAt(x: x, y: y) > 0 {
+                keep[y * image.width + x] = true
+            }
+        }
+    }
+
+    var output = image
+    for y in 0..<image.height {
+        for x in 0..<image.width where image.alphaAt(x: x, y: y) > 0 && !keep[y * image.width + x] {
+            let i = output.index(x: x, y: y)
+            output.pixels[i] = 0
+            output.pixels[i + 1] = 0
+            output.pixels[i + 2] = 0
+            output.pixels[i + 3] = 0
+        }
+    }
+    return output
+}
+
+func isPaleLineArtifactPixel(_ image: RGBAImage, x: Int, y: Int) -> Bool {
+    guard image.alphaAt(x: x, y: y) > 0 else { return false }
+    let i = image.index(x: x, y: y)
+    let r = image.pixels[i]
+    let g = image.pixels[i + 1]
+    let b = image.pixels[i + 2]
+    let maxChannel = max(r, max(g, b))
+    let minChannel = min(r, min(g, b))
+    return luma(r, g, b) > 205 && Int(maxChannel) - Int(minChannel) < 55
+}
+
+func removePaleLineArtifacts(from image: RGBAImage) -> RGBAImage {
+    let bounds = contentBounds(image)
+    let components = connectedComponents(in: image, searchBounds: bounds) { image, x, y in
+        isPaleLineArtifactPixel(image, x: x, y: y)
+    }
+
+    var output = image
+    for component in components {
+        let longSide = max(component.bounds.width, component.bounds.height)
+        let shortSide = max(1, min(component.bounds.width, component.bounds.height))
+        let isLine = component.area < 700
+            && shortSide <= 8
+            && longSide >= 30
+            && longSide >= shortSide * 3
+        guard isLine else { continue }
+
+        for y in component.bounds.minY...component.bounds.maxY {
+            for x in component.bounds.minX...component.bounds.maxX where isPaleLineArtifactPixel(output, x: x, y: y) {
+                let i = output.index(x: x, y: y)
+                output.pixels[i] = 0
+                output.pixels[i + 1] = 0
+                output.pixels[i + 2] = 0
+                output.pixels[i + 3] = 0
+            }
+        }
+    }
+    return output
+}
+
+func removeAstronautBoundingGuide(from image: RGBAImage) -> RGBAImage {
+    var solidBounds = Bounds(minX: image.width, minY: image.height, maxX: -1, maxY: -1)
+    for y in 0..<image.height {
+        for x in 0..<image.width where image.alphaAt(x: x, y: y) > 0 && !isPaleLineArtifactPixel(image, x: x, y: y) {
+            solidBounds.minX = min(solidBounds.minX, x)
+            solidBounds.minY = min(solidBounds.minY, y)
+            solidBounds.maxX = max(solidBounds.maxX, x)
+            solidBounds.maxY = max(solidBounds.maxY, y)
+        }
+    }
+    guard solidBounds.maxX >= solidBounds.minX else { return image }
+
+    var output = image
+    let padding = 8
+    for y in 0..<image.height {
+        for x in 0..<image.width where isPaleLineArtifactPixel(image, x: x, y: y) {
+            let outsideSolidArt = x < solidBounds.minX - padding
+                || x > solidBounds.maxX + padding
+                || y < solidBounds.minY - padding
+                || y > solidBounds.maxY + padding
+            guard outsideSolidArt else { continue }
+            let i = output.index(x: x, y: y)
+            output.pixels[i] = 0
+            output.pixels[i + 1] = 0
+            output.pixels[i + 2] = 0
+            output.pixels[i + 3] = 0
+        }
+    }
+    return output
+}
+
+func removeAstronautPaddedGuide(from image: RGBAImage) -> RGBAImage {
+    var output = image
+    let topBand = image.height / 4
+    let leftBand = image.width * 3 / 10
+    let rightBand = image.width * 3 / 5
+    for y in 0..<topBand {
+        for x in 0..<image.width where (x < leftBand || x > rightBand) && isPaleLineArtifactPixel(image, x: x, y: y) {
+            let i = output.index(x: x, y: y)
+            output.pixels[i] = 0
+            output.pixels[i + 1] = 0
+            output.pixels[i + 2] = 0
+            output.pixels[i + 3] = 0
+        }
+    }
+    return output
 }
 
 func lightBounds(around component: Component, in image: RGBAImage, padding: Int) -> Bounds? {
@@ -733,10 +885,11 @@ func makeWingVariant(idle: RGBAImage, character: String, direction: Int) -> RGBA
     // doesn't slide off small bodies.
     let wingBlock = clamped(bodyHeight / 7, min: 6, max: 8)
     let startY = bodyTopY + (bodyHeight * 35) / 100
+    let wingRightEdgeX = eye.leftX + wingAnchorXOffset(for: character, block: wingBlock)
 
     drawStandardWing(
         &output,
-        rightEdgeX: eye.leftX,
+        rightEdgeX: wingRightEdgeX,
         startY: startY,
         block: wingBlock,
         fillColor: body,
@@ -744,6 +897,15 @@ func makeWingVariant(idle: RGBAImage, character: String, direction: Int) -> RGBA
     )
 
     return output
+}
+
+func wingAnchorXOffset(for character: String, block: Int) -> Int {
+    switch character {
+    case "astronaut":
+        return block * 4
+    default:
+        return 0
+    }
 }
 
 func draw(_ source: RGBAImage, into destination: inout RGBAImage, x originX: Int, y originY: Int, maxWidth: Int, maxHeight: Int) {
@@ -813,10 +975,21 @@ func makeContactSheet(_ generated: [(String, [String: RGBAImage])]) -> RGBAImage
 }
 
 let rootFiles = try fileManager.contentsOfDirectory(at: repoURL, includingPropertiesForKeys: nil)
+let supplementalSourceFiles = [
+    "bearskin": "bearskin.png",
+]
 var sources = rootFiles
     .filter { $0.lastPathComponent.hasSuffix(" final.png") }
     .map { SkinSource(fileURL: $0, character: normalizedCharacterName(from: $0.lastPathComponent)) }
     .sorted { $0.character < $1.character }
+for (character, fileName) in supplementalSourceFiles {
+    guard !sources.contains(where: { $0.character == character }) else { continue }
+    let url = repoURL.appendingPathComponent(fileName)
+    if fileManager.fileExists(atPath: url.path) {
+        sources.append(SkinSource(fileURL: url, character: character))
+    }
+}
+sources.sort { $0.character < $1.character }
 if let onlyCharacter {
     sources = sources.filter { $0.character == onlyCharacter }
 }
@@ -843,8 +1016,17 @@ for source in sources {
     let input = try loadImage(source.fileURL)
     let backgroundMask = makeBackgroundMask(input)
     let (cutout, sourceBounds) = transparentCutout(from: input, backgroundMask: backgroundMask)
-    let margin = max(24, Int(Double(max(sourceBounds.width, sourceBounds.height)) * 0.16))
-    let idle = padded(cutout, margin: margin)
+    var cleanedCutout = removeDetachedAlphaArtifacts(from: cutout)
+    if source.character == "astronaut" {
+        cleanedCutout = removePaleLineArtifacts(from: cleanedCutout)
+        cleanedCutout = removeAstronautBoundingGuide(from: cleanedCutout)
+    }
+    let (trimmedCutout, cleanedBounds) = trimmedToContent(cleanedCutout)
+    let margin = max(24, Int(Double(max(cleanedBounds.width, cleanedBounds.height)) * 0.16))
+    var idle = padded(trimmedCutout, margin: margin)
+    if source.character == "astronaut" {
+        idle = removeAstronautPaddedGuide(from: idle)
+    }
     let wingUp = makeWingVariant(idle: idle, character: source.character, direction: -1)
     let wingDown = makeWingVariant(idle: idle, character: source.character, direction: 1)
     let frames = ["idle": idle, "wing_up": wingUp, "wing_down": wingDown]
@@ -864,7 +1046,7 @@ for source in sources {
     }
 
     generated.append((source.character, frames))
-    print("\(source.character): source bbox \(sourceBounds.width)x\(sourceBounds.height), frame \(idle.width)x\(idle.height)")
+    print("\(source.character): source bbox \(sourceBounds.width)x\(sourceBounds.height), cleaned \(cleanedBounds.width)x\(cleanedBounds.height), frame \(idle.width)x\(idle.height)")
 }
 
 let sheet = makeContactSheet(generated)

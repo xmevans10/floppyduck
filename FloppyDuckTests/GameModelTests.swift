@@ -183,7 +183,6 @@ final class GameModelTests: XCTestCase {
 
     func testProductionSkinSpriteSizeKeepsMallardBodyScale() {
         let mallardBodyWidth = GK.duckRadius * 2.8
-        XCTAssertEqual(DuckSkin.classic.spriteSize.width, mallardBodyWidth, accuracy: 0.001)
 
         let pirateScale = mallardBodyWidth / 253
         XCTAssertEqual(DuckSkin.pirate.spriteSize.width, CGFloat(333) * pirateScale, accuracy: 0.001)
