@@ -208,11 +208,12 @@ struct ShopView: View {
             }
         } label: {
             VStack(spacing: 8) {
-                // Duck preview
+                // Duck preview — fixed card height so all skins align
                 Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: skin, pixelScale: 5.0))
                     .interpolation(.none)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .frame(height: 70)
                     .frame(width: 80, height: 80)
 
                 Text(skin.displayName)

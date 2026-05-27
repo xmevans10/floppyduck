@@ -402,11 +402,12 @@ struct CollectionView: View {
             skinManager.select(skin)
         } label: {
             VStack(spacing: 8) {
-                // Duck preview
+                // Duck preview — fixed card height so all skins align
                 Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: skin, pixelScale: 5.0))
                     .interpolation(.none)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .frame(height: 70)
                     .frame(width: 80, height: 80)
 
                 Text(skin.displayName)
@@ -537,6 +538,7 @@ struct CollectionView: View {
                     BannerPatternView(banner: banner, offset: 0)
                         .frame(height: 60)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .allowsHitTesting(false)
 
                     if selected {
                         Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
@@ -593,6 +595,7 @@ struct CollectionView: View {
                     .stroke(selected ? banner.primaryColor : GK.Colors.panelBorder,
                             lineWidth: selected ? 3 : 2)
             )
+            .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }

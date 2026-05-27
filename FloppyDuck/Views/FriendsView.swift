@@ -17,6 +17,8 @@ struct FriendsView: View {
     @State private var isLoading = true
     @State private var isSearching = false
     @State private var errorMessage: String?
+    @State private var toastMessage: String?
+    @State private var confirmRemoveUserId: String?
 
     private let icons = PixelIconFactory.shared
 
@@ -33,6 +35,19 @@ struct FriendsView: View {
         .navigationBarHidden(true)
         .task {
             await loadData()
+        }
+        .overlay(alignment: .bottom) {
+            if let toast = toastMessage {
+                Text(toast)
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(Color.black.opacity(0.8)))
+                    .padding(.bottom, 40)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.3), value: toast)
+            }
         }
     }
 
@@ -484,8 +499,9 @@ struct FriendsView: View {
         do {
             try await ConvexClient.shared.sendFriendRequest(toUserId: userId)
             searchResults.removeAll { $0.userId == userId }
+            showToast("REQUEST SENT!")
         } catch {
-            // silently ignore — user can retry
+            showToast("FAILED TO SEND REQUEST")
         }
     }
 
@@ -494,8 +510,9 @@ struct FriendsView: View {
             try await ConvexClient.shared.acceptFriendRequest(fromUserId: userId)
             pendingRequests.removeAll { $0.userId == userId }
             friends = try await ConvexClient.shared.getFriends()
+            showToast("FRIEND ADDED!")
         } catch {
-            // silently ignore — user can retry
+            showToast("FAILED TO ACCEPT")
         }
     }
 
@@ -504,8 +521,16 @@ struct FriendsView: View {
             try await ConvexClient.shared.removeFriend(otherUserId: userId)
             friends.removeAll { $0.userId == userId }
             pendingRequests.removeAll { $0.userId == userId }
+            showToast("REMOVED")
         } catch {
-            // silently ignore — user can retry
+            showToast("FAILED TO REMOVE")
+        }
+    }
+
+    private func showToast(_ message: String) {
+        toastMessage = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            if toastMessage == message { toastMessage = nil }
         }
     }
 }

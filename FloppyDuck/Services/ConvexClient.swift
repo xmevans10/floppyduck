@@ -208,6 +208,39 @@ actor ConvexClient: MultiplayerBackendClient {
 
     private var authContext: ConvexAuthContext = .none
 
+    // MARK: - Response Cache
+
+    /// Simple in-memory cache for expensive read-only queries (leaderboards, friends, profile).
+    /// Entries expire after `cacheTTL` seconds to keep data reasonably fresh without
+    /// hitting the backend on every view appearance.
+    private struct CacheEntry {
+        let value: Any
+        let timestamp: CFTimeInterval
+    }
+
+    private var responseCache: [String: CacheEntry] = [:]
+    private let cacheTTL: CFTimeInterval = 30  // seconds
+
+    /// Return a cached value if still fresh, or nil.
+    private func cachedValue<T>(for key: String) -> T? {
+        guard let entry = responseCache[key],
+              CACurrentMediaTime() - entry.timestamp < cacheTTL,
+              let typed = entry.value as? T else {
+            return nil
+        }
+        return typed
+    }
+
+    /// Store a value in the cache.
+    private func setCachedValue(_ value: Any, for key: String) {
+        responseCache[key] = CacheEntry(value: value, timestamp: CACurrentMediaTime())
+    }
+
+    /// Invalidate all cached entries (e.g. after a mutation that changes data).
+    func invalidateCache() {
+        responseCache.removeAll()
+    }
+
     init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
@@ -803,6 +836,11 @@ actor ConvexClient: MultiplayerBackendClient {
     // MARK: - Leaderboard
 
     func getLeaderboard(limit: Int = 20) async throws -> [LeaderboardEntry] {
+        let cacheKey = "leaderboard_elo_\(limit)"
+        if let cached: [LeaderboardEntry] = cachedValue(for: cacheKey) {
+            return cached
+        }
+
         let value = try await queryRaw("ratings:leaderboard", args: ["limit": limit])
         let items: [Any]
         let ownEntry: [String: Any]?
@@ -825,10 +863,16 @@ actor ConvexClient: MultiplayerBackendClient {
         }
 
         entries.sort { $0.rank < $1.rank }
+        setCachedValue(entries, for: cacheKey)
         return entries
     }
 
     func getHighScoreLeaderboard(limit: Int = 20) async throws -> [HighScoreEntry] {
+        let cacheKey = "leaderboard_hs_\(limit)"
+        if let cached: [HighScoreEntry] = cachedValue(for: cacheKey) {
+            return cached
+        }
+
         let value = try await queryRaw("scores:leaderboard", args: ["limit": limit])
         let items: [Any]
         let ownEntry: [String: Any]?
@@ -857,6 +901,7 @@ actor ConvexClient: MultiplayerBackendClient {
             print("[ConvexClient] WARNING: all items failed to parse. First item: \(items[0])")
         }
 
+        setCachedValue(entries, for: cacheKey)
         return entries
     }
 
@@ -948,30 +993,51 @@ actor ConvexClient: MultiplayerBackendClient {
 
     func sendFriendRequest(toUserId: String) async throws {
         _ = try await mutationRaw("friends:sendRequest", args: ["toUserId": toUserId])
+        // Invalidate friends cache so next fetch is fresh
+        responseCache.removeValue(forKey: "friends_list")
+        responseCache.removeValue(forKey: "friends_pending")
     }
 
     func acceptFriendRequest(fromUserId: String) async throws {
         _ = try await mutationRaw("friends:acceptRequest", args: ["fromUserId": fromUserId])
+        responseCache.removeValue(forKey: "friends_list")
+        responseCache.removeValue(forKey: "friends_pending")
     }
 
     func removeFriend(otherUserId: String) async throws {
         _ = try await mutationRaw("friends:removeFriendship", args: ["otherUserId": otherUserId])
+        responseCache.removeValue(forKey: "friends_list")
+        responseCache.removeValue(forKey: "friends_pending")
     }
 
     func blockUser(toUserId: String) async throws {
         _ = try await mutationRaw("friends:blockUser", args: ["toUserId": toUserId])
+        responseCache.removeValue(forKey: "friends_list")
+        responseCache.removeValue(forKey: "friends_pending")
     }
 
     func getFriends() async throws -> [PublicPlayerProfile] {
+        let cacheKey = "friends_list"
+        if let cached: [PublicPlayerProfile] = cachedValue(for: cacheKey) {
+            return cached
+        }
         let value = try await queryRaw("friends:getFriends")
         guard let list = value as? [[String: Any]] else { return [] }
-        return list.compactMap { try? parsePublicProfile($0) }
+        let result = list.compactMap { try? parsePublicProfile($0) }
+        setCachedValue(result, for: cacheKey)
+        return result
     }
 
     func getPendingFriendRequests() async throws -> [PublicPlayerProfile] {
+        let cacheKey = "friends_pending"
+        if let cached: [PublicPlayerProfile] = cachedValue(for: cacheKey) {
+            return cached
+        }
         let value = try await queryRaw("friends:getPendingRequests")
         guard let list = value as? [[String: Any]] else { return [] }
-        return list.compactMap { try? parsePublicProfile($0) }
+        let result = list.compactMap { try? parsePublicProfile($0) }
+        setCachedValue(result, for: cacheKey)
+        return result
     }
 
     // MARK: - Parsing Helpers

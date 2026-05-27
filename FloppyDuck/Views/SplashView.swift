@@ -12,6 +12,7 @@ struct SplashView: View {
     @State private var subtitleScale: CGFloat = 0.6
     @State private var fadeOut: Double = 1.0
     @State private var assetsReady = false
+    @State private var quackPlayed = false
 
     // MARK: - Body
 
@@ -66,8 +67,7 @@ struct SplashView: View {
 
         // 0.9 s — Quack SFX + haptic when title lands
         after(0.90) {
-            SoundManager.shared.play(.quack)
-            Haptic.splashCoin()
+            playQuackOnce()
         }
 
         // 1.6 s — Subtitle pops in
@@ -118,8 +118,18 @@ struct SplashView: View {
         }
     }
 
+    /// Play the quack exactly once — whether triggered by the timer or a tap.
+    private func playQuackOnce() {
+        guard !quackPlayed else { return }
+        quackPlayed = true
+        SoundManager.shared.play(.quack)
+        Haptic.splashCoin()
+    }
+
     private func finish() {
         guard !isFinished else { return }
+        // Play the quack in sync with the tap if it hasn't fired yet
+        playQuackOnce()
         // Hold the splash until first-run gameplay assets are actually cached
         // and SpriteKit has preloaded textures onto the render side.
         guard assetsReady && TextureFactory.shared.isPreWarmed else {
