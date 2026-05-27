@@ -483,10 +483,9 @@ struct FriendsView: View {
     private func addFriend(_ userId: String) async {
         do {
             try await ConvexClient.shared.sendFriendRequest(toUserId: userId)
-            // Remove from search results or reload
             searchResults.removeAll { $0.userId == userId }
         } catch {
-            errorMessage = error.localizedDescription
+            // silently ignore — user can retry
         }
     }
 
@@ -494,10 +493,9 @@ struct FriendsView: View {
         do {
             try await ConvexClient.shared.acceptFriendRequest(fromUserId: userId)
             pendingRequests.removeAll { $0.userId == userId }
-            // Reload friends
             friends = try await ConvexClient.shared.getFriends()
         } catch {
-            errorMessage = error.localizedDescription
+            // silently ignore — user can retry
         }
     }
 
@@ -507,7 +505,7 @@ struct FriendsView: View {
             friends.removeAll { $0.userId == userId }
             pendingRequests.removeAll { $0.userId == userId }
         } catch {
-            errorMessage = error.localizedDescription
+            // silently ignore — user can retry
         }
     }
 }

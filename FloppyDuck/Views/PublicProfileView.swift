@@ -509,17 +509,14 @@ struct PublicProfileView: View {
     private func addFriend() async {
         guard let profile, !requestSent else { return }
         isAddingFriend = true
-        errorMessage = nil
         do {
             try await ConvexClient.shared.sendFriendRequest(toUserId: profile.userId)
             requestSent = true
             Haptic.friendAction()
         } catch {
             let msg = error.localizedDescription
-            if msg.contains("already sent") {
+            if msg.contains("already sent") || msg.contains("Already friends") {
                 requestSent = true
-            } else {
-                errorMessage = msg
             }
         }
         isAddingFriend = false
@@ -528,11 +525,7 @@ struct PublicProfileView: View {
     private func blockPlayer() async {
         guard let profile else { return }
         isBlocking = true
-        do {
-            try await ConvexClient.shared.blockUser(toUserId: profile.userId)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        _ = try? await ConvexClient.shared.blockUser(toUserId: profile.userId)
         isBlocking = false
     }
 }
