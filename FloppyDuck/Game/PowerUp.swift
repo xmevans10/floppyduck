@@ -167,8 +167,8 @@ enum PowerUpKind: String, CaseIterable {
     static let collectibleSize: CGFloat = 24
 
     /// Bread-loaf collectible: chance for a bread to become a golden loaf worth 10×.
-    static let loafChance: CGFloat = 0.07
-    static let loafBreadValue: Int = 10
+    static let loafChance: CGFloat = 0.05
+    static let loafBreadValue: Int = 5
 
     /// Mystery boxes should feel exciting more often than punishing.
     static let mysteryBoxPositiveChance: Double = 0.66
@@ -275,7 +275,7 @@ final class PowerUpSpawnManager {
 
     private var pipesUntilNextSpawn: Int
     private var lastSpawnedKind: PowerUpKind?
-    private let seed: Int?
+    private var seed: Int?
     private var rng: SeededRandom?
 
     /// Power-up kinds that should never spawn (e.g. doublePoints in bot games).
@@ -307,8 +307,11 @@ final class PowerUpSpawnManager {
         return kind
     }
 
-    /// Reset for a new game.
-    func reset() {
+    /// Reset for a new game, optionally with a fresh seed so power-up order varies between retries.
+    func reset(newSeed: Int? = nil) {
+        if let newSeed {
+            seed = newSeed
+        }
         if let seed {
             rng = SeededRandom(seed: seed)
         }

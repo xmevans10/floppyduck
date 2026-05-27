@@ -1794,8 +1794,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Reset progressive difficulty
         difficulty.reset()
 
-        // Clear power-up state (also resets speed modifier)
-        powerUpCtrl.reset()
+        // Clear power-up state with fresh seed so power-up order varies between retries
+        powerUpCtrl.reset(newSeed: Self.powerUpSeed(from: newSeed))
         parallax.reset()
 
         // Reset cached physics / animation state
