@@ -383,7 +383,7 @@ final class TextureFactory: @unchecked Sendable {
                     height: skin.spriteSize.height * scale
                 )
                 let format = UIGraphicsImageRendererFormat()
-                format.scale = image.scale
+                format.scale = UIScreen.main.scale   // Use device scale so Retina displays get full-res bitmaps
                 format.opaque = false
                 return UIGraphicsImageRenderer(size: targetSize, format: format).image { ctx in
                     ctx.cgContext.interpolationQuality = .none
