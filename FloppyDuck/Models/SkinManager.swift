@@ -156,6 +156,22 @@ final class SkinManager: ObservableObject {
         grantSkin(skin)
     }
 
+    /// Auto-unlock any bot-reward skin tied to the beaten bot.
+    func checkBotRewardUnlock(beatenBotId: String) {
+        for skin in DuckSkin.allCases where skin.isBotReward {
+            if skin.rewardBotId == beatenBotId {
+                grantSkin(skin)
+            }
+        }
+    }
+
+    /// Sync owned skins with beaten bots list (call on app launch).
+    func syncWithBeatenBots(_ beatenBots: [String]) {
+        for botId in beatenBots {
+            checkBotRewardUnlock(beatenBotId: botId)
+        }
+    }
+
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified:

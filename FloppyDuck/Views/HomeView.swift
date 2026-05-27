@@ -26,6 +26,37 @@ struct HomeView: View {
 
             cloudLayer
 
+            // Settings gear — top-right corner, always accessible
+            VStack {
+                HStack {
+                    Spacer()
+                    Button {
+                        SoundManager.shared.play(.button)
+                        manager.navigate(to: .settings)
+                    } label: {
+                        Image(uiImage: icons.image(for: .settings, pixelScale: 3.0))
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 26, height: 26)
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.black.opacity(0.3))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Settings")
+                }
+                .padding(.trailing, 16)
+                .padding(.top, 54)
+                Spacer()
+            }
+            .zIndex(10)
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
                     Spacer().frame(height: 54)
@@ -46,13 +77,13 @@ struct HomeView: View {
 
                     Spacer().frame(height: 22)
 
-                    // Play button (expandable)
+                    // Play modes
                     playSection
                         .padding(.horizontal, 40)
 
                     Spacer().frame(height: 16)
 
-                    // Bottom row: Shop, Collection, Achievements, Stats, Settings
+                    // Bottom grid: 3×2 — Shop, Collection, Achieve, Leaderboard, Stats, Friends
                     bottomButtons
                         .padding(.horizontal, 32)
 
@@ -402,11 +433,6 @@ struct HomeView: View {
                 if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .friends)
-            }
-
-            bottomButton(icon: .settings, label: "SETTINGS") {
-                SoundManager.shared.play(.button)
-                manager.navigate(to: .settings)
             }
         }
     }
