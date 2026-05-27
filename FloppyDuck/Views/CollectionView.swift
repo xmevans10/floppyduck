@@ -160,6 +160,8 @@ struct CollectionView: View {
         )
     }
 
+    private static let cardPreviewHeight: CGFloat = 105
+
     private func duckPreviewImage(skin: DuckSkin) -> some View {
         let frame = duckDisplayFrame(for: skin)
         return Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: skin, pixelScale: Self.cardDuckPixelScale))
@@ -167,6 +169,7 @@ struct CollectionView: View {
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(width: frame.width, height: frame.height)
+            .frame(height: Self.cardPreviewHeight)          // uniform height across all cards
     }
 
     // MARK: - Skins Content
