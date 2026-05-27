@@ -39,8 +39,11 @@ struct PublicProfileView: View {
                 Task { await blockPlayer() }
             }
         } message: {
-            guard let profile else { return }
-            Text("Block \(profile.username)? They will not be able to send you friend requests.")
+            if let profile {
+                Text("Block \(profile.username)? They will not be able to send you friend requests.")
+            } else {
+                Text("Block this player?")
+            }
         }
     }
 
@@ -89,45 +92,49 @@ struct PublicProfileView: View {
     // MARK: - Loading / Error
 
     private var loadingView: some View {
-        Spacer()
-        VStack(spacing: 12) {
-            ProgressView().tint(.white)
-            Text("LOADING...")
-                .font(.custom(GK.pixelFontName, size: 8))
-                .foregroundColor(.white.opacity(0.7))
+        Group {
+            Spacer()
+            VStack(spacing: 12) {
+                ProgressView().tint(.white)
+                Text("LOADING...")
+                    .font(.custom(GK.pixelFontName, size: 8))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            Spacer()
         }
-        Spacer()
     }
 
     private func errorView(_ error: String) -> some View {
-        Spacer()
-        VStack(spacing: 12) {
-            Image(uiImage: icons.image(for: .warning, pixelScale: 4.0))
-                .interpolation(.none)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 36, height: 36)
-            Text("COULD NOT LOAD PROFILE")
-                .font(.custom(GK.pixelFontName, size: 9))
-                .foregroundColor(.white)
-            Text(error)
-                .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
-            Button {
-                Task { await loadProfile() }
-            } label: {
-                Text("RETRY")
+        Group {
+            Spacer()
+            VStack(spacing: 12) {
+                Image(uiImage: icons.image(for: .warning, pixelScale: 4.0))
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 36, height: 36)
+                Text("COULD NOT LOAD PROFILE")
                     .font(.custom(GK.pixelFontName, size: 9))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonBlue))
+                Text(error)
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(.white.opacity(0.6))
+                    .multilineTextAlignment(.center)
+                Button {
+                    Task { await loadProfile() }
+                } label: {
+                    Text("RETRY")
+                        .font(.custom(GK.pixelFontName, size: 9))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonBlue))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(30)
+            Spacer()
         }
-        .padding(30)
-        Spacer()
     }
 
     // MARK: - Content
