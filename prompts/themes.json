@@ -148,6 +148,20 @@
       "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/roughOcean_hero_no_ground.png",
       "crop_x_bias": 0.5,
       "crop_y_bias": 0.5
+    },
+    "fantasyCastle": {
+      "seed_base": 43800,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/fantasyCastle_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/fantasyCastle_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
+    },
+    "clouds": {
+      "seed_base": 43900,
+      "source_artifact": "artifacts/background_prototypes/no_baked_ground/clouds_hero_no_ground.png",
+      "accepted_candidate": "artifacts/background_prototypes/no_baked_ground/clouds_hero_no_ground.png",
+      "crop_x_bias": 0.5,
+      "crop_y_bias": 0.5
     }
   },
   "ground_palettes": {
@@ -258,6 +272,18 @@
       "body": "#2f6f7f",
       "shadow": "#123042",
       "accent": "#eef7e8"
+    },
+    "fantasyCastle": {
+      "lip": "#7ec850",
+      "body": "#3d6b3a",
+      "shadow": "#1a3028",
+      "accent": "#f5d442"
+    },
+    "clouds": {
+      "lip": "#e8f4ff",
+      "body": "#9dc8e8",
+      "shadow": "#5588b8",
+      "accent": "#ffffff"
     }
   },
   "global": {
@@ -651,6 +677,40 @@
         "kraken",
         "foreground cliff wall",
         "bright tropical water"
+      ]
+    },
+    "fantasyCastle": {
+      "name": "fantasy castle kingdom",
+      "scene": "magical fantasy landscape with a distant castle and rolling green hills",
+      "upper": "soft purple-blue sky with wispy clouds and a few tiny stars, open through the flight corridor",
+      "midground": "distant castle silhouettes with towers and flags, low rolling green hills and a winding river kept below the center line",
+      "ground": "chunky green meadow strip with a clean grass lip, small flowers, and stone path pixels",
+      "edges": "tower turrets, flags, and bushes only at far lower edges",
+      "palette": "purple-blue sky, soft gold, forest green, stone gray, warm torchlight accents",
+      "motion_hooks": "twinkling stars, mist, subtle flag flutter",
+      "negative": [
+        "giant castle filling center",
+        "dragon",
+        "knight character",
+        "readable banners",
+        "dark foreground wall"
+      ]
+    },
+    "clouds": {
+      "name": "sky-high cloud kingdom",
+      "scene": "bright open sky with majestic cloud formations and soft sunlit atmosphere",
+      "upper": "clear bright blue sky with open readable space through the central flight corridor",
+      "midground": "fluffy white cloud banks and soft golden sunlit edges kept low below the center line",
+      "ground": "chunky soft cloud strip with a clean puffy lip and subtle sky-blue shadow pixels",
+      "edges": "wispy cloud tufts and sun rays only at far lower edges",
+      "palette": "sky blue, cloud white, soft gold, pale cyan, warm sunbeam accents",
+      "motion_hooks": "slow cloud drift, gentle mist, subtle sun sparkle",
+      "negative": [
+        "dark storm clouds",
+        "rain",
+        "birds in center",
+        "dense cloud wall blocking play area",
+        "sun disk in center"
       ]
     }
   }
