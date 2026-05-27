@@ -66,6 +66,8 @@
 		D30000000000000000000004 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* LeaderboardView.swift */; };
 		D30000000000000000000005 /* PixelTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000005 /* PixelTextField.swift */; };
 		D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652A08D5F52D04D2A070A /* StatsView.swift */; };
+		FRIENDSVIEWBUILD00000000001 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FRIENDSVIEW0000000000000001 /* FriendsView.swift */; };
+		PUBLICPROFILEBUILD000000001 /* PublicProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PUBLICPROFILE00000000000001 /* PublicProfileView.swift */; };
 		DA952EA9A8F9F4B558AE3005 /* DifficultyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEC0FA57DB4A1F4290C01227 /* DifficultyManagerTests.swift */; };
 		DE5495A93496B50D9CEDB240 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD41533DFDF5C0880D1DA2B0 /* HomeView.swift */; };
 		DEDE0001DEDE0001DEDE0001 /* ThemeRecipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDE0002DEDE0002DEDE0002 /* ThemeRecipe.swift */; };
@@ -125,6 +127,12 @@
 		F200000000000000000004D /* theme_lagoon.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004D /* theme_lagoon.m4a */; };
 		F200000000000000000004E /* theme_losAngeles.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004E /* theme_losAngeles.m4a */; };
 		F200000000000000000004F /* theme_london.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004F /* theme_london.m4a */; };
+		F2000000000000000000052 /* quack_unicorn.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000052 /* quack_unicorn.m4a */; };
+		F2000000000000000000051 /* quack_princess.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000051 /* quack_princess.m4a */; };
+		F2000000000000000000050 /* quack_mermaid.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000050 /* quack_mermaid.m4a */; };
+		F1000000000000000000052 /* quack_unicorn.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_unicorn.m4a; sourceTree = "<group>"; };
+		F1000000000000000000051 /* quack_princess.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_princess.m4a; sourceTree = "<group>"; };
+		F1000000000000000000050 /* quack_mermaid.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_mermaid.m4a; sourceTree = "<group>"; };
 		F6C14CBD558848CCE98A0F40 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */; };
 		FF1E7DCB9494C2D8DE5E22BC /* ParallaxManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEAFED59AA05D81B7FE0EEF /* ParallaxManager.swift */; };
 		PH0000000000000000000003 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = PH0000000000000000000002 /* PostHog */; };
@@ -191,6 +199,8 @@
 		A20000000000000000000099 /* MultiplayerFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerFlowTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000101 /* GameSceneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneTests.swift; sourceTree = "<group>"; };
 		A47652A08D5F52D04D2A070A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		FRIENDSVIEW0000000000000001 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
+		PUBLICPROFILE00000000000001 /* PublicProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicProfileView.swift; sourceTree = "<group>"; };
 		AEC0FA57DB4A1F4290C01227 /* DifficultyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DifficultyManagerTests.swift; sourceTree = "<group>"; };
 		B0A1B2C3D4E5F60718293040 /* FloppyDuck.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FloppyDuck.entitlements; sourceTree = "<group>"; };
 		BD270101F4832BD91EEB76A8 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
@@ -317,6 +327,8 @@
 				6757C7C15DA4FAF02AA1E5CA /* MatchmakingView.swift */,
 				5B0ADBBCFC5947F1B54DF780 /* SinglePlayerModesView.swift */,
 				A47652A08D5F52D04D2A070A /* StatsView.swift */,
+				FRIENDSVIEW0000000000000001 /* FriendsView.swift */,
+				PUBLICPROFILE00000000000001 /* PublicProfileView.swift */,
 				CD59E0EB71DC1D5B631D2753 /* SettingsView.swift */,
 				D10000000000000000000001 /* SplashView.swift */,
 				FEE665FBBA56B6B05993EC6B /* BotLadderView.swift */,
@@ -557,6 +569,9 @@
 				F10000000000000000000040 /* quack_cowboy.m4a */,
 				F10000000000000000000041 /* quack_alien.m4a */,
 				F10000000000000000000042 /* quack_dinosaur.m4a */,
+				F1000000000000000000052 /* quack_unicorn.m4a */,
+				F1000000000000000000051 /* quack_princess.m4a */,
+				F1000000000000000000050 /* quack_mermaid.m4a */,
 				F10000000000000000000043 /* quack_wizard.m4a */,
 				F10000000000000000000044 /* quack_devil.m4a */,
 				F10000000000000000000045 /* quack_sailor.m4a */,
@@ -708,6 +723,9 @@
 				F20000000000000000000040 /* quack_cowboy.m4a in Resources */,
 				F20000000000000000000041 /* quack_alien.m4a in Resources */,
 				F20000000000000000000042 /* quack_dinosaur.m4a in Resources */,
+				F2000000000000000000052 /* quack_unicorn.m4a in Resources */,
+				F2000000000000000000051 /* quack_princess.m4a in Resources */,
+				F2000000000000000000050 /* quack_mermaid.m4a in Resources */,
 				F20000000000000000000043 /* quack_wizard.m4a in Resources */,
 				F20000000000000000000044 /* quack_devil.m4a in Resources */,
 				F20000000000000000000045 /* quack_sailor.m4a in Resources */,
@@ -779,6 +797,8 @@
 				99308076B485D18DE7FA4DA6 /* PixelIconFactory.swift in Sources */,
 				B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */,
 				D390BFFFED7C4E3C36AFADCE /* StatsView.swift in Sources */,
+				FRIENDSVIEWBUILD00000000001 /* FriendsView.swift in Sources */,
+				PUBLICPROFILEBUILD000000001 /* PublicProfileView.swift in Sources */,
 				9427E70309498CDBF08B3846 /* SettingsView.swift in Sources */,
 				D30000000000000000000001 /* SplashView.swift in Sources */,
 				D30000000000000000000002 /* ShareCardView.swift in Sources */,
