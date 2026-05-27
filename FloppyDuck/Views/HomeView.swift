@@ -77,15 +77,20 @@ struct HomeView: View {
 
                     Spacer().frame(height: 22)
 
-                    // Play modes
-                    playSection
-                        .padding(.horizontal, 40)
+                    // Play modes — swap layout when offline
+                    if auth.isOffline {
+                        offlinePlaySection
+                            .padding(.horizontal, 40)
+                    } else {
+                        playSection
+                            .padding(.horizontal, 40)
 
-                    Spacer().frame(height: 16)
+                        Spacer().frame(height: 16)
 
-                    // Bottom grid: 3×2 — Shop, Collection, Achieve, Leaderboard, Stats, Friends
-                    bottomButtons
-                        .padding(.horizontal, 32)
+                        // Bottom grid: 3×2 — Shop, Collection, Achieve, Leaderboard, Stats, Friends
+                        bottomButtons
+                            .padding(.horizontal, 32)
+                    }
 
                     Spacer().frame(height: 24)
                 }
@@ -110,6 +115,9 @@ struct HomeView: View {
             auth.refreshGameCenterAuthenticationState(reason: "home_appear")
         }
         .task {
+            // Skip network-dependent fetches when offline
+            guard !auth.isOffline else { return }
+
             activeAnnouncements = (try? await ConvexClient.shared.fetchAnnouncements()) ?? []
 
             if !isGuest {
@@ -294,8 +302,8 @@ struct HomeView: View {
 
     private var accountBadge: some View {
         HStack(spacing: 6) {
-            pixelIcon(auth.isAppleLinked ? .trophy : .classic, size: 14)
-            Text(auth.accountBadgeText)
+            pixelIcon(auth.isOffline ? .warning : (auth.isAppleLinked ? .trophy : .classic), size: 14)
+            Text(auth.isOffline ? "OFFLINE" : auth.accountBadgeText)
                 .font(.custom(GK.pixelFontName, size: 7))
                 .foregroundColor(.white)
         }
@@ -350,6 +358,53 @@ struct HomeView: View {
             ) {
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .multiplayerModes)
+            }
+        }
+    }
+
+    // MARK: - Offline Play Section
+
+    /// Airplane-mode layout: only features that work without a network.
+    private var offlinePlaySection: some View {
+        VStack(spacing: 10) {
+            subModeButton(
+                icon: .classic,
+                title: "SINGLE PLAYER",
+                subtitle: "Classic · Arcade",
+                color: GK.Colors.classicTint
+            ) {
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .singlePlayerModes)
+            }
+
+            subModeButton(
+                icon: .collection,
+                title: "COLLECTION",
+                subtitle: "View & Equip Skins",
+                color: GK.Colors.panelBorder
+            ) {
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .collection)
+            }
+
+            subModeButton(
+                icon: .trophy,
+                title: "ACHIEVE",
+                subtitle: "View Achievements",
+                color: GK.Colors.buttonOrange
+            ) {
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .achievements)
+            }
+
+            subModeButton(
+                icon: .bot,
+                title: "VS BOT",
+                subtitle: "Bot Ladder",
+                color: GK.Colors.vsBotTint
+            ) {
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .botLadder)
             }
         }
     }

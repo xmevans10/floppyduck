@@ -18,12 +18,18 @@ final class AuthManager: ObservableObject {
     @Published private(set) var lastCloudSyncAt: Date?
     @Published private(set) var needsCloudRestore: Bool = false
 
+    /// `true` when the device has no network connectivity (airplane mode, etc.).
+    /// Updated in real time by a persistent `NWPathMonitor`.
+    @Published private(set) var isOffline: Bool = false
+
     private let gameManager: GameManager
     private let identityStore: any IdentityStoring
     private let client: any MultiplayerBackendClient
     private var didAttemptBootstrap = false
     private var isBootstrapping = false
     private var gameCenterAuthObserver: NSObjectProtocol?
+    private var networkMonitor: NWPathMonitor?
+    private let networkQueue = DispatchQueue(label: "net.monitor")
 
     /// Retained coordinator — prevents deallocation while Apple Sign In sheet is open.
     private var activeCoordinator: AppleSignInCoordinator?
@@ -44,12 +50,39 @@ final class AuthManager: ObservableObject {
                 self?.refreshGameCenterAuthenticationState(reason: "didBecomeActive")
             }
         }
+        startNetworkMonitor()
     }
 
     deinit {
         if let gameCenterAuthObserver {
             NotificationCenter.default.removeObserver(gameCenterAuthObserver)
         }
+        networkMonitor?.cancel()
+    }
+
+    // MARK: - Persistent Network Monitor
+
+    /// Starts a long-lived `NWPathMonitor` that publishes `isOffline` and
+    /// automatically re-authenticates when connectivity returns.
+    private func startNetworkMonitor() {
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let wasOffline = self.isOffline
+                let nowOffline = path.status != .satisfied
+                self.isOffline = nowOffline
+
+                // Connectivity restored — re-bootstrap so the user gets full
+                // access without having to manually tap anything.
+                if wasOffline && !nowOffline {
+                    print("[AuthManager] Network restored — re-bootstrapping auth")
+                    await self.retryBootstrap()
+                }
+            }
+        }
+        monitor.start(queue: networkQueue)
+        networkMonitor = monitor
     }
 
     var isAppleLinked: Bool {
