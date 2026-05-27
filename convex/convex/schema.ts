@@ -153,6 +153,18 @@ export default defineSchema({
   })
     .index("by_active_createdAt", ["active", "createdAt"]),
 
+  friendships: defineTable({
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("blocked")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_fromUserId", ["fromUserId"])
+    .index("by_toUserId", ["toUserId"])
+    .index("by_from_to", ["fromUserId", "toUserId"])
+    .index("by_to_status", ["toUserId", "status"]),
+
   diagnosticEvents: defineTable({
     userId: v.optional(v.id("users")),
     deviceId: v.optional(v.string()),

@@ -285,64 +285,78 @@ struct LeaderboardView: View {
 
     private func eloRow(_ entry: LeaderboardEntry) -> some View {
         let isCurrentPlayer = entry.id == currentUserId
-        return HStack(spacing: 12) {
-            Text("#\(entry.rank)")
-                .font(.custom(GK.pixelFontName, size: 12))
-                .foregroundColor(rankColor(entry.rank))
-                .frame(width: 44, alignment: .leading)
-            Text(entry.username)
-                .font(.custom(GK.pixelFontName, size: 10))
-                .foregroundColor(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder)
-                .lineLimit(1)
-            Spacer()
-            Text("\(entry.rating)")
-                .font(.custom(GK.pixelFontName, size: 12))
-                .foregroundColor(GK.Colors.panelBorder)
+        return Button {
+            SoundManager.shared.play(.button)
+            manager.navigate(to: .publicProfile(entry.id))
+        } label: {
+            HStack(spacing: 12) {
+                Text("#\(entry.rank)")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(rankColor(entry.rank))
+                    .frame(width: 44, alignment: .leading)
+                Text(entry.username)
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder)
+                    .lineLimit(1)
+                Spacer()
+                Text("\(entry.rating)")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(GK.Colors.panelBorder)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isCurrentPlayer ? Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.12) : GK.Colors.panelCream)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder, lineWidth: isCurrentPlayer ? 3 : 2)
+            )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(isCurrentPlayer ? Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.12) : GK.Colors.panelCream)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder, lineWidth: isCurrentPlayer ? 3 : 2)
-        )
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Rank \(entry.rank), \(entry.username), rating \(entry.rating)\(isCurrentPlayer ? ", you" : "")")
+        .accessibilityHint("Tap to view profile")
     }
 
     // MARK: - High Score Row
 
     private func highScoreRow(_ entry: HighScoreEntry) -> some View {
         let isCurrentPlayer = entry.id == currentUserId
-        return HStack(spacing: 12) {
-            Text("#\(entry.rank)")
-                .font(.custom(GK.pixelFontName, size: 12))
-                .foregroundColor(rankColor(entry.rank))
-                .frame(width: 44, alignment: .leading)
-            Text(entry.username)
-                .font(.custom(GK.pixelFontName, size: 10))
-                .foregroundColor(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder)
-                .lineLimit(1)
-            Spacer()
-            Text("\(entry.bestScore)")
-                .font(.custom(GK.pixelFontName, size: 12))
-                .foregroundColor(GK.Colors.panelBorder)
+        return Button {
+            SoundManager.shared.play(.button)
+            manager.navigate(to: .publicProfile(entry.id))
+        } label: {
+            HStack(spacing: 12) {
+                Text("#\(entry.rank)")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(rankColor(entry.rank))
+                    .frame(width: 44, alignment: .leading)
+                Text(entry.username)
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder)
+                    .lineLimit(1)
+                Spacer()
+                Text("\(entry.bestScore)")
+                    .font(.custom(GK.pixelFontName, size: 12))
+                    .foregroundColor(GK.Colors.panelBorder)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isCurrentPlayer ? Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.12) : GK.Colors.panelCream)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder, lineWidth: isCurrentPlayer ? 3 : 2)
+            )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(isCurrentPlayer ? Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.12) : GK.Colors.panelCream)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isCurrentPlayer ? GK.Colors.scoreYellow : GK.Colors.panelBorder, lineWidth: isCurrentPlayer ? 3 : 2)
-        )
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Rank \(entry.rank), \(entry.username), score \(entry.bestScore)\(isCurrentPlayer ? ", you" : "")")
+        .accessibilityHint("Tap to view profile")
     }
 
     // MARK: - Shared Helpers

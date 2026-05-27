@@ -70,6 +70,17 @@ protocol MultiplayerBackendClient: Sendable {
 
     /// Update the player's username (enforced unique server-side).
     func updateUsername(_ name: String) async throws -> String
+
+    // MARK: - Friends & Social
+
+    func getPublicProfile(userId: String) async throws -> PublicPlayerProfile
+    func searchUsers(query: String) async throws -> [PublicPlayerProfile]
+    func sendFriendRequest(toUserId: String) async throws
+    func acceptFriendRequest(fromUserId: String) async throws
+    func removeFriend(otherUserId: String) async throws
+    func blockUser(toUserId: String) async throws
+    func getFriends() async throws -> [PublicPlayerProfile]
+    func getPendingFriendRequests() async throws -> [PublicPlayerProfile]
 }
 
 extension MultiplayerBackendClient {
@@ -95,6 +106,14 @@ extension MultiplayerBackendClient {
     func scheduleStart(matchId: String, startAtMs: Double) async throws {}
     func getReadyState(matchId: String) async throws -> ReadyState { ReadyState(p1Ready: nil, p2Ready: nil, startAtMs: nil, status: "active") }
     func recordDiagnosticEvent(_ event: MultiplayerDiagnosticEvent) async throws {}
+    func getPublicProfile(userId: String) async throws -> PublicPlayerProfile { throw ConvexError.requestFailed }
+    func searchUsers(query: String) async throws -> [PublicPlayerProfile] { [] }
+    func sendFriendRequest(toUserId: String) async throws { throw ConvexError.requestFailed }
+    func acceptFriendRequest(fromUserId: String) async throws { throw ConvexError.requestFailed }
+    func removeFriend(otherUserId: String) async throws { throw ConvexError.requestFailed }
+    func blockUser(toUserId: String) async throws { throw ConvexError.requestFailed }
+    func getFriends() async throws -> [PublicPlayerProfile] { [] }
+    func getPendingFriendRequests() async throws -> [PublicPlayerProfile] { [] }
 }
 
 struct MultiplayerDiagnosticEvent: Sendable {
@@ -911,7 +930,120 @@ actor ConvexClient: MultiplayerBackendClient {
         return username
     }
 
-        // MARK: - Parsing Helpers
+    // MARK: - Friends & Social
+
+    func getPublicProfile(userId: String) async throws -> PublicPlayerProfile {
+        let value = try await queryRaw("friends:getPublicProfile", args: ["userId": userId])
+        guard let dict = dictionary(from: value) else {
+            throw ConvexError.invalidResponse
+        }
+        return parsePublicProfile(dict)
+    }
+
+    func searchUsers(query: String) async throws -> [PublicPlayerProfile] {
+        let value = try await queryRaw("friends:searchUsers", args: ["query": query])
+        guard let list = value as? [[String: Any]] else { return [] }
+        return list.compactMap { try? parsePublicProfile($0) }
+    }
+
+    func sendFriendRequest(toUserId: String) async throws {
+        _ = try await mutationRaw("friends:sendRequest", args: ["toUserId": toUserId])
+    }
+
+    func acceptFriendRequest(fromUserId: String) async throws {
+        _ = try await mutationRaw("friends:acceptRequest", args: ["fromUserId": fromUserId])
+    }
+
+    func removeFriend(otherUserId: String) async throws {
+        _ = try await mutationRaw("friends:removeFriendship", args: ["otherUserId": otherUserId])
+    }
+
+    func blockUser(toUserId: String) async throws {
+        _ = try await mutationRaw("friends:blockUser", args: ["toUserId": toUserId])
+    }
+
+    func getFriends() async throws -> [PublicPlayerProfile] {
+        let value = try await queryRaw("friends:getFriends")
+        guard let list = value as? [[String: Any]] else { return [] }
+        return list.compactMap { try? parsePublicProfile($0) }
+    }
+
+    func getPendingFriendRequests() async throws -> [PublicPlayerProfile] {
+        let value = try await queryRaw("friends:getPendingRequests")
+        guard let list = value as? [[String: Any]] else { return [] }
+        return list.compactMap { try? parsePublicProfile($0) }
+    }
+
+    // MARK: - Parsing Helpers
+
+    private func parsePublicProfile(_ dict: [String: Any]) -> PublicPlayerProfile {
+        let userId = string(in: dict, keys: ["userId", "user_id", "id", "_id"]) ?? ""
+        let username = string(in: dict, keys: ["username", "name"]) ?? "Player"
+        let provider = parseProvider(from: string(in: dict, keys: ["provider"])) ?? .guest
+
+        let statsSource = dictionary(in: dict, keys: ["stats", "playerStats", "player_stats"]) ?? dict
+        let stats = parsePublicPlayerStats(from: statsSource)
+
+        return PublicPlayerProfile(
+            userId: userId,
+            username: username,
+            provider: provider,
+            stats: stats
+        )
+    }
+
+    private func parsePublicPlayerStats(from source: [String: Any]) -> PublicPlayerStats {
+        func intValue(_ keys: [String]) -> Int {
+            for key in keys {
+                if let value = source[key] as? Int {
+                    return value
+                }
+                if let value = source[key] as? Double {
+                    return Int(value)
+                }
+                if let value = source[key] as? NSNumber {
+                    return value.intValue
+                }
+                if let value = source[key] as? String, let int = Int(value) {
+                    return int
+                }
+            }
+            return 0
+        }
+
+        func intArrayValue(_ keys: [String]) -> [Int] {
+            for key in keys {
+                if let values = source[key] as? [Int] {
+                    return values
+                }
+                if let values = source[key] as? [Any] {
+                    return values.compactMap {
+                        if let int = $0 as? Int { return int }
+                        if let double = $0 as? Double { return Int(double) }
+                        if let number = $0 as? NSNumber { return number.intValue }
+                        if let string = $0 as? String { return Int(string) }
+                        return nil
+                    }
+                }
+            }
+            return []
+        }
+
+        return PublicPlayerStats(
+            gamesPlayed: intValue(["gamesPlayed", "games_played"]),
+            wins: intValue(["wins"]),
+            losses: intValue(["losses"]),
+            bestScore: intValue(["bestScore", "best_score"]),
+            totalScore: intValue(["totalScore", "total_score"]),
+            elo: intValue(["elo", "rating"]),
+            peakElo: intValue(["peakElo", "peak_elo"]),
+            winStreak: intValue(["winStreak", "win_streak"]),
+            bestWinStreak: intValue(["bestWinStreak", "best_win_streak"]),
+            beatenBotsCount: intValue(["beatenBotsCount", "beaten_bots_count"]),
+            recentScores: intArrayValue(["recentScores", "recent_scores"]),
+            selectedSkin: string(in: source, keys: ["selectedSkin", "selected_skin", "skin"])
+        )
+    }
 
     private func parseProfile(_ value: Any?) -> RemotePlayerProfile? {
         guard let source = dictionary(from: value) else { return nil }

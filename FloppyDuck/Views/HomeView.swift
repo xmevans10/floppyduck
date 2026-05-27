@@ -357,10 +357,12 @@ struct HomeView: View {
         .accessibilityLabel(locked ? "\(title), sign in to unlock" : "\(title), \(subtitle)")
     }
 
-    // MARK: - Bottom Buttons (5 buttons)
+    // MARK: - Bottom Buttons (3×2 grid)
+
+    private let bottomGridColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
 
     private var bottomButtons: some View {
-        HStack(spacing: 8) {
+        LazyVGrid(columns: bottomGridColumns, spacing: 8) {
             bottomButton(icon: .shop, label: "SHOP", locked: isGuest) {
                 if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
@@ -379,10 +381,22 @@ struct HomeView: View {
                 manager.navigate(to: .achievements)
             }
 
+            bottomButton(icon: .ribbon, label: "LEADERBOARD", locked: isGuest) {
+                if isGuest { showSignInPrompt = true; return }
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .leaderboard)
+            }
+
             bottomButton(icon: .stats, label: "STATS", locked: isGuest) {
                 if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .stats)
+            }
+
+            bottomButton(icon: .headToHead, label: "FRIENDS", locked: isGuest) {
+                if isGuest { showSignInPrompt = true; return }
+                SoundManager.shared.play(.button)
+                manager.navigate(to: .friends)
             }
 
             bottomButton(icon: .settings, label: "SETTINGS") {
@@ -395,15 +409,15 @@ struct HomeView: View {
     private func bottomButton(icon: PixelIcon, label: String, locked: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 5) {
-                pixelIcon(icon, size: 24)
+                pixelIcon(icon, size: 32)
                 Text(label)
-                    .font(.custom(GK.pixelFontName, size: 5))
+                    .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(GK.Colors.panelBorder)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(GK.Colors.panelCream)

@@ -14,6 +14,8 @@ enum AppRoute: Hashable {
     case collection
     case leaderboard
     case achievements
+    case friends
+    case publicProfile(String)
 }
 
 struct GameModeConfig: Identifiable, Hashable {
@@ -595,6 +597,57 @@ struct HighScoreEntry: Identifiable, Codable, Hashable {
     let username: String
     let bestScore: Int
     let rank: Int
+}
+
+// MARK: - Public Profile
+
+struct PublicPlayerStats: Codable, Hashable {
+    let gamesPlayed: Int
+    let wins: Int
+    let losses: Int
+    let bestScore: Int
+    let totalScore: Int
+    let elo: Int
+    let peakElo: Int
+    let winStreak: Int
+    let bestWinStreak: Int
+    let beatenBotsCount: Int
+    let recentScores: [Int]
+    let selectedSkin: String?
+
+    var winRate: Double {
+        guard gamesPlayed > 0 else { return 0 }
+        return Double(wins) / Double(gamesPlayed)
+    }
+
+    var averageScore: Double {
+        guard gamesPlayed > 0 else { return 0 }
+        return Double(totalScore) / Double(gamesPlayed)
+    }
+}
+
+struct PublicPlayerProfile: Identifiable, Codable, Hashable {
+    let userId: String
+    let username: String
+    let provider: AuthProvider
+    let stats: PublicPlayerStats
+
+    var id: String { userId }
+}
+
+// MARK: - Friends
+
+struct FriendshipRelation: Codable, Hashable {
+    let userId: String
+    let profile: PublicPlayerProfile
+}
+
+struct FriendSearchResult: Identifiable, Codable, Hashable {
+    let userId: String
+    let username: String
+    let stats: PublicPlayerStats
+
+    var id: String { userId }
 }
 
 // MARK: - Stats

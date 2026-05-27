@@ -40,7 +40,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
         )
         .onAppear {
-            SoundManager.shared.startMenuMusic()
+            syncMusicWithPresentedGame()
         }
         .onChange(of: manager.activeGameConfig) { oldValue, newValue in
             if newValue != nil {
@@ -54,6 +54,14 @@ struct ContentView: View {
         .fullScreenCover(item: $manager.activeGameConfig) { config in
             GameContainerView(config: config)
                 .environmentObject(manager)
+        }
+    }
+
+    private func syncMusicWithPresentedGame() {
+        if manager.activeGameConfig == nil {
+            SoundManager.shared.startMenuMusic()
+        } else {
+            SoundManager.shared.stopMenuMusic()
         }
     }
 
@@ -80,6 +88,10 @@ struct ContentView: View {
             LeaderboardView()
         case .achievements:
             AchievementsView()
+        case .friends:
+            FriendsView()
+        case .publicProfile(let userId):
+            PublicProfileView(userId: userId)
         }
     }
 
