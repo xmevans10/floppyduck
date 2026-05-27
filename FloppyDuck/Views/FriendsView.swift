@@ -3,13 +3,21 @@ import SwiftUI
 enum FriendsTab: String, CaseIterable {
     case friends = "FRIENDS"
     case pending = "REQUESTS"
-    case search = "ADD"
+    case search  = "ADD"
 
-    var icon: PixelIcon {
+    var systemIcon: String {
         switch self {
-        case .friends: return .headToHead
-        case .pending: return .chick
-        case .search: return .play
+        case .friends: return "person.2.fill"
+        case .pending: return "envelope.fill"
+        case .search:  return "magnifyingglass"
+        }
+    }
+
+    var accent: Color {
+        switch self {
+        case .friends: return GK.Colors.buttonBlue
+        case .pending: return GK.Colors.buttonGreen
+        case .search:  return Color(red: 0.55, green: 0.40, blue: 0.75) // purple
         }
     }
 }
@@ -26,22 +34,36 @@ struct FriendsView: View {
     @State private var isSearching = false
     @State private var errorMessage: String?
     @State private var toastMessage: String?
-    @State private var confirmRemoveUserId: String?
 
     private let icons = PixelIconFactory.shared
 
     var body: some View {
         ZStack {
-            backgroundView
+            // Background
+            GeometryReader { geo in
+                Image(uiImage: UIImage(named: "floppy_theme") ?? UIImage())
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                headerView
-                customTabBar
+                headerBar
+                tabPicker
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+
+                // Content panel — dark translucent card
+                contentPanel
+                    .padding(.horizontal, 16)
                     .padding(.top, 10)
-                contentView
+                    .padding(.bottom, 16)
             }
 
-            // Toast overlay
+            // Toast
             if let toast = toastMessage {
                 VStack {
                     Spacer()
@@ -53,40 +75,19 @@ struct FriendsView: View {
                         .background(
                             Capsule()
                                 .fill(Color.black.opacity(0.85))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                                )
                         )
                         .padding(.bottom, 50)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .animation(.spring(response: 0.3), value: toast)
                 }
             }
         }
         .navigationBarHidden(true)
-        .task {
-            await loadData()
-        }
-    }
-
-    // MARK: - Background
-
-    private var backgroundView: some View {
-        GeometryReader { geo in
-            Image(uiImage: UIImage(named: "floppy_theme") ?? UIImage())
-                .interpolation(.none)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: geo.size.width, height: geo.size.height)
-                .clipped()
-        }
-        .ignoresSafeArea()
+        .task { await loadData() }
     }
 
     // MARK: - Header
 
-    private var headerView: some View {
+    private var headerBar: some View {
         HStack {
             Button {
                 SoundManager.shared.play(.button)
@@ -98,356 +99,243 @@ struct FriendsView: View {
                     .resizable()
                     .frame(width: 28, height: 28)
                     .padding(8)
-                    .background(PixelButtonBackground(style: .light, size: 44))
+                    .background(PixelButtonBackground(style: .dark, size: 44))
             }
             .accessibilityLabel("Back")
+
             Spacer()
+
             Text("FRIENDS")
-                .font(.custom(GK.pixelFontName, size: 18))
+                .font(.custom(GK.pixelFontName, size: 22))
                 .foregroundColor(.white)
                 .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+
             Spacer()
-            // Badge count for pending requests
-            if !pendingRequests.isEmpty && selectedTab != .pending {
-                Text("\(pendingRequests.count)")
-                    .font(.custom(GK.pixelFontName, size: 8))
-                    .foregroundColor(.white)
-                    .frame(width: 24, height: 24)
-                    .background(Circle().fill(GK.Colors.buttonRed))
-                    .padding(.trailing, 4)
+
+            // Pending badge (visible from any tab)
+            if !pendingRequests.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "envelope.fill")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("\(pendingRequests.count)")
+                        .font(.custom(GK.pixelFontName, size: 9))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(GK.Colors.buttonRed.opacity(0.85))
+                )
             } else {
                 Color.clear.frame(width: 44, height: 44)
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.top, 12)
     }
 
-    // MARK: - Custom Tab Bar
+    // MARK: - Tab Picker (matches ShopView pattern)
 
-    private var customTabBar: some View {
-        HStack(spacing: 0) {
+    private var tabPicker: some View {
+        HStack(spacing: 6) {
             ForEach(FriendsTab.allCases, id: \.self) { tab in
-                let isActive = selectedTab == tab
-                Button {
-                    SoundManager.shared.play(.button)
-                    Haptic.light()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = tab
-                    }
-                    Task { await loadData() }
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(uiImage: icons.image(for: tab.icon, pixelScale: 2.0))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 14, height: 14)
-                            .colorMultiply(isActive ? .white : .white.opacity(0.5))
-
-                        Text(tab.rawValue)
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(isActive ? .white : .white.opacity(0.5))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
-                        Group {
-                            if isActive {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(GK.Colors.buttonBlue)
-                                    .shadow(color: GK.Colors.buttonBlue.opacity(0.4), radius: 6, x: 0, y: 2)
-                            } else {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.black.opacity(0.15))
-                            }
-                        }
-                    )
-                    .overlay(
-                        // Pending badge on requests tab
-                        Group {
-                            if tab == .pending && !pendingRequests.isEmpty {
-                                Text("\(pendingRequests.count)")
-                                    .font(.custom(GK.pixelFontName, size: 6))
-                                    .foregroundColor(.white)
-                                    .frame(width: 16, height: 16)
-                                    .background(Circle().fill(GK.Colors.buttonRed))
-                                    .offset(x: 8, y: -8)
-                            }
-                        },
-                        alignment: .topTrailing
-                    )
-                }
-                .buttonStyle(.plain)
-
-                if tab != FriendsTab.allCases.last {
-                    Spacer().frame(width: 6)
-                }
+                tabButton(tab)
             }
         }
-        .padding(.horizontal, 20)
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.25))
+        )
     }
 
-    // MARK: - Content
-
-    @ViewBuilder
-    private var contentView: some View {
-        if isLoading {
-            Spacer()
-            VStack(spacing: 12) {
-                ProgressView().tint(.white)
-                Text("LOADING...")
+    private func tabButton(_ tab: FriendsTab) -> some View {
+        let isActive = selectedTab == tab
+        return Button {
+            SoundManager.shared.play(.button)
+            Haptic.light()
+            withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab }
+            Task { await loadData() }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: tab.systemIcon)
+                    .font(.system(size: 9, weight: .bold))
+                Text(tab.rawValue)
                     .font(.custom(GK.pixelFontName, size: 8))
-                    .foregroundColor(.white.opacity(0.7))
+                    .lineLimit(1)
+                    .fixedSize()
+
+                // Badge on requests tab
+                if tab == .pending && !pendingRequests.isEmpty {
+                    Text("\(pendingRequests.count)")
+                        .font(.custom(GK.pixelFontName, size: 6))
+                        .foregroundColor(.white)
+                        .frame(width: 14, height: 14)
+                        .background(Circle().fill(GK.Colors.buttonRed))
+                }
             }
-            Spacer()
-        } else if let error = errorMessage {
-            Spacer()
-            errorPanel(error)
-            Spacer()
-        } else {
-            switch selectedTab {
-            case .friends:
-                friendsList
-            case .pending:
-                pendingList
-            case .search:
-                searchView
+            .foregroundColor(isActive ? .white : .white.opacity(0.5))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isActive ? tab.accent : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Content Panel
+
+    private var contentPanel: some View {
+        VStack(spacing: 0) {
+            if isLoading {
+                loadingPanel
+            } else if let error = errorMessage {
+                errorPanel(error)
+            } else {
+                switch selectedTab {
+                case .friends: friendsContent
+                case .pending: pendingContent
+                case .search:  searchContent
+                }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
+
+    // MARK: - Loading
+
+    private var loadingPanel: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            ProgressView().tint(.white)
+            Text("LOADING...")
+                .font(.custom(GK.pixelFontName, size: 8))
+                .foregroundColor(.white.opacity(0.5))
+            Spacer()
+        }
+    }
+
+    // MARK: - Error
 
     private func errorPanel(_ error: String) -> some View {
         VStack(spacing: 12) {
-            Image(uiImage: icons.image(for: .warning, pixelScale: 4.0))
-                .interpolation(.none)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 36, height: 36)
-            Text("ERROR")
+            Spacer()
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 28))
+                .foregroundColor(GK.Colors.scoreYellow)
+            Text("SOMETHING WENT WRONG")
                 .font(.custom(GK.pixelFontName, size: 9))
                 .foregroundColor(.white)
             Text(error)
                 .font(.custom(GK.pixelFontName, size: 7))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
             Button {
                 Task { await loadData() }
             } label: {
                 Text("RETRY")
                     .font(.custom(GK.pixelFontName, size: 9))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 24)
                     .padding(.vertical, 10)
                     .background(RoundedRectangle(cornerRadius: 8).fill(GK.Colors.buttonBlue))
             }
             .buttonStyle(.plain)
+            .padding(.top, 4)
+            Spacer()
         }
-        .padding(30)
     }
 
-    // MARK: - Friends List
+    // MARK: - Friends Content
 
-    private var friendsList: some View {
+    private var friendsContent: some View {
         Group {
             if friends.isEmpty {
-                emptyView(icon: .headToHead, message: "NO FRIENDS YET",
-                           subtitle: "TAP THE ADD TAB TO FIND PLAYERS")
+                emptyState(
+                    icon: "person.2.slash",
+                    title: "NO FRIENDS YET",
+                    subtitle: "ADD FRIENDS TO CHALLENGE THEM!"
+                )
             } else {
                 ScrollView(showsIndicators: false) {
-                    // Friend count header
+                    // Count bar
                     HStack {
                         Text("\(friends.count) FRIEND\(friends.count == 1 ? "" : "S")")
                             .font(.custom(GK.pixelFontName, size: 6))
-                            .foregroundColor(.white.opacity(0.4))
+                            .foregroundColor(.white.opacity(0.3))
                         Spacer()
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 16)
                     .padding(.top, 14)
 
-                    LazyVStack(spacing: 10) {
+                    LazyVStack(spacing: 8) {
                         ForEach(friends) { friend in
-                            friendCard(friend)
+                            friendRow(friend)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 30)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 20)
                 }
             }
         }
     }
 
-    // MARK: - Pending Requests
-
-    private var pendingList: some View {
-        Group {
-            if pendingRequests.isEmpty {
-                emptyView(icon: .chick, message: "NO REQUESTS",
-                           subtitle: "FRIEND REQUESTS WILL SHOW UP HERE")
-            } else {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 10) {
-                        ForEach(pendingRequests) { request in
-                            pendingCard(request)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 14)
-                    .padding(.bottom, 30)
-                }
-            }
-        }
-    }
-
-    // MARK: - Search
-
-    private var searchView: some View {
-        VStack(spacing: 0) {
-            // Search bar
-            HStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(uiImage: icons.image(for: .questionMark, pixelScale: 2.0))
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 12, height: 12)
-                        .opacity(0.4)
-
-                    TextField("SEARCH USERNAME...", text: $searchQuery)
-                        .font(.custom(GK.pixelFontName, size: 10))
-                        .foregroundColor(GK.Colors.panelBorder)
-                        .autocapitalization(.none)
-                        .onSubmit {
-                            Task { await performSearch() }
-                        }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 11)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(GK.Colors.panelCream)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(GK.Colors.panelBorder.opacity(0.3), lineWidth: 2)
-                        )
-                )
-
-                Button {
-                    SoundManager.shared.play(.button)
-                    Task { await performSearch() }
-                } label: {
-                    Text("GO")
-                        .font(.custom(GK.pixelFontName, size: 10))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 11)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(GK.Colors.buttonBlue)
-                                .shadow(color: GK.Colors.buttonBlue.opacity(0.3), radius: 4, x: 0, y: 2)
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(searchQuery.trimmingCharacters(in: .whitespaces).count < 2)
-                .opacity(searchQuery.trimmingCharacters(in: .whitespaces).count < 2 ? 0.5 : 1)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
-
-            if isSearching {
-                Spacer()
-                VStack(spacing: 10) {
-                    ProgressView().tint(.white)
-                    Text("SEARCHING...")
-                        .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(.white.opacity(0.5))
-                }
-                Spacer()
-            } else if searchResults.isEmpty && !searchQuery.isEmpty {
-                emptyView(icon: .questionMark, message: "NO PLAYERS FOUND",
-                           subtitle: "TRY A DIFFERENT USERNAME")
-            } else if !searchResults.isEmpty {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 10) {
-                        ForEach(searchResults) { result in
-                            searchCard(result)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 30)
-                }
-            } else {
-                Spacer()
-                VStack(spacing: 8) {
-                    Image(uiImage: icons.image(for: .headToHead, pixelScale: 4.0))
-                        .interpolation(.none)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 36, height: 36)
-                        .opacity(0.25)
-                    Text("SEARCH FOR PLAYERS")
-                        .font(.custom(GK.pixelFontName, size: 8))
-                        .foregroundColor(.white.opacity(0.35))
-                    Text("TYPE A USERNAME ABOVE")
-                        .font(.custom(GK.pixelFontName, size: 6))
-                        .foregroundColor(.white.opacity(0.2))
-                }
-                Spacer()
-            }
-        }
-    }
-
-    // MARK: - Card Views
-
-    private func friendCard(_ friend: PublicPlayerProfile) -> some View {
-        HStack(spacing: 12) {
-            // Avatar area
+    private func friendRow(_ friend: PublicPlayerProfile) -> some View {
+        HStack(spacing: 10) {
+            // Avatar circle
             ZStack {
                 Circle()
-                    .fill(GK.Colors.buttonBlue.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                Image(uiImage: icons.image(for: .headToHead, pixelScale: 3.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 22, height: 22)
+                    .fill(GK.Colors.buttonBlue.opacity(0.25))
+                    .frame(width: 40, height: 40)
+                Text(String(friend.username.prefix(1)).uppercased())
+                    .font(.custom(GK.pixelFontName, size: 14))
+                    .foregroundColor(.white)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            // Info
+            VStack(alignment: .leading, spacing: 2) {
                 Text(friend.username)
-                    .font(.custom(GK.pixelFontName, size: 10))
-                    .foregroundColor(GK.Colors.panelBorder)
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(.white)
                     .lineLimit(1)
 
-                HStack(spacing: 6) {
-                    HStack(spacing: 3) {
-                        Image(uiImage: icons.image(for: .trophy, pixelScale: 1.5))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 8, height: 8)
+                HStack(spacing: 8) {
+                    Label {
                         Text("\(friend.stats.elo)")
                             .font(.custom(GK.pixelFontName, size: 6))
-                            .foregroundColor(GK.Colors.panelBorder.opacity(0.45))
+                    } icon: {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 7))
                     }
+                    .foregroundColor(GK.Colors.scoreYellow.opacity(0.7))
 
-                    Text("·")
-                        .font(.custom(GK.pixelFontName, size: 6))
-                        .foregroundColor(GK.Colors.panelBorder.opacity(0.25))
-
-                    HStack(spacing: 3) {
-                        Image(uiImage: icons.image(for: .stats, pixelScale: 1.5))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 8, height: 8)
-                        Text("\(friend.stats.gamesPlayed)")
+                    Label {
+                        Text("\(friend.stats.gamesPlayed) GAMES")
                             .font(.custom(GK.pixelFontName, size: 6))
-                            .foregroundColor(GK.Colors.panelBorder.opacity(0.45))
+                    } icon: {
+                        Image(systemName: "gamecontroller.fill")
+                            .font(.system(size: 7))
                     }
+                    .foregroundColor(.white.opacity(0.35))
                 }
             }
 
             Spacer()
 
-            // View profile button
+            // Actions
             Button {
                 SoundManager.shared.play(.button)
                 Haptic.buttonTap()
@@ -456,183 +344,270 @@ struct FriendsView: View {
                 Text("VIEW")
                     .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .background(
-                        Capsule()
-                            .fill(GK.Colors.buttonBlue)
-                            .shadow(color: GK.Colors.buttonBlue.opacity(0.25), radius: 3, x: 0, y: 1)
+                        Capsule().fill(GK.Colors.buttonBlue)
                     )
             }
             .buttonStyle(.plain)
 
-            // Remove button
             Button {
                 SoundManager.shared.play(.button)
                 Task { await removeFriend(friend.userId) }
             } label: {
-                Image(uiImage: icons.image(for: .cancel, pixelScale: 2.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .frame(width: 12, height: 12)
-                    .padding(6)
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(GK.Colors.buttonRed.opacity(0.7))
+                    .frame(width: 28, height: 28)
                     .background(
-                        Circle()
-                            .fill(GK.Colors.buttonRed.opacity(0.15))
+                        Circle().fill(Color.white.opacity(0.08))
                     )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Remove \(friend.username)")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(GK.Colors.panelCream)
-                .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(GK.Colors.panelBorder.opacity(0.12), lineWidth: 2)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
         )
     }
 
-    private func pendingCard(_ request: PublicPlayerProfile) -> some View {
-        HStack(spacing: 12) {
-            // Avatar area with green pulse
+    // MARK: - Pending Content
+
+    private var pendingContent: some View {
+        Group {
+            if pendingRequests.isEmpty {
+                emptyState(
+                    icon: "envelope.open",
+                    title: "NO REQUESTS",
+                    subtitle: "FRIEND REQUESTS WILL SHOW UP HERE"
+                )
+            } else {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 8) {
+                        ForEach(pendingRequests) { request in
+                            pendingRow(request)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 14)
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+    }
+
+    private func pendingRow(_ request: PublicPlayerProfile) -> some View {
+        HStack(spacing: 10) {
+            // Avatar with green ring
             ZStack {
                 Circle()
-                    .fill(GK.Colors.buttonGreen.opacity(0.15))
-                    .frame(width: 44, height: 44)
+                    .fill(GK.Colors.buttonGreen.opacity(0.2))
+                    .frame(width: 40, height: 40)
                 Circle()
-                    .stroke(GK.Colors.buttonGreen.opacity(0.3), lineWidth: 2)
-                    .frame(width: 44, height: 44)
-                Image(uiImage: icons.image(for: .chick, pixelScale: 3.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 22, height: 22)
+                    .stroke(GK.Colors.buttonGreen.opacity(0.5), lineWidth: 2)
+                    .frame(width: 40, height: 40)
+                Text(String(request.username.prefix(1)).uppercased())
+                    .font(.custom(GK.pixelFontName, size: 14))
+                    .foregroundColor(.white)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(request.username)
-                    .font(.custom(GK.pixelFontName, size: 10))
-                    .foregroundColor(GK.Colors.panelBorder)
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(.white)
                     .lineLimit(1)
                 Text("WANTS TO BE FRIENDS")
                     .font(.custom(GK.pixelFontName, size: 6))
-                    .foregroundColor(GK.Colors.buttonGreen)
+                    .foregroundColor(GK.Colors.buttonGreen.opacity(0.8))
             }
 
             Spacer()
 
-            // Accept button
+            // Accept
             Button {
                 SoundManager.shared.play(.button)
                 Haptic.medium()
                 Task { await acceptRequest(request.userId) }
             } label: {
-                HStack(spacing: 4) {
-                    Image(uiImage: icons.image(for: .checkmark, pixelScale: 2.0))
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 10, height: 10)
+                HStack(spacing: 3) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .bold))
                     Text("ACCEPT")
-                        .font(.custom(GK.pixelFontName, size: 6))
+                        .font(.custom(GK.pixelFontName, size: 7))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.vertical, 7)
                 .background(
-                    Capsule()
-                        .fill(GK.Colors.buttonGreen)
-                        .shadow(color: GK.Colors.buttonGreen.opacity(0.3), radius: 3, x: 0, y: 1)
+                    Capsule().fill(GK.Colors.buttonGreen)
                 )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Accept \(request.username)")
 
-            // Decline button
+            // Decline
             Button {
                 SoundManager.shared.play(.button)
                 Task { await removeFriend(request.userId) }
             } label: {
-                Image(uiImage: icons.image(for: .cancel, pixelScale: 2.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .frame(width: 12, height: 12)
-                    .padding(6)
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(GK.Colors.buttonRed.opacity(0.7))
+                    .frame(width: 28, height: 28)
                     .background(
-                        Circle()
-                            .fill(GK.Colors.buttonRed.opacity(0.15))
+                        Circle().fill(Color.white.opacity(0.08))
                     )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Decline \(request.username)")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(GK.Colors.panelCream)
-                .shadow(color: GK.Colors.buttonGreen.opacity(0.1), radius: 4, x: 0, y: 2)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(GK.Colors.buttonGreen.opacity(0.25), lineWidth: 2)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.buttonGreen.opacity(0.2), lineWidth: 1)
+                )
         )
     }
 
-    private func searchCard(_ result: PublicPlayerProfile) -> some View {
-        HStack(spacing: 12) {
+    // MARK: - Search Content
+
+    private var searchContent: some View {
+        VStack(spacing: 0) {
+            // Search bar
+            HStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.4))
+
+                    TextField("", text: $searchQuery, prompt:
+                        Text("SEARCH USERNAME...")
+                            .font(.custom(GK.pixelFontName, size: 9))
+                            .foregroundColor(.white.opacity(0.3))
+                    )
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(.white)
+                    .autocapitalization(.none)
+                    .onSubmit { Task { await performSearch() } }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
+                )
+
+                Button {
+                    SoundManager.shared.play(.button)
+                    Task { await performSearch() }
+                } label: {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(FriendsTab.search.accent)
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(searchQuery.trimmingCharacters(in: .whitespaces).count < 2)
+                .opacity(searchQuery.trimmingCharacters(in: .whitespaces).count < 2 ? 0.4 : 1.0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 14)
+
+            // Results
+            if isSearching {
+                Spacer()
+                VStack(spacing: 10) {
+                    ProgressView().tint(.white)
+                    Text("SEARCHING...")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+                Spacer()
+            } else if searchResults.isEmpty && !searchQuery.isEmpty {
+                emptyState(
+                    icon: "person.fill.questionmark",
+                    title: "NO PLAYERS FOUND",
+                    subtitle: "TRY A DIFFERENT USERNAME"
+                )
+            } else if !searchResults.isEmpty {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 8) {
+                        ForEach(searchResults) { result in
+                            searchRow(result)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 10)
+                    .padding(.bottom, 20)
+                }
+            } else {
+                emptyState(
+                    icon: "magnifyingglass",
+                    title: "FIND PLAYERS",
+                    subtitle: "TYPE A USERNAME ABOVE"
+                )
+            }
+        }
+    }
+
+    private func searchRow(_ result: PublicPlayerProfile) -> some View {
+        HStack(spacing: 10) {
             // Avatar
             ZStack {
                 Circle()
-                    .fill(GK.Colors.panelBorder.opacity(0.08))
-                    .frame(width: 44, height: 44)
-                Image(uiImage: icons.image(for: .duck, pixelScale: 3.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 22, height: 22)
+                    .fill(FriendsTab.search.accent.opacity(0.2))
+                    .frame(width: 40, height: 40)
+                Text(String(result.username.prefix(1)).uppercased())
+                    .font(.custom(GK.pixelFontName, size: 14))
+                    .foregroundColor(.white)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(result.username)
-                    .font(.custom(GK.pixelFontName, size: 10))
-                    .foregroundColor(GK.Colors.panelBorder)
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(.white)
                     .lineLimit(1)
 
-                HStack(spacing: 6) {
-                    HStack(spacing: 3) {
-                        Image(uiImage: icons.image(for: .trophy, pixelScale: 1.5))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 8, height: 8)
+                HStack(spacing: 8) {
+                    Label {
                         Text("\(result.stats.elo)")
                             .font(.custom(GK.pixelFontName, size: 6))
-                            .foregroundColor(GK.Colors.panelBorder.opacity(0.45))
+                    } icon: {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 7))
                     }
+                    .foregroundColor(GK.Colors.scoreYellow.opacity(0.7))
 
-                    Text("·")
-                        .font(.custom(GK.pixelFontName, size: 6))
-                        .foregroundColor(GK.Colors.panelBorder.opacity(0.25))
-
-                    HStack(spacing: 3) {
-                        Image(uiImage: icons.image(for: .stats, pixelScale: 1.5))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 8, height: 8)
+                    Label {
                         Text("\(result.stats.gamesPlayed)")
                             .font(.custom(GK.pixelFontName, size: 6))
-                            .foregroundColor(GK.Colors.panelBorder.opacity(0.45))
+                    } icon: {
+                        Image(systemName: "gamecontroller.fill")
+                            .font(.system(size: 7))
                     }
+                    .foregroundColor(.white.opacity(0.35))
                 }
             }
 
             Spacer()
 
-            // View profile
             Button {
                 SoundManager.shared.play(.button)
                 Haptic.buttonTap()
@@ -642,72 +617,62 @@ struct FriendsView: View {
                     .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule()
-                            .fill(GK.Colors.buttonBlue)
-                    )
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(GK.Colors.buttonBlue))
             }
             .buttonStyle(.plain)
 
-            // Add friend
             Button {
                 SoundManager.shared.play(.button)
                 Haptic.medium()
                 Task { await addFriend(result.userId) }
             } label: {
-                HStack(spacing: 4) {
-                    Text("+")
-                        .font(.custom(GK.pixelFontName, size: 9))
+                HStack(spacing: 3) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9, weight: .bold))
                     Text("ADD")
                         .font(.custom(GK.pixelFontName, size: 7))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 7)
+                .padding(.vertical, 6)
                 .background(
-                    Capsule()
-                        .fill(GK.Colors.buttonGreen)
-                        .shadow(color: GK.Colors.buttonGreen.opacity(0.25), radius: 3, x: 0, y: 1)
+                    Capsule().fill(GK.Colors.buttonGreen)
                 )
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(GK.Colors.panelCream)
-                .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(GK.Colors.panelBorder.opacity(0.12), lineWidth: 2)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
         )
     }
 
-    // MARK: - Empty View
+    // MARK: - Empty State
 
-    private func emptyView(icon: PixelIcon, message: String, subtitle: String) -> some View {
+    private func emptyState(icon: String, title: String, subtitle: String) -> some View {
         VStack(spacing: 10) {
             Spacer()
             ZStack {
                 Circle()
                     .fill(Color.white.opacity(0.06))
-                    .frame(width: 64, height: 64)
-                Image(uiImage: icons.image(for: icon, pixelScale: 4.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
-                    .opacity(0.3)
+                    .frame(width: 60, height: 60)
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundColor(.white.opacity(0.2))
             }
-            Text(message)
-                .font(.custom(GK.pixelFontName, size: 9))
-                .foregroundColor(.white.opacity(0.45))
+            Text(title)
+                .font(.custom(GK.pixelFontName, size: 10))
+                .foregroundColor(.white.opacity(0.4))
             Text(subtitle)
-                .font(.custom(GK.pixelFontName, size: 6))
-                .foregroundColor(.white.opacity(0.25))
+                .font(.custom(GK.pixelFontName, size: 7))
+                .foregroundColor(.white.opacity(0.2))
             Spacer()
         }
     }
@@ -718,14 +683,11 @@ struct FriendsView: View {
         isLoading = true
         errorMessage = nil
         do {
-            // Always load pending count for badge regardless of tab
             pendingRequests = try await ConvexClient.shared.getPendingFriendRequests()
             switch selectedTab {
             case .friends:
                 friends = try await ConvexClient.shared.getFriends()
-            case .pending:
-                break // already loaded above
-            case .search:
+            case .pending, .search:
                 break
             }
         } catch {
@@ -752,7 +714,7 @@ struct FriendsView: View {
             searchResults.removeAll { $0.userId == userId }
             showToast("REQUEST SENT!")
         } catch {
-            showToast("FAILED TO SEND REQUEST")
+            showToast("FAILED TO SEND")
         }
     }
 
