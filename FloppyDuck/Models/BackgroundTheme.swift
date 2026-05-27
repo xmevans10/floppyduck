@@ -53,6 +53,9 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     case losAngeles
     case london
 
+    case clouds
+    case castle = "fantasyCastle"
+
     var id: String { rawValue }
 
     // MARK: - Display
@@ -76,6 +79,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "LAGOON"
         case .losAngeles:  return "LOS ANGELES"
         case .london:      return "LONDON"
+        case .castle: return "CASTLE"
+        case .clouds:       return "CLOUDS"
         }
     }
 
@@ -98,6 +103,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "Pirate Paradise"
         case .losAngeles:  return "City of Angels"
         case .london:      return "Cheerio!"
+        case .castle: return "Once Upon a Quack"
+        case .clouds:       return "Head in the Clouds"
         }
     }
 
@@ -113,6 +120,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .space, .pixelTokyo, .egypt:
             return .premium
         case .lagoon, .losAngeles, .london:
+            return .normal
+        case .castle, .clouds:
             return .normal
         }
     }
@@ -134,6 +143,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return 225
         case .losAngeles:  return 250
         case .london:      return 200
+        case .castle: return 225
+        case .clouds:       return 200
         default:           return nil
         }
     }
@@ -272,6 +283,20 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.62, green: 0.64, blue: 0.66),
                 Color(red: 0.72, green: 0.73, blue: 0.74),
             ]
+        case .castle:
+            return [
+                Color(red: 0.25, green: 0.18, blue: 0.45),
+                Color(red: 0.45, green: 0.30, blue: 0.65),
+                Color(red: 0.65, green: 0.50, blue: 0.80),
+                Color(red: 0.85, green: 0.75, blue: 0.95),
+            ]
+        case .clouds:
+            return [
+                Color(red: 0.30, green: 0.55, blue: 0.90),
+                Color(red: 0.55, green: 0.75, blue: 0.95),
+                Color(red: 0.75, green: 0.88, blue: 0.98),
+                Color(red: 0.90, green: 0.95, blue: 1.00),
+            ]
         }
     }
 
@@ -295,6 +320,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return UIColor(red: 0.50, green: 0.82, blue: 0.95, alpha: 1)
         case .losAngeles:  return UIColor(red: 0.70, green: 0.40, blue: 0.35, alpha: 1)
         case .london:      return UIColor(red: 0.42, green: 0.45, blue: 0.48, alpha: 1)
+        case .castle: return UIColor(red: 0.35, green: 0.25, blue: 0.55, alpha: 1)
+        case .clouds:       return UIColor(red: 0.40, green: 0.65, blue: 0.92, alpha: 1)
         }
     }
 
@@ -306,7 +333,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
     /// Whether the sky background has visible stars (night-sky themes).
     var showStars: Bool {
         switch self {
-        case .night, .space, .neonCity, .pixelTokyo, .cave:
+        case .night, .space, .neonCity, .pixelTokyo, .cave, .castle:
             return true
         default:
             return false
@@ -350,6 +377,10 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return [.dust]
         case .london:
             return [.rain, .mist]
+        case .castle:
+            return [.mist, .stars]
+        case .clouds:
+            return [.mist]
         }
     }
 
@@ -373,6 +404,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.85, green: 0.78, blue: 0.60)
         case .losAngeles:  return Color(red: 0.35, green: 0.35, blue: 0.38)
         case .london:      return Color(red: 0.30, green: 0.30, blue: 0.32)
+        case .castle: return Color(red: 0.22, green: 0.40, blue: 0.20)
+        case .clouds:       return Color(red: 0.80, green: 0.88, blue: 0.95)
         }
     }
 
@@ -396,6 +429,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.20, green: 0.55, blue: 0.40)
         case .losAngeles:  return Color(red: 0.30, green: 0.22, blue: 0.15)
         case .london:      return Color(red: 0.25, green: 0.25, blue: 0.28)
+        case .castle: return Color(red: 0.15, green: 0.28, blue: 0.12)
+        case .clouds:       return Color(red: 0.70, green: 0.82, blue: 0.92)
         }
     }
 
@@ -419,6 +454,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return Color(red: 0.25, green: 0.80, blue: 0.85)
         case .losAngeles:  return Color(red: 0.90, green: 0.50, blue: 0.30)
         case .london:      return Color(red: 0.75, green: 0.20, blue: 0.20)
+        case .castle: return Color(red: 0.80, green: 0.65, blue: 0.20)
+        case .clouds:       return Color(red: 0.40, green: 0.65, blue: 0.95)
         }
     }
 
@@ -456,6 +493,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "theme_lagoon"
         case .losAngeles:  return "theme_losAngeles"
         case .london:      return "theme_london"
+        case .castle: return "theme_lagoon"
+        case .clouds:       return "action_level_1"
         }
     }
 

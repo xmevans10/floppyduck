@@ -80,6 +80,10 @@ final class BotController {
     /// naturally pulls it into the next pipe or the ground.
     private var doomed: Bool = false
 
+    /// Timestamp of the bot's last pipe score — used for post-score grace period
+    /// to prevent edge-clip deaths during tight gap transitions.
+    private var lastScoreTime: TimeInterval = 0
+
     /// Whether the bot reached its ceiling score before dying.
     /// Used by GameScene to distinguish a ceiling death (→ player wins)
     /// from a premature collision (→ game continues).
@@ -116,7 +120,9 @@ final class BotController {
     ///                 Defaults to a mid-tier difficulty if `nil`.
     ///   - deathScore: If set, the bot will die deterministically when it
     ///                 reaches this score. Used in bot-ladder mode.
-    func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil, deathScore: Int? = nil) {
+    ///   - initialGapY: If set, the bot sprite starts at this Y position
+    ///                  instead of `GK.duckStartY` to align with the first pipe.
+    func setup(skin: DuckSkin, difficulty: BotDifficulty? = nil, deathScore: Int? = nil, initialGapY: CGFloat? = nil) {
         self.diff = difficulty ?? BotDifficulty(noiseRange: 12, flapStrength: 0.88, errorRate: 0)
         self.deathScore = deathScore
         self.currentSkin = skin
@@ -125,7 +131,7 @@ final class BotController {
         textures = (0...2).map { factory.skinDuckTexture(skin: skin, wingPhase: $0) }
 
         let bot = SKSpriteNode(texture: textures[1], size: skin.spriteSize)
-        bot.position = CGPoint(x: GK.duckStartX, y: GK.duckStartY)
+        bot.position = CGPoint(x: GK.duckStartX, y: initialGapY ?? GK.duckStartY)
         bot.zPosition = 35
         bot.alpha = 0.45
         bot.colorBlendFactor = 0.35
@@ -144,7 +150,7 @@ final class BotController {
         // SKPhysicsBody — same collision infrastructure as the player duck.
         // Uses contactTest for pipe/ground/score detection but collisionBitMask = 0
         // so the ghost visually passes through everything.
-        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.72)
+        let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.05)
         body.categoryBitMask = GK.botCategory
         body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.scoreCategory
         body.collisionBitMask = 0          // Ghost — no physical collisions
@@ -239,10 +245,10 @@ final class BotController {
 
         // --- AI decision: aim at exact gap center ---
         // When doomed the bot simply stops flapping and gravity takes over.
+        let botImpulse = GK.flapImpulse * 0.65
         if !doomed {
             let botY = bot.position.y
             let currentVelocity = bot.physicsBody?.velocity.dy ?? 0
-            let botImpulse = GK.flapImpulse * 0.65
             if botY < targetGapY - 15 && currentVelocity < botImpulse * 0.4 {
                 bot.physicsBody?.velocity = CGVector(dx: 0, dy: botImpulse)
             }
@@ -254,6 +260,13 @@ final class BotController {
             ? min(vy / GK.flapImpulse * 0.4, 0.4)
             : max(vy / 400, -CGFloat.pi / 2)
         bot.zRotation += (rotTarget - bot.zRotation) * 0.10
+
+        // --- Floor safety: force a flap if the bot is approaching the ground ---
+        // Prevents death from prolonged falling when AI fails to target a gap.
+        let floorMargin: CGFloat = 80
+        if bot.position.y < GK.groundHeight + floorMargin && !doomed {
+            bot.physicsBody?.velocity = CGVector(dx: 0, dy: botImpulse)
+        }
 
         // Pin horizontal position (physics contacts can nudge the bot)
         if bot.position.x != GK.duckStartX {
@@ -270,6 +283,7 @@ final class BotController {
         guard alive, !pipesPassed.contains(pipeName) else { return }
         pipesPassed.insert(pipeName)
         score += 1
+        lastScoreTime = CACurrentMediaTime()
         updateScoreHUD()
         onScoreChanged?(score)
 
@@ -286,6 +300,19 @@ final class BotController {
     /// Called when the bot's physics body contacts a pipe or ground.
     func handleCollision() {
         guard alive else { return }
+
+        // Post-score grace period: if the bot scored within the last 0.15s,
+        // ignore the collision to prevent edge-clip deaths during gap transitions.
+        let gracePeriod: TimeInterval = 0.15
+        if lastScoreTime > 0 && CACurrentMediaTime() - lastScoreTime < gracePeriod {
+            return
+        }
+
+#if DEBUG
+        let botY = sprite?.position.y ?? 0
+        print("[BotController] \(displayName) died — score:\(score) deathScore:\(deathScore ?? -1) reachedCeiling:\(reachedCeiling) botY:\(String(format: "%.1f", botY)) pipesPassed:\(pipesPassed.count)")
+#endif
+
         die()
     }
 
@@ -339,6 +366,7 @@ final class BotController {
         score = 0
         doomed = false
         reachedCeiling = false
+        lastScoreTime = 0
         pipesPassed.removeAll()
         setup(skin: skin, difficulty: diff, deathScore: deathScore)
         updateScoreHUD()

@@ -52,7 +52,7 @@ final class DifficultyManager {
     /// Steepness of the log curve.  Higher → faster initial ramp.
     private let k: CGFloat = 0.12
     /// Score at which difficulty reaches 100 %.
-    private let refScore: CGFloat = 48
+    private let refScore: CGFloat = 72
 
     // MARK: - Parameter Ranges  (min at score 0 → max at refScore)
 

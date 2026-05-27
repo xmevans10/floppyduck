@@ -109,6 +109,12 @@ final class SoundManager {
         )
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(handleAppEnteredBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(handleAudioInterruption),
             name: AVAudioSession.interruptionNotification,
             object: AVAudioSession.sharedInstance()
@@ -350,6 +356,12 @@ final class SoundManager {
         }
     }
 
+    func resumePlayMusic() {
+        audioQueue.async { [weak self] in
+            self?.resumePlayMusicLocked()
+        }
+    }
+
     func refreshAudioPreference() {
         // Sync cached preferences from UserDefaults (main thread safe)
         let wasEnabled = _isEnabled
@@ -422,15 +434,27 @@ final class SoundManager {
         }
     }
 
+    @objc private func handleAppEnteredBackground() {
+        audioQueue.async { [weak self] in
+            self?.pauseMusicForBackground()
+        }
+    }
+
     @objc private func handleAudioInterruption(_ notification: Notification) {
         guard let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: rawType) else {
             return
         }
 
-        guard type == .ended else { return }
         audioQueue.async { [weak self] in
-            self?.restoreAudioAfterInterruption()
+            switch type {
+            case .began:
+                self?.pauseMusicForBackground()
+            case .ended:
+                self?.restoreAudioAfterInterruption()
+            @unknown default:
+                break
+            }
         }
     }
 
@@ -489,18 +513,7 @@ final class SoundManager {
 
         guard isEnabled else { return }
         if wantsPlayMusic {
-            bgmPlayer?.stop()
-            if playBgmPlayer == nil {
-                if let fileName = activeTheme.gameplayMusicFile {
-                    playBgmPlayer = cachedBundledMusicPlayer(fileName: fileName, volume: effectivePlayVolume)
-                } else if !playTracks.isEmpty {
-                    playBgmPlayer = playTracks.first
-                }
-            }
-            playBgmPlayer?.volume = effectivePlayVolume
-            if playBgmPlayer?.isPlaying == false {
-                playBgmPlayer?.play()
-            }
+            resumePlayMusicLocked()
         } else if wantsMenuMusic {
             playBgmPlayer?.stop()
             if bgmPlayer == nil {
@@ -512,6 +525,35 @@ final class SoundManager {
                 bgmPlayer?.play()
             }
         }
+    }
+
+    private func resumePlayMusicLocked() {
+        prepareIfNeeded()
+        guard isEnabled else { return }
+
+        wantsPlayMusic = true
+        wantsMenuMusic = false
+        bgmPlayer?.stop()
+
+        if playBgmPlayer == nil {
+            if let fileName = activeTheme.gameplayMusicFile {
+                playBgmPlayer = cachedBundledMusicPlayer(fileName: fileName, volume: effectivePlayVolume)
+            } else if !playTracks.isEmpty {
+                playBgmPlayer = playTracks.first
+            }
+        }
+
+        playBgmPlayer?.numberOfLoops = -1
+        playBgmPlayer?.volume = effectivePlayVolume
+        if playBgmPlayer?.isPlaying != true {
+            playBgmPlayer?.play()
+        }
+    }
+
+    private func pauseMusicForBackground() {
+        bgmPlayer?.pause()
+        playBgmPlayer?.pause()
+        multiplayerCountdownPlayer?.pause()
     }
 
     private func refreshPreparedPlayers() {
@@ -992,6 +1034,8 @@ final class SoundManager {
             return (wav(chirp(f0: 260, f1: 520, dur: 0.06)), 0.22)
         case .classic:
             return (flapWav(), 0.22)
+        default:
+            return (flapWav(), 0.22)
         }
     }
 
@@ -1050,6 +1094,8 @@ final class SoundManager {
             // Brass-band style falloff.
             return (wav(chirp(f0: 620, f1: 120, dur: 0.24) + sine(freq: 310, dur: 0.14, decay: 0.18)), 0.34)
         case .classic:
+            return (deathWav(), 0.36)
+        default:
             return (deathWav(), 0.36)
         }
     }

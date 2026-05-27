@@ -100,6 +100,10 @@ final class PowerUpController {
         set { spawner.excludedKinds = newValue }
     }
 
+    var usesSeededRandom: Bool {
+        spawner.usesSeededRandom
+    }
+
     func debugQueuePowerUpForNextPipe(_ kind: PowerUpKind) {
         pendingPowerUpKind = kind
     }
@@ -433,6 +437,7 @@ final class PowerUpController {
         shieldCooldown = false
         pendingPowerUpKind = nil
         speedModifier = 1.0
+        spawner.excludedKinds.removeAll()
         spawner.reset()
     }
 

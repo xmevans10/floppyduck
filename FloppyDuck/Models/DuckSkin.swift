@@ -28,6 +28,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
     case spider
     case squirrel
     case bearskin
+    case mermaid
+    case princess
+    case unicorn
 
     var id: String { rawValue }
 
@@ -51,6 +54,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .spider:      return "SPIDER"
         case .squirrel:    return "SQUIRREL"
         case .bearskin:    return "GUARD"
+        case .mermaid:     return "MERMAID"
+        case .princess:    return "PRINCESS"
+        case .unicorn:     return "UNICORN"
         }
     }
 
@@ -74,6 +80,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .spider:      return "Web Slinger"
         case .squirrel:    return "Nutty"
         case .bearskin:    return "Quack, innit?"
+        case .mermaid:     return "Under The Sea"
+        case .princess:    return "Royal Flutter"
+        case .unicorn:     return "Magical Quack"
         }
     }
 
@@ -81,7 +90,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .classic:
             return .free
-        case .cowboy, .dinosaur, .robot, .king, .lumberquack, .squirrel, .bearskin:
+        case .cowboy, .dinosaur, .robot, .king, .lumberquack, .squirrel, .bearskin, .mermaid, .princess, .unicorn:
             return .normal
         case .alien, .wizard, .devil, .ninja, .astronaut, .pharaoh, .spider:
             return .premium
@@ -115,6 +124,12 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .squirrel:
             return 175
         case .bearskin:
+            return 185
+        case .mermaid:
+            return 200
+        case .princess:
+            return 200
+        case .unicorn:
             return 185
         default:
             return nil
@@ -155,6 +170,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .spider:      return (16, 14)
         case .squirrel:    return (16, 15)
         case .bearskin:    return (16, 17)
+        case .mermaid:     return (16, 15)
+        case .princess:    return (16, 15)
+        case .unicorn:     return (16, 14)
         }
     }
 
@@ -179,14 +197,51 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .spider:      return 3
         case .squirrel:    return 4
         case .bearskin:    return 6
+        case .mermaid:     return 0
+        case .princess:    return 4
+        case .unicorn:     return 3
         }
     }
 
     /// SpriteKit sprite size (points). Physics hitbox is independent of this.
     var spriteSize: CGSize {
-        let baseW = GK.duckRadius * 2.8          // matches the 16-pixel width
-        let ratio = CGFloat(canvasSize.h) / CGFloat(canvasSize.w)
-        return CGSize(width: baseW, height: baseW * ratio)
+        let bodyWidth = GK.duckRadius * 2.8
+        if let frameSize = productionFrameSize {
+            let scale = bodyWidth / Self.productionBodyPixelWidth
+            return CGSize(
+                width: CGFloat(frameSize.w) * scale,
+                height: CGFloat(frameSize.h) * scale
+            )
+        }
+        return CGSize(width: bodyWidth, height: bodyWidth * CGFloat(canvasSize.h) / CGFloat(canvasSize.w))
+    }
+
+    /// Finalized PNG frames are transparent canvases around the duck. Scale them by
+    /// the shared body width so hats, tails, and other cosmetics never resize the body.
+    private static let productionBodyPixelWidth: CGFloat = 253
+
+    private var productionFrameSize: (w: Int, h: Int)? {
+        switch self {
+        case .alien:       return (339, 357)
+        case .astronaut:   return (253, 237)
+        case .cowboy:      return (400, 322)
+        case .devil:       return (333, 302)
+        case .dinosaur:    return (332, 284)
+        case .king:        return (341, 363)
+        case .lumberquack: return (335, 340)
+        case .mermaid:     return (579, 333)
+        case .ninja:       return (389, 297)
+        case .pharaoh:     return (410, 328)
+        case .pirate:      return (333, 281)
+        case .princess:    return (355, 338)
+        case .robot:       return (333, 266)
+        case .squirrel:    return (337, 347)
+        case .unicorn:     return (333, 315)
+        case .wizard:      return (411, 416)
+        case .bearskin:    return (253, 268)
+        case .classic, .sailor, .golden, .spider:
+            return nil
+        }
     }
 
     var accentColor: Color {
@@ -209,6 +264,9 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .spider:      return Color(red: 0.40, green: 0.15, blue: 0.50)
         case .squirrel:    return Color(red: 0.60, green: 0.38, blue: 0.20)
         case .bearskin:    return Color(red: 0.82, green: 0.10, blue: 0.14)
+        case .mermaid:     return Color(red: 0.15, green: 0.70, blue: 0.65)
+        case .princess:    return Color(red: 0.88, green: 0.45, blue: 0.65)
+        case .unicorn:     return Color(red: 0.75, green: 0.45, blue: 0.85)
         }
     }
 }

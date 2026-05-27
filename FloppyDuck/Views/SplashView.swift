@@ -12,6 +12,7 @@ struct SplashView: View {
     @State private var subtitleScale: CGFloat = 0.6
     @State private var fadeOut: Double = 1.0
     @State private var assetsReady = false
+    @State private var quackPlayed = false
 
     // MARK: - Body
 
@@ -49,7 +50,13 @@ struct SplashView: View {
             preWarmAssets()
             runSequence()
         }
-        .onTapGesture { finish() }
+        .onTapGesture {
+            if !quackPlayed {
+                quackPlayed = true
+                SoundManager.shared.play(.quack)
+            }
+            finish()
+        }
         .accessibilityAction(named: "Skip") { finish() }
     }
 
@@ -64,9 +71,8 @@ struct SplashView: View {
             }
         }
 
-        // 0.9 s — Quack SFX + haptic when title lands
+        // 0.9 s — Haptic when title lands
         after(0.90) {
-            SoundManager.shared.play(.quack)
             Haptic.splashCoin()
         }
 

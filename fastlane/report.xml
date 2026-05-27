@@ -5,47 +5,47 @@
     
     
       
-      <testcase classname="fastlane.lanes" name="0: default_platform" time="0.00021">
+      <testcase classname="fastlane.lanes" name="0: default_platform" time="0.000274">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="1: Switch to ios build lane" time="0.000103">
+      <testcase classname="fastlane.lanes" name="1: Switch to ios build lane" time="0.00011">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="2: gym" time="98.017266">
+      <testcase classname="fastlane.lanes" name="2: gym" time="118.019246">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="3: Switch to ios metadata lane" time="0.000103">
+      <testcase classname="fastlane.lanes" name="3: Switch to ios metadata lane" time="0.000127">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="4: app_store_connect_api_key" time="0.007462">
+      <testcase classname="fastlane.lanes" name="4: app_store_connect_api_key" time="0.011734">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="5: deliver" time="10.732774">
+      <testcase classname="fastlane.lanes" name="5: deliver" time="13.408409">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="6: Switch to ios upload lane" time="0.00022">
+      <testcase classname="fastlane.lanes" name="6: Switch to ios upload lane" time="0.000188">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="7: app_store_connect_api_key" time="0.004721">
+      <testcase classname="fastlane.lanes" name="7: app_store_connect_api_key" time="0.002674">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="8: pilot" time="68.350228">
+      <testcase classname="fastlane.lanes" name="8: pilot" time="208.524572">
         
       </testcase>
     

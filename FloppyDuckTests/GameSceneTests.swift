@@ -70,4 +70,40 @@ final class GameSceneTests: XCTestCase {
         XCTAssertEqual(scene.debugActivePowerUpCollectibleCount(), 1)
         XCTAssertEqual(scene.debugActiveBreadCount(), 0)
     }
+
+    @MainActor
+    func testBotLadderDoesNotUseSeededPowerUps() {
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = GameScene(
+            seed: 12345,
+            mode: .vsBot,
+            powerUpsEnabled: true,
+            skin: .classic,
+            botDifficulty: nil,
+            opponentName: "Bot",
+            targetScore: 10
+        )
+
+        view.presentScene(scene)
+
+        XCTAssertFalse(scene.debugUsesSeededPowerUps())
+    }
+
+    @MainActor
+    func testHeadToHeadKeepsSeededPowerUps() {
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = GameScene(
+            seed: 12345,
+            mode: .headToHead,
+            powerUpsEnabled: true,
+            skin: .classic,
+            botDifficulty: nil,
+            opponentName: "Rival",
+            targetScore: nil
+        )
+
+        view.presentScene(scene)
+
+        XCTAssertTrue(scene.debugUsesSeededPowerUps())
+    }
 }
