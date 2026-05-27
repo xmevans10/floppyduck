@@ -18,6 +18,7 @@ const MAX_PENDING_REQUESTS = 100;
 export const getPublicProfile = query({
   args: {
     userId: v.id("users"),
+    ...identityArgs,
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
