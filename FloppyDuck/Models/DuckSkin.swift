@@ -223,7 +223,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
     private var productionFrameSize: (w: Int, h: Int)? {
         switch self {
         case .alien:       return (339, 357)
-        case .astronaut:   return (328, 334)
+        case .astronaut:   return (357, 374)
         case .cowboy:      return (400, 322)
         case .devil:       return (333, 302)
         case .dinosaur:    return (332, 284)
@@ -238,7 +238,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .squirrel:    return (337, 347)
         case .unicorn:     return (333, 315)
         case .wizard:      return (411, 416)
-        case .bearskin:    return (253, 303)
+        case .bearskin:    return (349, 399)
         case .classic:     return (315, 231)
         case .sailor:      return (315, 294)
         case .golden:      return (315, 294)
