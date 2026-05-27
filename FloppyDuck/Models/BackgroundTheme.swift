@@ -493,8 +493,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .lagoon:      return "theme_lagoon"
         case .losAngeles:  return "theme_losAngeles"
         case .london:      return "theme_london"
-        case .castle: return "theme_lagoon"
-        case .clouds:       return "action_level_1"
+        case .castle: return "theme_castle"
+        case .clouds:       return "theme_clouds"
         }
     }
 

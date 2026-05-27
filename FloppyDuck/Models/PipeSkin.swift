@@ -148,31 +148,36 @@ enum PipeSkin: String, CaseIterable, Identifiable, Codable {
 
     var breadPrice: Int? {
         switch self {
-        case .candy:   return 120
-        case .sandCastle: return 175
-        case .bamboo:  return 150
-        case .steel:   return 200
-        case .pixel:   return 250
-        case .turret:  return 300
-        case .cactus:  return 180
-        case .arcade:  return 325
-        case .trafficCone: return 160
-        case .breadLoaf: return 220
-        case .neon:    return 350
-        case .royal:   return 350
-        case .gold:    return 400
-        case .sodaCan: return 190
-        case .mailbox: return 210
-        case .totem:   return 280
-        case .castleTower: return 300
-        case .pharaoh: return 340
-        case .submarine: return 320
-        case .rocket:  return 360
-        case .mushroom: return 240
-        case .crystal: return 300
-        case .bone:    return 260
-        case .bookshelf: return 280
-        default:       return nil
+        // Tier 1 — Starter pipes (accessible early)
+        case .candy:        return 100
+        case .trafficCone:  return 125
+        case .bamboo:       return 150
+        case .sandCastle:   return 175
+        // Tier 2 — Mid range
+        case .cactus:       return 200
+        case .sodaCan:      return 225
+        case .steel:        return 250
+        case .mailbox:      return 275
+        case .breadLoaf:    return 300
+        // Tier 3 — Intermediate
+        case .mushroom:     return 350
+        case .bone:         return 375
+        case .pixel:        return 425
+        case .totem:        return 475
+        case .bookshelf:    return 475
+        // Tier 4 — Advanced
+        case .crystal:      return 525
+        case .castleTower:  return 575
+        case .turret:       return 625
+        case .submarine:    return 700
+        // Tier 5 — Aspirational (grind-worthy flex items)
+        case .neon:         return 750
+        case .pharaoh:      return 800
+        case .royal:        return 850
+        case .arcade:       return 950
+        case .rocket:       return 1100
+        case .gold:         return 1500   // Ultimate flex
+        default:            return nil
         }
     }
 

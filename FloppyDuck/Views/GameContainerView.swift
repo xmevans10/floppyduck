@@ -997,8 +997,8 @@ struct GameContainerView: View {
                     }
                 } else if config.mode == .classic {
                     HStack(spacing: 8) {
-                        pixelIcon(.classic, size: 18)
-                        Text("CLASSIC")
+                        pixelIcon(config.powerUpsEnabled ? .star : .classic, size: 18)
+                        Text(config.powerUpsEnabled ? "ARCADE" : "CLASSIC")
                             .font(.custom(GK.pixelFontName, size: 10))
                             .foregroundColor(GK.Colors.panelBorder.opacity(0.7))
                     }

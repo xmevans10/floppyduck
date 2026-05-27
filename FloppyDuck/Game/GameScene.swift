@@ -1261,9 +1261,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if let duck, let vy = duck.physicsBody?.velocity.dy {
             let flapRef = difficulty.effectiveFlapImpulse
             let target = vy > 0
-                ? min(vy / flapRef * 0.4, 0.4)
-                : max(vy / 400, -CGFloat.pi / 2)
-            duck.zRotation += (target - duck.zRotation) * 0.10
+                ? min(vy / flapRef * 0.5, 0.5)
+                : max(vy / 350, -CGFloat.pi / 2)
+            // Faster lerp for snappier up-tilt on flap; moderate down-tilt on fall
+            let lerpFactor: CGFloat = vy > 0 ? 0.18 : 0.12
+            duck.zRotation += (target - duck.zRotation) * lerpFactor
 
             // Pin horizontal position — duck should only move vertically.
             // Prevents any residual horizontal drift from physics resolution.

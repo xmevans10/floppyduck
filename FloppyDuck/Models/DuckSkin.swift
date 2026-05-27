@@ -239,8 +239,10 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .unicorn:     return (333, 315)
         case .wizard:      return (411, 416)
         case .bearskin:    return (253, 268)
-        case .classic, .sailor, .golden, .spider:
-            return nil
+        case .classic:     return (315, 231)
+        case .sailor:      return (315, 294)
+        case .golden:      return (315, 294)
+        case .spider:      return (315, 294)
         }
     }
 
@@ -267,6 +269,16 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .mermaid:     return Color(red: 0.15, green: 0.70, blue: 0.65)
         case .princess:    return Color(red: 0.88, green: 0.45, blue: 0.65)
         case .unicorn:     return Color(red: 0.75, green: 0.45, blue: 0.85)
+        }
+    }
+
+    /// The bot ID that must be beaten to unlock this skin (nil if not a bot reward).
+    var rewardBotId: String? {
+        switch self {
+        case .sailor: return "puddles"
+        case .pirate: return "goose"
+        case .golden: return "the_duck"
+        default:      return nil
         }
     }
 }

@@ -51,10 +51,7 @@ struct SplashView: View {
             runSequence()
         }
         .onTapGesture {
-            if !quackPlayed {
-                quackPlayed = true
-                SoundManager.shared.play(.quack)
-            }
+            playQuackOnce()
             finish()
         }
         .accessibilityAction(named: "Skip") { finish() }
@@ -71,9 +68,9 @@ struct SplashView: View {
             }
         }
 
-        // 0.9 s — Haptic when title lands
+        // 0.9 s — Quack SFX + haptic when title lands (harmonious with text)
         after(0.90) {
-            Haptic.splashCoin()
+            playQuackOnce()
         }
 
         // 1.6 s — Subtitle pops in
@@ -124,8 +121,17 @@ struct SplashView: View {
         }
     }
 
+    /// Play the quack exactly once — whether triggered by the 0.9s timer or a tap.
+    private func playQuackOnce() {
+        guard !quackPlayed else { return }
+        quackPlayed = true
+        SoundManager.shared.play(.quack)
+        Haptic.splashCoin()
+    }
+
     private func finish() {
         guard !isFinished else { return }
+        playQuackOnce()
         // Hold the splash until first-run gameplay assets are actually cached
         // and SpriteKit has preloaded textures onto the render side.
         guard assetsReady && TextureFactory.shared.isPreWarmed else {

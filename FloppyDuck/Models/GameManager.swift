@@ -44,9 +44,10 @@ final class GameManager: ObservableObject {
 
         AchievementManager.shared.register(gameManager: self)
 
-        // Sync battle banner & pipe skin unlocks with already-beaten bots
+        // Sync battle banner, pipe skin, & duck skin unlocks with already-beaten bots
         BannerManager.shared.syncWithBeatenBots(stats.beatenBots)
         PipeSkinManager.shared.syncWithBeatenBots(stats.beatenBots)
+        SkinManager.shared.syncWithBeatenBots(stats.beatenBots)
     }
 
     func navigate(to route: AppRoute) {
@@ -401,8 +402,8 @@ final class GameManager: ObservableObject {
 
         lastPlayDateString = todayStr
 
-        // Bonus bread for streaks
-        let bonus = min(currentStreak * 5, 50) // 5, 10, 15... up to 50
+        // Bonus bread for streaks (3 per day, capped at 21 — rewards consistency without flooding)
+        let bonus = min(currentStreak * 3, 21) // 3, 6, 9... up to 21
         stats.bread += bonus
         saveStats()
 
@@ -420,9 +421,10 @@ final class GameManager: ObservableObject {
         stats.beatBot(botId)
         saveStats()
         AnalyticsManager.shared.trackBotMatchCompleted(botId: botId, won: true, score: 0)
-        // Auto-unlock any battle banner or pipe skin tied to this bot
+        // Auto-unlock any battle banner, pipe skin, or duck skin tied to this bot
         BannerManager.shared.checkBotRewardUnlock(beatenBotId: botId)
         PipeSkinManager.shared.checkBotRewardUnlock(beatenBotId: botId)
+        SkinManager.shared.checkBotRewardUnlock(beatenBotId: botId)
 
         // Sync to backend immediately so progress persists even if the
         // player replays the level without returning home. (XAN-9)

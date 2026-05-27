@@ -2,13 +2,12 @@ import SwiftUI
 
 // MARK: - Bot Ladder View
 //
-// Climb from QUACKERS to THE DUCK.
-// Uses HomeView's design system: subModeButton style for active bot,
-// settingsPanel cream cards for beaten/locked bots.
+// Vertical progression path from QUACKERS → THE DUCK.
+// Connected nodes with a glowing trail, reward previews, and
+// distinct visual states for beaten / next / locked bots.
 
 struct BotLadderView: View {
     @EnvironmentObject var manager: GameManager
-
 
     private let bots = BotCharacter.all
     private let icons = PixelIconFactory.shared
@@ -42,21 +41,39 @@ struct BotLadderView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
-                        VStack(spacing: 10) {
-                            ForEach(Array(bots.reversed().enumerated()), id: \.element.id) { index, bot in
-                                let realIdx = bots.count - 1 - index
-                                let beaten = manager.isBotBeaten(bot.id)
-                                let isNext = realIdx == manager.nextBotIndex
-                                let locked = !beaten && realIdx > manager.nextBotIndex
+                        // Progression path — bottom to top
+                        ZStack(alignment: .top) {
+                            // Vertical connector line behind the cards
+                            pathConnector
 
-                                botCard(bot: bot, beaten: beaten, isNext: isNext, locked: locked,
-                                        isBoss: realIdx == bots.count - 1)
-                                    .id(bot.id)
+                            VStack(spacing: 0) {
+                                ForEach(Array(bots.reversed().enumerated()), id: \.element.id) { index, bot in
+                                    let realIdx = bots.count - 1 - index
+                                    let beaten = manager.isBotBeaten(bot.id)
+                                    let isNext = realIdx == manager.nextBotIndex
+                                    let locked = !beaten && realIdx > manager.nextBotIndex
+                                    let isBoss = realIdx == bots.count - 1
+
+                                    VStack(spacing: 0) {
+                                        botNode(bot: bot, beaten: beaten, isNext: isNext,
+                                                locked: locked, isBoss: isBoss, rank: realIdx + 1)
+                                            .id(bot.id)
+
+                                        // Connector segment between nodes (skip after last)
+                                        if index < bots.count - 1 {
+                                            connectorSegment(
+                                                aboveBeaten: beaten,
+                                                belowBeaten: manager.isBotBeaten(bots[realIdx - 1].id),
+                                                isNextEdge: isNext || (realIdx - 1 == manager.nextBotIndex)
+                                            )
+                                        }
+                                    }
+                                }
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                            .padding(.bottom, 80)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 80)
                     }
                     .onAppear {
                         let idx = manager.nextBotIndex
@@ -142,121 +159,220 @@ struct BotLadderView: View {
 
             Text(beatenCount == bots.count
                  ? "ALL BOTS DEFEATED! 🏆"
-                 : "Defeat each bot to unlock their skin")
+                 : "Climb the ladder — each victory unlocks rewards")
                 .font(.custom(GK.pixelFontName, size: 6))
                 .foregroundColor(.white.opacity(0.6))
         }
     }
 
-    // MARK: - Bot Card (unified for regular + boss)
+    // MARK: - Path Connector (background vertical line)
 
-    private func botCard(bot: BotCharacter, beaten: Bool, isNext: Bool,
-                         locked: Bool, isBoss: Bool) -> some View {
+    private var pathConnector: some View {
+        // Invisible — connectors are drawn per-segment between nodes
+        Color.clear
+    }
+
+    // MARK: - Connector Segment Between Nodes
+
+    private func connectorSegment(aboveBeaten: Bool, belowBeaten: Bool, isNextEdge: Bool) -> some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(
+                    aboveBeaten && belowBeaten
+                        ? GK.Colors.buttonGreen.opacity(0.6)
+                        : isNextEdge
+                            ? Color.white.opacity(0.25)
+                            : Color.white.opacity(0.08)
+                )
+                .frame(width: 3, height: 20)
+
+            // Dot marker
+            Circle()
+                .fill(
+                    aboveBeaten && belowBeaten
+                        ? GK.Colors.buttonGreen.opacity(0.8)
+                        : Color.white.opacity(0.15)
+                )
+                .frame(width: 7, height: 7)
+
+            Rectangle()
+                .fill(
+                    aboveBeaten && belowBeaten
+                        ? GK.Colors.buttonGreen.opacity(0.6)
+                        : isNextEdge
+                            ? Color.white.opacity(0.25)
+                            : Color.white.opacity(0.08)
+                )
+                .frame(width: 3, height: 20)
+        }
+        .frame(height: 47)
+    }
+
+    // MARK: - Bot Node (progression tile)
+
+    private func botNode(bot: BotCharacter, beaten: Bool, isNext: Bool,
+                         locked: Bool, isBoss: Bool, rank: Int) -> some View {
         Button {
             guard !locked else { return }
             SoundManager.shared.play(.button)
             manager.startBotLadderMatch(bot)
         } label: {
-            HStack(spacing: 12) {
-                // Portrait
-                botPortrait(bot: bot, beaten: beaten, locked: locked)
-
-                // Info
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(bot.name)
-                            .font(.custom(GK.pixelFontName, size: isNext ? 13 : 11))
-                            .foregroundColor(
-                                isNext ? .white :
-                                locked ? GK.Colors.panelBorder.opacity(0.35) :
-                                GK.Colors.panelBorder)
-                        if isBoss && !locked {
-                            Image(uiImage: icons.image(for: .crown, pixelScale: 2.0))
-                                .interpolation(.none)
-                                .resizable()
-                                .frame(width: 12, height: 12)
-                        }
-                    }
-
-                    if locked {
-                        Text("BEAT PREVIOUS BOTS")
-                            .font(.custom(GK.pixelFontName, size: 5))
-                            .foregroundColor(GK.Colors.panelBorder.opacity(0.3))
-                    } else {
-                        Text(beaten ? "DEFEATED" : bot.title.uppercased())
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(
-                                isNext ? .white.opacity(0.7) :
-                                beaten ? GK.Colors.buttonGreen.opacity(0.8) :
-                                GK.Colors.panelBorder.opacity(0.5))
-                        if isNext {
-                            Text("TARGET: \(bot.targetScore) PIPES")
-                                .font(.custom(GK.pixelFontName, size: 6))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
-                    }
-                }
-
-                Spacer()
-
-                // Action
+            VStack(spacing: 0) {
+                // Rank label above the card for the next challenge
                 if isNext {
-                    Text("FIGHT")
-                        .font(.custom(GK.pixelFontName, size: 9))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(
-                            Capsule().fill(Color.white.opacity(0.2))
-                                .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1)))
-                } else if beaten {
-                    Text("REPLAY")
+                    Text("⚔️ NEXT CHALLENGER")
                         .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .overlay(
-                            Capsule().stroke(GK.Colors.panelBorder.opacity(0.15), lineWidth: 1))
-                } else if locked {
-                    Image(uiImage: icons.image(for: .lock, pixelScale: 2.0))
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 14, height: 14)
-                        .opacity(0.25)
+                        .foregroundColor(bot.accentColor)
+                        .padding(.bottom, 6)
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, isNext ? 14 : 10)
-            .background(
-                Group {
+
+                HStack(spacing: 14) {
+                    // Rank number + portrait
+                    ZStack {
+                        botPortrait(bot: bot, beaten: beaten, locked: locked, isNext: isNext, isBoss: isBoss)
+
+                        // Rank badge (top-left)
+                        VStack {
+                            HStack {
+                                Text("\(rank)")
+                                    .font(.custom(GK.pixelFontName, size: 7))
+                                    .foregroundColor(beaten ? .white : .white.opacity(0.7))
+                                    .frame(width: 18, height: 18)
+                                    .background(
+                                        Circle()
+                                            .fill(beaten ? GK.Colors.buttonGreen : Color.black.opacity(0.4))
+                                    )
+                                Spacer()
+                            }
+                            Spacer()
+                        }
+                        .frame(width: 52, height: 52)
+                    }
+
+                    // Info column
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(bot.name)
+                                .font(.custom(GK.pixelFontName, size: isNext ? 14 : 11))
+                                .foregroundColor(
+                                    isNext ? .white :
+                                    locked ? GK.Colors.panelBorder.opacity(0.35) :
+                                    GK.Colors.panelBorder)
+                            if isBoss && !locked {
+                                Image(uiImage: icons.image(for: .crown, pixelScale: 2.0))
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .frame(width: 12, height: 12)
+                            }
+                        }
+
+                        if locked {
+                            Text("LOCKED")
+                                .font(.custom(GK.pixelFontName, size: 6))
+                                .foregroundColor(GK.Colors.panelBorder.opacity(0.3))
+                        } else {
+                            // Title + ELO
+                            HStack(spacing: 6) {
+                                Text(beaten ? "DEFEATED ✓" : bot.title.uppercased())
+                                    .font(.custom(GK.pixelFontName, size: 7))
+                                    .foregroundColor(
+                                        isNext ? .white.opacity(0.7) :
+                                        beaten ? GK.Colors.buttonGreen.opacity(0.8) :
+                                        GK.Colors.panelBorder.opacity(0.5))
+
+                                Text("ELO \(bot.elo)")
+                                    .font(.custom(GK.pixelFontName, size: 6))
+                                    .foregroundColor(
+                                        isNext ? .white.opacity(0.5) :
+                                        GK.Colors.panelBorder.opacity(0.3))
+                            }
+
+                            // Target score
+                            if isNext {
+                                Text("TARGET: \(bot.targetScore) PIPES")
+                                    .font(.custom(GK.pixelFontName, size: 6))
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .padding(.top, 1)
+                            }
+
+                            // Reward preview
+                            if !beaten && !locked {
+                                rewardPreview(for: bot)
+                                    .padding(.top, 2)
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    // Action column
                     if isNext {
-                        // subModeButton pattern — colored fill + drop shadow
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(bot.accentColor)
-                            .shadow(color: bot.accentColor.opacity(0.5), radius: 0, x: 0, y: 3)
-                    } else {
-                        // settingsPanel pattern — cream fill
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(GK.Colors.panelCream)
-                            .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
+                        VStack(spacing: 4) {
+                            Text("FIGHT")
+                                .font(.custom(GK.pixelFontName, size: 10))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.white.opacity(0.25))
+                                        .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: 1.5))
+                                )
+                        }
+                    } else if beaten {
+                        Text("REPLAY")
+                            .font(.custom(GK.pixelFontName, size: 7))
+                            .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .overlay(
+                                Capsule().stroke(GK.Colors.panelBorder.opacity(0.15), lineWidth: 1))
+                    } else if locked {
+                        Image(uiImage: icons.image(for: .lock, pixelScale: 2.0))
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 14, height: 14)
+                            .opacity(0.25)
                     }
                 }
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        isNext ? Color.black.opacity(0.3) :
-                        beaten ? GK.Colors.buttonGreen.opacity(0.3) :
-                        GK.Colors.panelBorder.opacity(locked ? 0.1 : 0.15),
-                        lineWidth: 2)
-            )
+                .padding(.horizontal, 16)
+                .padding(.vertical, isNext ? 16 : 12)
+                .background(
+                    Group {
+                        if isNext {
+                            // Active challenge — bot's accent color with glow
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(bot.accentColor)
+                                .shadow(color: bot.accentColor.opacity(0.6), radius: 8, x: 0, y: 4)
+                        } else if beaten {
+                            // Beaten — subtle green-tinted cream
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(GK.Colors.panelCream)
+                                .shadow(color: GK.Colors.buttonGreen.opacity(0.15), radius: 0, x: 0, y: 3)
+                        } else {
+                            // Locked or upcoming — dark translucent
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.black.opacity(locked ? 0.2 : 0.3))
+                                .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
+                        }
+                    }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            isNext ? Color.white.opacity(0.3) :
+                            beaten ? GK.Colors.buttonGreen.opacity(0.3) :
+                            Color.white.opacity(locked ? 0.05 : 0.1),
+                            lineWidth: isNext ? 2.5 : 2)
+                )
+            }
         }
         .buttonStyle(.plain)
         .disabled(locked)
-        .opacity(locked ? 0.5 : 1.0)
+        .opacity(locked ? 0.45 : 1.0)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(bot.name), \(bot.title)" +
+            "\(bot.name), \(bot.title), rank \(rank)" +
             (beaten ? ", beaten" : isNext ? ", next challenge" : locked ? ", locked" : ""))
         .accessibilityHint(
             isNext ? "Double-tap to challenge" :
@@ -264,10 +380,51 @@ struct BotLadderView: View {
             locked ? "Beat previous bots to unlock" : "")
     }
 
+    // MARK: - Reward Preview
+
+    /// Shows what you'll unlock by beating this bot (banner, pipe skin, or just "Unlock [skin name]")
+    private func rewardPreview(for bot: BotCharacter) -> some View {
+        HStack(spacing: 4) {
+            Image(uiImage: icons.image(for: .star, pixelScale: 1.5))
+                .interpolation(.none)
+                .resizable()
+                .frame(width: 10, height: 10)
+
+            // Check for banner unlock
+            if let banner = BattleBanner.allCases.first(where: { $0.requiredBotId == bot.id }) {
+                Text("UNLOCKS: \(banner.displayName) BANNER")
+                    .font(.custom(GK.pixelFontName, size: 5))
+                    .foregroundColor(GK.Colors.scoreYellow.opacity(0.8))
+            }
+            // Check for pipe skin unlock
+            else if let pipe = PipeSkin.allCases.first(where: { $0.requiredBotId == bot.id }) {
+                Text("UNLOCKS: \(pipe.displayName) PIPES")
+                    .font(.custom(GK.pixelFontName, size: 5))
+                    .foregroundColor(GK.Colors.scoreYellow.opacity(0.8))
+            }
+            // Bot's duck skin as the aspirational reward
+            else {
+                Text("SKIN: \(bot.skin.displayName)")
+                    .font(.custom(GK.pixelFontName, size: 5))
+                    .foregroundColor(GK.Colors.scoreYellow.opacity(0.8))
+            }
+        }
+    }
+
     // MARK: - Portrait
 
-    private func botPortrait(bot: BotCharacter, beaten: Bool, locked: Bool) -> some View {
+    private func botPortrait(bot: BotCharacter, beaten: Bool, locked: Bool,
+                             isNext: Bool, isBoss: Bool) -> some View {
         ZStack {
+            // Outer ring — glowing for next, green for beaten
+            Circle()
+                .fill(
+                    isNext ? bot.accentColor.opacity(0.3) :
+                    beaten ? GK.Colors.buttonGreen.opacity(0.15) :
+                    Color.black.opacity(0.2)
+                )
+                .frame(width: 52, height: 52)
+
             PixelButtonBackground(
                 style: locked ? .dark : .accent(bot.accentColor),
                 size: 44
@@ -295,9 +452,8 @@ struct BotLadderView: View {
                                     .frame(width: 14, height: 14))
                     }
                 }
-                .frame(width: 40, height: 40)
+                .frame(width: 44, height: 44)
             }
         }
     }
-
 }

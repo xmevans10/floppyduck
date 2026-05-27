@@ -384,7 +384,8 @@ struct MatchmakingView: View {
             Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: SkinManager.shared.selectedSkin, pixelScale: 3.0))
                 .interpolation(.none)
                 .resizable()
-                .frame(width: 50, height: 38)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 50, height: 50)
 
             Text("SEARCHING\(dots)")
                 .font(.custom(GK.pixelFontName, size: 12))

@@ -554,6 +554,7 @@ struct CollectionView: View {
                     BannerPatternView(banner: banner, offset: 0)
                         .frame(height: 60)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .allowsHitTesting(false)
 
                     if selected {
                         Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
@@ -610,6 +611,7 @@ struct CollectionView: View {
                     .stroke(selected ? banner.primaryColor : GK.Colors.panelBorder,
                             lineWidth: selected ? 3 : 2)
             )
+            .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }

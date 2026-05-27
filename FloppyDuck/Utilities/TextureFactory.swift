@@ -395,7 +395,6 @@ final class TextureFactory: @unchecked Sendable {
     }
 
     private func productionSkinAssetName(skin: DuckSkin, wingPhase: Int) -> String? {
-        guard skin != .classic else { return nil }
         let frame: String
         switch wingPhase {
         case 0:

@@ -1,6 +1,7 @@
 import AuthenticationServices
 import Foundation
 import GameKit
+import Network
 import UIKit
 
 @MainActor
@@ -105,6 +106,24 @@ final class AuthManager: ObservableObject {
         // (which has no Convex backend) never blocks on a network timeout.
         if isUITestMode {
             await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+            return
+        }
+
+        // Fast airplane-mode detection — if the device has no network path at
+        // all, skip the Convex round-trip entirely and go straight to offline
+        // guest mode.  This avoids the long "loading profile" hang.
+        let hasNetwork = await withCheckedContinuation { cont in
+            let monitor = NWPathMonitor()
+            monitor.pathUpdateHandler = { path in
+                monitor.cancel()
+                cont.resume(returning: path.status == .satisfied)
+            }
+            monitor.start(queue: DispatchQueue(label: "net.check"))
+        }
+        if !hasNetwork {
+            print("[AuthManager] No network — skipping profile fetch (airplane mode)")
+            await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
+            statusMessage = "Offline mode — connect to sync your profile."
             return
         }
 
