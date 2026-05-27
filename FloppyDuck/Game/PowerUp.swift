@@ -167,52 +167,25 @@ enum PowerUpKind: String, CaseIterable {
     static let collectibleSize: CGFloat = 24
 
     /// Bread-loaf collectible: chance for a bread to become a golden loaf worth 10×.
-    static let loafChance: CGFloat = 0.05
-    static let loafBreadValue: Int = 5
+    static let loafChance: CGFloat = 0.07
+    static let loafBreadValue: Int = 10
 
-    /// Mystery boxes should feel exciting more often than punishing.
-    static let mysteryBoxPositiveChance: Double = 0.66
+    /// Mystery boxes use a 3-tier split: 50% positive, 30% negative, 20% wildcard
+    /// (any kind, ignoring positive/negative split entirely).
+    static let mysteryBoxPositiveChance: Double = 0.50
+    static let mysteryBoxNegativeChance: Double = 0.30
 
     static func randomMysteryBoxReward() -> PowerUpKind {
-        let wantsPositive = Double.random(in: 0..<1) < mysteryBoxPositiveChance
-        let candidates = allCases.filter { kind in
-            kind != .mysteryBox && kind.isPositive == wantsPositive
+        let roll = Double.random(in: 0..<1)
+        let candidates: [PowerUpKind]
+        if roll < mysteryBoxPositiveChance {
+            candidates = allCases.filter { $0 != .mysteryBox && $0 != .doublePoints && $0.isPositive }
+        } else if roll < mysteryBoxPositiveChance + mysteryBoxNegativeChance {
+            candidates = allCases.filter { $0 != .mysteryBox && $0 != .doublePoints && !$0.isPositive }
+        } else {
+            candidates = allCases.filter { $0 != .mysteryBox && $0 != .doublePoints }
         }
-        return weightedRandom(from: candidates) ?? .shield
-    }
-
-    static func randomMysteryBoxReward(rng: inout SeededRandom) -> PowerUpKind {
-        let wantsPositive = rng.nextDouble() < mysteryBoxPositiveChance
-        let candidates = allCases.filter { kind in
-            kind != .mysteryBox && kind.isPositive == wantsPositive
-        }
-        return weightedRandom(from: candidates, rng: &rng) ?? .shield
-    }
-
-    private static func weightedRandom(from candidates: [PowerUpKind]) -> PowerUpKind? {
-        let weighted = candidates.map { ($0, max($0.spawnWeight, 0)) }
-        let totalWeight = weighted.reduce(0) { $0 + $1.1 }
-        guard totalWeight > 0 else { return candidates.randomElement() }
-
-        var roll = Double.random(in: 0..<totalWeight)
-        for (kind, weight) in weighted {
-            roll -= weight
-            if roll <= 0 { return kind }
-        }
-        return weighted.last?.0
-    }
-
-    private static func weightedRandom(from candidates: [PowerUpKind], rng: inout SeededRandom) -> PowerUpKind? {
-        let weighted = candidates.map { ($0, max($0.spawnWeight, 0)) }
-        let totalWeight = weighted.reduce(0) { $0 + $1.1 }
-        guard totalWeight > 0 else { return candidates.first }
-
-        var roll = rng.nextDouble() * totalWeight
-        for (kind, weight) in weighted {
-            roll -= weight
-            if roll <= 0 { return kind }
-        }
-        return weighted.last?.0
+        return candidates.randomElement() ?? .shield
     }
 }
 
@@ -275,7 +248,7 @@ final class PowerUpSpawnManager {
 
     private var pipesUntilNextSpawn: Int
     private var lastSpawnedKind: PowerUpKind?
-    private var seed: Int?
+    private let seed: Int?
     private var rng: SeededRandom?
 
     /// Power-up kinds that should never spawn (e.g. doublePoints in bot games).
@@ -293,6 +266,10 @@ final class PowerUpSpawnManager {
         }
     }
 
+    var usesSeededRandom: Bool {
+        seed != nil
+    }
+
     /// Called each time a pipe is scored. Returns a PowerUpKind to spawn, or nil.
     func onPipeScored(currentScore: Int, tier: DifficultyTier) -> PowerUpKind? {
         pipesUntilNextSpawn -= 1
@@ -307,11 +284,9 @@ final class PowerUpSpawnManager {
         return kind
     }
 
-    /// Reset for a new game, optionally with a fresh seed so power-up order varies between retries.
-    func reset(newSeed: Int? = nil) {
-        if let newSeed {
-            seed = newSeed
-        }
+    /// Reset for a new game.
+    func reset() {
+        excludedKinds.removeAll()
         if let seed {
             rng = SeededRandom(seed: seed)
         }
@@ -320,12 +295,7 @@ final class PowerUpSpawnManager {
     }
 
     func randomMysteryBoxReward() -> PowerUpKind {
-        if var seeded = rng {
-            let result = PowerUpKind.randomMysteryBoxReward(rng: &seeded)
-            rng = seeded
-            return result
-        }
-        return PowerUpKind.randomMysteryBoxReward()
+        PowerUpKind.randomMysteryBoxReward()
     }
 
     // MARK: - Weighted Random

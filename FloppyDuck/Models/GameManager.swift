@@ -401,8 +401,8 @@ final class GameManager: ObservableObject {
 
         lastPlayDateString = todayStr
 
-        // Bonus bread for streaks
-        let bonus = min(currentStreak * 5, 50) // 5, 10, 15... up to 50
+        // Bonus bread for streaks (3 per day, capped at 21 — rewards consistency without flooding)
+        let bonus = min(currentStreak * 3, 21) // 3, 6, 9... up to 21
         stats.bread += bonus
         saveStats()
 

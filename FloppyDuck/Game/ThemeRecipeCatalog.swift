@@ -27,6 +27,8 @@ enum ThemeRecipeCatalog {
         case .lagoon:      return lagoon
         case .losAngeles:  return losAngeles
         case .london:      return london
+        case .castle: return castle
+        case .clouds:       return clouds
         }
     }
 
@@ -311,6 +313,24 @@ enum ThemeRecipeCatalog {
         clouds: clouds("london_clouds"),
         ground: ground("london_ground"),
         groundBase: groundBase("london_foreground3"),
+        overlays: [],
+        contrastBudget: defaultBudget
+    )
+
+    static let castle = ThemeRecipe(
+        hero: hero("fantasyCastle_hero"),
+        clouds: clouds("day_clouds"),
+        ground: ground("castle_ground"),
+        groundBase: groundBase("castle_foreground3"),
+        overlays: [],
+        contrastBudget: defaultBudget
+    )
+
+    static let clouds = ThemeRecipe(
+        hero: hero("clouds_hero"),
+        clouds: clouds("day_clouds"),
+        ground: ground("clouds_ground"),
+        groundBase: groundBase("clouds_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )

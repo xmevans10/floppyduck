@@ -7,7 +7,7 @@ final class BotCharacterTests: XCTestCase {
     // MARK: - Ladder Integrity
 
     func testBotCountInLadder() {
-        XCTAssertEqual(BotCharacter.all.count, 14)
+        XCTAssertEqual(BotCharacter.all.count, 17)
     }
 
     func testAllBotsHaveUniqueIds() {

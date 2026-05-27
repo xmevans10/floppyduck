@@ -7,6 +7,7 @@ import UIKit
 struct GameContainerView: View {
     let config: GameModeConfig
     @EnvironmentObject var manager: GameManager
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var scene: GameScene?
     @State private var bridge: GameSceneBridge?
@@ -167,6 +168,10 @@ struct GameContainerView: View {
             headToHeadStartTask?.cancel()
             headToHeadReadyPollTask?.cancel()
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            restoreGameplayMusicIfNeeded()
+        }
         .sheet(item: $sharePayload) { payload in
             ActivityView(activityItems: payload.activityItems)
         }
@@ -260,6 +265,11 @@ struct GameContainerView: View {
             startBattleRoyalePolling(lobbyId: lobbyId, scene: newScene)
             startBattleRoyaleReporting(lobbyId: lobbyId, scene: newScene)
         }
+    }
+
+    private func restoreGameplayMusicIfNeeded() {
+        guard phase == .playing else { return }
+        SoundManager.shared.resumePlayMusic()
     }
 
     private func sendHeadToHeadReadyIfPossible() {

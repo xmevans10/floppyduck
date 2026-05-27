@@ -174,6 +174,30 @@ struct ShopView: View {
 
     // MARK: - Section Picker
 
+    // MARK: - Duck Preview Helper
+
+    private static let cardDuckTargetBodyWidth: CGFloat = 60
+    private static let cardDuckPixelScale: CGFloat = cardDuckTargetBodyWidth / 16
+
+    private func duckDisplayFrame(for skin: DuckSkin, maxWidth: CGFloat = 150, maxHeight: CGFloat = 105) -> CGSize {
+        let bodyWidth = GK.duckRadius * 2.8
+        let scale = Self.cardDuckTargetBodyWidth / bodyWidth
+        let size = skin.spriteSize
+        return CGSize(
+            width: min(size.width * scale, maxWidth),
+            height: min(size.height * scale, maxHeight)
+        )
+    }
+
+    private func duckPreviewImage(skin: DuckSkin) -> some View {
+        let frame = duckDisplayFrame(for: skin)
+        return Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: skin, pixelScale: Self.cardDuckPixelScale))
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: frame.width, height: frame.height)
+    }
+
     // MARK: - Skin Card
 
     private func skinCard(_ skin: DuckSkin) -> some View {
@@ -208,13 +232,8 @@ struct ShopView: View {
             }
         } label: {
             VStack(spacing: 8) {
-                // Duck preview — fixed card height so all skins align
-                Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: skin, pixelScale: 5.0))
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 70)
-                    .frame(width: 80, height: 80)
+                // Duck preview
+                    duckPreviewImage(skin: skin)
 
                 Text(skin.displayName)
                     .font(.custom(GK.pixelFontName, size: 10))

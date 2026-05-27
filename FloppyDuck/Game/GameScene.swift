@@ -65,7 +65,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     var botScore: Int { botController?.score ?? 0 }
 
     private var prng: SeededRandom
-    private var powerUpPrng: SeededRandom
+    private var powerUpPrng: SeededRandom?
     private var gapPositions: [CGFloat] = []
     private var pipeIndex: Int = 0
 
@@ -233,7 +233,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
          opponentName: String? = nil,
          targetScore: Int? = nil) {
         self.prng = SeededRandom(seed: seed)
-        self.powerUpPrng = SeededRandom(seed: Self.powerUpSeed(from: seed))
+        self.powerUpPrng = mode == .vsBot ? nil : SeededRandom(seed: Self.powerUpSeed(from: seed))
         self.prngSeed = seed
         self.mode = mode
         self.powerUpsEnabled = powerUpsEnabled
@@ -316,7 +316,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             pipeLayer: pipeLayer,
             duck: duck,
             difficulty: difficulty,
-            seed: Self.powerUpSeed(from: prngSeed)
+            seed: powerUpRandomSeed
         )
         powerUpCtrl.labelParentOverride = self
         powerUpCtrl.onPowerUpCollected = { [weak self] kind in
@@ -359,7 +359,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 // bot deterministically dies at its ceiling score.
                 // Use the bot's own skin if provided, otherwise fall back to player skin.
                 let effectiveBotSkin = botSkin ?? playerSkin
-                bc.setup(skin: effectiveBotSkin, difficulty: botDiff, deathScore: targetScore)
+                bc.setup(skin: effectiveBotSkin, difficulty: botDiff, deathScore: targetScore, initialGapY: gapPositions.first)
             }
             bc.setupScoreHUD(mode: mode, opponentName: opponentName)
             bc.onScoreChanged = { [weak self] newScore in
@@ -555,6 +555,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         activeBreads.compactMap(\.node).filter { $0.parent != nil }.count
     }
 
+    func debugUsesSeededPowerUps() -> Bool {
+        powerUpPrng != nil && powerUpCtrl.usesSeededRandom
+    }
+
     func debugQueuePowerUpForNextPipe(_ kind: PowerUpKind) {
         powerUpCtrl.debugQueuePowerUpForNextPipe(kind)
     }
@@ -690,10 +694,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             spawnPowerUpCollectible(afterPipeX: pipeNode.position.x, gapY: gapY, gapHeight: effectiveGap, kind: kind)
         }
 
-        guard mode != .headToHead else { return }
-
-        // Spawn bread collectibles between pipes (~30% chance — tuned for economy rebalance)
-        if CGFloat.random(in: 0...1) < 0.3 {
+        // Spawn bread collectibles between pipes (~40% chance, reduced from 60%)
+        if CGFloat.random(in: 0...1) < 0.4 {
             spawnBreadGroup(afterPipeX: GK.worldWidth + GK.pipeWidth, gapY: gapY, gapHeight: effectiveGap)
         }
     }
@@ -705,7 +707,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     /// PowerUpController handles activation, effects, and lifecycle.
     private func spawnPowerUpCollectible(afterPipeX: CGFloat, gapY: CGFloat, gapHeight: CGFloat, kind: PowerUpKind) {
         let spacing = max(currentPipeSpeed * CGFloat(GK.pipeSpawnInterval), GK.pipeWidth * 2)
-        let xOffset = seededPowerUpCGFloat(in: (spacing * 0.22)...(spacing * 0.78))
+        let xOffset = powerUpCGFloat(in: (spacing * 0.22)...(spacing * 0.78))
 
         let minY = GK.groundHeight + 48
         let maxY = GK.worldHeight - 52
@@ -715,15 +717,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // 75% in the pipe gap (flight corridor), 25% weighted toward gap region
         let y: CGFloat
-        if seededPowerUpCGFloat(in: 0...1) < 0.75, gapBottom < gapTop {
-            y = seededPowerUpCGFloat(in: gapBottom...gapTop)
+        if powerUpCGFloat(in: 0...1) < 0.75, gapBottom < gapTop {
+            y = powerUpCGFloat(in: gapBottom...gapTop)
         } else {
             let nearBottom = max(minY, gapY - gapHeight * 0.8)
             let nearTop = min(maxY, gapY + gapHeight * 0.8)
             if nearBottom < nearTop {
-                y = seededPowerUpCGFloat(in: nearBottom...nearTop)
+                y = powerUpCGFloat(in: nearBottom...nearTop)
             } else if gapBottom < gapTop {
-                y = seededPowerUpCGFloat(in: gapBottom...gapTop)
+                y = powerUpCGFloat(in: gapBottom...gapTop)
             } else {
                 y = gapY  // fallback dead center
             }
@@ -856,8 +858,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         for i in 0..<mediumFrames {
             cycleTextures.append(PixelIconFactory.shared.skTexture(for: displayOrder[i % displayOrder.count].pixelIcon, pixelScale: pixelScale))
         }
+        // Shuffle slow frames independently so the "teasing" before reveal looks fresh each time
+        let slowOrder = displayOrder.shuffled()
         for i in 0..<(slowFrames - 1) {
-            cycleTextures.append(PixelIconFactory.shared.skTexture(for: displayOrder[i % displayOrder.count].pixelIcon, pixelScale: pixelScale))
+            cycleTextures.append(PixelIconFactory.shared.skTexture(for: slowOrder[i % slowOrder.count].pixelIcon, pixelScale: pixelScale))
         }
         cycleTextures.append(PixelIconFactory.shared.skTexture(for: resolvedKind.pixelIcon, pixelScale: pixelScale))
 
@@ -1788,14 +1792,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let newSeed = Int.random(in: 1...999999)
         prng = SeededRandom(seed: newSeed)
-        powerUpPrng = SeededRandom(seed: Self.powerUpSeed(from: newSeed))
+        powerUpPrng = mode == .vsBot ? nil : SeededRandom(seed: Self.powerUpSeed(from: newSeed))
         gapPositions = prng.generateGapPositions()
 
         // Reset progressive difficulty
         difficulty.reset()
 
-        // Clear power-up state with fresh seed so power-up order varies between retries
-        powerUpCtrl.reset(newSeed: Self.powerUpSeed(from: newSeed))
+        // Clear power-up state (also resets speed modifier)
+        powerUpCtrl.reset()
         parallax.reset()
 
         // Reset cached physics / animation state
@@ -2042,8 +2046,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         return count
     }
 
-    private func seededPowerUpCGFloat(in range: ClosedRange<CGFloat>) -> CGFloat {
-        powerUpPrng.nextInRange(min: range.lowerBound, max: range.upperBound)
+    private var powerUpRandomSeed: Int? {
+        mode == .vsBot ? nil : Self.powerUpSeed(from: prngSeed)
+    }
+
+    private func powerUpCGFloat(in range: ClosedRange<CGFloat>) -> CGFloat {
+        guard var rng = powerUpPrng else {
+            return CGFloat.random(in: range)
+        }
+        let value = rng.nextInRange(min: range.lowerBound, max: range.upperBound)
+        powerUpPrng = rng
+        return value
     }
 
     private static func powerUpSeed(from seed: Int) -> Int {
@@ -2120,4 +2133,5 @@ final class GameKitSession {
     func connect(sessionCode: String, timeout: TimeInterval = 15) {}
     func disconnect() {}
     var connected: Bool { false }
-    var debugSummary: String { "ident
+    var debugSummary: String { "identity-only" }
+}

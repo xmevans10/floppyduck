@@ -351,7 +351,9 @@ final class TextureFactory: @unchecked Sendable {
     func skinDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
         let key = "skin_\(skin.rawValue)_\(wingPhase)"
         if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase))
+        let image = productionSkinUIImage(skin: skin, wingPhase: wingPhase, ghost: false)
+            ?? renderSkinnedDuck(skin: skin, wingPhase: wingPhase)
+        let tex = SKTexture(image: image)
         tex.filteringMode = .nearest
         cacheStore(key, tex)
         return tex
@@ -361,7 +363,9 @@ final class TextureFactory: @unchecked Sendable {
     func skinBotDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
         let key = "skinbot_\(skin.rawValue)_\(wingPhase)"
         if let cached = cachedTexture(forKey: key) { return cached }
-        let tex = SKTexture(image: renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true))
+        let image = productionSkinUIImage(skin: skin, wingPhase: wingPhase, ghost: true)
+            ?? renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true)
+        let tex = SKTexture(image: image)
         tex.filteringMode = .nearest
         cacheStore(key, tex)
         return tex
@@ -370,7 +374,52 @@ final class TextureFactory: @unchecked Sendable {
     /// UIImage of a skinned duck for SwiftUI (shop previews, home mascot).
     func skinDuckUIImage(skin: DuckSkin, pixelScale: CGFloat = 7.0) -> UIImage {
         cachedUIImage(forKey: "ui_skin_\(skin.rawValue)_\(Int(pixelScale * 100))") {
-            renderSkinnedDuck(skin: skin, wingPhase: 1, pixelSize: pixelScale)
+            if let image = productionSkinUIImage(skin: skin, wingPhase: 1, ghost: false) {
+                let targetBodyWidth = 16.0 * pixelScale
+                let standardBodyWidth = GK.duckRadius * 2.8
+                let scale = targetBodyWidth / standardBodyWidth
+                let targetSize = CGSize(
+                    width: skin.spriteSize.width * scale,
+                    height: skin.spriteSize.height * scale
+                )
+                let format = UIGraphicsImageRendererFormat()
+                format.scale = image.scale
+                format.opaque = false
+                return UIGraphicsImageRenderer(size: targetSize, format: format).image { ctx in
+                    ctx.cgContext.interpolationQuality = .none
+                    image.draw(in: CGRect(origin: .zero, size: targetSize))
+                }
+            }
+            return renderSkinnedDuck(skin: skin, wingPhase: 1, pixelSize: pixelScale)
+        }
+    }
+
+    private func productionSkinAssetName(skin: DuckSkin, wingPhase: Int) -> String? {
+        guard skin != .classic else { return nil }
+        let frame: String
+        switch wingPhase {
+        case 0:
+            frame = "wing_up"
+        case 2:
+            frame = "wing_down"
+        default:
+            frame = "idle"
+        }
+        return "duckskin_\(skin.rawValue)_\(frame)"
+    }
+
+    private func productionSkinUIImage(skin: DuckSkin, wingPhase: Int, ghost: Bool) -> UIImage? {
+        guard let assetName = productionSkinAssetName(skin: skin, wingPhase: wingPhase),
+              let image = UIImage(named: assetName) else {
+            return nil
+        }
+        guard ghost else { return image }
+
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+            image.draw(at: .zero, blendMode: .normal, alpha: 0.65)
         }
     }
 
@@ -1556,6 +1605,33 @@ final class TextureFactory: @unchecked Sendable {
                 spec: c(0.40, 0.28, 0.12), specHi: c(0.52, 0.38, 0.18),
                 bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
                 collar: c(0.95, 0.90, 0.82))
+        case .mermaid:
+            // Turquoise body with seashell pink breast
+            p = DuckPalette(
+                head: c(0.10, 0.60, 0.58), headHi: c(0.20, 0.78, 0.75),
+                breast: c(0.95, 0.60, 0.65),
+                body: c(0.12, 0.68, 0.65), bodyHi: c(0.28, 0.82, 0.78),
+                spec: c(0.90, 0.72, 0.18), specHi: c(0.98, 0.85, 0.35),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.95, 0.90, 0.82))
+        case .princess:
+            // Pink body with gold accents
+            p = DuckPalette(
+                head: c(0.88, 0.40, 0.60), headHi: c(0.95, 0.55, 0.72),
+                breast: c(0.92, 0.65, 0.75),
+                body: c(0.82, 0.45, 0.65), bodyHi: c(0.92, 0.60, 0.78),
+                spec: c(0.90, 0.78, 0.20), specHi: c(0.98, 0.88, 0.35),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.98, 0.95, 0.90))
+        case .unicorn:
+            // White/cream body with pastel pink breast
+            p = DuckPalette(
+                head: c(0.95, 0.94, 0.92), headHi: c(1.00, 1.00, 0.98),
+                breast: c(0.95, 0.80, 0.85),
+                body: c(0.90, 0.88, 0.86), bodyHi: c(0.97, 0.96, 0.95),
+                spec: c(0.75, 0.45, 0.85), specHi: c(0.90, 0.65, 0.95),
+                bill: c(0.93, 0.65, 0.10), billTip: c(0.80, 0.55, 0.08),
+                collar: c(0.98, 0.90, 0.95))
         }
         if ghost {
             // Cyan/blue tint for bot ghost — distinct from all skin palettes
@@ -1840,6 +1916,40 @@ final class TextureFactory: @unchecked Sendable {
             grid[off + 9][5] = W
             grid[off + 9][6] = W
             grid[off + 9][7] = R
+        case .mermaid:
+            // Seashell top on breast (row 6-7 of body)
+            let S = UIColor(red: 0.95, green: 0.70, blue: 0.75, alpha: 1)
+            let D = UIColor(red: 0.85, green: 0.45, blue: 0.50, alpha: 1)
+            grid[off + 6][4] = S; grid[off + 6][5] = D
+            grid[off + 7][4] = S; grid[off + 7][5] = D
+            // Mermaid tail fin extending below body (rows 11-14)
+            let T = UIColor(red: 0.12, green: 0.68, blue: 0.65, alpha: 1)
+            let t = UIColor(red: 0.22, green: 0.80, blue: 0.76, alpha: 1)
+            let F = UIColor(red: 0.08, green: 0.50, blue: 0.48, alpha: 1)
+            grid[11] = [C, C, C, C, C, C, C, C, C, C, C, F, T, F, C, C]
+            grid[12] = [C, C, C, C, C, C, C, C, C, C, F, T, t, T, F, C]
+            grid[13] = [C, C, C, C, C, C, C, C, C, F, T, t, T, t, C, C]
+            grid[14] = [C, C, C, C, C, C, C, C, C, C, F, C, F, C, C, C]
+        case .princess:
+            // Tiara with gem — 4 rows above body
+            let G = UIColor(red: 0.95, green: 0.80, blue: 0.20, alpha: 1)
+            let g = UIColor(red: 0.78, green: 0.62, blue: 0.10, alpha: 1)
+            let J = UIColor(red: 0.85, green: 0.25, blue: 0.55, alpha: 1)
+            grid[0] = [C, C, C, C, G, C, J, C, G, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, B, G, G, G, G, G, B, C, C, C, C, C, C]
+            grid[2] = [C, C, C, B, g, g, g, g, g, B, C, C, C, C, C, C]
+            grid[3] = [C, C, B, G, g, g, g, g, g, G, B, C, C, C, C, C]
+        case .unicorn:
+            // Rainbow horn — 3 rows above body
+            let R = UIColor(red: 0.95, green: 0.15, blue: 0.15, alpha: 1)
+            let O = UIColor(red: 0.98, green: 0.55, blue: 0.15, alpha: 1)
+            let Y = UIColor(red: 0.98, green: 0.88, blue: 0.20, alpha: 1)
+            let Gn = UIColor(red: 0.25, green: 0.85, blue: 0.35, alpha: 1)
+            let Bu = UIColor(red: 0.20, green: 0.45, blue: 0.90, alpha: 1)
+            let Pu = UIColor(red: 0.70, green: 0.25, blue: 0.85, alpha: 1)
+            grid[0] = [C, C, C, C, C, C, R, C, C, C, C, C, C, C, C, C]
+            grid[1] = [C, C, C, C, C, B, O, Y, B, C, C, C, C, C, C, C]
+            grid[2] = [C, C, C, C, C, B, Gn, Bu, B, C, C, C, C, C, C, C]
         }
 
         let alpha: CGFloat = ghost ? 0.65 : 1.0

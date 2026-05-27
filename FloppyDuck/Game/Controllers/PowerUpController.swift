@@ -100,6 +100,10 @@ final class PowerUpController {
         set { spawner.excludedKinds = newValue }
     }
 
+    var usesSeededRandom: Bool {
+        spawner.usesSeededRandom
+    }
+
     func debugQueuePowerUpForNextPipe(_ kind: PowerUpKind) {
         pendingPowerUpKind = kind
     }
@@ -360,8 +364,8 @@ final class PowerUpController {
     ///   (avoids per-frame child-tree scans with string-name checks).
     func applyBreadMagnetEffect(breadRecords: [ActiveBreadRecord]) {
         guard let duck else { return }
-        let magnetRadius: CGFloat = 138
-        let magnetStrength: CGFloat = 3.45
+        let magnetRadius: CGFloat = 120
+        let magnetStrength: CGFloat = 3.0
 
         for record in breadRecords {
             guard let breadNode = record.node else { continue }
@@ -414,8 +418,7 @@ final class PowerUpController {
     // MARK: - Reset
 
     /// Clear all power-up state for a new game / retry.
-    /// Pass a new seed so the spawner produces a different power-up sequence each retry.
-    func reset(newSeed: Int? = nil) {
+    func reset() {
         for powerUp in activePowerUps {
             stopExpiryWarning(for: powerUp.kind)
         }
@@ -434,7 +437,8 @@ final class PowerUpController {
         shieldCooldown = false
         pendingPowerUpKind = nil
         speedModifier = 1.0
-        spawner.reset(newSeed: newSeed)
+        spawner.excludedKinds.removeAll()
+        spawner.reset()
     }
 
     // MARK: - Activation

@@ -183,10 +183,10 @@ enum BattleBanner: String, CaseIterable, Identifiable, Codable {
 
     var breadPrice: Int? {
         switch self {
-        case .solar:       return 100
-        case .toxic:       return 150
-        case .frostbite:   return 200
-        case .ultraviolet: return 250
+        case .solar:       return 100   // Tier 1 — cheapest item in the shop
+        case .toxic:       return 200   // Tier 1
+        case .frostbite:   return 350   // Tier 2
+        case .ultraviolet: return 500   // Tier 3
         default:           return nil
         }
     }
