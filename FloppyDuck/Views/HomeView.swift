@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var showPatchNotes = false
     @State private var patchNotesShownThisSession = false
     @State private var activeAnnouncements: [Announcement] = []
+    @State private var pendingFriendRequestCount: Int = 0
 
     private var isGuest: Bool { auth.isGuest }
 
@@ -79,6 +80,10 @@ struct HomeView: View {
         }
         .task {
             activeAnnouncements = (try? await ConvexClient.shared.fetchAnnouncements()) ?? []
+
+            if !isGuest {
+                pendingFriendRequestCount = (try? await ConvexClient.shared.getPendingFriendRequests().count) ?? 0
+            }
 
             guard !patchNotesShownThisSession else { return }
 
@@ -393,7 +398,7 @@ struct HomeView: View {
                 manager.navigate(to: .stats)
             }
 
-            bottomButton(icon: .star, label: "FRIENDS", locked: isGuest) {
+            bottomButton(icon: .star, label: "FRIENDS", locked: isGuest, badge: pendingFriendRequestCount > 0 ? "\(pendingFriendRequestCount)" : nil) {
                 if isGuest { showSignInPrompt = true; return }
                 SoundManager.shared.play(.button)
                 manager.navigate(to: .friends)
@@ -406,7 +411,7 @@ struct HomeView: View {
         }
     }
 
-    private func bottomButton(icon: PixelIcon, label: String, locked: Bool = false, action: @escaping () -> Void) -> some View {
+    private func bottomButton(icon: PixelIcon, label: String, locked: Bool = false, badge: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 5) {
                 pixelIcon(icon, size: 32)
@@ -427,6 +432,17 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(GK.Colors.panelBorder, lineWidth: 2)
             )
+            .overlay(alignment: .topTrailing) {
+                if let badge {
+                    Text(badge)
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.red))
+                        .offset(x: 6, y: -6)
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 if locked {
                     Image(uiImage: PixelIconFactory.shared.image(for: .lock, pixelScale: 1.5))

@@ -8,6 +8,7 @@ struct PublicProfileView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var isAddingFriend = false
+    @State private var requestSent = false
     @State private var isBlocking = false
     @State private var showBlockConfirm = false
 
@@ -428,10 +429,12 @@ struct PublicProfileView: View {
             HStack(spacing: 8) {
                 if isAddingFriend {
                     ProgressView().tint(.white)
+                } else if requestSent {
+                    pixelIcon(.checkmark, size: 18)
                 } else {
                     pixelIcon(.headToHead, size: 18)
                 }
-                Text(isAddingFriend ? "SENDING..." : "ADD FRIEND")
+                Text(requestSent ? "SENT!" : isAddingFriend ? "SENDING..." : "ADD FRIEND")
                     .font(.custom(GK.pixelFontName, size: 10))
             }
             .foregroundColor(.white)
@@ -439,8 +442,8 @@ struct PublicProfileView: View {
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(GK.Colors.buttonGreen)
-                    .shadow(color: GK.Colors.buttonGreen.opacity(0.4), radius: 0, x: 0, y: 3)
+                    .fill(requestSent ? GK.Colors.buttonGreen.opacity(0.6) : GK.Colors.buttonGreen)
+                    .shadow(color: (requestSent ? Color.clear : GK.Colors.buttonGreen.opacity(0.4)), radius: 0, x: 0, y: 3)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -448,7 +451,7 @@ struct PublicProfileView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(isAddingFriend)
+        .disabled(isAddingFriend || requestSent)
     }
 
     private var blockButton: some View {
@@ -504,13 +507,20 @@ struct PublicProfileView: View {
     }
 
     private func addFriend() async {
-        guard let profile else { return }
+        guard let profile, !requestSent else { return }
         isAddingFriend = true
+        errorMessage = nil
         do {
             try await ConvexClient.shared.sendFriendRequest(toUserId: profile.userId)
+            requestSent = true
             Haptic.friendAction()
         } catch {
-            errorMessage = error.localizedDescription
+            let msg = error.localizedDescription
+            if msg.contains("already sent") {
+                requestSent = true
+            } else {
+                errorMessage = msg
+            }
         }
         isAddingFriend = false
     }
