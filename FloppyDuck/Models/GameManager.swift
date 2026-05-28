@@ -363,11 +363,22 @@ final class GameManager: ObservableObject {
     private func syncStatsToServer() {
         Task { [weak self] in
             guard let self else { return }
-            let snapshot = LocalStatsSnapshot(
-                username: playerName,
-                stats: stats
-            )
-            try? await ConvexClient.shared.syncStats(snapshot)
+            await self.syncStatsOnce()
+        }
+    }
+
+    /// Synchronously syncs local stats to the server. Returns true on success.
+    @discardableResult
+    func syncStatsOnce() async -> Bool {
+        let snapshot = LocalStatsSnapshot(
+            username: playerName,
+            stats: stats
+        )
+        do {
+            try await ConvexClient.shared.syncStats(snapshot)
+            return true
+        } catch {
+            return false
         }
     }
 

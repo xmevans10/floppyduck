@@ -437,11 +437,10 @@ final class SoundManager {
     /// Fires before didBecomeActive — re-activate the audio session early
     /// so playback resumes by the time the UI is visible.
     @objc private func handleAppWillEnterForeground() {
-        // Activate session immediately on high-priority queue to cut perceived delay
-        DispatchQueue.global(qos: .userInteractive).async {
-            try? AVAudioSession.sharedInstance().setActive(true)
-        }
+        // Activate + restore on the same serial queue so session is active
+        // before we attempt to resume playback — no cross-queue race.
         audioQueue.async { [weak self] in
+            try? AVAudioSession.sharedInstance().setActive(true)
             self?.restoreAudioAfterInterruption()
         }
     }
@@ -529,9 +528,13 @@ final class SoundManager {
     private func restoreAudioAfterInterruption() {
         setupSession(activate: true)
         prepareIfNeeded()
-        refreshPreparedPlayers()
 
-        guard isEnabled else { return }
+        // Resume the active music player immediately — preparing every
+        // cached player first adds noticeable lag after returning to the app.
+        guard isEnabled else {
+            refreshPreparedPlayers()
+            return
+        }
         if wantsPlayMusic {
             resumePlayMusicLocked()
         } else if wantsMenuMusic {
@@ -541,10 +544,14 @@ final class SoundManager {
                     ?? menuTracks.first
             }
             bgmPlayer?.volume = effectiveMenuVolume
+            bgmPlayer?.prepareToPlay()
             if bgmPlayer?.isPlaying == false {
                 bgmPlayer?.play()
             }
         }
+
+        // Prepare the remaining players after music is already audible.
+        refreshPreparedPlayers()
     }
 
     private func resumePlayMusicLocked() {
