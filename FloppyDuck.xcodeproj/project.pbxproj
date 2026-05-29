@@ -44,6 +44,7 @@
 		A7F686449252A5C6E85F4C65 /* BotCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709E16E4587997D58A88C22F /* BotCharacter.swift */; };
 		A96B820B3183299E2C74FC11 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D35655334C23B66037D828D /* GameModels.swift */; };
 		AAF2774F842E3A0EE7661F7E /* PipeSkinManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9470B99E437E109110C09E26 /* PipeSkinManager.swift */; };
+		348610661553389717387397 /* IAPCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500303494824515335359523 /* IAPCoordinator.swift */; };
 		B1C2D3E4F5061728394A5B6C /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304050 /* SoundManager.swift */; };
 		B27BE089E51B1C20456A5356 /* BotCharacterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01FBB5328EEB7721AC2BC6C4 /* BotCharacterTests.swift */; };
 		B2F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */; };
@@ -193,6 +194,7 @@
 		8E6FF640E1D4DB72FE354CAA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		93CCF6581206AE4460510C5F /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Achievement.swift; sourceTree = "<group>"; };
 		9470B99E437E109110C09E26 /* PipeSkinManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipeSkinManager.swift; sourceTree = "<group>"; };
+		500303494824515335359523 /* IAPCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IAPCoordinator.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6071829304050 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		A1F0D5A2C3E44B5D8F9A0B1C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A20000000000000000000001 /* FloppyDuckTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloppyDuckTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -498,6 +500,7 @@
 				1E8274143C4B7D0D42878511 /* BannerManager.swift */,
 				32A5446E0CA1C4FF2B11AC94 /* PipeSkin.swift */,
 				9470B99E437E109110C09E26 /* PipeSkinManager.swift */,
+				500303494824515335359523 /* IAPCoordinator.swift */,
 				04256D4EFAB614B2184DDDCE /* BattleBanner.swift */,
 			);
 			path = Models;
@@ -825,6 +828,7 @@
 				2514E0B97AF4CE474E62C8E4 /* BannerManager.swift in Sources */,
 				131183A5C3710A2967419ED0 /* PipeSkin.swift in Sources */,
 				AAF2774F842E3A0EE7661F7E /* PipeSkinManager.swift in Sources */,
+				348610661553389717387397 /* IAPCoordinator.swift in Sources */,
 				52928A5D99AFDD8C805F878A /* BattleBanner.swift in Sources */,
 				PH0000000000000000000004 /* AnalyticsManager.swift in Sources */,
 				DEECE41FEA0C4454A6DE9182 /* PixelButtonBackground.swift in Sources */,
