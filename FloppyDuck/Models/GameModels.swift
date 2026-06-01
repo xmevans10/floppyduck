@@ -507,6 +507,7 @@ enum BattleRoyaleStatus: String, Hashable, Codable {
 struct BattleRoyaleAssignment: Hashable, Codable {
     let lobbyId: String
     let entrantId: String
+    let roomCode: String?
     let seed: Int
     let status: BattleRoyaleStatus
     let playerCount: Int
@@ -514,6 +515,8 @@ struct BattleRoyaleAssignment: Hashable, Codable {
     let buyIn: Int
     let maxPlayers: Int
     let bread: Int
+    let createdAt: Int
+    let joinDeadlineAt: Int?
 }
 
 struct BattleRoyaleEntrant: Hashable, Codable {
@@ -526,19 +529,10 @@ struct BattleRoyaleEntrant: Hashable, Codable {
     let prize: Int
 }
 
-struct BattleRoyaleGhost: Hashable, Codable {
-    let playerId: String
-    let username: String
-    let skinId: String?
-    let score: Int
-    let y: Double
-    let rotation: Double
-    let wingPhase: Int
-}
-
 struct BattleRoyaleState: Hashable, Codable {
     let lobbyId: String
     let entrantId: String
+    let roomCode: String?
     let seed: Int
     let status: BattleRoyaleStatus
     let buyIn: Int
@@ -547,7 +541,33 @@ struct BattleRoyaleState: Hashable, Codable {
     let aliveCount: Int
     let local: BattleRoyaleEntrant
     let leaderboard: [BattleRoyaleEntrant]
-    let ghosts: [BattleRoyaleGhost]
+    let debug: BattleRoyaleAliveDebug?
+}
+
+struct BattleRoyaleAliveCount: Hashable, Codable {
+    let lobbyId: String
+    let roomCode: String?
+    let status: BattleRoyaleStatus
+    let playerCount: Int
+    let aliveCount: Int
+    let startedAt: Int?
+    let finishedAt: Int?
+    let debug: BattleRoyaleAliveDebug?
+}
+
+struct BattleRoyaleAliveDebug: Hashable, Codable {
+    let elapsedMs: Int
+    let aliveCount: Int
+    let humanAliveCount: Int
+    let botAliveCount: Int
+    let dbAliveCount: Int
+    let virtualDeadPendingCount: Int
+    let nextBotDeathInMs: Int?
+    let totalRows: Int?
+    let aliveRows: Int?
+    let deadRows: Int?
+    let humanRows: Int?
+    let botRows: Int?
 }
 
 // MARK: - Medals

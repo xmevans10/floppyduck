@@ -57,6 +57,7 @@ final class ThemeManager: ObservableObject {
     func select(_ theme: BackgroundTheme) {
         guard ownedThemes.contains(theme) else { return }
         selectedTheme = theme
+        SoundManager.shared.setActiveTheme(theme)
         saveState()
         AnalyticsManager.shared.trackThemeEquipped(themeId: theme.rawValue)
     }

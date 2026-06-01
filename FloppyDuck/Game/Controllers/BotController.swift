@@ -5,7 +5,7 @@ import SpriteKit
 /// Encapsulates all bot (AI opponent) logic: sprite creation, AI flap
 /// decisions, death handling, and score tracking.
 ///
-/// Physics, collision, and scoring are handled by the same SpriteKit
+/// Physics and collision are handled by the same SpriteKit
 /// infrastructure as the player duck — the bot has a real SKPhysicsBody
 /// with `botCategory` and shares the same pipe/ground/scoreTrigger contact
 /// detection in `GameScene.didBegin(_:)`.
@@ -92,6 +92,9 @@ final class BotController {
     /// Skin used for the current bot sprite (needed for reset).
     private var currentSkin: DuckSkin?
 
+    private var isScoreDeterministic: Bool {
+        deathScore != nil
+    }
 
     // MARK: - Score HUD
 
@@ -152,7 +155,9 @@ final class BotController {
         // so the ghost visually passes through everything.
         let body = SKPhysicsBody(circleOfRadius: GK.duckRadius * 0.05)
         body.categoryBitMask = GK.botCategory
-        body.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.scoreCategory
+        body.contactTestBitMask = isScoreDeterministic
+            ? GK.scoreCategory
+            : GK.pipeCategory | GK.groundCategory | GK.scoreCategory
         body.collisionBitMask = 0          // Ghost — no physical collisions
         body.fieldBitMask = 0              // Exclude from player-only gravity field
         body.allowsRotation = false
@@ -221,14 +226,17 @@ final class BotController {
 
     /// Runs the bot's AI flap decision for one frame.
     ///
-    /// All physics (gravity, movement), collision detection, and scoring are
-    /// handled by SpriteKit's physics engine — same as the player duck.
-    /// This method only decides *when* to flap.
+    /// All physics (gravity, movement) and collision detection are handled by
+    /// SpriteKit's physics engine — same as the player duck. Ladder bot scoring
+    /// also has a deterministic pass check so thin score triggers cannot be
+    /// skipped at high speed or during time-scale changes.
     ///
     /// - Parameter pipeRecords: Cached active pipe records from the scene
     ///   (avoids per-frame child-tree scans with string-name checks).
     func update(pipeRecords: [ActivePipeRecord]) {
         guard alive, let bot = sprite else { return }
+
+        scorePassedPipesIfNeeded(pipeRecords: pipeRecords, botX: bot.position.x)
 
         // --- Find nearest pipe gap center for AI targeting ---
         var targetGapY: CGFloat = GK.duckStartY
@@ -292,6 +300,19 @@ final class BotController {
         if let cap = deathScore, score >= cap {
             doomed = true
             reachedCeiling = true
+            sprite?.physicsBody?.contactTestBitMask = GK.pipeCategory | GK.groundCategory | GK.scoreCategory
+        }
+    }
+
+    private func scorePassedPipesIfNeeded(pipeRecords: [ActivePipeRecord], botX: CGFloat) {
+        guard isScoreDeterministic, !doomed, !reachedCeiling else { return }
+
+        for record in pipeRecords {
+            guard let pipeNode = record.node else { continue }
+            let scoreLineX = pipeNode.position.x + GK.pipeWidth / 2 + 10
+            if scoreLineX <= botX {
+                scoreFromPipe(record.name)
+            }
         }
     }
 
@@ -300,6 +321,9 @@ final class BotController {
     /// Called when the bot's physics body contacts a pipe or ground.
     func handleCollision() {
         guard alive else { return }
+        if isScoreDeterministic && !reachedCeiling {
+            return
+        }
 
         // Post-score grace period: if the bot scored within the last 0.15s,
         // ignore the collision to prevent edge-clip deaths during gap transitions.

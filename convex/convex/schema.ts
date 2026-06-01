@@ -9,14 +9,20 @@ export default defineSchema({
     username: v.string(),
     usernameKey: v.optional(v.string()),
     selectedSkin: v.optional(v.string()),
-    provider: v.union(v.literal("guest"), v.literal("apple"), v.literal("gameCenter")),
+    provider: v.union(v.literal("guest"), v.literal("apple"), v.literal("gameCenter"), v.literal("bot")),
 
     rating: v.number(),
     gamesPlayed: v.number(),
     wins: v.number(),
     losses: v.number(),
+    rankedWins: v.optional(v.number()),
+    rankedLosses: v.optional(v.number()),
     bestScore: v.number(),
     totalScore: v.number(),
+    elo: v.optional(v.number()),
+    peakElo: v.optional(v.number()),
+    winStreak: v.optional(v.number()),
+    bestWinStreak: v.optional(v.number()),
     bread: v.number(),
     totalBreadCollected: v.optional(v.number()),
     recentScores: v.array(v.number()),
@@ -112,10 +118,11 @@ export default defineSchema({
     username: v.string(),
     skinId: v.optional(v.string()),
     score: v.number(),
-    y: v.number(),
-    rotation: v.number(),
-    wingPhase: v.number(),
+    y: v.optional(v.number()),
+    rotation: v.optional(v.number()),
+    wingPhase: v.optional(v.number()),
     alive: v.boolean(),
+    isBot: v.optional(v.boolean()),
     placement: v.optional(v.number()),
     prize: v.optional(v.number()),
     joinedAt: v.number(),
@@ -135,6 +142,88 @@ export default defineSchema({
   })
     .index("by_lobbyId", ["lobbyId"])
     .index("by_userId", ["userId"]),
+
+  battleRoyaleLobbiesV2: defineTable({
+    status: v.union(v.literal("open"), v.literal("active"), v.literal("finished"), v.literal("cancelled")),
+    roomCode: v.string(),
+    seed: v.number(),
+    botSalt: v.string(),
+    buyIn: v.number(),
+    maxPlayers: v.number(),
+    humanCount: v.number(),
+    humanAliveCount: v.number(),
+    botCount: v.number(),
+    aliveCount: v.optional(v.number()),
+    botAliveCount: v.optional(v.number()),
+    lastAliveSyncAt: v.optional(v.number()),
+    lastAliveCountLogged: v.optional(v.number()),
+    aliveSnapshotLogCount: v.optional(v.number()),
+    botTimeline: v.array(v.object({
+      botId: v.string(),
+      username: v.string(),
+      skinId: v.optional(v.string()),
+      deathAtMs: v.optional(v.number()),
+      finalScore: v.number(),
+      scoreEvents: v.optional(v.array(v.number())),
+      crashDelayMs: v.optional(v.number()),
+      skill: v.optional(v.number()),
+      risk: v.optional(v.number()),
+      consistency: v.optional(v.number()),
+    })),
+    joinDeadlineAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+    cleanupAfter: v.optional(v.number()),
+  })
+    .index("by_status_createdAt", ["status", "createdAt"])
+    .index("by_roomCode", ["roomCode"]),
+
+  battleRoyaleEntrantsV2: defineTable({
+    lobbyId: v.id("battleRoyaleLobbiesV2"),
+    userId: v.optional(v.id("users")),
+    isBot: v.optional(v.boolean()),
+    botId: v.optional(v.string()),
+    username: v.string(),
+    skinId: v.optional(v.string()),
+    score: v.number(),
+    alive: v.boolean(),
+    placement: v.optional(v.number()),
+    prize: v.optional(v.number()),
+    botDeathElapsedMs: v.optional(v.number()),
+    botScoreEvents: v.optional(v.array(v.number())),
+    botSkill: v.optional(v.number()),
+    botRisk: v.optional(v.number()),
+    botConsistency: v.optional(v.number()),
+    deathReason: v.optional(v.string()),
+    joinedAt: v.number(),
+    lastSeenAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  })
+    .index("by_lobbyId", ["lobbyId"])
+    .index("by_lobby_alive", ["lobbyId", "alive"])
+    .index("by_userId", ["userId"]),
+
+  battleRoyalePayoutsV2: defineTable({
+    lobbyId: v.id("battleRoyaleLobbiesV2"),
+    userId: v.id("users"),
+    placement: v.number(),
+    amount: v.number(),
+    paidAt: v.number(),
+  })
+    .index("by_lobbyId", ["lobbyId"])
+    .index("by_userId", ["userId"]),
+
+  battleRoyaleRoomCodesV2: defineTable({
+    code: v.string(),
+    lobbyId: v.optional(v.id("battleRoyaleLobbiesV2")),
+    status: v.union(v.literal("reserved"), v.literal("closed")),
+    createdAt: v.number(),
+    closedAt: v.optional(v.number()),
+  })
+    .index("by_code", ["code"])
+    .index("by_lobbyId", ["lobbyId"]),
 
   ratings: defineTable({
     userId: v.id("users"),

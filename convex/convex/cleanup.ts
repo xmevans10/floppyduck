@@ -2,6 +2,7 @@ import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { cleanupBattleRoyale } from "./battleRoyale";
+import { cleanupBattleRoyaleV2 } from "./battleRoyaleV2";
 import { scoreBreadReward } from "./lib/stats";
 
 const STALE_QUEUE_MS = 30 * 1000;
@@ -97,6 +98,19 @@ export const run = internalMutation({
     }
 
     await cleanupBattleRoyale(ctx, now);
+    await cleanupBattleRoyaleV2(ctx, now);
+
+    // Purge diagnostic events older than 7 days.
+    const DIAGNOSTIC_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+    const staleEvents = await ctx.db
+      .query("diagnosticEvents")
+      .withIndex("by_createdAt", (q: any) =>
+        q.lt("createdAt", now - DIAGNOSTIC_RETENTION_MS)
+      )
+      .take(100);
+    for (const event of staleEvents) {
+      await ctx.db.delete(event._id);
+    }
   },
 });
 

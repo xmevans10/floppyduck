@@ -97,7 +97,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Controllers
     private var parallax: ParallaxManager!
     private var botController: BotController?
-    private var battleRoyaleGhostRenderer: GhostDuckRenderer?
     private var powerUpCtrl: PowerUpController!
 
     // Duck (Item 2: optional safety)
@@ -110,6 +109,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Score (Item 2: optional safety)
     private var scoreLabel: SKLabelNode?
     private var scoreOutlines: [SKLabelNode] = []
+
+    // Battle royale HUD
+    private var battleRoyalePlayersLabel: SKLabelNode?
+    private var battleRoyalePlayersShadow: SKLabelNode?
 
     // Pipe spawning
     private var pipeTimer: TimeInterval = 0
@@ -379,7 +382,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         if mode == .battleRoyale {
-            battleRoyaleGhostRenderer = GhostDuckRenderer(worldNode: worldNode)
+            setupBattleRoyaleHUD()
         }
 
         // Duck floats gently before first tap
@@ -513,6 +516,32 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         breadPopupPoolIndex = 0
     }
 
+    private func setupBattleRoyaleHUD() {
+        guard battleRoyalePlayersLabel == nil else { return }
+
+        let shadow = SKLabelNode(fontNamed: GK.pixelFontName)
+        shadow.fontSize = 14
+        shadow.fontColor = UIColor(red: 0.42, green: 0.12, blue: 0.12, alpha: 0.7)
+        shadow.position = CGPoint(x: GK.worldWidth / 2 + 1, y: GK.worldHeight - 108)
+        shadow.zPosition = 200
+        shadow.text = "Ducks remaining: 0"
+        shadow.verticalAlignmentMode = .center
+        shadow.horizontalAlignmentMode = .center
+        hudLayer.addChild(shadow)
+        battleRoyalePlayersShadow = shadow
+
+        let label = SKLabelNode(fontNamed: GK.pixelFontName)
+        label.fontSize = 14
+        label.fontColor = UIColor(red: 0.95, green: 0.60, blue: 0.60, alpha: 0.9)
+        label.position = CGPoint(x: GK.worldWidth / 2, y: GK.worldHeight - 107)
+        label.zPosition = 201
+        label.text = "Ducks remaining: 0"
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        hudLayer.addChild(label)
+        battleRoyalePlayersLabel = label
+    }
+
     private func updateScore() {
         let text = "\(score)"
         scoreLabel?.text = text
@@ -532,11 +561,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     func setOpponentScore(_ score: Int) {
         guard mode == .headToHead else { return }
         botController?.setScore(max(0, score))
-    }
-
-    func battleRoyaleSnapshot() -> (y: CGFloat, rotation: CGFloat, wingPhase: Int)? {
-        guard let duck else { return nil }
-        return (duck.position.y, duck.zRotation, Int(currentWingPhase))
     }
 
     func debugDuckAlpha() -> CGFloat? {
@@ -563,8 +587,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         powerUpCtrl.debugQueuePowerUpForNextPipe(kind)
     }
 
-    func updateBattleRoyaleGhosts(_ ghosts: [BattleRoyaleGhost]) {
-        battleRoyaleGhostRenderer?.update(ghosts)
+    func updateBattleRoyalePlayersRemaining(_ count: Int) {
+        if battleRoyalePlayersLabel == nil {
+            setupBattleRoyaleHUD()
+        }
+        let text = "Ducks remaining: \(count)"
+        battleRoyalePlayersLabel?.text = text
+        battleRoyalePlayersShadow?.text = text
+#if DEBUG
+        if debugFrameLogEnabled {
+            print("[BattleRoyaleHUD] sceneApply count=\(count) text=\"\(text)\" phase=\(phase)")
+        }
+#endif
     }
 
     private var currentWingPhase: UInt8 {
@@ -1021,10 +1055,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             flap()
         case .dead:
             // Quick retry — tap during death animation to skip game-over and restart instantly.
-            // Disabled for head-to-head (match finalization required) and bot-ladder wins
+            // Disabled for head-to-head / battle royale (server finalization required) and bot-ladder wins
             // (player is still tapping to stay alive when bot dies — grace period prevents
             // accidental restart before the win modal loads).
-            guard mode != .headToHead else { break }
+            guard mode != .headToHead, mode != .battleRoyale else { break }
             guard !botLadderWinTriggered else { break }
             self.removeAllActions()
             duck?.removeAllActions()
@@ -2062,60 +2096,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private static func powerUpSeed(from seed: Int) -> Int {
         let derived = seed ^ 0x5f3759df
         return derived == 0 ? 1 : derived
-    }
-}
-
-// MARK: - Battle Royale Ghosts
-
-@MainActor
-final class GhostDuckRenderer {
-    private let worldNode: SKNode
-    private let factory = TextureFactory.shared
-    private var sprites: [String: SKSpriteNode] = [:]
-
-    init(worldNode: SKNode) {
-        self.worldNode = worldNode
-    }
-
-    func update(_ snapshots: [BattleRoyaleGhost]) {
-        let activeIds = Set(snapshots.map(\.playerId))
-        for (playerId, sprite) in sprites where !activeIds.contains(playerId) {
-            sprite.removeFromParent()
-            sprites[playerId] = nil
-        }
-
-        for snapshot in snapshots {
-            let phase = max(0, min(2, snapshot.wingPhase))
-            let skin = snapshot.skinId.flatMap(DuckSkin.init(rawValue:)) ?? .classic
-            let sprite = sprites[snapshot.playerId] ?? makeSprite(playerId: snapshot.playerId)
-            sprite.texture = factory.skinBotDuckTexture(skin: skin, wingPhase: phase)
-            sprite.position = CGPoint(
-                x: GK.duckStartX + CGFloat(Self.stableLane(for: snapshot.playerId)) * 18 + 28,
-                y: CGFloat(snapshot.y)
-            )
-            sprite.zRotation = CGFloat(snapshot.rotation)
-            sprite.alpha = 0.48
-        }
-    }
-
-    private func makeSprite(playerId: String) -> SKSpriteNode {
-        let sprite = SKSpriteNode(texture: factory.skinBotDuckTexture(skin: .classic, wingPhase: 1))
-        sprite.name = "battle_royale_ghost_\(playerId)"
-        sprite.zPosition = 98
-        sprite.setScale(1.0)
-        sprite.alpha = 0.48
-        worldNode.addChild(sprite)
-        sprites[playerId] = sprite
-        return sprite
-    }
-
-    private static func stableLane(for value: String) -> Int {
-        var hash: UInt32 = 2_166_136_261
-        for byte in value.utf8 {
-            hash ^= UInt32(byte)
-            hash &*= 16_777_619
-        }
-        return Int(hash % 7)
     }
 }
 
