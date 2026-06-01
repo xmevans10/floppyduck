@@ -1792,8 +1792,6 @@ struct GameContainerView: View {
         let shareCard = ShareCardView(
             score: score,
             medal: medal,
-            bestScore: manager.stats.bestScore,
-            mode: config.mode,
             skin: SkinManager.shared.selectedSkin,
             theme: ThemeManager.shared.selectedTheme,
             pipeSkin: PipeSkinManager.shared.selectedSkin
