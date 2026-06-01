@@ -1791,7 +1791,6 @@ struct GameContainerView: View {
         // Generate pixel-art share card image using the player's equipped cosmetics
         let shareCard = ShareCardView(
             score: score,
-            medal: medal,
             skin: SkinManager.shared.selectedSkin,
             theme: ThemeManager.shared.selectedTheme,
             pipeSkin: PipeSkinManager.shared.selectedSkin

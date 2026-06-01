@@ -5,7 +5,6 @@ import SwiftUI
 /// so the card reflects their personal setup.
 struct ShareCardView: View {
     let score: Int
-    let medal: Medal
     let skin: DuckSkin
     let theme: BackgroundTheme
     let pipeSkin: PipeSkin
@@ -50,28 +49,9 @@ struct ShareCardView: View {
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.7), radius: 0, x: 3, y: 3)
 
-                if medal != .none, let icon = medal.pixelIcon {
-                    HStack(spacing: 6) {
-                        Image(uiImage: PixelIconFactory.shared.image(for: icon))
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 16, height: 16)
-                        Text(medal.displayName.uppercased())
-                            .font(.custom(GK.pixelFontName, size: 10))
-                            .foregroundColor(medal.themeColor)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.4))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(medal.themeColor.opacity(0.5), lineWidth: 1)
-                            )
-                    )
-                }
+                Text("CAN YOU BEAT THIS?")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(.white.opacity(0.6))
             }
         }
         .frame(width: cardWidth, height: cardHeight)
