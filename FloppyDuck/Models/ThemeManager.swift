@@ -118,7 +118,7 @@ final class ThemeManager: ObservableObject {
 
     func restorePurchases() async {
         var restoredCount = 0
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             if let transaction = try? checkVerified(result) {
                 if let theme = BackgroundTheme.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantTheme(theme)
@@ -158,7 +158,7 @@ final class ThemeManager: ObservableObject {
     }
 
     /// Called by IAPCoordinator when a verified transaction matches a theme ID.
-    func handleVerifiedTransaction(_ transaction: Transaction) async {
+    func handleVerifiedTransaction(_ transaction: StoreKit.Transaction) async {
         if let theme = BackgroundTheme.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
             grantTheme(theme)
         }

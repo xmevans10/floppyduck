@@ -118,7 +118,7 @@ final class SkinManager: ObservableObject {
 
     func restorePurchases() async {
         var restoredCount = 0
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             if let transaction = try? checkVerified(result) {
                 if let skin = DuckSkin.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantSkin(skin)
@@ -189,7 +189,7 @@ final class SkinManager: ObservableObject {
     }
 
     /// Called by IAPCoordinator when a verified transaction matches a skin ID.
-    func handleVerifiedTransaction(_ transaction: Transaction) async {
+    func handleVerifiedTransaction(_ transaction: StoreKit.Transaction) async {
         if let skin = DuckSkin.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
             grantSkin(skin)
         }
