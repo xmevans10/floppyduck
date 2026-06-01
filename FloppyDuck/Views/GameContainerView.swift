@@ -30,9 +30,12 @@ struct GameContainerView: View {
     @State private var lastReportedScore: Int = -1
     @State private var lastReportTime: Date = .distantPast
     @State private var battleRoyaleState: BattleRoyaleState?
+    @State private var battleRoyaleRemainingCount: Int?
     @State private var battleRoyalePollTask: Task<Void, Never>?
     @State private var battleRoyaleReportTask: Task<Void, Never>?
     @State private var battleRoyaleResultApplied: Bool = false
+    @State private var battleRoyaleCountAnomalyLogged: Bool = false
+    @State private var battleRoyaleRoundCompletePulse: Bool = false
 
     // Game-over animation states
     @State private var displayedScore: Int = 0
@@ -62,6 +65,21 @@ struct GameContainerView: View {
     private var battleRoyalePlacement: Int? { battleRoyaleState?.local.placement }
     private var battleRoyalePrize: Int { battleRoyaleState?.local.prize ?? 0 }
     private var battleRoyalePending: Bool { isBattleRoyale && battleRoyalePlacement == nil }
+    private var battleRoyaleRemaining: Int { battleRoyaleRemainingCount ?? battleRoyaleState?.aliveCount ?? 0 }
+    private var battleRoyaleRoundComplete: Bool {
+        isBattleRoyale && (battleRoyaleRemainingCount == 0 || battleRoyaleState?.status == .finished)
+    }
+    private var shouldPulseBattleRoyaleHome: Bool {
+        battleRoyaleRoundComplete && countingDone && !finishingMatch && !UIAccessibility.isReduceMotionEnabled
+    }
+    private var battleRoyaleDebugLogEnabled: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-DebugFrameLog")
+            || ProcessInfo.processInfo.environment["DEBUG_FRAME_LOG"] == "1"
+#else
+        false
+#endif
+    }
     private let headToHeadStartDelay: TimeInterval = 0.6
     private var collectedBreadEarned: Int { scene?.totalBreadCollected ?? 0 }
 
@@ -157,7 +175,7 @@ struct GameContainerView: View {
                 scene?.isReadyToStart = true
             }
             if config.mode == .battleRoyale {
-                scene?.isReadyToStart = true
+                scene?.isReadyToStart = false
             }
         }
         .onDisappear {
@@ -232,6 +250,7 @@ struct GameContainerView: View {
                 handleBotLadderWin(finalScore: finalScore, scene: newScene)
             },
             onQuickRetry: { finalScore in
+                guard !isBattleRoyale else { return }
                 // Record the game silently — no overlay, no animation.
                 // The scene already called resetGame() so we just need to
                 // book-keep stats and reset container state.
@@ -264,11 +283,15 @@ struct GameContainerView: View {
            let lobbyId = config.battleRoyaleLobbyId {
             startBattleRoyalePolling(lobbyId: lobbyId, scene: newScene)
             startBattleRoyaleReporting(lobbyId: lobbyId, scene: newScene)
+            phase = .countdown
+            newScene.isReadyToStart = false
+            runMapCountdown()
         }
     }
 
     private func restoreGameplayMusicIfNeeded() {
         guard phase == .playing else { return }
+        SoundManager.shared.setActiveTheme(config.backgroundTheme ?? ThemeManager.shared.selectedTheme)
         SoundManager.shared.resumePlayMusic()
     }
 
@@ -548,7 +571,7 @@ struct GameContainerView: View {
             phase = .gameOver
             showBotLadderCelebration = true
         }
-        startGameOverAnimation()
+        startGameOverAnimation(finalScore: finalScore)
     }
 
     private func handleGameEnd(finalScore: Int, scene: GameScene) {
@@ -618,7 +641,7 @@ struct GameContainerView: View {
         withAnimation(.easeOut(duration: 0.35)) {
             phase = .gameOver
         }
-        startGameOverAnimation()
+        startGameOverAnimation(finalScore: finalScore)
     }
 
     private func finalizeHeadToHeadResult(finalScore: Int, scene: GameScene) {
@@ -640,7 +663,7 @@ struct GameContainerView: View {
             withAnimation(.easeOut(duration: 0.35)) {
                 phase = .gameOver
             }
-            startGameOverAnimation()
+            startGameOverAnimation(finalScore: finalScore)
             return
         }
 
@@ -651,7 +674,7 @@ struct GameContainerView: View {
         withAnimation(.easeOut(duration: 0.35)) {
             phase = .gameOver
         }
-        startGameOverAnimation()
+        startGameOverAnimation(finalScore: finalScore)
 
         Task {
             let result = await manager.finishHeadToHeadMatch(
@@ -746,25 +769,47 @@ struct GameContainerView: View {
             withAnimation(.easeOut(duration: 0.35)) {
                 phase = .gameOver
             }
-            startGameOverAnimation()
+            startGameOverAnimation(finalScore: finalScore)
             return
         }
 
         finishingMatch = true
-        battleRoyalePollTask?.cancel()
         battleRoyaleReportTask?.cancel()
 
         withAnimation(.easeOut(duration: 0.35)) {
             phase = .gameOver
         }
-        startGameOverAnimation()
+        startGameOverAnimation(finalScore: finalScore)
 
         Task {
             let latest = await manager.finishBattleRoyaleRun(lobbyId: lobbyId, score: finalScore)
             await MainActor.run {
+                guard config.battleRoyaleLobbyId == lobbyId, self.scene === scene else {
+                    finishingMatch = false
+                    return
+                }
                 if let latest {
                     battleRoyaleState = latest
-                    scene.updateBattleRoyaleGhosts(latest.ghosts)
+                    let authoritativeScore = max(finalScore, latest.local.score)
+                    if score < authoritativeScore {
+                        score = authoritativeScore
+                    }
+                    if displayedScore < authoritativeScore {
+                        countUpTimer?.invalidate()
+                        countUpTimer = nil
+                        displayedScore = authoritativeScore
+                        if !countingDone {
+                            finishCountUp()
+                        }
+                    }
+                    applyBattleRoyaleRemaining(
+                        source: "finishRun",
+                        lobbyId: lobbyId,
+                        rawCount: latest.aliveCount,
+                        status: latest.status,
+                        debug: latest.debug,
+                        scene: scene
+                    )
                     if !battleRoyaleResultApplied {
                         battleRoyaleResultApplied = true
                         manager.applyBattleRoyaleResult(latest, score: finalScore, collectedBread: scene.totalBreadCollected)
@@ -785,17 +830,67 @@ struct GameContainerView: View {
 
     private func startBattleRoyalePolling(lobbyId: String, scene: GameScene) {
         battleRoyalePollTask?.cancel()
+        battleRoyaleRemainingCount = nil
+        battleRoyaleCountAnomalyLogged = false
         battleRoyalePollTask = Task {
+            let maxPostDeathPolls = 240
+            var postDeathPollCount = 0
+            var pollCount = 0
             while !Task.isCancelled {
                 do {
-                    let latest = try await manager.fetchBattleRoyaleState(lobbyId: lobbyId)
-                    await MainActor.run {
-                        battleRoyaleState = latest
-                        scene.updateBattleRoyaleGhosts(latest.ghosts)
+                    let isPostDeath = await MainActor.run { phase == .gameOver || battleRoyalePlacement != nil }
+                    if isPostDeath {
+                        guard postDeathPollCount < maxPostDeathPolls else {
+#if DEBUG
+                            if battleRoyaleDebugLogEnabled {
+                                print("[BattleRoyaleHUD] stop reason=maxPostDeathPolls count=\(postDeathPollCount)")
+                            }
+#endif
+                            return
+                        }
+                        postDeathPollCount += 1
+                    }
+                    pollCount += 1
+                    let latest = try await manager.fetchBattleRoyaleAliveCount(lobbyId: lobbyId)
+                    if Task.isCancelled {
+                        return
+                    }
+                    let didApply = await MainActor.run { () -> Bool in
+                        guard !Task.isCancelled,
+                              config.battleRoyaleLobbyId == lobbyId,
+                              self.scene === scene else {
+                            return false
+                        }
+                        applyBattleRoyaleRemaining(
+                            source: "aliveCount",
+                            lobbyId: lobbyId,
+                            pollCount: pollCount,
+                            rawCount: latest.aliveCount,
+                            status: latest.status,
+                            debug: latest.debug,
+                            scene: scene
+                        )
+                        return true
+                    }
+                    if !didApply {
+                        return
+                    }
+                    if latest.status == .finished {
+#if DEBUG
+                        if battleRoyaleDebugLogEnabled {
+                            print("[BattleRoyaleHUD] stop reason=finished poll=\(pollCount) count=\(latest.aliveCount)")
+                        }
+#endif
+                        return
                     }
                 } catch is CancellationError {
                     return
                 } catch {
+#if DEBUG
+                    if battleRoyaleDebugLogEnabled {
+                        print("[BattleRoyaleHUD] poll error: \(error)")
+                    }
+#endif
                     // Transient polling failures should not interrupt a run.
                 }
 
@@ -804,19 +899,121 @@ struct GameContainerView: View {
         }
     }
 
+    private func logBattleRoyaleHUD(source: String,
+                                    pollCount: Int?,
+                                    count: Int,
+                                    rawCount: Int,
+                                    previousCount: Int?,
+                                    status: BattleRoyaleStatus?,
+                                    placementKnown: Bool,
+                                    debug: BattleRoyaleAliveDebug?) {
+#if DEBUG
+        guard battleRoyaleDebugLogEnabled else { return }
+        let pollText = pollCount.map(String.init) ?? "-"
+        let statusText = status?.rawValue ?? "nil"
+        let deltaText = previousCount.map { String(count - $0) } ?? "nil"
+        let previousText = previousCount.map(String.init) ?? "nil"
+        let debugText: String
+        if let debug {
+            debugText = "elapsedMs=\(debug.elapsedMs) human=\(debug.humanAliveCount) bots=\(debug.botAliveCount) dbAlive=\(debug.dbAliveCount) rows=\(debug.aliveRows.map(String.init) ?? "nil")/\(debug.totalRows.map(String.init) ?? "nil") deadRows=\(debug.deadRows.map(String.init) ?? "nil") virtualDeadPending=\(debug.virtualDeadPendingCount) nextBotDeathMs=\(debug.nextBotDeathInMs.map(String.init) ?? "nil")"
+        } else {
+            debugText = "debug=nil"
+        }
+        print("[BattleRoyaleHUD] source=\(source) poll=\(pollText) phase=\(phase) placementKnown=\(placementKnown) status=\(statusText) count=\(count) raw=\(rawCount) previous=\(previousText) delta=\(deltaText) \(debugText)")
+#endif
+    }
+
+    private func applyBattleRoyaleRemaining(source: String,
+                                            lobbyId: String,
+                                            pollCount: Int? = nil,
+                                            rawCount: Int,
+                                            status: BattleRoyaleStatus?,
+                                            debug: BattleRoyaleAliveDebug?,
+                                            scene: GameScene) {
+        let previous = battleRoyaleRemainingCount
+        let applied = clampedBattleRoyaleCount(rawCount: rawCount)
+
+        if let previous, rawCount > previous, !battleRoyaleCountAnomalyLogged {
+            battleRoyaleCountAnomalyLogged = true
+            MultiplayerDiagnostics.record(
+                category: "battle_royale",
+                event: "alive_count_increased",
+                level: "warning",
+                message: "Battle Royale alive-count poll returned a higher count than the displayed HUD count.",
+                matchId: lobbyId,
+                mode: GameMode.battleRoyale.rawValue,
+                metadata: [
+                    "source": source,
+                    "status": status?.rawValue ?? "nil",
+                    "phase": "\(phase)",
+                    "previous": "\(previous)",
+                    "raw": "\(rawCount)",
+                    "applied": "\(applied)",
+                    "elapsedMs": "\(debug?.elapsedMs ?? -1)",
+                    "humanAlive": "\(debug?.humanAliveCount ?? -1)",
+                    "botAlive": "\(debug?.botAliveCount ?? -1)",
+                    "totalRows": "\(debug?.totalRows ?? -1)",
+                    "aliveRows": "\(debug?.aliveRows ?? -1)",
+                    "deadRows": "\(debug?.deadRows ?? -1)",
+                    "nextBotDeathMs": debug?.nextBotDeathInMs.map(String.init) ?? "nil"
+                ]
+            )
+        }
+
+        if source == "finishRun" || pollCount == 1 || (pollCount.map { $0 % 10 == 0 } ?? false) {
+            MultiplayerDiagnostics.record(
+                category: "battle_royale",
+                event: "alive_count_poll",
+                level: "debug",
+                message: "Battle Royale alive-count HUD poll sample.",
+                matchId: lobbyId,
+                mode: GameMode.battleRoyale.rawValue,
+                metadata: [
+                    "source": source,
+                    "poll": pollCount.map(String.init) ?? "-",
+                    "status": status?.rawValue ?? "nil",
+                    "phase": "\(phase)",
+                    "previous": previous.map(String.init) ?? "nil",
+                    "raw": "\(rawCount)",
+                    "applied": "\(applied)",
+                    "elapsedMs": "\(debug?.elapsedMs ?? -1)",
+                    "humanAlive": "\(debug?.humanAliveCount ?? -1)",
+                    "botAlive": "\(debug?.botAliveCount ?? -1)",
+                    "totalRows": "\(debug?.totalRows ?? -1)",
+                    "aliveRows": "\(debug?.aliveRows ?? -1)",
+                    "deadRows": "\(debug?.deadRows ?? -1)",
+                    "nextBotDeathMs": debug?.nextBotDeathInMs.map(String.init) ?? "nil"
+                ]
+            )
+        }
+
+        logBattleRoyaleHUD(
+            source: source,
+            pollCount: pollCount,
+            count: applied,
+            rawCount: rawCount,
+            previousCount: previous,
+            status: status,
+            placementKnown: battleRoyalePlacement != nil,
+            debug: debug
+        )
+        battleRoyaleRemainingCount = applied
+        scene.updateBattleRoyalePlayersRemaining(applied)
+    }
+
+    private func clampedBattleRoyaleCount(rawCount: Int) -> Int {
+        guard let previous = battleRoyaleRemainingCount else {
+            return rawCount
+        }
+        return min(previous, rawCount)
+    }
+
     private func startBattleRoyaleReporting(lobbyId: String, scene: GameScene) {
         battleRoyaleReportTask?.cancel()
         battleRoyaleReportTask = Task {
             while !Task.isCancelled {
-                if phase == .playing,
-                   let snapshot = scene.battleRoyaleSnapshot() {
-                    await manager.reportBattleRoyaleState(
-                        lobbyId: lobbyId,
-                        score: score,
-                        y: Double(snapshot.y),
-                        rotation: Double(snapshot.rotation),
-                        wingPhase: snapshot.wingPhase
-                    )
+                if phase == .playing {
+                    await manager.reportBattleRoyaleState(lobbyId: lobbyId, score: score)
                 }
 
                 try? await Task.sleep(nanoseconds: 250_000_000)
@@ -826,14 +1023,15 @@ struct GameContainerView: View {
 
     // MARK: - Game Over Animation Sequence
 
-    private func startGameOverAnimation() {
+    private func startGameOverAnimation(finalScore: Int? = nil) {
         displayedScore = 0
         countingDone = false
         showMedal = false
         showNewBest = false
         showBread = false
 
-        let final = score
+        let final = finalScore ?? score
+        score = final
         if final == 0 {
             displayedScore = 0
             finishCountUp()
@@ -904,7 +1102,10 @@ struct GameContainerView: View {
         matchResult = nil
         finishingMatch = false
         battleRoyaleState = nil
+        battleRoyaleRemainingCount = nil
         battleRoyaleResultApplied = false
+        battleRoyaleCountAnomalyLogged = false
+        battleRoyaleRoundCompletePulse = false
     }
 
     // MARK: - Get Ready Overlay
@@ -1089,6 +1290,7 @@ struct GameContainerView: View {
     private func runMapCountdown() {
         let goBeat: TimeInterval = 3.0
         let goFadeDuration: TimeInterval = 2.0
+        scene?.isReadyToStart = false
         showCountdownOverlay = true
         countdownOverlayOpacity = 1.0
         countdownFlashOpacity = 0
@@ -1169,6 +1371,11 @@ struct GameContainerView: View {
                     .foregroundColor(.white.opacity(0.85))
             }
 
+            if battleRoyaleRoundComplete && !finishingMatch {
+                battleRoyaleRoundCompletePrompt
+                    .transition(.scale.combined(with: .opacity))
+            }
+
             if countingDone && !finishingMatch {
                 HStack(spacing: 16) {
                     if !isHeadToHead && !isBattleRoyale {
@@ -1200,6 +1407,18 @@ struct GameContainerView: View {
                             manager.dismissGame()
                             if isHeadToHead || isBattleRoyale {
                                 manager.path.removeLast()
+                            }
+                        }
+                        .scaleEffect(shouldPulseBattleRoyaleHome && battleRoyaleRoundCompletePulse ? 1.06 : 1.0)
+                        .animation(
+                            shouldPulseBattleRoyaleHome
+                                ? .easeInOut(duration: 0.7).repeatForever(autoreverses: true)
+                                : .default,
+                            value: battleRoyaleRoundCompletePulse
+                        )
+                        .onAppear {
+                            if shouldPulseBattleRoyaleHome {
+                                battleRoyaleRoundCompletePulse = true
                             }
                         }
                     }
@@ -1234,6 +1453,36 @@ struct GameContainerView: View {
     }
 
     // MARK: - Game Over Title
+
+    private var battleRoyaleRoundCompletePrompt: some View {
+        HStack(spacing: 8) {
+            pixelIcon(.trophy, size: 16)
+            Text("ROUND COMPLETE")
+                .font(.custom(GK.pixelFontName, size: 8))
+            pixelIcon(.home, size: 14)
+        }
+        .foregroundColor(GK.Colors.scoreYellow)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.35))
+                .overlay(Capsule().stroke(GK.Colors.scoreYellow.opacity(0.45), lineWidth: 2))
+        )
+        .shadow(color: GK.Colors.scoreYellow.opacity(shouldPulseBattleRoyaleHome && battleRoyaleRoundCompletePulse ? 0.8 : 0.25), radius: shouldPulseBattleRoyaleHome && battleRoyaleRoundCompletePulse ? 10 : 3)
+        .scaleEffect(shouldPulseBattleRoyaleHome && battleRoyaleRoundCompletePulse ? 1.05 : 1.0)
+        .animation(
+            shouldPulseBattleRoyaleHome
+                ? .easeInOut(duration: 0.7).repeatForever(autoreverses: true)
+                : .default,
+            value: battleRoyaleRoundCompletePulse
+        )
+        .onAppear {
+            if shouldPulseBattleRoyaleHome {
+                battleRoyaleRoundCompletePulse = true
+            }
+        }
+    }
 
     @ViewBuilder
     private var gameOverTitle: some View {
@@ -1390,11 +1639,11 @@ struct GameContainerView: View {
                 }
 
                 HStack {
-                    Text("ALIVE")
+                    Text("LEFT")
                         .font(.custom(GK.pixelFontName, size: 10))
                         .foregroundColor(GK.Colors.panelBorder)
                     Spacer()
-                    Text("\(battleRoyaleState?.aliveCount ?? 0)")
+                    Text("\(battleRoyaleRemaining)")
                         .font(.custom(GK.pixelFontName, size: 18))
                         .foregroundColor(GK.Colors.panelBorder)
                 }
@@ -1439,17 +1688,43 @@ struct GameContainerView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            if showBread && (!isHeadToHead || headToHeadOutcomeReady) && !battleRoyalePending {
-                Divider()
-                HStack {
-                    Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 20, height: 16)
-                    Text(isBattleRoyale ? "+\(breadEarned) BREAD" : "+\(breadEarned)")
-                        .font(.custom(GK.pixelFontName, size: 10))
-                        .foregroundColor(GK.Colors.breadGold)
-                    Spacer()
+            if showBread && (!isHeadToHead || headToHeadOutcomeReady) && !battleRoyalePending && (!isBattleRoyale || battleRoyalePrize > 0 || collectedBreadEarned > 0) {
+                Group {
+                    Divider()
+                    if isBattleRoyale {
+                        if battleRoyalePrize > 0 {
+                            HStack {
+                                pixelIcon(.trophy, size: 16)
+                                Text("+\(battleRoyalePrize) PRIZE")
+                                    .font(.custom(GK.pixelFontName, size: 10))
+                                    .foregroundColor(GK.Colors.breadGold)
+                                Spacer()
+                            }
+                        }
+                        if collectedBreadEarned > 0 {
+                            HStack {
+                                Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .frame(width: 20, height: 16)
+                                Text("+\(collectedBreadEarned) COLLECTED")
+                                    .font(.custom(GK.pixelFontName, size: 10))
+                                    .foregroundColor(GK.Colors.breadGold)
+                                Spacer()
+                            }
+                        }
+                    } else {
+                        HStack {
+                            Image(uiImage: TextureFactory.shared.breadUIImage(pixelScale: 3.0))
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 20, height: 16)
+                            Text("+\(breadEarned)")
+                                .font(.custom(GK.pixelFontName, size: 10))
+                                .foregroundColor(GK.Colors.breadGold)
+                            Spacer()
+                        }
+                    }
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }

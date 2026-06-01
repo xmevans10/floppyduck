@@ -65,10 +65,10 @@ struct HomeView: View {
                     titleSection
                         .padding(.top, 2)
 
-                    // Bread counter + best score
+                    // Bread counter + ELO
                     HStack(spacing: 12) {
                         breadCounter
-                        bestScoreBadge
+                        eloBadge
                     }
                     .padding(.top, 16)
 
@@ -276,14 +276,14 @@ struct HomeView: View {
         .accessibilityLabel("Bread: \(manager.stats.bread)")
     }
 
-    private var bestScoreBadge: some View {
+    private var eloBadge: some View {
         HStack(spacing: 6) {
             Image(uiImage: icons.image(for: .trophy, pixelScale: 3.0))
                 .interpolation(.none)
                 .resizable()
                 .frame(width: 20, height: 20)
 
-            Text("\(manager.stats.bestScore)")
+            Text("\(manager.stats.elo)")
                 .font(.custom(GK.pixelFontName, size: 16))
                 .foregroundColor(GK.Colors.buttonOrange)
         }
@@ -297,7 +297,7 @@ struct HomeView: View {
                         .stroke(GK.Colors.buttonOrange.opacity(0.3), lineWidth: 2)
                 )
         )
-        .accessibilityLabel("Best score: \(manager.stats.bestScore)")
+        .accessibilityLabel("ELO: \(manager.stats.elo)")
     }
 
     private var accountBadge: some View {

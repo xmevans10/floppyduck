@@ -59,6 +59,7 @@ struct ContentView: View {
 
     private func syncMusicWithPresentedGame() {
         if manager.activeGameConfig == nil {
+            SoundManager.shared.setActiveTheme(ThemeManager.shared.selectedTheme)
             SoundManager.shared.startMenuMusic()
         } else {
             SoundManager.shared.stopMenuMusic()

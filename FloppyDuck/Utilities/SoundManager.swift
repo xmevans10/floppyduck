@@ -262,12 +262,7 @@ final class SoundManager {
             // Stop any currently playing menu music
             self.bgmPlayer?.stop()
 
-            // Cycle through 3 chill tracks for the home screen.
-            let files = Self.homeTrackFiles
-            let file = files[self.homeTrackIndex % files.count]
-            self.homeTrackIndex += 1
-
-            if let player = self.cachedBundledMusicPlayer(fileName: file, volume: self.effectiveMenuVolume) {
+            if let player = self.activeThemeMenuPlayerLocked() {
                 player.numberOfLoops = -1
                 player.volume = self.effectiveMenuVolume
                 player.currentTime = 0
@@ -540,8 +535,7 @@ final class SoundManager {
         } else if wantsMenuMusic {
             playBgmPlayer?.stop()
             if bgmPlayer == nil {
-                bgmPlayer = cachedBundledMusicPlayer(fileName: Self.homeTrackFiles[homeTrackIndex % Self.homeTrackFiles.count], volume: effectiveMenuVolume)
-                    ?? menuTracks.first
+                bgmPlayer = activeThemeMenuPlayerLocked() ?? menuTracks.first
             }
             bgmPlayer?.volume = effectiveMenuVolume
             bgmPlayer?.prepareToPlay()
@@ -552,6 +546,18 @@ final class SoundManager {
 
         // Prepare the remaining players after music is already audible.
         refreshPreparedPlayers()
+    }
+
+    private func activeThemeMenuPlayerLocked() -> AVAudioPlayer? {
+        if let fileName = activeTheme.menuMusicFile,
+           let player = cachedBundledMusicPlayer(fileName: fileName, volume: effectiveMenuVolume) {
+            return player
+        }
+
+        let files = Self.homeTrackFiles
+        let file = files[homeTrackIndex % files.count]
+        homeTrackIndex += 1
+        return cachedBundledMusicPlayer(fileName: file, volume: effectiveMenuVolume)
     }
 
     private func resumePlayMusicLocked() {

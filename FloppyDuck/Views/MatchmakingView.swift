@@ -75,22 +75,14 @@ struct MultiplayerModesView: View {
 
                     modeButton(icon: .trophy,
                                title: "BATTLE ROYALE",
-                               subtitle: "25 bread buy-in - top 5 paid") {
+                               subtitle: "25 bread buy-in - payouts shown") {
                         manager.startMatchmaking(mode: .battleRoyale)
                     }
                     .opacity(manager.stats.bread >= 25 ? 1.0 : 0.55)
                 }
                 .padding(.horizontal, 28)
 
-                VStack(spacing: 6) {
-                    Text(auth.hasGameCenterMultiplayerAccess ? "CURRENT ELO" : "GAME CENTER")
-                        .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(.white.opacity(0.65))
-
-                    Text(auth.hasGameCenterMultiplayerAccess ? "\(manager.stats.elo)" : "SIGN IN FOR HEAD-TO-HEAD")
-                        .font(.custom(GK.pixelFontName, size: needsGameCenterAuth ? 9 : 16))
-                        .foregroundColor(GK.Colors.scoreYellow)
-                }
+                multiplayerEloBadge
                 .padding(.top, 6)
 
                 Spacer()
@@ -128,6 +120,32 @@ struct MultiplayerModesView: View {
         } message: {
             Text(auth.statusMessage ?? "Quick Play, Ranked, and Private Room require Game Center for realtime head-to-head.")
         }
+    }
+
+    private var multiplayerEloBadge: some View {
+        VStack(spacing: 5) {
+            Text(auth.hasGameCenterMultiplayerAccess ? "CURRENT ELO" : "GAME CENTER")
+                .font(.custom(GK.pixelFontName, size: 7))
+                .foregroundColor(.white.opacity(0.72))
+
+            Text(auth.hasGameCenterMultiplayerAccess ? "\(manager.stats.elo)" : "SIGN IN FOR HEAD-TO-HEAD")
+                .font(.custom(GK.pixelFontName, size: needsGameCenterAuth ? 8 : 16))
+                .foregroundColor(GK.Colors.scoreYellow)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(GK.Colors.scoreYellow.opacity(0.28), lineWidth: 2)
+                )
+        )
+        .accessibilityLabel(auth.hasGameCenterMultiplayerAccess ? "Current ELO: \(manager.stats.elo)" : "Game Center sign in required for head-to-head")
     }
 
     private func openSettings() {
@@ -253,6 +271,8 @@ struct MatchmakingView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var battleRoyaleAssignment: BattleRoyaleAssignment?
     @State private var battleRoyaleState: BattleRoyaleState?
+    @State private var brCountdown: Int = 45
+    private let brCountdownTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private let icons = PixelIconFactory.shared
     private let dotTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -509,9 +529,11 @@ struct MatchmakingView: View {
                     Text("25 BREAD BUY-IN")
                         .font(.custom(GK.pixelFontName, size: 9))
                         .foregroundColor(GK.Colors.panelBorder)
-                    Text("TOP 5 SPLIT THE POOL")
-                        .font(.custom(GK.pixelFontName, size: 7))
+                    Text(battleRoyalePayoutPreviewText)
+                        .font(.custom(GK.pixelFontName, size: 6))
                         .foregroundColor(GK.Colors.panelBorder.opacity(0.55))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.65)
                 }
                 Spacer()
                 Text("\(manager.stats.bread)")
@@ -522,7 +544,7 @@ struct MatchmakingView: View {
             if let state = battleRoyaleState {
                 battleRoyaleLobbyCount(players: state.playerCount,
                                        maxPlayers: state.maxPlayers,
-                                       detail: state.status == .active ? "\(state.aliveCount) ALIVE" : "STARTS AT 100 OR 10+ AFTER 60S")
+                                       detail: state.status == .active ? "\(state.aliveCount) ALIVE" : "FILLING TO 100")
             } else if let assignment = battleRoyaleAssignment {
                 battleRoyaleLobbyCount(players: assignment.playerCount,
                                        maxPlayers: assignment.maxPlayers,
@@ -540,6 +562,17 @@ struct MatchmakingView: View {
         }
     }
 
+    private var battleRoyalePayoutPreviewText: String {
+        let buyIn = battleRoyaleState?.buyIn ?? battleRoyaleAssignment?.buyIn ?? 25
+        let maxPlayers = battleRoyaleState?.maxPlayers ?? battleRoyaleAssignment?.maxPlayers ?? 100
+        let poolAfterSink = Int(Double(maxPlayers * buyIn) * 0.95)
+        let payouts = [0.40, 0.25, 0.15, 0.12, 0.08].map { Int(Double(poolAfterSink) * $0) }
+        let preview = payouts.enumerated()
+            .map { "#\($0.offset + 1) \($0.element)" }
+            .joined(separator: "  ")
+        return "TOP 5 PAID: \(preview)"
+    }
+
     private func battleRoyaleLobbyCount(players: Int, maxPlayers: Int, detail: String) -> some View {
         VStack(spacing: 6) {
             Text("\(players)/\(maxPlayers) DUCKS")
@@ -549,6 +582,20 @@ struct MatchmakingView: View {
                 .font(.custom(GK.pixelFontName, size: 7))
                 .foregroundColor(GK.Colors.panelBorder.opacity(0.55))
                 .multilineTextAlignment(.center)
+            if let assignment = battleRoyaleAssignment, assignment.status == .open {
+                Text("STARTS IN \(brCountdown)S")
+                    .font(.custom(GK.pixelFontName, size: 10))
+                    .foregroundColor(GK.Colors.scoreYellow)
+            }
+        }
+        .onReceive(brCountdownTimer) { _ in
+            if let assignment = battleRoyaleAssignment, assignment.status == .open {
+                let now = Int(Date().timeIntervalSince1970 * 1000)
+                let deadline = assignment.joinDeadlineAt ?? (assignment.createdAt + 45_000)
+                brCountdown = max(0, Int(ceil(Double(deadline - now) / 1000.0)))
+            } else {
+                brCountdown = 45
+            }
         }
     }
 
@@ -779,7 +826,7 @@ struct MatchmakingView: View {
                 let assignment = try await manager.joinBattleRoyaleLobby()
                 await MainActor.run {
                     battleRoyaleAssignment = assignment
-                    state = .waitingRoom(String(assignment.lobbyId.prefix(5)).uppercased())
+                    state = .waitingRoom(assignment.roomCode ?? String(assignment.lobbyId.prefix(5)).uppercased())
                 }
 
                 while !Task.isCancelled {
@@ -795,13 +842,16 @@ struct MatchmakingView: View {
                             manager.startBattleRoyale(assignment: BattleRoyaleAssignment(
                                 lobbyId: latest.lobbyId,
                                 entrantId: latest.entrantId,
+                                roomCode: latest.roomCode ?? battleRoyaleAssignment?.roomCode,
                                 seed: latest.seed,
                                 status: latest.status,
                                 playerCount: latest.playerCount,
                                 aliveCount: latest.aliveCount,
                                 buyIn: latest.buyIn,
                                 maxPlayers: latest.maxPlayers,
-                                bread: manager.stats.bread
+                                bread: manager.stats.bread,
+                                createdAt: battleRoyaleAssignment?.createdAt ?? Int(Date().timeIntervalSince1970 * 1000),
+                                joinDeadlineAt: battleRoyaleAssignment?.joinDeadlineAt
                             ))
                         }
                         return

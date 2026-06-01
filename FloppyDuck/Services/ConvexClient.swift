@@ -52,11 +52,8 @@ protocol MultiplayerBackendClient: Sendable {
     func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int?
     func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState
     func getBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState
-    func reportBattleRoyaleState(lobbyId: String,
-                                  score: Int,
-                                  y: Double,
-                                  rotation: Double,
-                                  wingPhase: Int) async throws
+    func getBattleRoyaleAliveCount(lobbyId: String) async throws -> BattleRoyaleAliveCount
+    func reportBattleRoyaleState(lobbyId: String, score: Int) async throws
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState
 
     func getLeaderboard(limit: Int) async throws -> [LeaderboardEntry]
@@ -94,11 +91,8 @@ extension MultiplayerBackendClient {
     func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int? { nil }
     func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
     func getBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
-    func reportBattleRoyaleState(lobbyId: String,
-                                  score: Int,
-                                  y: Double,
-                                  rotation: Double,
-                                  wingPhase: Int) async throws {}
+    func getBattleRoyaleAliveCount(lobbyId: String) async throws -> BattleRoyaleAliveCount { throw ConvexError.requestFailed }
+    func reportBattleRoyaleState(lobbyId: String, score: Int) async throws {}
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState { throw ConvexError.requestFailed }
     func getHighScoreLeaderboard(limit: Int) async throws -> [HighScoreEntry] { [] }
     func abandonMatch(matchId: String) async throws {}
@@ -792,41 +786,39 @@ actor ConvexClient: MultiplayerBackendClient {
     // MARK: - Battle Royale
 
     func joinBattleRoyaleLobby() async throws -> BattleRoyaleAssignment {
-        let value = try await mutationRaw("battleRoyale:joinLobby")
+        let value = try await mutationRaw("battleRoyaleV2:joinLobby")
         return try parseBattleRoyaleAssignment(value)
     }
 
     func leaveBattleRoyaleLobby(lobbyId: String) async throws -> Int? {
-        let value = try await mutationRaw("battleRoyale:leaveLobby", args: ["lobbyId": lobbyId])
+        let value = try await mutationRaw("battleRoyaleV2:leaveLobby", args: ["lobbyId": lobbyId])
         return int(in: dictionary(from: value), keys: ["bread"])
     }
 
     func startBattleRoyaleIfReady(lobbyId: String) async throws -> BattleRoyaleState {
-        let value = try await mutationRaw("battleRoyale:startIfReady", args: ["lobbyId": lobbyId])
+        let value = try await mutationRaw("battleRoyaleV2:startIfReady", args: ["lobbyId": lobbyId])
         return try parseBattleRoyaleState(value)
     }
 
     func getBattleRoyaleState(lobbyId: String) async throws -> BattleRoyaleState {
-        let value = try await queryRaw("battleRoyale:getState", args: ["lobbyId": lobbyId])
+        let value = try await queryRaw("battleRoyaleV2:getState", args: ["lobbyId": lobbyId])
         return try parseBattleRoyaleState(value)
     }
 
-    func reportBattleRoyaleState(lobbyId: String,
-                                  score: Int,
-                                  y: Double,
-                                  rotation: Double,
-                                  wingPhase: Int) async throws {
-        _ = try await mutationRaw("battleRoyale:reportState", args: [
+    func getBattleRoyaleAliveCount(lobbyId: String) async throws -> BattleRoyaleAliveCount {
+        let value = try await queryRaw("battleRoyaleV2:getAliveCount", args: ["lobbyId": lobbyId])
+        return try parseBattleRoyaleAliveCount(value)
+    }
+
+    func reportBattleRoyaleState(lobbyId: String, score: Int) async throws {
+        _ = try await mutationRaw("battleRoyaleV2:reportScore", args: [
             "lobbyId": lobbyId,
             "score": score,
-            "y": y,
-            "rotation": rotation,
-            "wingPhase": wingPhase,
         ])
     }
 
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async throws -> BattleRoyaleState {
-        let value = try await mutationRaw("battleRoyale:finishRun", args: [
+        let value = try await mutationRaw("battleRoyaleV2:finishRun", args: [
             "lobbyId": lobbyId,
             "score": score,
         ])
@@ -1284,13 +1276,16 @@ actor ConvexClient: MultiplayerBackendClient {
         return BattleRoyaleAssignment(
             lobbyId: lobbyId,
             entrantId: entrantId,
+            roomCode: string(in: dict, keys: ["roomCode", "room_code", "code"]),
             seed: int(in: dict, keys: ["seed"]) ?? 1,
             status: parseBattleRoyaleStatus(from: string(in: dict, keys: ["status"])) ?? .open,
             playerCount: int(in: dict, keys: ["playerCount", "players"]) ?? 1,
             aliveCount: int(in: dict, keys: ["aliveCount", "alive"]) ?? 1,
             buyIn: int(in: dict, keys: ["buyIn", "buy_in"]) ?? 25,
             maxPlayers: int(in: dict, keys: ["maxPlayers", "max_players"]) ?? 100,
-            bread: int(in: dict, keys: ["bread"]) ?? 0
+            bread: int(in: dict, keys: ["bread"]) ?? 0,
+            createdAt: int(in: dict, keys: ["createdAt", "created_at"]) ?? 0,
+            joinDeadlineAt: int(in: dict, keys: ["joinDeadlineAt", "join_deadline_at"])
         )
     }
 
@@ -1305,12 +1300,10 @@ actor ConvexClient: MultiplayerBackendClient {
 
         let leaderboard = dictionaryArray(in: dict, keys: ["leaderboard", "leaders"])
             .compactMap(parseBattleRoyaleEntrant)
-        let ghosts = dictionaryArray(in: dict, keys: ["ghosts", "snapshots"])
-            .compactMap(parseBattleRoyaleGhost)
-
         return BattleRoyaleState(
             lobbyId: lobbyId,
             entrantId: entrantId,
+            roomCode: string(in: dict, keys: ["roomCode", "room_code", "code"]),
             seed: int(in: dict, keys: ["seed"]) ?? 1,
             status: parseBattleRoyaleStatus(from: string(in: dict, keys: ["status"])) ?? .open,
             buyIn: int(in: dict, keys: ["buyIn", "buy_in"]) ?? 25,
@@ -1319,7 +1312,44 @@ actor ConvexClient: MultiplayerBackendClient {
             aliveCount: int(in: dict, keys: ["aliveCount", "alive"]) ?? leaderboard.filter(\.alive).count,
             local: local,
             leaderboard: leaderboard,
-            ghosts: ghosts
+            debug: parseBattleRoyaleAliveDebug(dictionary(in: dict, keys: ["debug"]))
+        )
+    }
+
+    private func parseBattleRoyaleAliveCount(_ value: Any?) throws -> BattleRoyaleAliveCount {
+        guard let dict = dictionary(from: value),
+              let lobbyId = string(in: dict, keys: ["lobbyId", "lobby_id", "id", "_id"]) else {
+            throw ConvexError.invalidResponse
+        }
+
+        return BattleRoyaleAliveCount(
+            lobbyId: lobbyId,
+            roomCode: string(in: dict, keys: ["roomCode", "room_code", "code"]),
+            status: parseBattleRoyaleStatus(from: string(in: dict, keys: ["status"])) ?? .active,
+            playerCount: int(in: dict, keys: ["playerCount", "players"]) ?? 1,
+            aliveCount: int(in: dict, keys: ["aliveCount", "alive"]) ?? 0,
+            startedAt: int(in: dict, keys: ["startedAt", "started_at"]),
+            finishedAt: int(in: dict, keys: ["finishedAt", "finished_at"]),
+            debug: parseBattleRoyaleAliveDebug(dictionary(in: dict, keys: ["debug"]))
+        )
+    }
+
+    private func parseBattleRoyaleAliveDebug(_ dict: [String: Any]?) -> BattleRoyaleAliveDebug? {
+        guard let dict else { return nil }
+
+        return BattleRoyaleAliveDebug(
+            elapsedMs: int(in: dict, keys: ["elapsedMs", "elapsed_ms"]) ?? 0,
+            aliveCount: int(in: dict, keys: ["aliveCount", "alive"]) ?? 0,
+            humanAliveCount: int(in: dict, keys: ["humanAliveCount", "humans"]) ?? 0,
+            botAliveCount: int(in: dict, keys: ["botAliveCount", "bots"]) ?? 0,
+            dbAliveCount: int(in: dict, keys: ["dbAliveCount", "dbAlive"]) ?? 0,
+            virtualDeadPendingCount: int(in: dict, keys: ["virtualDeadPendingCount", "pendingDead"]) ?? 0,
+            nextBotDeathInMs: int(in: dict, keys: ["nextBotDeathInMs", "nextBotDeathMs"]),
+            totalRows: int(in: dict, keys: ["totalRows"]),
+            aliveRows: int(in: dict, keys: ["aliveRows"]),
+            deadRows: int(in: dict, keys: ["deadRows"]),
+            humanRows: int(in: dict, keys: ["humanRows"]),
+            botRows: int(in: dict, keys: ["botRows"])
         )
     }
 
@@ -1336,22 +1366,6 @@ actor ConvexClient: MultiplayerBackendClient {
             alive: bool(in: dict, keys: ["alive"]) ?? true,
             placement: int(in: dict, keys: ["placement", "place"]),
             prize: int(in: dict, keys: ["prize", "amount"]) ?? 0
-        )
-    }
-
-    private func parseBattleRoyaleGhost(_ dict: [String: Any]) -> BattleRoyaleGhost? {
-        guard let playerId = string(in: dict, keys: ["playerId", "userId", "id", "_id"]) else {
-            return nil
-        }
-
-        return BattleRoyaleGhost(
-            playerId: playerId,
-            username: string(in: dict, keys: ["username", "name"]) ?? "PLAYER",
-            skinId: string(in: dict, keys: ["skinId", "skin"]),
-            score: int(in: dict, keys: ["score"]) ?? 0,
-            y: double(in: dict, keys: ["y"]) ?? 0,
-            rotation: double(in: dict, keys: ["rotation"]) ?? 0,
-            wingPhase: int(in: dict, keys: ["wingPhase", "wing"]) ?? 1
         )
     }
 

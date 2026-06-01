@@ -1,5 +1,6 @@
 import SwiftUI
 import GameKit
+import UIKit
 
 /// Manages navigation, stats persistence, and multiplayer session coordination.
 @MainActor
@@ -48,6 +49,17 @@ final class GameManager: ObservableObject {
         BannerManager.shared.syncWithBeatenBots(stats.beatenBots)
         PipeSkinManager.shared.syncWithBeatenBots(stats.beatenBots)
         SkinManager.shared.syncWithBeatenBots(stats.beatenBots)
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(willEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+
+    @objc private func willEnterForeground() {
+        syncStatsToServer()
     }
 
     func navigate(to route: AppRoute) {
@@ -193,22 +205,23 @@ final class GameManager: ObservableObject {
         try await multiplayerSession.fetchBattleRoyaleState(lobbyId: lobbyId)
     }
 
-    func reportBattleRoyaleState(lobbyId: String,
-                                  score: Int,
-                                  y: Double,
-                                  rotation: Double,
-                                  wingPhase: Int) async {
-        await multiplayerSession.reportBattleRoyaleState(
-            lobbyId: lobbyId,
-            score: score,
-            y: y,
-            rotation: rotation,
-            wingPhase: wingPhase
-        )
+    func fetchBattleRoyaleAliveCount(lobbyId: String) async throws -> BattleRoyaleAliveCount {
+        try await multiplayerSession.fetchBattleRoyaleAliveCount(lobbyId: lobbyId)
+    }
+
+    func reportBattleRoyaleState(lobbyId: String, score: Int) async {
+        await multiplayerSession.reportBattleRoyaleState(lobbyId: lobbyId, score: score)
     }
 
     func finishBattleRoyaleRun(lobbyId: String, score: Int) async -> BattleRoyaleState? {
-        try? await multiplayerSession.finishBattleRoyaleRun(lobbyId: lobbyId, score: score)
+        do {
+            return try await multiplayerSession.finishBattleRoyaleRun(lobbyId: lobbyId, score: score)
+        } catch {
+#if DEBUG
+            print("[BattleRoyale] ❌ finishRun failed lobbyId:\(lobbyId) score:\(score) error:\(error)")
+#endif
+            return nil
+        }
     }
 
     func fetchHeadToHeadState(matchId: String) async throws -> MultiplayerMatchState {
@@ -315,6 +328,7 @@ final class GameManager: ObservableObject {
         mergedStats.recentScores = mergeRecentScores(stats.recentScores, profile.stats.recentScores)
         stats = mergedStats
         saveStats()
+        syncStatsToServer()
     }
 
     private func mergeRecentScores(_ local: [Int], _ remote: [Int]) -> [Int] {
@@ -360,7 +374,7 @@ final class GameManager: ObservableObject {
 
     // MARK: - Existing Stats APIs
 
-    private func syncStatsToServer() {
+    func syncStatsToServer() {
         Task { [weak self] in
             guard let self else { return }
             await self.syncStatsOnce()
@@ -374,12 +388,23 @@ final class GameManager: ObservableObject {
             username: playerName,
             stats: stats
         )
-        do {
-            try await ConvexClient.shared.syncStats(snapshot)
-            return true
-        } catch {
-            return false
+
+        let maxRetries = 3
+        for attempt in 1...maxRetries {
+            do {
+                try await ConvexClient.shared.syncStats(snapshot)
+                return true
+            } catch {
+                if attempt == maxRetries {
+                    print("[GameManager] syncStats failed after \(maxRetries) attempts: \(error)")
+                } else {
+                    let delay = UInt64(pow(2.0, Double(attempt))) * 1_000_000_000
+                    try? await Task.sleep(nanoseconds: delay)
+                }
+            }
         }
+
+        return false
     }
 
     func recordGame(score: Int, won: Bool? = nil, collectedBread: Int = 0) {
@@ -738,19 +763,13 @@ actor MultiplayerSession {
         try await client.getBattleRoyaleState(lobbyId: lobbyId)
     }
 
-    func reportBattleRoyaleState(lobbyId: String,
-                                  score: Int,
-                                  y: Double,
-                                  rotation: Double,
-                                  wingPhase: Int) async {
+    func fetchBattleRoyaleAliveCount(lobbyId: String) async throws -> BattleRoyaleAliveCount {
+        try await client.getBattleRoyaleAliveCount(lobbyId: lobbyId)
+    }
+
+    func reportBattleRoyaleState(lobbyId: String, score: Int) async {
         do {
-            try await client.reportBattleRoyaleState(
-                lobbyId: lobbyId,
-                score: score,
-                y: y,
-                rotation: rotation,
-                wingPhase: wingPhase
-            )
+            try await client.reportBattleRoyaleState(lobbyId: lobbyId, score: score)
         } catch {
 #if DEBUG
             print("[BattleRoyale] ⚠️ State report failed (non-fatal): \(error)")

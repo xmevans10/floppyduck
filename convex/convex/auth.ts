@@ -69,6 +69,8 @@ const localStatsValidator = v.optional(
     gamesPlayed: v.optional(v.number()),
     wins: v.optional(v.number()),
     losses: v.optional(v.number()),
+    rankedWins: v.optional(v.number()),
+    rankedLosses: v.optional(v.number()),
     bestScore: v.optional(v.number()),
     totalScore: v.optional(v.number()),
     elo: v.optional(v.number()),
@@ -650,6 +652,12 @@ export const syncStats = mutation({
     }
     if (typeof stats.losses === "number" && stats.losses > user.losses) {
       patch.losses = stats.losses;
+    }
+    if (typeof stats.rankedWins === "number" && stats.rankedWins > (user.rankedWins ?? 0)) {
+      patch.rankedWins = stats.rankedWins;
+    }
+    if (typeof stats.rankedLosses === "number" && stats.rankedLosses > (user.rankedLosses ?? 0)) {
+      patch.rankedLosses = stats.rankedLosses;
     }
     if (typeof stats.totalScore === "number" && stats.totalScore > user.totalScore) {
       patch.totalScore = stats.totalScore;
