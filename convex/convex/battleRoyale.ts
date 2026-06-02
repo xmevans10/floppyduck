@@ -15,7 +15,8 @@ const START_AFTER_MS = 60 * 1000;
 const CANCEL_AFTER_MS = 5 * 60 * 1000;
 const STALE_AFTER_MS = 30 * 1000;
 const FINISHED_RETENTION_MS = 5 * 60 * 1000;
-const PAYOUTS = [0.40, 0.25, 0.15, 0.12, 0.08];
+// Fixed bread payouts by placement (top 10 paid)
+const PAYOUTS = [750, 500, 350, 250, 175, 125, 100, 75, 63, 50];
 
 const BOT_DESIRED_PLAYERS = 30;
 const BOT_TRICKLE_PER_TICK = 12;
@@ -519,12 +520,11 @@ async function payWinners(ctx: any,
                           lobby: Doc<"battleRoyaleLobbies">,
                           entrants: Doc<"battleRoyaleEntrants">[],
                           now: number) {
-  const poolAfterSink = Math.floor(entrants.length * lobby.buyIn * 0.975);
   for (const entrant of entrants) {
     if (entrant.isBot) continue;
     const placement = entrant.placement ?? entrants.length;
     if (placement < 1 || placement > PAYOUTS.length) continue;
-    const amount = Math.floor(poolAfterSink * PAYOUTS[placement - 1]);
+    const amount = PAYOUTS[placement - 1];
     if (amount <= 0) continue;
 
     const existing = await ctx.db

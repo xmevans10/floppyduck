@@ -75,7 +75,7 @@ struct MultiplayerModesView: View {
 
                     modeButton(icon: .trophy,
                                title: "BATTLE ROYALE",
-                               subtitle: "25 bread buy-in - top 5 paid") {
+                               subtitle: "25 bread buy-in - top 10 paid") {
                         manager.startMatchmaking(mode: .battleRoyale)
                     }
                     .opacity(manager.stats.bread >= 25 ? 1.0 : 0.55)

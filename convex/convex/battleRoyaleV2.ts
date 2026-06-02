@@ -20,7 +20,8 @@ const STALE_AFTER_MS = 30 * 1000;
 const FINISHED_RETENTION_MS = 5 * 60 * 1000;
 const EMPTY_OPEN_RETENTION_MS = 60 * 1000;
 const ALIVE_SNAPSHOT_LOG_LIMIT = 260;
-const PAYOUTS = [0.40, 0.25, 0.15, 0.12, 0.08];
+// Fixed bread payouts by placement (top 10 paid)
+const PAYOUTS = [750, 500, 350, 250, 175, 125, 100, 75, 63, 50];
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_LENGTH = 5;
 
@@ -893,7 +894,7 @@ async function payEntrantIfWinner(ctx: Ctx, lobby: Lobby, entrant: Entrant, now:
   const placement = entrant.placement;
   if (!placement || placement < 1 || placement > PAYOUTS.length) return;
 
-  const amount = Math.floor(lobby.maxPlayers * lobby.buyIn * 0.975 * PAYOUTS[placement - 1]);
+  const amount = PAYOUTS[placement - 1];
   if (amount <= 0) return;
 
   const existing = await ctx.db
