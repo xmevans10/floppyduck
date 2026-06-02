@@ -443,7 +443,7 @@ final class ParallaxManager {
             roll -= prop.weight
             if roll < 0 { return prop }
         }
-        return props.last!
+        return props.last ?? props[0]
     }
 
     // MARK: - Runtime Overlays
