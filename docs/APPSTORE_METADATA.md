@@ -4,7 +4,7 @@
 Floppy Duck
 
 ## Subtitle (30 chars max)
-Tap to Flap. Beat 8 Bosses.
+Tap to Flap. Beat 17 Bosses.
 
 ## Category
 Primary: Games → Casual
@@ -12,7 +12,7 @@ Secondary: Games → Action
 
 ## Description (4000 chars max)
 
-🦆 A flappy game with 8 boss ducks, real-time multiplayer, and collectible skins.
+🦆 A flappy game with 17 boss ducks, real-time multiplayer, and collectible skins.
 
 Simple to learn, impossible to master. Beat the bots. Challenge your friends. Collect them all. Every pixel, every sound, every animation is generated from code — no stock assets, no borrowed sprites.
 
@@ -20,7 +20,7 @@ Simple to learn, impossible to master. Beat the bots. Challenge your friends. Co
 
 • CLASSIC — Pure survival. How far can you fly? Pipes get faster, gaps get tighter. Every point counts.
 
-• VS BOT LADDER — Take on 8 unique bot opponents, each with their own personality, skin, and trash talk. Beat QUACKERS the Newbie, survive GOOSE the Menace, and try to topple THE DUCK — the final boss. Win to unlock their exclusive skins!
+• VS BOT LADDER — Take on 17 unique bot opponents, each with their own personality, skin, and trash talk. Beat QUACKERS the Newbie, survive GOOSE the Menace, and try to topple THE DUCK — the final boss. Win to unlock their exclusive skins!
 
 • HEAD TO HEAD — Challenge friends in private rooms or match with random players in Quick Play and Ranked. Real-time multiplayer, same pipes, same seed. May the best duck win.
 
@@ -44,7 +44,7 @@ Think you can beat THE DUCK? Prove it. Download now. It's free. 🍞
 flappy,bird,8-bit,multiplayer,skins,arcade,pvp,tap,endless,boss,collect,unlock,ranked,streak,1v1,fly
 
 ## Promotional Text (170 chars, can be updated without review)
-New update: 8 bots with unique personalities & skins! Beat them to unlock exclusive pixel-art ducks. Plus: skin closet, leaderboard, daily streaks & more. 🦆
+New update: 17 bots with unique personalities & skins! Beat them to unlock exclusive pixel-art ducks. Plus: skin closet, leaderboard, daily streaks & more. 🦆
 
 ## Support URL
 https://xmevans10.github.io/floppyduck/support.html
@@ -106,8 +106,8 @@ NO DEMO CREDENTIALS NEEDED — the app is fully functional in guest mode.
 ## What's New in This Version
 Welcome to Floppy Duck! 🦆
 • 3 game modes: Classic, VS Bot, and Head to Head multiplayer
-• 8 bot opponents with unique personalities and skins
-• 9 collectible duck skins
+• 17 bot opponents with unique personalities and skins
+• 20+ collectible duck skins
 • Global leaderboard
 • Daily streaks and bread rewards
 • Pure pixel-art retro experience — every asset made from code

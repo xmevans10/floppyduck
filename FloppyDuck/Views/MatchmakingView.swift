@@ -75,7 +75,7 @@ struct MultiplayerModesView: View {
 
                     modeButton(icon: .trophy,
                                title: "BATTLE ROYALE",
-                               subtitle: "25 bread buy-in - payouts shown") {
+                               subtitle: "25 bread buy-in - top 10 paid") {
                         manager.startMatchmaking(mode: .battleRoyale)
                     }
                     .opacity(manager.stats.bread >= 25 ? 1.0 : 0.55)
@@ -525,19 +525,17 @@ struct MatchmakingView: View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
                 pixelIcon(.trophy, size: 20)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("25 BREAD BUY-IN")
                         .font(.custom(GK.pixelFontName, size: 9))
                         .foregroundColor(GK.Colors.panelBorder)
-                    Text(battleRoyalePayoutPreviewText)
+                    Text("LAST DUCK STANDING WINS")
                         .font(.custom(GK.pixelFontName, size: 6))
                         .foregroundColor(GK.Colors.panelBorder.opacity(0.55))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.65)
                 }
                 Spacer()
-                Text("\(manager.stats.bread)")
-                    .font(.custom(GK.pixelFontName, size: 14))
+                Text("🍞 \(manager.stats.bread)")
+                    .font(.custom(GK.pixelFontName, size: 12))
                     .foregroundColor(GK.Colors.scoreYellow)
             }
 
@@ -560,17 +558,6 @@ struct MatchmakingView: View {
             statusText
             retryButton
         }
-    }
-
-    private var battleRoyalePayoutPreviewText: String {
-        let buyIn = battleRoyaleState?.buyIn ?? battleRoyaleAssignment?.buyIn ?? 25
-        let maxPlayers = battleRoyaleState?.maxPlayers ?? battleRoyaleAssignment?.maxPlayers ?? 100
-        let poolAfterSink = Int(Double(maxPlayers * buyIn) * 0.95)
-        let payouts = [0.40, 0.25, 0.15, 0.12, 0.08].map { Int(Double(poolAfterSink) * $0) }
-        let preview = payouts.enumerated()
-            .map { "#\($0.offset + 1) \($0.element)" }
-            .joined(separator: "  ")
-        return "TOP 5 PAID: \(preview)"
     }
 
     private func battleRoyaleLobbyCount(players: Int, maxPlayers: Int, detail: String) -> some View {

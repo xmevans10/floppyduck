@@ -377,25 +377,34 @@ final class GameManager: ObservableObject {
     func syncStatsToServer() {
         Task { [weak self] in
             guard let self else { return }
-            let snapshot = LocalStatsSnapshot(
-                username: playerName,
-                stats: stats
-            )
-            let maxRetries = 3
-            for attempt in 1...maxRetries {
-                do {
-                    try await ConvexClient.shared.syncStats(snapshot)
-                    return
-                } catch {
-                    if attempt == maxRetries {
-                        print("[GameManager] syncStats failed after \(maxRetries) attempts: \(error)")
-                    } else {
-                        let delay = UInt64(pow(2.0, Double(attempt))) * 1_000_000_000
-                        try? await Task.sleep(nanoseconds: delay)
-                    }
+            await self.syncStatsOnce()
+        }
+    }
+
+    /// Synchronously syncs local stats to the server. Returns true on success.
+    @discardableResult
+    func syncStatsOnce() async -> Bool {
+        let snapshot = LocalStatsSnapshot(
+            username: playerName,
+            stats: stats
+        )
+
+        let maxRetries = 3
+        for attempt in 1...maxRetries {
+            do {
+                try await ConvexClient.shared.syncStats(snapshot)
+                return true
+            } catch {
+                if attempt == maxRetries {
+                    print("[GameManager] syncStats failed after \(maxRetries) attempts: \(error)")
+                } else {
+                    let delay = UInt64(pow(2.0, Double(attempt))) * 1_000_000_000
+                    try? await Task.sleep(nanoseconds: delay)
                 }
             }
         }
+
+        return false
     }
 
     func recordGame(score: Int, won: Bool? = nil, collectedBread: Int = 0) {

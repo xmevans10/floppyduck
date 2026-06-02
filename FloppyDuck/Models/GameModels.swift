@@ -652,8 +652,9 @@ struct PublicPlayerStats: Codable, Hashable {
     let selectedSkin: String?
 
     var winRate: Double {
-        guard gamesPlayed > 0 else { return 0 }
-        return Double(wins) / Double(gamesPlayed)
+        let pvpGames = wins + losses
+        guard pvpGames > 0 else { return 0 }
+        return Double(wins) / Double(pvpGames)
     }
 
     var averageScore: Double {

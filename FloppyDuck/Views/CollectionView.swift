@@ -553,20 +553,29 @@ struct CollectionView: View {
         } label: {
             VStack(spacing: 10) {
                 // Banner preview — small pattern swatch
-                ZStack {
-                    BannerPatternView(banner: banner, offset: 0)
-                        .frame(height: 60)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .allowsHitTesting(false)
-
-                    if selected {
-                        Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 16, height: 16)
-                            .shadow(color: .white, radius: 4)
-                    }
-                }
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(banner.secondaryColor)
+                    .frame(height: 60)
+                    .overlay(
+                        BannerPatternView(banner: banner, offset: 0)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .allowsHitTesting(false)
+                    )
+                    .overlay(
+                        Group {
+                            if selected {
+                                Image(uiImage: PixelIconFactory.shared.image(for: .checkmark))
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .frame(width: 16, height: 16)
+                                    .shadow(color: .white, radius: 4)
+                            }
+                        }
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(selected ? banner.primaryColor : Color.clear, lineWidth: 2)
+                    )
 
                 Text(banner.displayName)
                     .font(.custom(GK.pixelFontName, size: 8))

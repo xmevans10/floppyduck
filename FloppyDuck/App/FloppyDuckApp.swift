@@ -47,6 +47,10 @@ struct FloppyDuckApp: App {
             AnalyticsManager.shared.trackAppOpen()
             SoundManager.shared.prepare()
             Haptic.warmUp()
+
+            // Single batch StoreKit fetch + transaction listener for all 4 IAP
+            // managers (replaces 8 separate Tasks that fired on manager init).
+            _ = IAPCoordinator.shared
         }
 
         let manager = GameManager()

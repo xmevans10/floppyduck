@@ -24,8 +24,8 @@ final class ThemeManager: ObservableObject {
 
     private init() {
         loadState()
-        Task { await fetchProducts() }
-        Task { await listenForTransactions() }
+        // Product fetching and transaction listening are handled by
+        // IAPCoordinator.shared — one batch call instead of 8 Tasks.
     }
 
     // MARK: - Persistence
@@ -118,7 +118,7 @@ final class ThemeManager: ObservableObject {
 
     func restorePurchases() async {
         var restoredCount = 0
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             if let transaction = try? checkVerified(result) {
                 if let theme = BackgroundTheme.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
                     grantTheme(theme)
@@ -150,14 +150,17 @@ final class ThemeManager: ObservableObject {
         }
     }
 
-    private func listenForTransactions() async {
-        for await result in Transaction.updates {
-            if let transaction = try? checkVerified(result) {
-                if let theme = BackgroundTheme.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
-                    grantTheme(theme)
-                }
-                await transaction.finish()
-            }
+    // Transaction listening is handled by IAPCoordinator.
+
+    /// Called by IAPCoordinator to distribute batch-fetched products.
+    func applyFetchedProducts(_ fetched: [Product]) {
+        products = fetched
+    }
+
+    /// Called by IAPCoordinator when a verified transaction matches a theme ID.
+    func handleVerifiedTransaction(_ transaction: StoreKit.Transaction) async {
+        if let theme = BackgroundTheme.allCases.first(where: { $0.premiumProductID == transaction.productID }) {
+            grantTheme(theme)
         }
     }
 

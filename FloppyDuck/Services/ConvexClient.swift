@@ -78,6 +78,8 @@ protocol MultiplayerBackendClient: Sendable {
     func blockUser(toUserId: String) async throws
     func getFriends() async throws -> [PublicPlayerProfile]
     func getPendingFriendRequests() async throws -> [PublicPlayerProfile]
+    func getOutgoingFriendRequests() async throws -> [PublicPlayerProfile]
+    func getFriendshipStatus(otherUserId: String) async throws -> String
 }
 
 extension MultiplayerBackendClient {
@@ -108,6 +110,8 @@ extension MultiplayerBackendClient {
     func blockUser(toUserId: String) async throws { throw ConvexError.requestFailed }
     func getFriends() async throws -> [PublicPlayerProfile] { [] }
     func getPendingFriendRequests() async throws -> [PublicPlayerProfile] { [] }
+    func getOutgoingFriendRequests() async throws -> [PublicPlayerProfile] { [] }
+    func getFriendshipStatus(otherUserId: String) async throws -> String { "none" }
 }
 
 struct MultiplayerDiagnosticEvent: Sendable {
@@ -985,27 +989,30 @@ actor ConvexClient: MultiplayerBackendClient {
 
     func sendFriendRequest(toUserId: String) async throws {
         _ = try await mutationRaw("friends:sendRequest", args: ["toUserId": toUserId])
-        // Invalidate friends cache so next fetch is fresh
         responseCache.removeValue(forKey: "friends_list")
         responseCache.removeValue(forKey: "friends_pending")
+        responseCache.removeValue(forKey: "friends_outgoing")
     }
 
     func acceptFriendRequest(fromUserId: String) async throws {
         _ = try await mutationRaw("friends:acceptRequest", args: ["fromUserId": fromUserId])
         responseCache.removeValue(forKey: "friends_list")
         responseCache.removeValue(forKey: "friends_pending")
+        responseCache.removeValue(forKey: "friends_outgoing")
     }
 
     func removeFriend(otherUserId: String) async throws {
         _ = try await mutationRaw("friends:removeFriendship", args: ["otherUserId": otherUserId])
         responseCache.removeValue(forKey: "friends_list")
         responseCache.removeValue(forKey: "friends_pending")
+        responseCache.removeValue(forKey: "friends_outgoing")
     }
 
     func blockUser(toUserId: String) async throws {
         _ = try await mutationRaw("friends:blockUser", args: ["toUserId": toUserId])
         responseCache.removeValue(forKey: "friends_list")
         responseCache.removeValue(forKey: "friends_pending")
+        responseCache.removeValue(forKey: "friends_outgoing")
     }
 
     func getFriends() async throws -> [PublicPlayerProfile] {
@@ -1030,6 +1037,27 @@ actor ConvexClient: MultiplayerBackendClient {
         let result = list.compactMap { try? parsePublicProfile($0) }
         setCachedValue(result, for: cacheKey)
         return result
+    }
+
+    func getOutgoingFriendRequests() async throws -> [PublicPlayerProfile] {
+        let cacheKey = "friends_outgoing"
+        if let cached: [PublicPlayerProfile] = cachedValue(for: cacheKey) {
+            return cached
+        }
+        let value = try await queryRaw("friends:getOutgoingRequests")
+        guard let list = value as? [[String: Any]] else { return [] }
+        let result = list.compactMap { try? parsePublicProfile($0) }
+        setCachedValue(result, for: cacheKey)
+        return result
+    }
+
+    func getFriendshipStatus(otherUserId: String) async throws -> String {
+        let value = try await queryRaw("friends:getFriendshipStatus", args: ["otherUserId": otherUserId])
+        guard let dict = dictionary(from: value),
+              let status = dict["status"] as? String else {
+            return "none"
+        }
+        return status
     }
 
     // MARK: - Parsing Helpers

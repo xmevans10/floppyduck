@@ -432,11 +432,10 @@ final class SoundManager {
     /// Fires before didBecomeActive — re-activate the audio session early
     /// so playback resumes by the time the UI is visible.
     @objc private func handleAppWillEnterForeground() {
-        // Activate session immediately on high-priority queue to cut perceived delay
-        DispatchQueue.global(qos: .userInteractive).async {
-            try? AVAudioSession.sharedInstance().setActive(true)
-        }
+        // Activate + restore on the same serial queue so session is active
+        // before we attempt to resume playback — no cross-queue race.
         audioQueue.async { [weak self] in
+            try? AVAudioSession.sharedInstance().setActive(true)
             self?.restoreAudioAfterInterruption()
         }
     }
@@ -524,9 +523,13 @@ final class SoundManager {
     private func restoreAudioAfterInterruption() {
         setupSession(activate: true)
         prepareIfNeeded()
-        refreshPreparedPlayers()
 
-        guard isEnabled else { return }
+        // Resume the active music player immediately — preparing every
+        // cached player first adds noticeable lag after returning to the app.
+        guard isEnabled else {
+            refreshPreparedPlayers()
+            return
+        }
         if wantsPlayMusic {
             resumePlayMusicLocked()
         } else if wantsMenuMusic {
@@ -535,10 +538,26 @@ final class SoundManager {
                 bgmPlayer = activeThemeMenuPlayerLocked() ?? menuTracks.first
             }
             bgmPlayer?.volume = effectiveMenuVolume
+            bgmPlayer?.prepareToPlay()
             if bgmPlayer?.isPlaying == false {
                 bgmPlayer?.play()
             }
         }
+
+        // Prepare the remaining players after music is already audible.
+        refreshPreparedPlayers()
+    }
+
+    private func activeThemeMenuPlayerLocked() -> AVAudioPlayer? {
+        if let fileName = activeTheme.menuMusicFile,
+           let player = cachedBundledMusicPlayer(fileName: fileName, volume: effectiveMenuVolume) {
+            return player
+        }
+
+        let files = Self.homeTrackFiles
+        let file = files[homeTrackIndex % files.count]
+        homeTrackIndex += 1
+        return cachedBundledMusicPlayer(fileName: file, volume: effectiveMenuVolume)
     }
 
     private func activeThemeMenuPlayerLocked() -> AVAudioPlayer? {
@@ -582,16 +601,24 @@ final class SoundManager {
         multiplayerCountdownPlayer?.pause()
     }
 
+    /// Lightweight restore: re-prepare only the active music player, the
+    /// multiplayer countdown (time-critical), quack SFX (user-facing tap
+    /// response), and the core `players` dict (one player per GameSound —
+    /// small). The large pools (skinPlayerPools, bundledMusicPlayers,
+    /// themePlayTracks, themeMenuTracks, etc.) are lazily re-prepared on
+    /// first use and don't need blanket prepareToPlay on every foreground
+    /// return. This drops the foreground-restore work from 50-100+ players
+    /// to ~15-25.
     private func refreshPreparedPlayers() {
+        // Core SFX — one player per GameSound (~10-12 entries)
         players.values.forEach { $0.prepareToPlay() }
-        playerPools.values.flatMap { $0 }.forEach { $0.prepareToPlay() }
-        skinPlayerPools.values.flatMap { $0 }.forEach { $0.prepareToPlay() }
-        menuTracks.forEach { $0.prepareToPlay() }
-        playTracks.forEach { $0.prepareToPlay() }
-        bundledMusicPlayers.values.forEach { $0.prepareToPlay() }
-        themePlayTracks.values.forEach { $0.prepareToPlay() }
-        themeMenuTracks.values.forEach { $0.prepareToPlay() }
+
+        // Active music players only
+        bgmPlayer?.prepareToPlay()
+        playBgmPlayer?.prepareToPlay()
         multiplayerCountdownPlayer?.prepareToPlay()
+
+        // Quack pool — small, user-facing tap feedback
         quackPlayers.forEach { $0.prepareToPlay() }
     }
 

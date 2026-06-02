@@ -1,110 +1,174 @@
 import SwiftUI
 
 /// Pixel-art styled share card rendered to UIImage for social sharing.
+/// Pulls the player's equipped background theme, duck skin, and pipe skin
+/// so the card reflects their personal setup.
 struct ShareCardView: View {
     let score: Int
-    let medal: Medal
-    let bestScore: Int
-    let mode: GameMode
+    let skin: DuckSkin
+    let theme: BackgroundTheme
+    let pipeSkin: PipeSkin
 
     private let cardWidth: CGFloat = 360
     private let cardHeight: CGFloat = 200
 
+    // MARK: - Body
+
     var body: some View {
         ZStack {
-            // Sky gradient background
+            // ── Background: user's selected theme gradient ──
             LinearGradient(
-                colors: [
-                    Color(red: 0.40, green: 0.75, blue: 0.95),
-                    Color(red: 0.55, green: 0.85, blue: 0.98),
-                    Color(red: 0.70, green: 0.92, blue: 0.65),
-                ],
+                colors: theme.gradientColors,
                 startPoint: .top,
                 endPoint: .bottom
             )
 
-            // Ground strip at bottom
-            VStack {
+            // ── Scene elements (pipes + duck) ──
+            sceneLayer
+
+            // ── Ground strip ──
+            VStack(spacing: 0) {
                 Spacer()
+                HillShape()
+                    .fill(theme.previewHillColor)
+                    .frame(height: 16)
                 Rectangle()
-                    .fill(Color(red: 0.45, green: 0.72, blue: 0.22))
-                    .frame(height: 24)
-                Rectangle()
-                    .fill(Color(red: 0.55, green: 0.35, blue: 0.18))
-                    .frame(height: 8)
+                    .fill(theme.previewGroundColor)
+                    .frame(height: 16)
             }
 
-            // Content
+            // ── Score overlay ──
             VStack(spacing: 8) {
-                // Title
                 Text("FLOPPY DUCK")
                     .font(.custom(GK.pixelFontName, size: 14))
-                    .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
-                    .shadow(color: .black.opacity(0.5), radius: 0, x: 2, y: 2)
+                    .foregroundColor(titleColor)
+                    .shadow(color: .black.opacity(0.6), radius: 0, x: 2, y: 2)
 
-                // Score
                 Text("\(score)")
-                    .font(.custom(GK.pixelFontName, size: 42))
+                    .font(.custom(GK.pixelFontName, size: 52))
                     .foregroundColor(.white)
-                    .shadow(color: Color(red: 0.2, green: 0.33, blue: 0.1, opacity: 0.9), radius: 0, x: 3, y: 3)
+                    .shadow(color: .black.opacity(0.7), radius: 0, x: 3, y: 3)
 
-                // Medal badge
-                if medal != .none, let icon = medal.pixelIcon {
-                    HStack(spacing: 6) {
-                        Image(uiImage: PixelIconFactory.shared.image(for: icon))
-                            .interpolation(.none)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 16, height: 16)
-                        Text(medal.displayName.uppercased())
-                            .font(.custom(GK.pixelFontName, size: 10))
-                            .foregroundColor(medal.themeColor)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.black.opacity(0.3))
-                    )
-                }
-
-                // Best score
-                HStack(spacing: 16) {
-                    VStack(spacing: 2) {
-                        Text("BEST")
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(.white.opacity(0.7))
-                        Text("\(bestScore)")
-                            .font(.custom(GK.pixelFontName, size: 12))
-                            .foregroundColor(.white)
-                    }
-                    VStack(spacing: 2) {
-                        Text("MODE")
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(.white.opacity(0.7))
-                        Text(mode.shareDisplayName.uppercased())
-                            .font(.custom(GK.pixelFontName, size: 10))
-                            .foregroundColor(.white)
-                    }
-                }
-                .padding(.top, 4)
-
-                // CTA
                 Text("CAN YOU BEAT THIS?")
                     .font(.custom(GK.pixelFontName, size: 7))
                     .foregroundColor(.white.opacity(0.6))
             }
-            .padding(.vertical, 16)
         }
         .frame(width: cardWidth, height: cardHeight)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    /// Renders this view to a shareable UIImage.
+    // MARK: - Scene Layer (duck + pipes)
+
+    private var sceneLayer: some View {
+        ZStack {
+            // Left pipe pair
+            HStack(spacing: 0) {
+                pipeColumn
+                    .offset(x: -8, y: 20)
+                Spacer()
+            }
+
+            // Right pipe pair
+            HStack(spacing: 0) {
+                Spacer()
+                pipeColumn
+                    .offset(x: 8, y: -10)
+            }
+
+            // Duck – right side of card, above ground
+            HStack {
+                Spacer()
+                duckImage
+                    .rotationEffect(.degrees(-8))
+                    .offset(y: 20)
+                Spacer()
+                    .frame(width: cardWidth * 0.12)
+            }
+        }
+        .opacity(0.4)
+    }
+
+    private var duckImage: some View {
+        Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: skin, pixelScale: 5.0))
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(height: 70)
+    }
+
+    private var pipeColumn: some View {
+        VStack(spacing: 60) {
+            VStack(spacing: 0) {
+                Image(uiImage: TextureFactory.shared.pipeSkinPreviewUIImage(skin: pipeSkin, width: 24, height: 50))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 36, height: 60)
+                    .rotationEffect(.degrees(180))
+                Image(uiImage: TextureFactory.shared.pipeSkinCapPreviewUIImage(skin: pipeSkin))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 42, height: 12)
+                    .rotationEffect(.degrees(180))
+            }
+
+            VStack(spacing: 0) {
+                Image(uiImage: TextureFactory.shared.pipeSkinCapPreviewUIImage(skin: pipeSkin))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 42, height: 12)
+                Image(uiImage: TextureFactory.shared.pipeSkinPreviewUIImage(skin: pipeSkin, width: 24, height: 50))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 36, height: 60)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private var titleColor: Color {
+        switch theme {
+        case .egypt, .western, .arctic, .lagoon, .clouds:
+            return Color(red: 0.85, green: 0.65, blue: 0.0)
+        default:
+            return Color(red: 1.0, green: 0.84, blue: 0.0)
+        }
+    }
+
     @MainActor
     func renderToImage() -> UIImage {
         let renderer = ImageRenderer(content: self)
-        renderer.scale = 3.0  // Retina quality
+        renderer.scale = 3.0
         return renderer.uiImage ?? UIImage()
+    }
+}
+
+// MARK: - Hill Silhouette Shape
+
+private struct HillShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+        path.move(to: CGPoint(x: 0, y: h))
+        path.addCurve(
+            to: CGPoint(x: w * 0.35, y: h * 0.25),
+            control1: CGPoint(x: w * 0.08, y: h),
+            control2: CGPoint(x: w * 0.20, y: h * 0.15)
+        )
+        path.addCurve(
+            to: CGPoint(x: w * 0.65, y: h * 0.45),
+            control1: CGPoint(x: w * 0.45, y: h * 0.32),
+            control2: CGPoint(x: w * 0.55, y: h * 0.50)
+        )
+        path.addCurve(
+            to: CGPoint(x: w, y: h * 0.20),
+            control1: CGPoint(x: w * 0.78, y: h * 0.38),
+            control2: CGPoint(x: w * 0.90, y: h * 0.15)
+        )
+        path.addLine(to: CGPoint(x: w, y: h))
+        path.closeSubpath()
+        return path
     }
 }

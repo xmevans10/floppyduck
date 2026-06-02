@@ -20,7 +20,8 @@ const STALE_AFTER_MS = 30 * 1000;
 const FINISHED_RETENTION_MS = 5 * 60 * 1000;
 const EMPTY_OPEN_RETENTION_MS = 60 * 1000;
 const ALIVE_SNAPSHOT_LOG_LIMIT = 260;
-const PAYOUTS = [0.40, 0.25, 0.15, 0.12, 0.08];
+// Fixed bread payouts by placement (top 10 paid)
+const PAYOUTS = [750, 500, 350, 250, 175, 125, 100, 75, 63, 50];
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_LENGTH = 5;
 
@@ -55,7 +56,7 @@ export const joinLobby = mutation({
     const user = await resolveUser(ctx, args);
     const now = Date.now();
 
-    const existing = await activeOpenEntrantForUser(ctx, user._id);
+    const existing = await activeEntrantForUser(ctx, user._id);
     if (existing) {
       return await buildAssignment(ctx, existing.lobbyId, existing._id, user.bread);
     }
@@ -405,7 +406,7 @@ async function findOpenLobby(ctx: Ctx, now: number): Promise<Lobby | null> {
   return null;
 }
 
-async function activeOpenEntrantForUser(ctx: Ctx, userId: Id<"users">) {
+async function activeEntrantForUser(ctx: Ctx, userId: Id<"users">) {
   const entrants = await ctx.db
     .query("battleRoyaleEntrantsV2")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
@@ -414,7 +415,7 @@ async function activeOpenEntrantForUser(ctx: Ctx, userId: Id<"users">) {
   for (const entrant of entrants) {
     if (!entrant.alive || entrant.placement) continue;
     const lobby = await ctx.db.get(entrant.lobbyId);
-    if (lobby && lobby.status === "open") {
+    if (lobby && (lobby.status === "open" || lobby.status === "active")) {
       return entrant;
     }
   }
@@ -893,7 +894,7 @@ async function payEntrantIfWinner(ctx: Ctx, lobby: Lobby, entrant: Entrant, now:
   const placement = entrant.placement;
   if (!placement || placement < 1 || placement > PAYOUTS.length) return;
 
-  const amount = Math.floor(lobby.maxPlayers * lobby.buyIn * 0.95 * PAYOUTS[placement - 1]);
+  const amount = PAYOUTS[placement - 1];
   if (amount <= 0) return;
 
   const existing = await ctx.db

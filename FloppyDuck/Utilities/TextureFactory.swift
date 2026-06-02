@@ -337,7 +337,14 @@ final class TextureFactory: @unchecked Sendable {
     func themedLayerTexture(theme: BackgroundTheme, assetName: String) -> SKTexture {
         if let cached = cachedTexture(forKey: assetName) { return cached }
         guard let image = UIImage(named: assetName) else {
-            fatalError("Missing asset: \(assetName)")
+            // Graceful fallback — return a 1×1 clear texture instead of crashing.
+            print("⚠️ TextureFactory: missing themed asset '\(assetName)' for \(theme)")
+            let size = CGSize(width: 1, height: 1)
+            UIGraphicsBeginImageContextWithOptions(size, false, 1)
+            UIGraphicsGetCurrentContext()?.clear(CGRect(origin: .zero, size: size))
+            let clearImage = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
+            UIGraphicsEndImageContext()
+            return SKTexture(image: clearImage)
         }
         let tex = SKTexture(image: image)
         tex.filteringMode = .nearest

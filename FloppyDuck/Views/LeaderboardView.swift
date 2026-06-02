@@ -248,6 +248,10 @@ struct LeaderboardView: View {
         if isInitialLoad { isLoading = true }
         errorMessage = nil
 
+        // Push local stats to server first so the leaderboard reflects
+        // the player's true best score even if a previous sync was lost.
+        await manager.syncStatsOnce()
+
         log.debug("loadLeaderboard mode=\(self.mode.rawValue) limit=\(requestedLimit) initialLoad=\(isInitialLoad)")
 
         do {

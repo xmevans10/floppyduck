@@ -28,6 +28,7 @@ struct FriendsView: View {
     @State private var selectedTab: FriendsTab = .friends
     @State private var friends: [PublicPlayerProfile] = []
     @State private var pendingRequests: [PublicPlayerProfile] = []
+    @State private var outgoingRequests: [PublicPlayerProfile] = []
     @State private var searchQuery: String = ""
     @State private var searchResults: [PublicPlayerProfile] = []
     @State private var isLoading = true
@@ -113,11 +114,11 @@ struct FriendsView: View {
             Spacer()
 
             // Pending badge (visible from any tab)
-            if !pendingRequests.isEmpty {
+            if !pendingRequests.isEmpty || !outgoingRequests.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "envelope.fill")
                         .font(.system(size: 10, weight: .bold))
-                    Text("\(pendingRequests.count)")
+                    Text("\(pendingRequests.count + outgoingRequests.count)")
                         .font(.custom(GK.pixelFontName, size: 9))
                 }
                 .foregroundColor(.white)
@@ -167,8 +168,8 @@ struct FriendsView: View {
                     .fixedSize()
 
                 // Badge on requests tab
-                if tab == .pending && !pendingRequests.isEmpty {
-                    Text("\(pendingRequests.count)")
+                if tab == .pending && (!pendingRequests.isEmpty || !outgoingRequests.isEmpty) {
+                    Text("\(pendingRequests.count + outgoingRequests.count)")
                         .font(.custom(GK.pixelFontName, size: 6))
                         .foregroundColor(.white)
                         .frame(width: 14, height: 14)
@@ -339,6 +340,29 @@ struct FriendsView: View {
             Button {
                 SoundManager.shared.play(.button)
                 Haptic.buttonTap()
+                manager.goHome()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    manager.startMatchmaking(mode: .privateRoom)
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "swords")
+                        .font(.system(size: 8, weight: .bold))
+                    Text("CHALLENGE")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(GK.Colors.buttonOrange)
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                SoundManager.shared.play(.button)
+                Haptic.buttonTap()
                 manager.navigate(to: .publicProfile(friend.userId))
             } label: {
                 Text("VIEW")
@@ -382,7 +406,7 @@ struct FriendsView: View {
 
     private var pendingContent: some View {
         Group {
-            if pendingRequests.isEmpty {
+            if pendingRequests.isEmpty && outgoingRequests.isEmpty {
                 emptyState(
                     icon: "envelope.open",
                     title: "NO REQUESTS",
@@ -391,8 +415,35 @@ struct FriendsView: View {
             } else {
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 8) {
-                        ForEach(pendingRequests) { request in
-                            pendingRow(request)
+                        // Incoming requests
+                        if !pendingRequests.isEmpty {
+                            HStack {
+                                Text("INCOMING")
+                                    .font(.custom(GK.pixelFontName, size: 6))
+                                    .foregroundColor(.white.opacity(0.3))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+
+                            ForEach(pendingRequests) { request in
+                                pendingRow(request)
+                            }
+                        }
+
+                        // Outgoing requests
+                        if !outgoingRequests.isEmpty {
+                            HStack {
+                                Text("SENT")
+                                    .font(.custom(GK.pixelFontName, size: 6))
+                                    .foregroundColor(.white.opacity(0.3))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, pendingRequests.isEmpty ? 0 : 8)
+
+                            ForEach(outgoingRequests) { request in
+                                outgoingRow(request)
+                            }
                         }
                     }
                     .padding(.horizontal, 12)
@@ -474,6 +525,65 @@ struct FriendsView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(GK.Colors.buttonGreen.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+
+    private func outgoingRow(_ request: PublicPlayerProfile) -> some View {
+        HStack(spacing: 10) {
+            // Avatar with orange ring
+            ZStack {
+                Circle()
+                    .fill(GK.Colors.buttonOrange.opacity(0.2))
+                    .frame(width: 40, height: 40)
+                Circle()
+                    .stroke(GK.Colors.buttonOrange.opacity(0.5), lineWidth: 2)
+                    .frame(width: 40, height: 40)
+                Text(String(request.username.prefix(1)).uppercased())
+                    .font(.custom(GK.pixelFontName, size: 14))
+                    .foregroundColor(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(request.username)
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                Text("REQUEST SENT")
+                    .font(.custom(GK.pixelFontName, size: 6))
+                    .foregroundColor(GK.Colors.buttonOrange.opacity(0.8))
+            }
+
+            Spacer()
+
+            // Cancel
+            Button {
+                SoundManager.shared.play(.button)
+                Task { await cancelOutgoingRequest(request.userId) }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                    Text("CANCEL")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule().fill(GK.Colors.buttonRed.opacity(0.7))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GK.Colors.buttonOrange.opacity(0.2), lineWidth: 1)
                 )
         )
     }
@@ -567,8 +677,21 @@ struct FriendsView: View {
         }
     }
 
+    /// Check if a user is already a friend.
+    private func isFriend(_ userId: String) -> Bool {
+        friends.contains { $0.userId == userId }
+    }
+
+    /// Check if we already sent a request to this user.
+    private func hasPendingOutgoing(_ userId: String) -> Bool {
+        outgoingRequests.contains { $0.userId == userId }
+    }
+
     private func searchRow(_ result: PublicPlayerProfile) -> some View {
-        HStack(spacing: 10) {
+        let alreadyFriend = isFriend(result.userId)
+        let pendingOut = hasPendingOutgoing(result.userId)
+
+        return HStack(spacing: 10) {
             // Avatar
             ZStack {
                 Circle()
@@ -622,25 +745,39 @@ struct FriendsView: View {
             }
             .buttonStyle(.plain)
 
-            Button {
-                SoundManager.shared.play(.button)
-                Haptic.medium()
-                Task { await addFriend(result.userId) }
-            } label: {
-                HStack(spacing: 3) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 9, weight: .bold))
-                    Text("ADD")
-                        .font(.custom(GK.pixelFontName, size: 7))
+            if alreadyFriend {
+                Text("FRIENDS")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(GK.Colors.buttonGreen.opacity(0.8))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+            } else if pendingOut {
+                Text("SENT")
+                    .font(.custom(GK.pixelFontName, size: 7))
+                    .foregroundColor(GK.Colors.buttonOrange.opacity(0.8))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+            } else {
+                Button {
+                    SoundManager.shared.play(.button)
+                    Haptic.medium()
+                    Task { await addFriend(result.userId) }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("ADD")
+                            .font(.custom(GK.pixelFontName, size: 7))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule().fill(GK.Colors.buttonGreen)
+                    )
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule().fill(GK.Colors.buttonGreen)
-                )
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -684,11 +821,13 @@ struct FriendsView: View {
         errorMessage = nil
         do {
             pendingRequests = try await ConvexClient.shared.getPendingFriendRequests()
+            outgoingRequests = try await ConvexClient.shared.getOutgoingFriendRequests()
             switch selectedTab {
             case .friends:
                 friends = try await ConvexClient.shared.getFriends()
             case .pending, .search:
-                break
+                // Also load friends for search-tab relationship checks
+                friends = try await ConvexClient.shared.getFriends()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -711,10 +850,23 @@ struct FriendsView: View {
     private func addFriend(_ userId: String) async {
         do {
             try await ConvexClient.shared.sendFriendRequest(toUserId: userId)
-            searchResults.removeAll { $0.userId == userId }
+            // Move result to outgoing so button updates immediately
+            if let profile = searchResults.first(where: { $0.userId == userId }) {
+                outgoingRequests.append(profile)
+            }
             showToast("REQUEST SENT!")
         } catch {
             showToast("FAILED TO SEND")
+        }
+    }
+
+    private func cancelOutgoingRequest(_ userId: String) async {
+        do {
+            try await ConvexClient.shared.removeFriend(otherUserId: userId)
+            outgoingRequests.removeAll { $0.userId == userId }
+            showToast("REQUEST CANCELLED")
+        } catch {
+            showToast("FAILED TO CANCEL")
         }
     }
 
