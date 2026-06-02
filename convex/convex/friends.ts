@@ -371,6 +371,69 @@ export const getPendingRequests = query({
   },
 });
 
+export const getOutgoingRequests = query({
+  args: {
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+
+    const outgoing = await ctx.db
+      .query("friendships")
+      .withIndex("by_fromUserId", (q: any) => q.eq("fromUserId", user._id))
+      .collect();
+
+    const profiles: any[] = [];
+    for (const o of outgoing) {
+      if (o.status !== "pending") continue;
+      const target = await ctx.db.get(o.toUserId);
+      if (target) {
+        profiles.push(toPublicProfile(target));
+      }
+    }
+
+    profiles.sort((a, b) => a.username.localeCompare(b.username));
+    return profiles;
+  },
+});
+
+export const getFriendshipStatus = query({
+  args: {
+    otherUserId: v.id("users"),
+    ...identityArgs,
+  },
+  handler: async (ctx, args) => {
+    const user = await resolveUser(ctx, args, { allowGuestFallback: false });
+
+    // Check outgoing (user -> other)
+    const outgoing = await ctx.db
+      .query("friendships")
+      .withIndex("by_from_to", (q: any) =>
+        q.eq("fromUserId", user._id).eq("toUserId", args.otherUserId))
+      .first();
+
+    if (outgoing) {
+      if (outgoing.status === "accepted") return { status: "friends" };
+      if (outgoing.status === "pending") return { status: "pending_outgoing" };
+      if (outgoing.status === "blocked") return { status: "blocked" };
+    }
+
+    // Check incoming (other -> user)
+    const incoming = await ctx.db
+      .query("friendships")
+      .withIndex("by_from_to", (q: any) =>
+        q.eq("fromUserId", args.otherUserId).eq("toUserId", user._id))
+      .first();
+
+    if (incoming) {
+      if (incoming.status === "accepted") return { status: "friends" };
+      if (incoming.status === "pending") return { status: "pending_incoming" };
+    }
+
+    return { status: "none" };
+  },
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────

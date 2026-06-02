@@ -11,6 +11,7 @@ struct PublicProfileView: View {
     @State private var requestSent = false
     @State private var isBlocking = false
     @State private var showBlockConfirm = false
+    @State private var friendshipStatus: String = "none" // none, friends, pending_outgoing, pending_incoming
 
     private let icons = PixelIconFactory.shared
 
@@ -213,8 +214,13 @@ struct PublicProfileView: View {
                         )
                 )
 
-                // Add Friend button
-                addFriendButton
+                // Friend action button (context-aware)
+                friendActionButton
+
+                // Challenge button (only if friends)
+                if friendshipStatus == "friends" {
+                    challengeButton
+                }
 
                 // Block button
                 blockButton
@@ -422,19 +428,14 @@ struct PublicProfileView: View {
 
     // MARK: - Action Buttons
 
-    private var addFriendButton: some View {
-        Button {
-            Task { await addFriend() }
-        } label: {
+    @ViewBuilder
+    private var friendActionButton: some View {
+        switch friendshipStatus {
+        case "friends":
+            // Already friends — show confirmation label
             HStack(spacing: 8) {
-                if isAddingFriend {
-                    ProgressView().tint(.white)
-                } else if requestSent {
-                    pixelIcon(.checkmark, size: 18)
-                } else {
-                    pixelIcon(.headToHead, size: 18)
-                }
-                Text(requestSent ? "SENT!" : isAddingFriend ? "SENDING..." : "ADD FRIEND")
+                pixelIcon(.checkmark, size: 18)
+                Text("FRIENDS")
                     .font(.custom(GK.pixelFontName, size: 10))
             }
             .foregroundColor(.white)
@@ -442,8 +443,114 @@ struct PublicProfileView: View {
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(requestSent ? GK.Colors.buttonGreen.opacity(0.6) : GK.Colors.buttonGreen)
-                    .shadow(color: (requestSent ? Color.clear : GK.Colors.buttonGreen.opacity(0.4)), radius: 0, x: 0, y: 3)
+                    .fill(GK.Colors.buttonGreen.opacity(0.5))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
+            )
+
+        case "pending_outgoing":
+            // Already sent request
+            HStack(spacing: 8) {
+                pixelIcon(.checkmark, size: 18)
+                Text("REQUEST SENT")
+                    .font(.custom(GK.pixelFontName, size: 10))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(GK.Colors.buttonOrange.opacity(0.5))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.black.opacity(0.3), lineWidth: 2)
+            )
+
+        case "pending_incoming":
+            // They sent us a request — show accept button
+            Button {
+                Task { await acceptIncoming() }
+            } label: {
+                HStack(spacing: 8) {
+                    pixelIcon(.headToHead, size: 18)
+                    Text(isAddingFriend ? "ACCEPTING..." : "ACCEPT REQUEST")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(GK.Colors.buttonGreen)
+                        .shadow(color: GK.Colors.buttonGreen.opacity(0.4), radius: 0, x: 0, y: 3)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.black.opacity(0.3), lineWidth: 2)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isAddingFriend)
+
+        default:
+            // No relationship — show add friend
+            Button {
+                Task { await addFriend() }
+            } label: {
+                HStack(spacing: 8) {
+                    if isAddingFriend {
+                        ProgressView().tint(.white)
+                    } else if requestSent {
+                        pixelIcon(.checkmark, size: 18)
+                    } else {
+                        pixelIcon(.headToHead, size: 18)
+                    }
+                    Text(requestSent ? "SENT!" : isAddingFriend ? "SENDING..." : "ADD FRIEND")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(requestSent ? GK.Colors.buttonGreen.opacity(0.6) : GK.Colors.buttonGreen)
+                        .shadow(color: (requestSent ? Color.clear : GK.Colors.buttonGreen.opacity(0.4)), radius: 0, x: 0, y: 3)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.black.opacity(0.3), lineWidth: 2)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isAddingFriend || requestSent)
+        }
+    }
+
+    private var challengeButton: some View {
+        Button {
+            SoundManager.shared.play(.button)
+            Haptic.buttonTap()
+            manager.goHome()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                manager.startMatchmaking(mode: .privateRoom)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "swords")
+                    .font(.system(size: 14, weight: .bold))
+                Text("CHALLENGE")
+                    .font(.custom(GK.pixelFontName, size: 10))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(GK.Colors.buttonOrange)
+                    .shadow(color: GK.Colors.buttonOrange.opacity(0.4), radius: 0, x: 0, y: 3)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -451,7 +558,6 @@ struct PublicProfileView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(isAddingFriend || requestSent)
     }
 
     private var blockButton: some View {
@@ -500,6 +606,7 @@ struct PublicProfileView: View {
         errorMessage = nil
         do {
             profile = try await ConvexClient.shared.getPublicProfile(userId: userId)
+            friendshipStatus = try await ConvexClient.shared.getFriendshipStatus(otherUserId: userId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -512,6 +619,7 @@ struct PublicProfileView: View {
         do {
             try await ConvexClient.shared.sendFriendRequest(toUserId: profile.userId)
             requestSent = true
+            friendshipStatus = "pending_outgoing"
             Haptic.friendAction()
         } catch {
             let msg = error.localizedDescription
@@ -519,6 +627,17 @@ struct PublicProfileView: View {
                 requestSent = true
             }
         }
+        isAddingFriend = false
+    }
+
+    private func acceptIncoming() async {
+        guard let profile else { return }
+        isAddingFriend = true
+        do {
+            try await ConvexClient.shared.acceptFriendRequest(fromUserId: profile.userId)
+            friendshipStatus = "friends"
+            Haptic.friendAction()
+        } catch {}
         isAddingFriend = false
     }
 

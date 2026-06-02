@@ -519,7 +519,7 @@ async function payWinners(ctx: any,
                           lobby: Doc<"battleRoyaleLobbies">,
                           entrants: Doc<"battleRoyaleEntrants">[],
                           now: number) {
-  const poolAfterSink = Math.floor(entrants.length * lobby.buyIn * 0.95);
+  const poolAfterSink = Math.floor(entrants.length * lobby.buyIn * 0.975);
   for (const entrant of entrants) {
     if (entrant.isBot) continue;
     const placement = entrant.placement ?? entrants.length;

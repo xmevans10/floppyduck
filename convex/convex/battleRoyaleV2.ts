@@ -893,7 +893,7 @@ async function payEntrantIfWinner(ctx: Ctx, lobby: Lobby, entrant: Entrant, now:
   const placement = entrant.placement;
   if (!placement || placement < 1 || placement > PAYOUTS.length) return;
 
-  const amount = Math.floor(lobby.maxPlayers * lobby.buyIn * 0.95 * PAYOUTS[placement - 1]);
+  const amount = Math.floor(lobby.maxPlayers * lobby.buyIn * 0.975 * PAYOUTS[placement - 1]);
   if (amount <= 0) return;
 
   const existing = await ctx.db
