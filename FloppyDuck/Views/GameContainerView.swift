@@ -558,7 +558,9 @@ struct GameContainerView: View {
 
         let gameBread = scene.totalBreadCollected
 
-        manager.recordGame(score: finalScore, won: true, collectedBread: gameBread)
+        // Bot wins don't affect wins/losses — those fields track PvP only.
+        // Bot ladder progress is tracked via beatenBots.
+        manager.recordGame(score: finalScore, won: nil, collectedBread: gameBread)
 
         // Fire achievement events
         processAchievements(score: finalScore, scene: scene)
@@ -601,16 +603,9 @@ struct GameContainerView: View {
         // false "YOU WIN" results when the bot had reached its ceiling
         // score before the player died.)
 
-        let won: Bool?
-        if config.mode == .vsBot {
-            if isBotLadder {
-                won = false  // Player died → always a loss
-            } else {
-                won = finalScore > scene.botScore
-            }
-        } else {
-            won = nil
-        }
+        // Bot games don't affect wins/losses — those fields track PvP only.
+        // Bot ladder progress is tracked separately via beatenBots.
+        let won: Bool? = nil
 
         let gameBread = scene.totalBreadCollected
 

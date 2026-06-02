@@ -55,7 +55,7 @@ export const joinLobby = mutation({
     const user = await resolveUser(ctx, args);
     const now = Date.now();
 
-    const existing = await activeOpenEntrantForUser(ctx, user._id);
+    const existing = await activeEntrantForUser(ctx, user._id);
     if (existing) {
       return await buildAssignment(ctx, existing.lobbyId, existing._id, user.bread);
     }
@@ -405,7 +405,7 @@ async function findOpenLobby(ctx: Ctx, now: number): Promise<Lobby | null> {
   return null;
 }
 
-async function activeOpenEntrantForUser(ctx: Ctx, userId: Id<"users">) {
+async function activeEntrantForUser(ctx: Ctx, userId: Id<"users">) {
   const entrants = await ctx.db
     .query("battleRoyaleEntrantsV2")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
@@ -414,7 +414,7 @@ async function activeOpenEntrantForUser(ctx: Ctx, userId: Id<"users">) {
   for (const entrant of entrants) {
     if (!entrant.alive || entrant.placement) continue;
     const lobby = await ctx.db.get(entrant.lobbyId);
-    if (lobby && lobby.status === "open") {
+    if (lobby && (lobby.status === "open" || lobby.status === "active")) {
       return entrant;
     }
   }
