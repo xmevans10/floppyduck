@@ -1119,7 +1119,9 @@ struct GameContainerView: View {
             playerBanner: playerBanner,
             opponentSkin: resolvedOpponentSkin,
             opponentName: config.opponentName ?? "OPPONENT",
-            opponentAccent: bot?.accentColor ?? Color.red
+            opponentAccent: bot?.accentColor ?? Color.red,
+            playerElo: config.isRanked ? manager.stats.elo : nil,
+            opponentElo: config.isRanked ? config.opponentRating : nil
         ) {
             // VS intro done → run 3-2-1-GO countdown on the game map
             if isHeadToHead {

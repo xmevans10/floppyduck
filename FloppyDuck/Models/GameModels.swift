@@ -35,6 +35,7 @@ struct GameModeConfig: Identifiable, Hashable {
     let matchId: String?
     let matchmakingMode: MatchmakingMode?
     let isRanked: Bool
+    let opponentRating: Int?
     let roomCode: String?
     let gameKitSessionCode: String?
     let isGameKitHost: Bool
@@ -54,6 +55,7 @@ struct GameModeConfig: Identifiable, Hashable {
          matchId: String? = nil,
          matchmakingMode: MatchmakingMode? = nil,
          isRanked: Bool = false,
+         opponentRating: Int? = nil,
          roomCode: String? = nil,
          gameKitSessionCode: String? = nil,
          isGameKitHost: Bool = false,
@@ -73,6 +75,7 @@ struct GameModeConfig: Identifiable, Hashable {
         self.matchId = matchId
         self.matchmakingMode = matchmakingMode
         self.isRanked = isRanked
+        self.opponentRating = opponentRating
         self.roomCode = roomCode
         self.gameKitSessionCode = gameKitSessionCode
         self.isGameKitHost = isGameKitHost
@@ -396,6 +399,7 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
     let seed: Int
     let opponentName: String
     let opponentSkinId: String?
+    let opponentRating: Int?
     let gameKitSessionCode: String?
     let mode: MatchmakingMode
     let isRanked: Bool
@@ -406,6 +410,7 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
          seed: Int,
          opponentName: String,
          opponentSkinId: String? = nil,
+         opponentRating: Int? = nil,
          gameKitSessionCode: String? = nil,
          mode: MatchmakingMode,
          isRanked: Bool,
@@ -415,6 +420,7 @@ struct MultiplayerMatchAssignment: Hashable, Codable {
         self.seed = seed
         self.opponentName = opponentName
         self.opponentSkinId = opponentSkinId
+        self.opponentRating = opponentRating
         self.gameKitSessionCode = gameKitSessionCode
         self.mode = mode
         self.isRanked = isRanked

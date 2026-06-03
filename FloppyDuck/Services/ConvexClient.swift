@@ -1266,6 +1266,7 @@ actor ConvexClient: MultiplayerBackendClient {
                 seed: seed,
                 opponentName: string(in: source, keys: ["opponentName", "opponent", "enemyName", "name"]) ?? "OPPONENT",
                 opponentSkinId: string(in: source, keys: ["opponentSkinId", "opponentSkin", "enemySkin"]),
+                opponentRating: int(in: source, keys: ["opponentRating", "opponentElo", "enemyRating"]),
                 gameKitSessionCode: gameKitCode,
                 mode: parsedMode,
                 isRanked: ranked,

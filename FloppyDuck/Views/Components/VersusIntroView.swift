@@ -23,6 +23,8 @@ struct VersusIntroView: View {
     let opponentSkin: DuckSkin?
     let opponentName: String
     let opponentAccent: Color
+    let playerElo: Int?
+    let opponentElo: Int?
     let onComplete: () -> Void
 
     // Animation state
@@ -95,6 +97,12 @@ struct VersusIntroView: View {
                             .shadow(color: playerBanner.primaryColor, radius: 6)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
+                        if let elo = playerElo {
+                            Text("ELO \(elo)")
+                                .font(.custom(GK.pixelFontName, size: 10))
+                                .foregroundColor(GK.Colors.scoreYellow)
+                                .shadow(color: .black, radius: 2)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .offset(x: playerSlide)
@@ -143,11 +151,36 @@ struct VersusIntroView: View {
                             .shadow(color: opponentAccent, radius: 6)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
+                        if let elo = opponentElo {
+                            Text("ELO \(elo)")
+                                .font(.custom(GK.pixelFontName, size: 10))
+                                .foregroundColor(GK.Colors.scoreYellow)
+                                .shadow(color: .black, radius: 2)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .offset(x: opponentSlide)
                 }
                 .padding(.horizontal, 16)
+
+                // ── ELO prediction row (ranked only) ────────────────────
+                if let myElo = playerElo, let theirElo = opponentElo {
+                    let expected = 1.0 / (1.0 + pow(10.0, Double(theirElo - myElo) / 400.0))
+                    let winDelta = max(1, Int(round(32.0 * (1.0 - expected))))
+                    let loseDelta = max(1, Int(round(32.0 * expected)))
+                    HStack(spacing: 20) {
+                        Text("WIN \(myElo + winDelta)")
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(.green)
+                            .shadow(color: .black, radius: 2)
+                        Text("LOSE \(myElo - loseDelta)")
+                            .font(.custom(GK.pixelFontName, size: 10))
+                            .foregroundColor(.red)
+                            .shadow(color: .black, radius: 2)
+                    }
+                    .opacity(bgOpacity)
+                    .offset(y: 80)
+                }
 
                 // ── "READY? FIGHT!" overlay ─────────────────────────────
                 if fightPhase != .hidden {

@@ -140,6 +140,7 @@ final class GameManager: ObservableObject {
             matchId: matchAssignment.matchId,
             matchmakingMode: matchAssignment.mode,
             isRanked: matchAssignment.isRanked,
+            opponentRating: matchAssignment.opponentRating,
             roomCode: matchAssignment.roomCode,
             gameKitSessionCode: matchAssignment.gameKitSessionCode,
             isGameKitHost: matchAssignment.isGameKitHost

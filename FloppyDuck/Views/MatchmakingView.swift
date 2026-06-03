@@ -135,16 +135,6 @@ struct MultiplayerModesView: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
 
-            if auth.hasGameCenterMultiplayerAccess {
-                HStack(spacing: 12) {
-                    Text("WIN \(manager.stats.elo + 16)")
-                        .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(.green.opacity(0.85))
-                    Text("LOSE \(manager.stats.elo - 16)")
-                        .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(.red.opacity(0.85))
-                }
-            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -156,7 +146,7 @@ struct MultiplayerModesView: View {
                         .stroke(GK.Colors.scoreYellow.opacity(0.28), lineWidth: 2)
                 )
         )
-        .accessibilityLabel(auth.hasGameCenterMultiplayerAccess ? "Current ELO: \(manager.stats.elo). Win: \(manager.stats.elo + 16). Lose: \(manager.stats.elo - 16)." : "Game Center sign in required for head-to-head")
+        .accessibilityLabel(auth.hasGameCenterMultiplayerAccess ? "Current ELO: \(manager.stats.elo)" : "Game Center sign in required for head-to-head")
     }
 
     private func openSettings() {
@@ -424,21 +414,11 @@ struct MatchmakingView: View {
                 .frame(width: 200, alignment: .center)
 
             if mode == .ranked {
-                VStack(spacing: 6) {
-                    HStack(spacing: 6) {
-                        pixelIcon(.trophy, size: 14)
-                        Text("ELO: \(manager.stats.elo)")
-                            .font(.custom(GK.pixelFontName, size: 10))
-                            .foregroundColor(GK.Colors.panelBorder)
-                    }
-                    HStack(spacing: 12) {
-                        Text("WIN \(manager.stats.elo + 16)")
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(GK.Colors.buttonGreen)
-                        Text("LOSE \(manager.stats.elo - 16)")
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(GK.Colors.buttonRed)
-                    }
+                HStack(spacing: 6) {
+                    pixelIcon(.trophy, size: 14)
+                    Text("ELO: \(manager.stats.elo)")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.panelBorder)
                 }
             }
 
@@ -546,18 +526,16 @@ struct MatchmakingView: View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
                 pixelIcon(.trophy, size: 20)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("25 BREAD BUY-IN")
-                        .font(.custom(GK.pixelFontName, size: 9))
-                        .foregroundColor(GK.Colors.panelBorder)
-                    Text("LAST DUCK STANDING WINS")
-                        .font(.custom(GK.pixelFontName, size: 6))
-                        .foregroundColor(GK.Colors.panelBorder.opacity(0.55))
-                }
+                Text("25 BREAD BUY-IN")
+                    .font(.custom(GK.pixelFontName, size: 9))
+                    .foregroundColor(GK.Colors.panelBorder)
                 Spacer()
-                Text("🍞 \(manager.stats.bread)")
-                    .font(.custom(GK.pixelFontName, size: 12))
-                    .foregroundColor(GK.Colors.scoreYellow)
+                HStack(spacing: 4) {
+                    pixelIcon(.bread, size: 14)
+                    Text("\(manager.stats.bread)")
+                        .font(.custom(GK.pixelFontName, size: 12))
+                        .foregroundColor(GK.Colors.scoreYellow)
+                }
             }
 
             if let state = battleRoyaleState {
