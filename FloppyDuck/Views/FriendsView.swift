@@ -295,103 +295,109 @@ struct FriendsView: View {
     }
 
     private func friendRow(_ friend: PublicPlayerProfile) -> some View {
-        HStack(spacing: 10) {
-            // Avatar circle
-            ZStack {
-                Circle()
-                    .fill(GK.Colors.buttonBlue.opacity(0.25))
-                    .frame(width: 40, height: 40)
-                Text(String(friend.username.prefix(1)).uppercased())
-                    .font(.custom(GK.pixelFontName, size: 14))
-                    .foregroundColor(.white)
-            }
-
-            // Info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(friend.username)
-                    .font(.custom(GK.pixelFontName, size: 9))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-
-                HStack(spacing: 8) {
-                    Label {
-                        Text("\(friend.stats.elo)")
-                            .font(.custom(GK.pixelFontName, size: 6))
-                    } icon: {
-                        Image(systemName: "trophy.fill")
-                            .font(.system(size: 7))
-                    }
-                    .foregroundColor(GK.Colors.scoreYellow.opacity(0.7))
-
-                    Label {
-                        Text("\(friend.stats.gamesPlayed) GAMES")
-                            .font(.custom(GK.pixelFontName, size: 6))
-                    } icon: {
-                        Image(systemName: "gamecontroller.fill")
-                            .font(.system(size: 7))
-                    }
-                    .foregroundColor(.white.opacity(0.35))
+        VStack(spacing: 0) {
+            // Top row: avatar + name + stats
+            HStack(spacing: 12) {
+                // Avatar circle
+                ZStack {
+                    Circle()
+                        .fill(GK.Colors.buttonBlue.opacity(0.25))
+                        .frame(width: 44, height: 44)
+                    Text(String(friend.username.prefix(1)).uppercased())
+                        .font(.custom(GK.pixelFontName, size: 16))
+                        .foregroundColor(.white)
                 }
-            }
 
-            Spacer()
+                // Name + stats stacked vertically
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(friend.username)
+                        .font(.custom(GK.pixelFontName, size: 11))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
 
-            // Actions
-            Button {
-                SoundManager.shared.play(.button)
-                Haptic.buttonTap()
-                manager.goHome()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    manager.startMatchmaking(mode: .privateRoom)
+                    HStack(spacing: 10) {
+                        Label {
+                            Text("\(friend.stats.elo)")
+                                .font(.custom(GK.pixelFontName, size: 7))
+                        } icon: {
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 8))
+                        }
+                        .foregroundColor(GK.Colors.scoreYellow.opacity(0.7))
+
+                        Label {
+                            Text("\(friend.stats.gamesPlayed) GAMES")
+                                .font(.custom(GK.pixelFontName, size: 7))
+                        } icon: {
+                            Image(systemName: "gamecontroller.fill")
+                                .font(.system(size: 8))
+                        }
+                        .foregroundColor(.white.opacity(0.4))
+                    }
                 }
-            } label: {
-                HStack(spacing: 3) {
-                    Image(systemName: "swords")
+
+                Spacer()
+
+                // Remove button (top-right corner, subtle)
+                Button {
+                    SoundManager.shared.play(.button)
+                    Task { await removeFriend(friend.userId) }
+                } label: {
+                    Image(systemName: "xmark")
                         .font(.system(size: 8, weight: .bold))
-                    Text("CHALLENGE")
-                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(.white.opacity(0.25))
+                        .frame(width: 24, height: 24)
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule().fill(GK.Colors.buttonOrange)
-                )
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
-            Button {
-                SoundManager.shared.play(.button)
-                Haptic.buttonTap()
-                manager.navigate(to: .publicProfile(friend.userId))
-            } label: {
-                Text("VIEW")
-                    .font(.custom(GK.pixelFontName, size: 7))
+            // Bottom row: action buttons with breathing room
+            HStack(spacing: 10) {
+                Spacer()
+
+                Button {
+                    SoundManager.shared.play(.button)
+                    Haptic.buttonTap()
+                    manager.goHome()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        manager.startMatchmaking(mode: .privateRoom)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "swords")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("CHALLENGE")
+                            .font(.custom(GK.pixelFontName, size: 8))
+                    }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
                     .background(
-                        Capsule().fill(GK.Colors.buttonBlue)
+                        Capsule().fill(GK.Colors.buttonOrange)
                     )
-            }
-            .buttonStyle(.plain)
+                }
+                .buttonStyle(.plain)
 
-            Button {
-                SoundManager.shared.play(.button)
-                Task { await removeFriend(friend.userId) }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(GK.Colors.buttonRed.opacity(0.7))
-                    .frame(width: 28, height: 28)
-                    .background(
-                        Circle().fill(Color.white.opacity(0.08))
-                    )
+                Button {
+                    SoundManager.shared.play(.button)
+                    Haptic.buttonTap()
+                    manager.navigate(to: .publicProfile(friend.userId))
+                } label: {
+                    Text("VIEW")
+                        .font(.custom(GK.pixelFontName, size: 8))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule().fill(GK.Colors.buttonBlue)
+                        )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.top, 8)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.white.opacity(0.08))

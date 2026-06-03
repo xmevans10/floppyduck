@@ -302,8 +302,9 @@ final class SoundManager {
             player.volume = volume
             return player
         }
-        guard let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
-              let player = try? AVAudioPlayer(contentsOf: url) else {
+        let url = Bundle.main.url(forResource: fileName, withExtension: "m4a")
+                  ?? Bundle.main.url(forResource: fileName, withExtension: "mp3")
+        guard let url, let player = try? AVAudioPlayer(contentsOf: url) else {
             return nil
         }
         player.numberOfLoops = -1
@@ -475,6 +476,7 @@ final class SoundManager {
     @objc private func handleMediaServicesWereReset() {
         audioQueue.async { [weak self] in
             guard let self else { return }
+            let currentSkin = self.activeSkin
             self.didSetupSession = false
             self.didPrepareAudio = false
             self.players.removeAll()
@@ -494,6 +496,13 @@ final class SoundManager {
             self.skinPoolIndexes.removeAll()
             self.skinBaseVolumes.removeAll()
             self.sfxBaseVolumes.removeAll()
+
+            // Rebuild base sounds + active skin variants so per-skin
+            // quack/flap/death don't fall back to classic after reset.
+            self.prepareIfNeeded()
+            self.buildSkinVariants(for: currentSkin)
+            self.loadBundledQuacks()
+
             self.restoreAudioAfterInterruption()
         }
     }
@@ -911,9 +920,11 @@ final class SoundManager {
     func playRandomQuack() {
         audioQueue.async { [weak self] in
             guard let self, self.isEnabled else { return }
+            self.prepareIfNeeded()
 
             // Non-classic skins get a unique synthesized quack
             if self.activeSkin != .classic {
+                self.buildSkinVariants(for: self.activeSkin)
                 let key = "\(self.activeSkin.rawValue)_quack"
                 if let pool = self.skinPlayerPools[key], let skinPlayer = pool.first {
                     skinPlayer.stop()
