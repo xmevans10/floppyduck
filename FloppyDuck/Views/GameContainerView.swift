@@ -1683,6 +1683,23 @@ struct GameContainerView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
+            if showBread && config.isRanked && headToHeadOutcomeReady, let delta = matchResult?.ratingDelta {
+                Divider()
+                HStack {
+                    pixelIcon(.trophy, size: 16)
+                    Text("ELO")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(GK.Colors.panelBorder)
+                    Spacer()
+                    Text("\(manager.stats.elo)")
+                        .font(.custom(GK.pixelFontName, size: 14))
+                        .foregroundColor(GK.Colors.panelBorder)
+                    Text(delta >= 0 ? "(+\(delta))" : "(\(delta))")
+                        .font(.custom(GK.pixelFontName, size: 10))
+                        .foregroundColor(delta >= 0 ? GK.Colors.buttonGreen : GK.Colors.buttonRed)
+                }
+            }
+
             if showBread && (!isHeadToHead || headToHeadOutcomeReady) && !battleRoyalePending && (!isBattleRoyale || battleRoyalePrize > 0 || collectedBreadEarned > 0) {
                 Group {
                     Divider()
