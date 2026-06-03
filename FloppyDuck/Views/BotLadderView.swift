@@ -217,154 +217,93 @@ struct BotLadderView: View {
             SoundManager.shared.play(.button)
             manager.startBotLadderMatch(bot)
         } label: {
-            VStack(spacing: 0) {
-                // Rank label above the card for the next challenge
-                if isNext {
-                    Text("⚔️ NEXT CHALLENGER")
-                        .font(.custom(GK.pixelFontName, size: 7))
-                        .foregroundColor(bot.accentColor)
-                        .padding(.bottom, 6)
-                }
+            HStack(spacing: 14) {
+                // Rank number + portrait
+                ZStack {
+                    botPortrait(bot: bot, beaten: beaten, locked: locked, isNext: isNext, isBoss: isBoss)
 
-                HStack(spacing: 14) {
-                    // Rank number + portrait
-                    ZStack {
-                        botPortrait(bot: bot, beaten: beaten, locked: locked, isNext: isNext, isBoss: isBoss)
-
-                        // Rank badge (top-left)
-                        VStack {
-                            HStack {
-                                Text("\(rank)")
-                                    .font(.custom(GK.pixelFontName, size: 7))
-                                    .foregroundColor(beaten ? .white : .white.opacity(0.7))
-                                    .frame(width: 18, height: 18)
-                                    .background(
-                                        Circle()
-                                            .fill(beaten ? GK.Colors.buttonGreen : Color.black.opacity(0.4))
-                                    )
-                                Spacer()
-                            }
+                    // Rank badge (top-left)
+                    VStack {
+                        HStack {
+                            Text("\(rank)")
+                                .font(.custom(GK.pixelFontName, size: 7))
+                                .foregroundColor(beaten ? .white : .white.opacity(0.7))
+                                .frame(width: 18, height: 18)
+                                .background(
+                                    Circle()
+                                        .fill(beaten ? GK.Colors.buttonGreen : Color.black.opacity(0.4))
+                                )
                             Spacer()
                         }
-                        .frame(width: 52, height: 52)
+                        Spacer()
                     }
+                    .frame(width: 52, height: 52)
+                }
 
-                    // Info column
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text(bot.name)
-                                .font(.custom(GK.pixelFontName, size: isNext ? 14 : 11))
-                                .foregroundColor(
-                                    isNext ? .white :
-                                    locked ? GK.Colors.panelBorder.opacity(0.35) :
-                                    GK.Colors.panelBorder)
-                            if isBoss && !locked {
-                                Image(uiImage: icons.image(for: .crown, pixelScale: 2.0))
-                                    .interpolation(.none)
-                                    .resizable()
-                                    .frame(width: 12, height: 12)
-                            }
-                        }
+                // Name only
+                Text(bot.name)
+                    .font(.custom(GK.pixelFontName, size: isNext ? 14 : 11))
+                    .foregroundColor(
+                        isNext ? .white :
+                        locked ? GK.Colors.panelBorder.opacity(0.35) :
+                        GK.Colors.panelBorder)
 
-                        if locked {
-                            Text("LOCKED")
-                                .font(.custom(GK.pixelFontName, size: 6))
-                                .foregroundColor(GK.Colors.panelBorder.opacity(0.3))
-                        } else {
-                            // Title line — clean, no ELO clutter
-                            Text(beaten ? "DEFEATED ✓" : bot.title.uppercased())
-                                .font(.custom(GK.pixelFontName, size: 7))
-                                .foregroundColor(
-                                    isNext ? .white.opacity(0.7) :
-                                    beaten ? GK.Colors.buttonGreen.opacity(0.8) :
-                                    GK.Colors.panelBorder.opacity(0.5))
+                Spacer()
 
-                            // Target score — only shown for current challenge
-                            if isNext {
-                                Text("TARGET: \(bot.targetScore) PIPES")
-                                    .font(.custom(GK.pixelFontName, size: 7))
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .padding(.top, 1)
-                            }
-
-                            // Reward preview
-                            if !beaten && !locked {
-                                rewardPreview(for: bot)
-                                    .padding(.top, 2)
-                            }
-                        }
-                    }
-
-                    Spacer()
-
-                    // Action column
+                // Action column — replay only
+                if beaten {
+                    Text("REPLAY")
+                        .font(.custom(GK.pixelFontName, size: 7))
+                        .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .overlay(
+                            Capsule().stroke(GK.Colors.panelBorder.opacity(0.15), lineWidth: 1))
+                } else if locked {
+                    Image(uiImage: icons.image(for: .lock, pixelScale: 2.0))
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 14, height: 14)
+                        .opacity(0.25)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, isNext ? 16 : 12)
+            .background(
+                Group {
                     if isNext {
-                        VStack(spacing: 4) {
-                            Text("FIGHT")
-                                .font(.custom(GK.pixelFontName, size: 10))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.white.opacity(0.25))
-                                        .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: 1.5))
-                                )
-                        }
+                        // Active challenge — bot's accent color with glow
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(bot.accentColor)
+                            .shadow(color: bot.accentColor.opacity(0.6), radius: 8, x: 0, y: 4)
                     } else if beaten {
-                        Text("REPLAY")
-                            .font(.custom(GK.pixelFontName, size: 7))
-                            .foregroundColor(GK.Colors.panelBorder.opacity(0.4))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .overlay(
-                                Capsule().stroke(GK.Colors.panelBorder.opacity(0.15), lineWidth: 1))
-                    } else if locked {
-                        Image(uiImage: icons.image(for: .lock, pixelScale: 2.0))
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 14, height: 14)
-                            .opacity(0.25)
+                        // Beaten — subtle green-tinted cream
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(GK.Colors.panelCream)
+                            .shadow(color: GK.Colors.buttonGreen.opacity(0.15), radius: 0, x: 0, y: 3)
+                    } else {
+                        // Locked or upcoming — dark translucent
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.black.opacity(locked ? 0.2 : 0.3))
+                            .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, isNext ? 16 : 12)
-                .background(
-                    Group {
-                        if isNext {
-                            // Active challenge — bot's accent color with glow
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(bot.accentColor)
-                                .shadow(color: bot.accentColor.opacity(0.6), radius: 8, x: 0, y: 4)
-                        } else if beaten {
-                            // Beaten — subtle green-tinted cream
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(GK.Colors.panelCream)
-                                .shadow(color: GK.Colors.buttonGreen.opacity(0.15), radius: 0, x: 0, y: 3)
-                        } else {
-                            // Locked or upcoming — dark translucent
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.black.opacity(locked ? 0.2 : 0.3))
-                                .shadow(color: Color.black.opacity(0.1), radius: 0, x: 0, y: 3)
-                        }
-                    }
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            isNext ? Color.white.opacity(0.3) :
-                            beaten ? GK.Colors.buttonGreen.opacity(0.3) :
-                            Color.white.opacity(locked ? 0.05 : 0.1),
-                            lineWidth: isNext ? 2.5 : 2)
-                )
-            }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(
+                        isNext ? Color.white.opacity(0.3) :
+                        beaten ? GK.Colors.buttonGreen.opacity(0.3) :
+                        Color.white.opacity(locked ? 0.05 : 0.1),
+                        lineWidth: isNext ? 2.5 : 2)
+            )
         }
         .buttonStyle(.plain)
         .disabled(locked)
         .opacity(locked ? 0.45 : 1.0)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(bot.name), \(bot.title), rank \(rank)" +
+            "\(bot.name), rank \(rank)" +
             (beaten ? ", beaten" : isNext ? ", next challenge" : locked ? ", locked" : ""))
         .accessibilityHint(
             isNext ? "Double-tap to challenge" :

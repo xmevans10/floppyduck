@@ -29,6 +29,7 @@ enum ThemeRecipeCatalog {
         case .london:      return london
         case .castle: return castle
         case .clouds:       return clouds
+        case .park:         return park
         }
     }
 
@@ -331,6 +332,25 @@ enum ThemeRecipeCatalog {
         clouds: clouds("day_clouds"),
         ground: ground("clouds_ground"),
         groundBase: groundBase("clouds_foreground3"),
+        overlays: [],
+        contrastBudget: defaultBudget
+    )
+
+    static let park = ThemeRecipe(
+        hero: hero("park_hero"),
+        clouds: clouds("day_clouds"),
+        midgroundSprites: MidgroundSpawnConfig(
+            props: [
+                MidgroundProp(assetName: "day_sprite_oak_tree",            heightPoints: 163, weight: 3, scaleRange: 0.7...1.2, isTree: true),
+                MidgroundProp(assetName: "day_sprite_bush",                heightPoints: 63,  weight: 3, scaleRange: 0.6...1.0),
+                MidgroundProp(assetName: "day_sprite_flowers",             heightPoints: 44,  weight: 3, scaleRange: 0.5...0.9),
+                MidgroundProp(assetName: "day_sprite_rock",                heightPoints: 50,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "day_sprite_grassy_bush_clump",   heightPoints: 70,  weight: 2, scaleRange: 0.7...1.0),
+                MidgroundProp(assetName: "day_sprite_picnic_rock_cluster", heightPoints: 60,  weight: 2, scaleRange: 0.7...1.0),
+            ]
+        ),
+        ground: ground("park_ground"),
+        groundBase: groundBase("park_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )

@@ -55,6 +55,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
 
     case clouds
     case castle = "fantasyCastle"
+    case park
 
     var id: String { rawValue }
 
@@ -81,6 +82,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return "LONDON"
         case .castle: return "CASTLE"
         case .clouds:       return "CLOUDS"
+        case .park:         return "PARK"
         }
     }
 
@@ -105,6 +107,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return "Cheerio!"
         case .castle: return "Once Upon a Quack"
         case .clouds:       return "Head in the Clouds"
+        case .park:         return "The Duck's Domain"
         }
     }
 
@@ -121,7 +124,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return .premium
         case .lagoon, .losAngeles, .london:
             return .normal
-        case .castle, .clouds:
+        case .castle, .clouds, .park:
             return .normal
         }
     }
@@ -145,6 +148,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return 200
         case .castle: return 225
         case .clouds:       return 200
+        case .park:         return 225
         default:           return nil
         }
     }
@@ -297,6 +301,13 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.75, green: 0.88, blue: 0.98),
                 Color(red: 0.90, green: 0.95, blue: 1.00),
             ]
+        case .park:
+            return [
+                Color(red: 0.25, green: 0.55, blue: 0.88),
+                Color(red: 0.45, green: 0.72, blue: 0.95),
+                Color(red: 0.65, green: 0.85, blue: 0.95),
+                Color(red: 0.80, green: 0.92, blue: 0.90),
+            ]
         }
     }
 
@@ -322,6 +333,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return UIColor(red: 0.42, green: 0.45, blue: 0.48, alpha: 1)
         case .castle: return UIColor(red: 0.35, green: 0.25, blue: 0.55, alpha: 1)
         case .clouds:       return UIColor(red: 0.40, green: 0.65, blue: 0.92, alpha: 1)
+        case .park:         return UIColor(red: 0.35, green: 0.65, blue: 0.90, alpha: 1)
         }
     }
 
@@ -381,6 +393,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return [.mist, .stars]
         case .clouds:
             return [.mist]
+        case .park:
+            return [.petals]
         }
     }
 
@@ -406,6 +420,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return Color(red: 0.30, green: 0.30, blue: 0.32)
         case .castle: return Color(red: 0.22, green: 0.40, blue: 0.20)
         case .clouds:       return Color(red: 0.80, green: 0.88, blue: 0.95)
+        case .park:         return Color(red: 0.30, green: 0.52, blue: 0.22)
         }
     }
 
@@ -431,6 +446,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return Color(red: 0.25, green: 0.25, blue: 0.28)
         case .castle: return Color(red: 0.15, green: 0.28, blue: 0.12)
         case .clouds:       return Color(red: 0.70, green: 0.82, blue: 0.92)
+        case .park:         return Color(red: 0.25, green: 0.45, blue: 0.18)
         }
     }
 
@@ -456,6 +472,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return Color(red: 0.75, green: 0.20, blue: 0.20)
         case .castle: return Color(red: 0.80, green: 0.65, blue: 0.20)
         case .clouds:       return Color(red: 0.40, green: 0.65, blue: 0.95)
+        case .park:         return Color(red: 0.35, green: 0.70, blue: 0.25)
         }
     }
 
@@ -495,6 +512,7 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
         case .london:      return "theme_london"
         case .castle: return "theme_castle"
         case .clouds:       return "theme_clouds"
+        case .park:         return "theme_park"
         }
     }
 

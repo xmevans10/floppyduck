@@ -1801,11 +1801,8 @@ final class TextureFactory: @unchecked Sendable {
             grid[off + 4][6] = B
 
         case .golden:
-            // Small crown — 3 rows above body
-            let G = UIColor(red: 0.95, green: 0.80, blue: 0.20, alpha: 1) // bright gold
-            grid[0] = [C, C, C, C, G, C, G, C, G, C, C, C, C, C, C, C]
-            grid[1] = [C, C, C, C, B, G, G, G, B, C, C, C, C, C, C, C]
-            grid[2] = [C, C, C, C, B, G, G, G, B, C, C, C, C, C, C, C]
+            // Golden mallard — no accessories, just the classic body in gold
+            break
 
         case .ninja:
             // Headband band + tied tail + black eye mask

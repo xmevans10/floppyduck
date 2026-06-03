@@ -160,7 +160,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .devil:     return (16, 14)
         case .sailor:    return (16, 14)
         case .pirate:    return (16, 15)
-        case .golden:    return (16, 14)
+        case .golden:    return (16, 11)
         case .ninja:     return (16, 14)
         case .astronaut: return (16, 15)
         case .pharaoh:   return (16, 15)
@@ -187,7 +187,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .devil:     return 3
         case .sailor:    return 3
         case .pirate:    return 4
-        case .golden:    return 3
+        case .golden:    return 0
         case .ninja:     return 3
         case .astronaut: return 4
         case .pharaoh:   return 4
@@ -249,7 +249,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .bearskin:    return (349, 399)
         case .classic:     return (315, 231)
         case .sailor:      return (315, 294)
-        case .golden:      return (315, 294)
+        case .golden:      return (315, 231)
         case .spider:      return (315, 294)
         }
     }

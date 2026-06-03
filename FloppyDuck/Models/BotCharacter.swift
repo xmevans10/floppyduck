@@ -109,7 +109,7 @@ struct BotCharacter: Identifiable, Hashable {
             id: "the_duck", name: "THE DUCK", title: "Final Boss", elo: 1700,
             difficulty: BotDifficulty(noiseRange: 2, flapStrength: 0.985, errorRate: 0.00),
             accentColor: Color(red: 0.95, green: 0.80, blue: 0.18), targetScore: 65,
-            seed: 158008, skin: .golden, theme: .egypt, taunt: "I am the one true duck. You are not ready."),
+            seed: 158008, skin: .golden, theme: .park, taunt: "I am the one true duck. You are not ready."),
     ]
 
     static func find(_ id: String) -> BotCharacter? {

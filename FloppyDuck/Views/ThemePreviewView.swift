@@ -3,6 +3,7 @@ import SwiftUI
 /// Per-theme hero preview for Collection / Shop selection cards.
 /// Displays the actual hero PNG asset used in-game, square-cropped to
 /// show the most visually distinctive region of each theme's backdrop.
+/// The Park theme also renders The Duck (golden mallard) at the bottom.
 struct ThemePreviewView: View {
     let theme: BackgroundTheme
 
@@ -17,6 +18,17 @@ struct ThemePreviewView: View {
                     .aspectRatio(contentMode: .fill)
             }
             .clipped()
+            .overlay(alignment: .bottom) {
+                if theme == .park {
+                    // Render The Duck (golden mallard) at the bottom of the park card
+                    Image(uiImage: TextureFactory.shared.skinDuckUIImage(skin: .golden, pixelScale: 5.0))
+                        .interpolation(.none)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 40, height: 40)
+                        .padding(.bottom, 6)
+                }
+            }
     }
 }
 
