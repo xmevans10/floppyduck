@@ -413,7 +413,8 @@ struct CollectionView: View {
     // MARK: - Data
 
     private var ownedSkins: [DuckSkin] {
-        DuckSkin.allCases.filter { skinManager.ownedSkins.contains($0) }
+        let owned = DuckSkin.allCases.filter { skinManager.ownedSkins.contains($0) }
+        return owned.filter { $0 != .golden } + owned.filter { $0 == .golden }
     }
 
     // MARK: - Skin Card

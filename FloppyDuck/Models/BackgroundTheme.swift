@@ -389,12 +389,8 @@ enum BackgroundTheme: String, CaseIterable, Identifiable, Codable {
             return [.dust]
         case .london:
             return [.rain, .mist]
-        case .castle:
-            return [.mist, .stars]
-        case .clouds:
-            return [.mist]
-        case .park:
-            return [.petals]
+        case .castle, .clouds, .park:
+            return []
         }
     }
 

@@ -358,8 +358,13 @@ final class TextureFactory: @unchecked Sendable {
     func skinDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
         let key = "skin_\(skin.rawValue)_\(wingPhase)"
         if let cached = cachedTexture(forKey: key) { return cached }
-        let image = productionSkinUIImage(skin: skin, wingPhase: wingPhase, ghost: false)
-            ?? renderSkinnedDuck(skin: skin, wingPhase: wingPhase)
+        let image: UIImage
+        if skin == .golden {
+            image = renderSkinnedDuck(skin: skin, wingPhase: wingPhase)
+        } else {
+            image = productionSkinUIImage(skin: skin, wingPhase: wingPhase, ghost: false)
+                ?? renderSkinnedDuck(skin: skin, wingPhase: wingPhase)
+        }
         let tex = SKTexture(image: image)
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -370,8 +375,13 @@ final class TextureFactory: @unchecked Sendable {
     func skinBotDuckTexture(skin: DuckSkin, wingPhase: Int) -> SKTexture {
         let key = "skinbot_\(skin.rawValue)_\(wingPhase)"
         if let cached = cachedTexture(forKey: key) { return cached }
-        let image = productionSkinUIImage(skin: skin, wingPhase: wingPhase, ghost: true)
-            ?? renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true)
+        let image: UIImage
+        if skin == .golden {
+            image = renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true)
+        } else {
+            image = productionSkinUIImage(skin: skin, wingPhase: wingPhase, ghost: true)
+                ?? renderSkinnedDuck(skin: skin, wingPhase: wingPhase, ghost: true)
+        }
         let tex = SKTexture(image: image)
         tex.filteringMode = .nearest
         cacheStore(key, tex)
@@ -381,6 +391,9 @@ final class TextureFactory: @unchecked Sendable {
     /// UIImage of a skinned duck for SwiftUI (shop previews, home mascot).
     func skinDuckUIImage(skin: DuckSkin, pixelScale: CGFloat = 7.0) -> UIImage {
         cachedUIImage(forKey: "ui_skin_\(skin.rawValue)_\(Int(pixelScale * 100))") {
+            if skin == .golden {
+                return renderSkinnedDuck(skin: skin, wingPhase: 1, pixelSize: pixelScale)
+            }
             if let image = productionSkinUIImage(skin: skin, wingPhase: 1, ghost: false) {
                 let targetBodyWidth = 16.0 * pixelScale
                 let standardBodyWidth = GK.duckRadius * 2.8
@@ -1801,7 +1814,12 @@ final class TextureFactory: @unchecked Sendable {
             grid[off + 4][6] = B
 
         case .golden:
-            // Golden mallard — no accessories, just the classic body in gold
+            // Shiny golden base mallard — no accessories or alternate sprite art.
+            let shine = UIColor(red: 1.0, green: 0.98, blue: 0.72, alpha: 1)
+            grid[off + 1][6] = shine
+            grid[off + 2][5] = shine
+            grid[off + 5][3] = shine
+            grid[off + 8][5] = shine
             break
 
         case .ninja:

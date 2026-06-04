@@ -44,7 +44,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .devil:     return "DEVIL"
         case .sailor:    return "BUCCANEER"
         case .pirate:    return "PIRATE"
-        case .golden:    return "GOLDEN"
+        case .golden:    return "THE DUCK"
         case .ninja:     return "NINJA"
         case .astronaut: return "ASTRONAUT"
         case .pharaoh:   return "PHARAOH"
@@ -221,8 +221,10 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
     /// because the body fills the entire canvas at 19.7 px/col.
     private var productionBodyPixelWidth: CGFloat {
         switch self {
-        case .classic, .sailor, .golden, .spider:
+        case .classic, .sailor, .spider:
             return 315   // pixel-grid body fills entire 315 px frame
+        case .golden:
+            return 16    // procedural shiny base mallard; no production PNG
         default:
             return 253   // hand-drawn skins: body drawn at 253 px
         }
@@ -249,7 +251,7 @@ enum DuckSkin: String, CaseIterable, Identifiable, Codable {
         case .bearskin:    return (349, 399)
         case .classic:     return (315, 231)
         case .sailor:      return (315, 294)
-        case .golden:      return (315, 231)
+        case .golden:      return nil
         case .spider:      return (315, 294)
         }
     }

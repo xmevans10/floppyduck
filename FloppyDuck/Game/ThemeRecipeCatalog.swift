@@ -320,7 +320,7 @@ enum ThemeRecipeCatalog {
 
     static let castle = ThemeRecipe(
         hero: hero("fantasyCastle_hero"),
-        clouds: clouds("day_clouds"),
+        clouds: nil,
         ground: ground("castle_ground"),
         groundBase: groundBase("castle_foreground3"),
         overlays: [],
@@ -329,7 +329,7 @@ enum ThemeRecipeCatalog {
 
     static let clouds = ThemeRecipe(
         hero: hero("clouds_hero"),
-        clouds: clouds("day_clouds"),
+        clouds: nil,
         ground: ground("clouds_ground"),
         groundBase: groundBase("clouds_foreground3"),
         overlays: [],
@@ -338,19 +338,16 @@ enum ThemeRecipeCatalog {
 
     static let park = ThemeRecipe(
         hero: hero("park_hero"),
-        clouds: clouds("day_clouds"),
+        clouds: nil,
         midgroundSprites: MidgroundSpawnConfig(
             props: [
-                MidgroundProp(assetName: "day_sprite_oak_tree",            heightPoints: 163, weight: 3, scaleRange: 0.7...1.2, isTree: true),
-                MidgroundProp(assetName: "day_sprite_bush",                heightPoints: 63,  weight: 3, scaleRange: 0.6...1.0),
-                MidgroundProp(assetName: "day_sprite_flowers",             heightPoints: 44,  weight: 3, scaleRange: 0.5...0.9),
-                MidgroundProp(assetName: "day_sprite_rock",                heightPoints: 50,  weight: 2, scaleRange: 0.7...1.0),
-                MidgroundProp(assetName: "day_sprite_grassy_bush_clump",   heightPoints: 70,  weight: 2, scaleRange: 0.7...1.0),
-                MidgroundProp(assetName: "day_sprite_picnic_rock_cluster", heightPoints: 60,  weight: 2, scaleRange: 0.7...1.0),
-            ]
+                MidgroundProp(assetName: "day_sprite_oak_tree", heightPoints: 260, weight: 1, scaleRange: 1.0...1.25, yOffset: 24, isTree: true),
+            ],
+            scrollSpeed: 0.25,
+            spacingRange: 360...560
         ),
-        ground: ground("park_ground"),
-        groundBase: groundBase("park_foreground3"),
+        ground: ground("day_ground"),
+        groundBase: groundBase("day_foreground3"),
         overlays: [],
         contrastBudget: defaultBudget
     )

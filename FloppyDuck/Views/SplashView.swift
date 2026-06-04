@@ -68,10 +68,8 @@ struct SplashView: View {
             }
         }
 
-        // 0.75 s — Quack SFX + haptic right as the spring settles
-        // (spring response 0.55 + start 0.30 ≈ 0.85; firing slightly
-        //  early compensates for AVAudioPlayer decode latency ~50-100ms)
-        after(0.75) {
+        // 0.5 s — Quack SFX + haptic shortly after the splash appears.
+        after(0.50) {
             playQuackOnce()
         }
 
@@ -123,7 +121,7 @@ struct SplashView: View {
         }
     }
 
-    /// Play the quack exactly once — whether triggered by the 0.9s timer or a tap.
+    /// Play the quack exactly once — whether triggered by the 0.5s timer or a tap.
     private func playQuackOnce() {
         guard !quackPlayed else { return }
         quackPlayed = true
