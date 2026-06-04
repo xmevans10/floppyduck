@@ -501,7 +501,7 @@ final class SoundManager {
             // quack/flap/death don't fall back to classic after reset.
             self.prepareIfNeeded()
             self.buildSkinVariants(for: currentSkin)
-            self.loadBundledQuacks()
+            self.loadQuackSounds()
 
             self.restoreAudioAfterInterruption()
         }
