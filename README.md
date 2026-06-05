@@ -1,87 +1,59 @@
-# 🦆 Floppy Duck
+# Floppy Duck
 
-A retro iOS flappy-style game built with SpriteKit + SwiftUI.
+Retro iOS flappy-style game built with SpriteKit, SwiftUI, and a Convex multiplayer backend.
 
-## Current Status (April 2, 2026)
-
-- `Shipped`: Classic solo mode, VS Bot ladder, shop, stats, settings, controller-wired gameplay, leaderboard polish, accessibility labels, haptics/audio polish.
-- `Implemented`: Head-to-head multiplayer contracts (queue/room/matches/ratings), guest + Apple identity flows, and authoritative result polling.
-- `In Hardening`: Two-device smoke validation, real App Store URL, screenshot verification, StoreKit/App Store Connect reconciliation, and final metadata/compliance checks.
-- `Already In Repo`: App icon set and privacy manifest.
-
-## Source Of Truth
-
-- Launch readiness: [testflight.md](/Users/xanderevans/Documents/floppyduck/testflight.md)
-- App Store copy and IAP inventory: [docs/APPSTORE_METADATA.md](/Users/xanderevans/Documents/floppyduck/docs/APPSTORE_METADATA.md)
-- Business/operator playbooks: [marketing.md](/Users/xanderevans/Documents/floppyduck/marketing.md), [product.md](/Users/xanderevans/Documents/floppyduck/product.md), [research.md](/Users/xanderevans/Documents/floppyduck/research.md), [tracking.md](/Users/xanderevans/Documents/floppyduck/tracking.md), [growth.md](/Users/xanderevans/Documents/floppyduck/growth.md), [support.md](/Users/xanderevans/Documents/floppyduck/support.md), [monetization.md](/Users/xanderevans/Documents/floppyduck/monetization.md)
-
-## Requirements
-
-- Xcode 15.0+
-- iOS 17.0+
-- Swift 5.9+
-
-## Getting Started
+## Start Here
 
 1. Open `FloppyDuck.xcodeproj` in Xcode.
-2. Select your development team under Signing & Capabilities.
-3. Build and run on simulator or device (`⌘R`).
+2. Select a development team under Signing & Capabilities.
+3. Build and run the `FloppyDuck` scheme on an iOS simulator or device.
 
-## Architecture
+Requirements: Xcode 15.0+, iOS 17.0+, Swift 5.9+.
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| `Game Engine` | SpriteKit | Physics, rendering, collisions |
-| `UI` | SwiftUI | Menus, overlays, navigation |
-| `Graphics` | Core Graphics | Programmatic pixel-art textures |
-| `Backend` | Convex (REST) | Live auth + multiplayer contracts deployed |
-| `Haptics` | UIKit | Tactile feedback on flap/score/death |
+## Repository Map
 
-## Game Modes
+```text
+FloppyDuck/             iOS app source, assets, and bundled audio
+FloppyDuck/Audio/       Music, quacks, SFX, and QA source audio
+FloppyDuckTests/        Unit and integration tests
+FloppyDuckUITests/      Screenshot and UI performance tests
+convex/                 Convex backend functions and schema
+docs/                   Launch, product, art, public-site, and archive docs
+fastlane/               App Store Connect and TestFlight automation
+prompts/                Theme prompt sources
+scripts/                Repo automation and generation helpers
+tools/                  Local art and recipe tooling
+artifacts/              Generated or review-only art outputs
+midground-prod/         Production midground source exports
+Pixelorama/             Vendored Pixelorama reference submodule
+```
 
-- `Shipped` `Classic` - Solo endless run.
-- `Shipped` `VS Bot` - Bot ladder progression.
-- `Implemented` `Head to Head` - Quick Play / Ranked / Private Room UI + Convex contract wiring.
-- `In Hardening` `Launch readiness` - Smoke validation, screenshot verification, and TestFlight/App Store completion.
+## Common References
 
-## Project Structure
+- Launch readiness: [docs/launch/TESTFLIGHT_RUNBOOK.md](docs/launch/TESTFLIGHT_RUNBOOK.md)
+- Documentation index: [docs/README.md](docs/README.md)
+- Audio QA package: [FloppyDuck/Audio/README.md](FloppyDuck/Audio/README.md)
+- App Store metadata: [docs/APPSTORE_METADATA.md](docs/APPSTORE_METADATA.md)
+- Product roadmap: [docs/product/ROADMAP.md](docs/product/ROADMAP.md)
+- Artwork pipeline: [docs/art/ARTWORK.md](docs/art/ARTWORK.md)
+
+## App Structure
 
 ```text
 FloppyDuck/
-├── App/                    # App entry point + navigation
-├── Game/                   # SpriteKit scene + physics constants
-├── Models/                 # App state, stats, matchmaking/session models
-├── Views/                  # SwiftUI screens
-│   ├── HomeView            # Main menu
-│   ├── MatchmakingView     # Multiplayer mode select + queue/room flows (scaffolded/in-progress)
-│   ├── GameContainerView   # SpriteKit host + overlays + match result handling
-│   └── Components/         # Reusable UI components
-├── Services/               # Convex REST client
-└── Utilities/              # PRNG, haptics, texture/icon/audio factories
+├── App/                 App entry point and navigation shell
+├── Assets.xcassets/     Runtime visual assets
+├── Audio/               Runtime audio and sound-designer QA sources
+├── Config/              StoreKit and app configuration
+├── Game/                SpriteKit scene, controllers, and game constants
+├── Models/              App state, unlocks, themes, skins, and multiplayer models
+├── Services/            Auth, analytics, identity, and Convex clients
+├── Utilities/           Audio, haptics, PRNG, textures, and pixel UI helpers
+└── Views/               SwiftUI screens and reusable components
 ```
 
-## Multiplayer
+## Validation
 
-### What exists now
-
-- Matchmaking mode selection (Quick Play, Ranked, Private Room).
-- Queue/room join flows with timeout and cancel handling.
-- Head-to-head game config wiring (seed/opponent/match metadata).
-- In-game score reporting + opponent score polling hooks.
-- Match finish + stats application path (wins/losses/bread/ELO handling).
-
-### What remains to ship
-
-- End-to-end release smoke tests (auth + multiplayer) across two real devices.
-- Screenshot verification across required sizes.
-- Metadata, StoreKit, and compliance completion for TestFlight/App Store submission.
-
-## Roadmap
-
-- Launch hardening: real App Store URL, screenshot verification, StoreKit sandbox pass, and TestFlight/App Store Connect completion.
-- Multiplayer resilience: reconnect handling, abandoned-match timeout UX, leaderboard pagination.
-- Gameplay/performance: deterministic dynamic gaps, draw-call batching, on-device profiling.
-
-## Credits
-
-Built by Viktor AI for xmevans10.
+- Project sync: `ruby scripts/xcode/check_project_sync.rb`
+- Unit tests: `xcodebuild test -project FloppyDuck.xcodeproj -scheme FloppyDuck -only-testing:FloppyDuckTests`
+- Screenshot tests: `xcodebuild test -project FloppyDuck.xcodeproj -scheme FloppyDuck -only-testing:FloppyDuckUITests/ScreenshotTests`

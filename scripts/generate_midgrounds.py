@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate Retro Diffusion midground assets from prompts in midground-ideas.md.
+"""Generate Retro Diffusion midground assets from prompts in docs/art/midground-ideas.md.
 
-Reads the canonical prompt block from midground-ideas.md (the section titled
+Reads the canonical prompt block from docs/art/midground-ideas.md (the section titled
 "## Retro Diffusion API Prompts (Production)"), POSTs each prompt to the Retro
 Diffusion v1 inferences endpoint, and writes the returned PNGs to
 ./midgrounds-new/<biome>/<biome>__<slug>__v<N>.png.
@@ -38,7 +38,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
-PROMPTS_FILE = ROOT / "midground-ideas.md"
+PROMPTS_FILE = ROOT / "docs" / "art" / "midground-ideas.md"
 OUTPUT_DIR = ROOT / "midgrounds-new"
 
 API_URL = "https://api.retrodiffusion.ai/v1/inferences"
@@ -90,7 +90,7 @@ def load_api_key() -> str:
 
 
 def parse_prompts() -> tuple[str, list[dict]]:
-    """Parse (universal_suffix, prompts) from midground-ideas.md."""
+    """Parse (universal_suffix, prompts) from docs/art/midground-ideas.md."""
     if not PROMPTS_FILE.exists():
         sys.exit(f"Missing {PROMPTS_FILE}")
 

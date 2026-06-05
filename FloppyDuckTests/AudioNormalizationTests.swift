@@ -21,6 +21,11 @@ final class AudioNormalizationTests: XCTestCase {
     /// Keeps perceived loudness within a reasonable band.
     private let maxRMSRatio: Float = 4.0  // ≈ 12 dB spread
 
+    private func bundledMusicURL(for fileName: String) -> URL? {
+        Bundle.main.url(forResource: fileName, withExtension: "m4a")
+            ?? Bundle.main.url(forResource: fileName, withExtension: "mp3")
+    }
+
     // MARK: - All themes have bundled gameplay music
 
     func testEveryThemeHasGameplayMusicFile() {
@@ -38,8 +43,8 @@ final class AudioNormalizationTests: XCTestCase {
                 // Covered by testEveryThemeHasGameplayMusicFile
                 continue
             }
-            let url = Bundle.main.url(forResource: fileName, withExtension: "m4a")
-            XCTAssertNotNil(url, "\(theme.rawValue) gameplay music file '\(fileName).m4a' not found in bundle")
+            let url = bundledMusicURL(for: fileName)
+            XCTAssertNotNil(url, "\(theme.rawValue) gameplay music file '\(fileName)' not found as m4a or mp3 in bundle")
         }
     }
 
@@ -49,8 +54,8 @@ final class AudioNormalizationTests: XCTestCase {
                 XCTFail("\(theme.rawValue) is missing a menuMusicFile")
                 continue
             }
-            let url = Bundle.main.url(forResource: menuFile, withExtension: "m4a")
-            XCTAssertNotNil(url, "Menu music file '\(menuFile).m4a' not found in bundle")
+            let url = bundledMusicURL(for: menuFile)
+            XCTAssertNotNil(url, "Menu music file '\(menuFile)' not found as m4a or mp3 in bundle")
         }
     }
 
@@ -69,7 +74,7 @@ final class AudioNormalizationTests: XCTestCase {
     func testGameplayMusicPeakAmplitudeWithinRange() {
         for theme in BackgroundTheme.allCases {
             guard let fileName = theme.gameplayMusicFile,
-                  let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
+                  let url = bundledMusicURL(for: fileName),
                   let player = try? AVAudioPlayer(contentsOf: url) else { continue }
 
             player.isMeteringEnabled = true
@@ -87,7 +92,7 @@ final class AudioNormalizationTests: XCTestCase {
 
     func testMenuMusicPeakAmplitudeWithinRange() {
         guard let menuFile = BackgroundTheme.day.menuMusicFile,
-              let url = Bundle.main.url(forResource: menuFile, withExtension: "m4a"),
+              let url = bundledMusicURL(for: menuFile),
               let player = try? AVAudioPlayer(contentsOf: url) else {
             XCTFail("Cannot load menu track")
             return
@@ -112,7 +117,7 @@ final class AudioNormalizationTests: XCTestCase {
 
         for theme in BackgroundTheme.allCases {
             guard let fileName = theme.gameplayMusicFile,
-                  let url = Bundle.main.url(forResource: fileName, withExtension: "m4a"),
+                  let url = bundledMusicURL(for: fileName),
                   let file = try? AVAudioFile(forReading: url) else { continue }
 
             let format = file.processingFormat

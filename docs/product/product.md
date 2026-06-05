@@ -57,7 +57,7 @@ Prefer work that improves first-session clarity, replayability, or cosmetic conv
 
 - propose 3 product changes ranked by retention, revenue, and risk
 - review player friction in the first session and shop path
-- update the experiment backlog in [growth.md](/Users/xanderevans/Documents/floppyduck/growth.md)
+- update the experiment backlog in [growth.md](growth.md)
 
 ### Before launch
 
@@ -82,4 +82,3 @@ Prefer work that improves first-session clarity, replayability, or cosmetic conv
 1. Audit first-session clarity from onboarding to first retry.
 2. Audit every route that can lead a player into the shop.
 3. Prioritize one retention improvement and one conversion improvement for the first post-launch patch.
-

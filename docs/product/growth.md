@@ -53,7 +53,7 @@ Rank tests by:
 
 - propose 3 experiments with KPI, sample-size assumption, and expected downside
 - close out old experiments with a clear decision
-- update [marketing.md](/Users/xanderevans/Documents/floppyduck/marketing.md) and [product.md](/Users/xanderevans/Documents/floppyduck/product.md) when learnings affect either side
+- update [marketing.md](marketing.md) and [product.md](product.md) when learnings affect either side
 
 ### Before launch
 
@@ -77,4 +77,3 @@ Rank tests by:
 1. Rank the first 10 experiments by impact and safety.
 2. Start with App Store creative and first-session clarity.
 3. Delay paid acquisition until retention and purchase basics look healthy.
-

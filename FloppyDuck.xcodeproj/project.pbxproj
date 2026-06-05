@@ -125,6 +125,7 @@
 		F20000000000000000000053 /* quack_bearskin.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000053 /* quack_bearskin.m4a */; };
 		F20000000000000000000060 /* cruchh.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000060 /* cruchh.m4a */; };
 		F20000000000000000000061 /* multiplayer_countdown.wav in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000061 /* multiplayer_countdown.wav */; };
+		F20000000000000000000062 /* theme_park.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000062 /* theme_park.mp3 */; };
 		F200000000000000000004D /* theme_lagoon.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004D /* theme_lagoon.m4a */; };
 		F200000000000000000004E /* theme_losAngeles.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004E /* theme_losAngeles.m4a */; };
 		F200000000000000000004F /* theme_london.m4a in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000004F /* theme_london.m4a */; };
@@ -284,6 +285,7 @@
 		F10000000000000000000053 /* quack_bearskin.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = quack_bearskin.m4a; sourceTree = "<group>"; };
 		F10000000000000000000060 /* cruchh.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mpeg4; path = cruchh.m4a; sourceTree = "<group>"; };
 		F10000000000000000000061 /* multiplayer_countdown.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = multiplayer_countdown.wav; sourceTree = "<group>"; };
+		F10000000000000000000062 /* theme_park.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = theme_park.mp3; sourceTree = "<group>"; };
 		F100000000000000000004D /* theme_lagoon.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_lagoon.m4a; sourceTree = "<group>"; };
 		F100000000000000000004E /* theme_losAngeles.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_losAngeles.m4a; sourceTree = "<group>"; };
 		F100000000000000000004F /* theme_london.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.mp4; path = theme_london.m4a; sourceTree = "<group>"; };
@@ -354,7 +356,6 @@
 				40E7256AF7638B5B6B81606E /* FloppyDuck */,
 				A40000000000000000000001 /* FloppyDuckTests */,
 				E40000000000000000000001 /* FloppyDuckUITests */,
-				F10000000000000000000060 /* cruchh.m4a */,
 				869F6DB7D2C008CCC31F4B39 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -520,8 +521,7 @@
 			children = (
 				F30000000000000000000002 /* Music */,
 				F30000000000000000000003 /* Quacks */,
-				F1000000000000000000000B /* quack.wav */,
-				F10000000000000000000061 /* multiplayer_countdown.wav */,
+				F30000000000000000000005 /* SFX */,
 				F1000000000000000000000A /* CREDITS.txt */,
 			);
 			path = Audio;
@@ -555,6 +555,7 @@
 				F100000000000000000004F /* theme_london.m4a */,
 				F10000000000000000000054 /* theme_castle.m4a */,
 				F10000000000000000000055 /* theme_clouds.m4a */,
+				F10000000000000000000062 /* theme_park.mp3 */,
 			);
 			path = Music;
 			sourceTree = "<group>";
@@ -597,6 +598,16 @@
 				F10000000000000000000053 /* quack_bearskin.m4a */,
 			);
 			path = Skins;
+			sourceTree = "<group>";
+		};
+		F30000000000000000000005 /* SFX */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000060 /* cruchh.m4a */,
+				F10000000000000000000061 /* multiplayer_countdown.wav */,
+				F1000000000000000000000B /* quack.wav */,
+			);
+			path = SFX;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -750,6 +761,7 @@
 				F200000000000000000004F /* theme_london.m4a in Resources */,
 				F20000000000000000000054 /* theme_castle.m4a in Resources */,
 				F20000000000000000000055 /* theme_clouds.m4a in Resources */,
+				F20000000000000000000062 /* theme_park.mp3 in Resources */,
 				F20000000000000000000050 /* quack_lumberquack.m4a in Resources */,
 				F20000000000000000000051 /* quack_spider.m4a in Resources */,
 				F20000000000000000000052 /* quack_squirrel.m4a in Resources */,

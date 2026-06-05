@@ -19,8 +19,8 @@ Acquire high-intent players for a free pixel-art iOS game and turn a meaningful 
 
 ## Inputs
 
-- [docs/APPSTORE_METADATA.md](/Users/xanderevans/Documents/floppyduck/docs/APPSTORE_METADATA.md)
-- [ROADMAP.md](/Users/xanderevans/Documents/floppyduck/ROADMAP.md)
+- [App Store metadata](../APPSTORE_METADATA.md)
+- [Roadmap](ROADMAP.md)
 - gameplay footage, screenshots, App Store reviews after launch, social comments, TestFlight feedback
 
 ## Outputs
@@ -91,4 +91,3 @@ Acquire high-intent players for a free pixel-art iOS game and turn a meaningful 
 1. Capture footage that clearly shows classic gameplay, bot ladder, multiplayer, and cosmetics.
 2. Rework screenshots so each image sells one reason to install.
 3. Prepare 10 launch-day posts before the build is uploaded.
-

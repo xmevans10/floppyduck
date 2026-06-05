@@ -70,5 +70,4 @@ Turn bugs, confusion, and reviews into faster fixes, better retention, and bette
 
 1. Build the initial FAQ from the flows already present in the app.
 2. Draft response templates for auth, IAP, multiplayer, and data issues.
-3. Connect recurring support themes back into [product.md](/Users/xanderevans/Documents/floppyduck/product.md) and [research.md](/Users/xanderevans/Documents/floppyduck/research.md).
-
+3. Connect recurring support themes back into [product.md](product.md) and [research.md](research.md).

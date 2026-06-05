@@ -5,7 +5,7 @@ artwork. Each theme has one Markdown file named after its
 `BackgroundTheme.rawValue`, for example `underwater.md`, `lagoon.md`, and
 `roughOcean.md`.
 
-See [../ARTWORK.md](../ARTWORK.md) for the full artwork workflow: hero image
+See [the artwork workflow](../docs/art/ARTWORK.md) for the full artwork workflow: hero image
 generation, runtime overlays, open-source overlay packs, processing rules, and
 final asset catalog output paths.
 

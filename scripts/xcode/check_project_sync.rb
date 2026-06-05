@@ -1,6 +1,8 @@
 require 'xcodeproj'
+require 'pathname'
 
-project_path = '/Users/xanderevans/Documents/floppyduck/FloppyDuck.xcodeproj'
+root = Pathname.new(__dir__).join('../..').expand_path
+project_path = root.join('FloppyDuck.xcodeproj').to_s
 project = Xcodeproj::Project.open(project_path)
 
 # Find the main target
@@ -23,7 +25,7 @@ extensions = ['.swift']
 missing_files = []
 
 check_dirs.each do |dir|
-  full_dir_path = File.join('/Users/xanderevans/Documents/floppyduck', dir)
+  full_dir_path = root.join(dir).to_s
   Dir.glob(File.join(full_dir_path, '**', '*')).each do |file_path|
     next unless extensions.include?(File.extname(file_path))
     

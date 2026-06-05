@@ -4,8 +4,8 @@ This file is archived.
 
 ## Canonical Sources
 
-- Launch readiness and manual go/no-go: [testflight.md](/Users/xanderevans/Documents/floppyduck/testflight.md)
-- App Store metadata and IAP inventory: [docs/APPSTORE_METADATA.md](/Users/xanderevans/Documents/floppyduck/docs/APPSTORE_METADATA.md)
+- Launch readiness and manual go/no-go: [TESTFLIGHT_RUNBOOK.md](TESTFLIGHT_RUNBOOK.md)
+- App Store metadata and IAP inventory: [APPSTORE_METADATA.md](../APPSTORE_METADATA.md)
 
 ## Why This Exists
 

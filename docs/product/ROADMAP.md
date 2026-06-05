@@ -32,7 +32,7 @@
 ## 🟡 Partial / Needs Verification
 
 ### Launch Hardening
-- Canonical launch runbook is now `testflight.md`.
+- Canonical launch runbook is now `docs/launch/TESTFLIGHT_RUNBOOK.md`.
 - App Store metadata docs exist, but final screenshots, StoreKit sandbox validation, and TestFlight/submission checks still need verification.
 - Head-to-head auth + multiplayer flows are implemented, but two-device smoke validation is still outstanding.
 - `GK.appStoreID` is still the placeholder `"000000000"` — needs the real ID once the app is registered in App Store Connect.
@@ -55,7 +55,7 @@
 - Verify screenshot CI output across all required sizes (run on device/simulator).
 - Run StoreKit sandbox validation plus two-device auth/multiplayer smoke tests.
 - Finalize TestFlight / App Store metadata and disclosure checks.
-- Complete the remaining manual launch items in `testflight.md`.
+- Complete the remaining manual launch items in `docs/launch/TESTFLIGHT_RUNBOOK.md`.
 
 ### 2. Multiplayer Resilience
 - Reconnect cleanly when a head-to-head match backgrounds and returns.
