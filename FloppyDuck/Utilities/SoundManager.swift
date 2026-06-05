@@ -709,7 +709,9 @@ final class SoundManager {
 
     private func prepareMultiplayerCountdown() {
         guard multiplayerCountdownPlayer == nil else { return }
-        let url = Bundle.main.url(forResource: "multiplayer_countdown", withExtension: "wav")
+        let url = Bundle.main.url(forResource: "multiplayer_countdown", withExtension: "wav", subdirectory: "Audio/SFX")
+            ?? Bundle.main.url(forResource: "multiplayer_countdown", withExtension: "wav", subdirectory: "SFX")
+            ?? Bundle.main.url(forResource: "multiplayer_countdown", withExtension: "wav")
             ?? Bundle.main.url(forResource: "multiplayer_countdown", withExtension: "wav", subdirectory: "Audio")
         guard let url, let player = try? AVAudioPlayer(contentsOf: url) else { return }
         player.volume = 0.45 * _sfxVolume
@@ -807,7 +809,9 @@ final class SoundManager {
     }
 
     private func breadWav() -> Data {
-        if let url = Bundle.main.url(forResource: "cruchh", withExtension: "m4a"),
+        if let url = Bundle.main.url(forResource: "cruchh", withExtension: "m4a", subdirectory: "Audio/SFX")
+            ?? Bundle.main.url(forResource: "cruchh", withExtension: "m4a", subdirectory: "SFX")
+            ?? Bundle.main.url(forResource: "cruchh", withExtension: "m4a"),
            let data = try? Data(contentsOf: url) {
             return data
         }
@@ -876,7 +880,9 @@ final class SoundManager {
     /// Splash-screen quack — real duck quack loaded from bundled WAV asset.
     /// Source: Mixkit (royalty-free), trimmed to a single 0.26 s quack.
     private func loadBundledQuack() -> Data {
-        if let url = Bundle.main.url(forResource: "quack", withExtension: "wav"),
+        if let url = Bundle.main.url(forResource: "quack", withExtension: "wav", subdirectory: "Audio/SFX")
+            ?? Bundle.main.url(forResource: "quack", withExtension: "wav", subdirectory: "SFX")
+            ?? Bundle.main.url(forResource: "quack", withExtension: "wav"),
            let data = try? Data(contentsOf: url) {
             return data
         }

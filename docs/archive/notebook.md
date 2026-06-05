@@ -206,7 +206,7 @@ First-frame stutter can occur if textures aren't pre-warmed — see ROADMAP Phas
 
 ---
 
-## What's Next (from ROADMAP.md)
+## What's Next (from docs/product/ROADMAP.md)
 
 ### Launch Hardening (Remaining — needs Xcode / device / portal)
 1. **Real App Store ID** — Replace `GK.appStoreID` `"000000000"` once the app is created in App Store Connect.
@@ -230,7 +230,7 @@ First-frame stutter can occur if textures aren't pre-warmed — see ROADMAP Phas
 - Prefers direct pushes to main (no PR ceremony for a solo project).
 - Values thorough commit messages and documentation.
 - Appreciates when changes are explained with context (the "why", not just "what").
-- Uses ROADMAP.md as the source of truth for priorities.
+- Uses docs/product/ROADMAP.md as the source of truth for priorities.
 - Likes controller extraction pattern — clean separation but no over-engineering.
 - Tests are important but pragmatic — test behavior, not implementation details.
 - Git email: `viktor-ai@users.noreply.github.com` for AI-authored commits.
@@ -290,7 +290,7 @@ First-frame stutter can occur if textures aren't pre-warmed — see ROADMAP Phas
 - `Info.plist` confirmed on production Convex URL. No dev URLs anywhere in source.
 - `GK.appStoreID` still `"000000000"` — harmless (share sheets omit nil URL) but should be
   replaced once the app is registered in App Store Connect.
-- ROADMAP.md updated to reflect current state: storyboard + URL moved to done, remaining
+- docs/product/ROADMAP.md updated to reflect current state: storyboard + URL moved to done, remaining
   items clearly scoped to what needs Xcode/device/portal.
 - Key finding: the biggest remaining blockers are all manual/device-side — this project is
   in good shape code-wise for TestFlight. The critical path is:

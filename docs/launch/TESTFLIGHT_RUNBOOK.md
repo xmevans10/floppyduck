@@ -4,7 +4,7 @@ Updated May 4, 2026.
 
 ## Purpose
 
-Canonical launch-readiness source for getting Floppy Duck into TestFlight. [docs/APPSTORE_METADATA.md](docs/APPSTORE_METADATA.md) is the canonical product-page and IAP inventory source. [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) and [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) are retained only as archived pointers.
+Canonical launch-readiness source for getting Floppy Duck into TestFlight. [APPSTORE_METADATA.md](../APPSTORE_METADATA.md) is the canonical product-page and IAP inventory source. [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) and [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) are retained only as archived pointers.
 
 ## Already Code-Verified
 
@@ -36,7 +36,7 @@ Canonical launch-readiness source for getting Floppy Duck into TestFlight. [docs
 
 - Create or confirm the App Store Connect app record, manually or with `bundle exec fastlane ios setup_app`.
 - Get the real Apple app ID and replace the placeholder `GK.appStoreID = "000000000"` in `GameConstants.swift` before final release submission, manually or with `fastlane ios set_app_store_id`.
-- Enter the metadata from [docs/APPSTORE_METADATA.md](docs/APPSTORE_METADATA.md), manually or with `bundle exec fastlane ios metadata`.
+- Enter the metadata from [APPSTORE_METADATA.md](../APPSTORE_METADATA.md), manually or with `bundle exec fastlane ios metadata`.
 - Complete pricing, age rating, review contact info, and privacy disclosures.
 
 ### 2. Signing and Apple auth

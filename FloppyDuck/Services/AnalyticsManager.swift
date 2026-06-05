@@ -2,7 +2,7 @@ import Foundation
 import PostHog
 
 /// Lightweight PostHog wrapper — typed event methods for every tracked event.
-/// See tracking.md for the full event taxonomy and prioritization.
+/// See docs/product/tracking.md for the full event taxonomy and prioritization.
 @MainActor
 final class AnalyticsManager {
     static let shared = AnalyticsManager()

@@ -1,5 +1,8 @@
 require 'xcodeproj'
-project_path = 'FloppyDuck.xcodeproj'
+require 'pathname'
+
+root = Pathname.new(__dir__).join('../..').expand_path
+project_path = root.join('FloppyDuck.xcodeproj').to_s
 project = Xcodeproj::Project.open(project_path)
 target = project.targets.find { |t| t.name == 'FloppyDuckTests' }
 group = project.main_group.find_subpath('FloppyDuckTests', true)

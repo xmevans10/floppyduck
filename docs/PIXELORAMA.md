@@ -86,7 +86,7 @@ ideas: grass clumps, brick, gravel, leaves, stone blocks, planks, marble, snow,
 and simple star shapes.
 
 Do not copy these into app assets casually. If any Pixelorama-provided asset is
-imported into the app, record it in `THIRD_PARTY_ASSETS.md` with source, license,
+imported into the app, record it in `docs/art/THIRD_PARTY_ASSETS.md` with source, license,
 file path, and processing notes.
 
 ## Non-Goals For Now
