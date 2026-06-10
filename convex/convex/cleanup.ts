@@ -227,10 +227,22 @@ async function cleanupOrphanedBotUsers(ctx: any) {
   const botUsers = await ctx.db
     .query("users")
     .withIndex("by_provider", (q: any) => q.eq("provider", "bot"))
-    .take(50);
+    .take(250);
 
   let deleted = 0;
+  let ratingsDeleted = 0;
+  let entrantsDeleted = 0;
+  let payoutsDeleted = 0;
   for (const user of botUsers) {
+    const ratings = await ctx.db
+      .query("ratings")
+      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
+      .collect();
+    for (const rating of ratings) {
+      await ctx.db.delete(rating._id);
+      ratingsDeleted++;
+    }
+
     const entrants = await ctx.db
       .query("battleRoyaleEntrants")
       .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
@@ -248,6 +260,7 @@ async function cleanupOrphanedBotUsers(ctx: any) {
 
     for (const entrant of entrants) {
       await ctx.db.delete(entrant._id);
+      entrantsDeleted++;
     }
 
     const payouts = await ctx.db
@@ -256,19 +269,12 @@ async function cleanupOrphanedBotUsers(ctx: any) {
       .collect();
     for (const payout of payouts) {
       await ctx.db.delete(payout._id);
-    }
-
-    const rating = await ctx.db
-      .query("ratings")
-      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
-      .first();
-    if (rating) {
-      await ctx.db.delete(rating._id);
+      payoutsDeleted++;
     }
 
     await ctx.db.delete(user._id);
     deleted++;
   }
 
-  return deleted;
+  return { usersDeleted: deleted, ratingsDeleted, entrantsDeleted, payoutsDeleted };
 }

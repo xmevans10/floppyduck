@@ -30,6 +30,7 @@ export const leaderboard = query({
     for (const row of rows) {
       if (entries.length >= topN) break;
       const user = await ctx.db.get(row.userId);
+      if (!isLeaderboardEligibleUser(user)) continue;
       if (!user) continue;
       const identityId = ratingIdentityId(user);
       if (!identityId) continue;
@@ -115,6 +116,7 @@ async function computeUserRank(
       }
 
       const user = await ctx.db.get(row.userId);
+      if (!isLeaderboardEligibleUser(user)) continue;
       const identityId = ratingIdentityId(user);
       if (!identityId) continue;
       if (seenIdentityIds.has(identityId)) continue;
@@ -149,6 +151,11 @@ export async function pruneRatings(ctx: any) {
 
   for (const rating of ratings) {
     const user = await ctx.db.get(rating.userId);
+    if (!isLeaderboardEligibleUser(user)) {
+      await ctx.db.delete(rating._id);
+      deleted += 1;
+      continue;
+    }
     const identityId = user ? ratingIdentityId(user) : null;
     const hasPlayed = user && user.gamesPlayed > 0;
     if (!identityId || !hasPlayed || seenIdentityIds.has(identityId)) {
@@ -181,4 +188,10 @@ function ratingIdentityId(user: Doc<"users">): string | null {
     return `apple:${user.appleUserId}`;
   }
   return null;
+}
+
+function isLeaderboardEligibleUser(user: Doc<"users"> | null): user is Doc<"users"> {
+  if (!user) return false;
+  if (user.provider === "bot" || user.provider === "guest") return false;
+  return true;
 }
