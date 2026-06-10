@@ -217,8 +217,7 @@ final class AuthManager: ObservableObject {
                 statusMessage = "Could not reach server. Sign in with Game Center to reconnect."
             }
         } else {
-            authState = .onboardingRequired
-            needsCloudRestore = false
+            await continueAsGuest(markOnboardingComplete: true, silentFailure: true)
         }
     }
 

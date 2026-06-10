@@ -120,6 +120,13 @@ export async function upsertRating(ctx: any, userId: Id<"users">, rating: number
     return;
   }
 
+  if (!user.gamesPlayed || user.gamesPlayed <= 0) {
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+    return;
+  }
+
   if (existing) {
     await ctx.db.patch(existing._id, { rating, updatedAt: now });
   } else {

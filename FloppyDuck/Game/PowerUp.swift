@@ -167,7 +167,7 @@ enum PowerUpKind: String, CaseIterable {
     static let collectibleSize: CGFloat = 24
 
     /// Bread-loaf collectible: chance for a bread to become a golden loaf worth 10×.
-    static let loafChance: CGFloat = 0.07
+    static let loafChance: CGFloat = 0.016
     static let loafBreadValue: Int = 10
 
     /// Mystery boxes use a 3-tier split: 50% positive, 30% negative, 20% wildcard
@@ -176,7 +176,17 @@ enum PowerUpKind: String, CaseIterable {
     static let mysteryBoxNegativeChance: Double = 0.30
 
     static func randomMysteryBoxReward() -> PowerUpKind {
-        let roll = Double.random(in: 0..<1)
+        randomMysteryBoxReward(
+            roll: Double.random(in: 0..<1),
+            index: { count in Int.random(in: 0..<count) }
+        )
+    }
+
+    static func randomMysteryBoxReward(seedRoll: Double, index: (Int) -> Int) -> PowerUpKind {
+        randomMysteryBoxReward(roll: seedRoll, index: index)
+    }
+
+    private static func randomMysteryBoxReward(roll: Double, index: (Int) -> Int) -> PowerUpKind {
         let candidates: [PowerUpKind]
         if roll < mysteryBoxPositiveChance {
             candidates = allCases.filter { $0 != .mysteryBox && $0 != .doublePoints && $0.isPositive }
@@ -185,7 +195,8 @@ enum PowerUpKind: String, CaseIterable {
         } else {
             candidates = allCases.filter { $0 != .mysteryBox && $0 != .doublePoints }
         }
-        return candidates.randomElement() ?? .shield
+        guard !candidates.isEmpty else { return .shield }
+        return candidates[index(candidates.count)]
     }
 }
 
@@ -295,7 +306,16 @@ final class PowerUpSpawnManager {
     }
 
     func randomMysteryBoxReward() -> PowerUpKind {
-        PowerUpKind.randomMysteryBoxReward()
+        if seed != nil {
+            return PowerUpKind.randomMysteryBoxReward(
+                seedRoll: randomDouble(upTo: 1),
+                index: { [weak self] count in
+                    guard let self else { return 0 }
+                    return self.randomInt(in: 0...(count - 1))
+                }
+            )
+        }
+        return PowerUpKind.randomMysteryBoxReward()
     }
 
     // MARK: - Weighted Random

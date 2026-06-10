@@ -341,7 +341,7 @@ enum ThemeRecipeCatalog {
         clouds: nil,
         midgroundSprites: MidgroundSpawnConfig(
             props: [
-                MidgroundProp(assetName: "day_sprite_oak_tree", heightPoints: 260, weight: 1, scaleRange: 1.0...1.25, yOffset: 24, isTree: true),
+                MidgroundProp(assetName: "day_sprite_oak_tree", heightPoints: 221, weight: 1, scaleRange: 1.0...1.25, yOffset: 24, isTree: true),
             ],
             scrollSpeed: 0.25,
             spacingRange: 360...560

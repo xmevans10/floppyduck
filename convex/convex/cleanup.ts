@@ -3,7 +3,8 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { cleanupBattleRoyale } from "./battleRoyale";
 import { cleanupBattleRoyaleV2 } from "./battleRoyaleV2";
-import { scoreBreadReward } from "./lib/stats";
+import { scoreBreadReward, upsertRating } from "./lib/stats";
+import { pruneRatings } from "./ratings";
 
 const STALE_QUEUE_MS = 30 * 1000;
 const ABANDONED_MATCH_MS = 5 * 60 * 1000;
@@ -100,6 +101,9 @@ export const run = internalMutation({
     await cleanupBattleRoyale(ctx, now);
     await cleanupBattleRoyaleV2(ctx, now);
 
+    const ratingPrune = await pruneRatings(ctx);
+    const botCleanup = await cleanupOrphanedBotUsers(ctx);
+
     // Purge diagnostic events older than 7 days.
     const DIAGNOSTIC_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
     const staleEvents = await ctx.db
@@ -111,6 +115,8 @@ export const run = internalMutation({
     for (const event of staleEvents) {
       await ctx.db.delete(event._id);
     }
+
+    return { ratingPrune, botCleanup };
   },
 });
 
@@ -159,6 +165,8 @@ async function resolveMatchAndRatings(
       match.p1Score === match.p2Score,
     );
 
+    const p1NewRating = p1Rating + ratingDeltaP1;
+
     await ctx.db.patch(p1._id, {
       gamesPlayed: p1.gamesPlayed + 1,
       wins: match.p1Score === match.p2Score ? p1.wins : p1.wins + (match.p1Score > match.p2Score ? 1 : 0),
@@ -167,10 +175,11 @@ async function resolveMatchAndRatings(
       totalScore: p1.totalScore + match.p1Score,
       bread: p1.bread + breadGain,
       totalBreadCollected: (p1.totalBreadCollected ?? 0) + breadGain,
-      rating: p1Rating + ratingDeltaP1,
+      rating: p1NewRating,
       recentScores: [...p1.recentScores, match.p1Score].slice(-20),
       updatedAt: now,
     });
+    await upsertRating(ctx, p1._id, p1NewRating, now);
   }
 
   if (p2) {
@@ -180,6 +189,8 @@ async function resolveMatchAndRatings(
       match.p1Score === match.p2Score,
     );
 
+    const p2NewRating = p2Rating + ratingDeltaP2;
+
     await ctx.db.patch(p2._id, {
       gamesPlayed: p2.gamesPlayed + 1,
       wins: match.p1Score === match.p2Score ? p2.wins : p2.wins + (match.p2Score > match.p1Score ? 1 : 0),
@@ -188,10 +199,11 @@ async function resolveMatchAndRatings(
       totalScore: p2.totalScore + match.p2Score,
       bread: p2.bread + breadGain,
       totalBreadCollected: (p2.totalBreadCollected ?? 0) + breadGain,
-      rating: p2Rating + ratingDeltaP2,
+      rating: p2NewRating,
       recentScores: [...p2.recentScores, match.p2Score].slice(-20),
       updatedAt: now,
     });
+    await upsertRating(ctx, p2._id, p2NewRating, now);
   }
 
   let winnerUserId = undefined;
@@ -209,4 +221,54 @@ async function resolveMatchAndRatings(
     finishedAt: now,
     updatedAt: now,
   });
+}
+
+async function cleanupOrphanedBotUsers(ctx: any) {
+  const botUsers = await ctx.db
+    .query("users")
+    .withIndex("by_provider", (q: any) => q.eq("provider", "bot"))
+    .take(50);
+
+  let deleted = 0;
+  for (const user of botUsers) {
+    const entrants = await ctx.db
+      .query("battleRoyaleEntrants")
+      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
+      .collect();
+
+    let isProtected = false;
+    for (const entrant of entrants) {
+      const lobby = await ctx.db.get(entrant.lobbyId);
+      if (lobby && (lobby.status === "open" || lobby.status === "active")) {
+        isProtected = true;
+        break;
+      }
+    }
+    if (isProtected) continue;
+
+    for (const entrant of entrants) {
+      await ctx.db.delete(entrant._id);
+    }
+
+    const payouts = await ctx.db
+      .query("battleRoyalePayouts")
+      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
+      .collect();
+    for (const payout of payouts) {
+      await ctx.db.delete(payout._id);
+    }
+
+    const rating = await ctx.db
+      .query("ratings")
+      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
+      .first();
+    if (rating) {
+      await ctx.db.delete(rating._id);
+    }
+
+    await ctx.db.delete(user._id);
+    deleted++;
+  }
+
+  return deleted;
 }

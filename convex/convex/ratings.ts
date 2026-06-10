@@ -30,6 +30,7 @@ export const leaderboard = query({
     for (const row of rows) {
       if (entries.length >= topN) break;
       const user = await ctx.db.get(row.userId);
+      if (!user) continue;
       const identityId = ratingIdentityId(user);
       if (!identityId) continue;
       if (seenIdentityIds.has(identityId)) continue;
@@ -99,7 +100,7 @@ async function computeUserRank(
   if (!userRating) return null;
 
   while (true) {
-    const batch = await ctx.db
+    const batch: { page: Doc<"ratings">[]; continueCursor: string; isDone: boolean } = await ctx.db
       .query("ratings")
       .withIndex("by_rating")
       .order("desc")
@@ -137,33 +138,38 @@ async function computeUserRank(
   return null;
 }
 
+export async function pruneRatings(ctx: any) {
+  const ratings = await ctx.db
+    .query("ratings")
+    .withIndex("by_rating")
+    .order("desc")
+    .collect();
+  let deleted = 0;
+  const seenIdentityIds = new Set<string>();
+
+  for (const rating of ratings) {
+    const user = await ctx.db.get(rating.userId);
+    const identityId = user ? ratingIdentityId(user) : null;
+    const hasPlayed = user && user.gamesPlayed > 0;
+    if (!identityId || !hasPlayed || seenIdentityIds.has(identityId)) {
+      await ctx.db.delete(rating._id);
+      deleted += 1;
+      continue;
+    }
+
+    seenIdentityIds.add(identityId);
+  }
+
+  return {
+    deleted,
+    kept: ratings.length - deleted,
+  };
+}
+
 export const pruneNonAppleRatings = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const ratings = await ctx.db
-      .query("ratings")
-      .withIndex("by_rating")
-      .order("desc")
-      .collect();
-    let deleted = 0;
-    const seenIdentityIds = new Set<string>();
-
-    for (const rating of ratings) {
-      const user = await ctx.db.get(rating.userId);
-      const identityId = user ? ratingIdentityId(user) : null;
-      if (!identityId || seenIdentityIds.has(identityId)) {
-        await ctx.db.delete(rating._id);
-        deleted += 1;
-        continue;
-      }
-
-      seenIdentityIds.add(identityId);
-    }
-
-    return {
-      deleted,
-      kept: ratings.length - deleted,
-    };
+    return await pruneRatings(ctx);
   },
 });
 

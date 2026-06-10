@@ -79,10 +79,11 @@ export const recent = query({
         .take(limit);
     }
 
-    if (args.category) {
+    const category = args.category;
+    if (category) {
       return await ctx.db
         .query("diagnosticEvents")
-        .withIndex("by_category_createdAt", (q) => q.eq("category", args.category))
+        .withIndex("by_category_createdAt", (q) => q.eq("category", category))
         .order("desc")
         .take(limit);
     }

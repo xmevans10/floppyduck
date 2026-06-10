@@ -154,8 +154,8 @@ export async function verifyAppleIdentityToken(identityToken: string, rawNonce: 
   const signatureIsValid = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     cryptoKey,
-    signatureBytes,
-    signatureInput,
+    toArrayBuffer(signatureBytes),
+    toArrayBuffer(signatureInput),
   );
   if (!signatureIsValid) {
     throw new ConvexError("Invalid Apple identity token signature.");
@@ -219,6 +219,10 @@ function parseJwt(identityToken: string): {
   const signatureBytes = decodeBase64Url(signatureSegment, "signature");
 
   return { header, payload, signatureInput, signatureBytes };
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 function decodeJwtSegment<T>(segment: string, partName: string): T {

@@ -92,7 +92,7 @@ async function computeUserRank(
   let cursor: string | null = null;
 
   while (true) {
-    const batch = await ctx.db
+    const batch: { page: Doc<"users">[]; continueCursor: string; isDone: boolean } = await ctx.db
       .query("users")
       .withIndex("by_bestScore")
       .order("desc")

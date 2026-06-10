@@ -267,7 +267,7 @@ export const finishRun = mutation({
       },
     });
 
-    const updatedEntrant = await ctx.db.get(entrant._id);
+    const updatedEntrant: Entrant | null = await ctx.db.get(entrant._id);
     if (updatedEntrant) {
       await payEntrantIfWinner(ctx, lobby, updatedEntrant, now);
     }
@@ -327,7 +327,7 @@ export const syncAliveCount = mutation({
   },
   handler: async (ctx, args) => {
     const user = await resolveUser(ctx, args, { allowGuestFallback: false });
-    let lobby = await ctx.db.get(args.lobbyId);
+    let lobby: Lobby | null = await ctx.db.get(args.lobbyId);
     if (!lobby) {
       throw new Error("Battle royale lobby not found.");
     }
@@ -338,27 +338,28 @@ export const syncAliveCount = mutation({
     }
 
     const now = Date.now();
-    const sync = await syncBotRowsForLobby(ctx, lobby, now, { source: "syncAliveCount", userId: user._id });
-    lobby = sync.lobby;
+    let activeLobby: Lobby = lobby;
+    const sync = await syncBotRowsForLobby(ctx, activeLobby, now, { source: "syncAliveCount", userId: user._id });
+    activeLobby = sync.lobby;
     entrants = sync.entrants;
     const alive = sync.alive;
     await maybeFinalizeLobby(ctx, args.lobbyId, now);
-    lobby = await ctx.db.get(args.lobbyId) ?? lobby;
+    activeLobby = await ctx.db.get(args.lobbyId) ?? activeLobby;
 
-    await recordAliveSnapshot(ctx, lobby, alive, now, {
+    await recordAliveSnapshot(ctx, activeLobby, alive, now, {
       source: "syncAliveCount",
       userId: user._id,
       flippedRows: sync.flippedRows,
     });
 
     return {
-      lobbyId: lobby._id,
-      roomCode: lobby.roomCode,
-      status: effectiveStatus(lobby, alive.aliveCount),
-      playerCount: await playerCount(ctx, lobby, now),
+      lobbyId: activeLobby._id,
+      roomCode: activeLobby.roomCode,
+      status: effectiveStatus(activeLobby, alive.aliveCount),
+      playerCount: await playerCount(ctx, activeLobby, now),
       aliveCount: alive.aliveCount,
-      startedAt: lobby.startedAt,
-      finishedAt: lobby.finishedAt,
+      startedAt: activeLobby.startedAt,
+      finishedAt: activeLobby.finishedAt,
       debug: alive.debug,
     };
   },
@@ -422,7 +423,7 @@ async function activeEntrantForUser(ctx: Ctx, userId: Id<"users">) {
   return null;
 }
 
-async function entrantForUser(ctx: Ctx, lobbyId: Id<"battleRoyaleLobbiesV2">, userId: Id<"users">) {
+async function entrantForUser(ctx: Ctx, lobbyId: Id<"battleRoyaleLobbiesV2">, userId: Id<"users">): Promise<Entrant | null> {
   const entrants = await ctx.db
     .query("battleRoyaleEntrantsV2")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
@@ -430,7 +431,7 @@ async function entrantForUser(ctx: Ctx, lobbyId: Id<"battleRoyaleLobbiesV2">, us
   return entrants.find((entrant: Entrant) => entrant.lobbyId === lobbyId) ?? null;
 }
 
-async function entrantsForLobby(ctx: Ctx, lobbyId: Id<"battleRoyaleLobbiesV2">) {
+async function entrantsForLobby(ctx: Ctx, lobbyId: Id<"battleRoyaleLobbiesV2">): Promise<Entrant[]> {
   return await ctx.db
     .query("battleRoyaleEntrantsV2")
     .withIndex("by_lobbyId", (q: any) => q.eq("lobbyId", lobbyId))

@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import UIKit
 
@@ -12,9 +13,11 @@ private enum OnboardingAuthAction {
 
 private enum OnboardingPage: Int, CaseIterable {
     case welcome = 0
-    case howToPlay = 1
+    case masterFlap = 1
     case authChoice = 2
 }
+
+private let onboardingPlateOpacity = 0.38
 
 // MARK: - Main Onboarding Container
 
@@ -27,7 +30,6 @@ struct AuthOnboardingView: View {
 
     var body: some View {
         ZStack {
-            // Shared sky background
             GeometryReader { geo in
                 Image(uiImage: UIImage(named: "floppy_theme") ?? UIImage())
                     .interpolation(.none)
@@ -38,30 +40,16 @@ struct AuthOnboardingView: View {
             }
             .ignoresSafeArea()
 
-            // Pixel-art clouds (same as HomeView menu)
             cloudLayer
 
-            // Page content
             Group {
                 switch currentPage {
                 case .welcome:
-                    WelcomePage {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                            currentPage = .howToPlay
-                        }
-                    }
-                case .howToPlay:
-                    HowToPlayPage(
-                        onContinue: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                currentPage = .authChoice
-                            }
-                        },
-                        onBack: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                currentPage = .welcome
-                            }
-                        }
+                    WelcomePage(onContinue: { advance(to: .masterFlap) })
+                case .masterFlap:
+                    MasterFlapPage(
+                        onContinue: { advance(to: .authChoice) },
+                        onBack: { advance(to: .welcome) }
                     )
                 case .authChoice:
                     AuthChoicePage(
@@ -83,11 +71,7 @@ struct AuthOnboardingView: View {
                         statusMessage: auth.statusMessage,
                         showGameCenterSettingsAction: auth.needsGameCenterSettingsRecovery,
                         onOpenSettings: openSettings,
-                        onBack: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                currentPage = .howToPlay
-                            }
-                        }
+                        onBack: { advance(to: .masterFlap) }
                     )
                 }
             }
@@ -96,7 +80,6 @@ struct AuthOnboardingView: View {
                 removal: .move(edge: .leading).combined(with: .opacity)
             ))
 
-            // Page dots
             VStack {
                 Spacer()
                 OnboardingPageDots(current: currentPage)
@@ -108,12 +91,16 @@ struct AuthOnboardingView: View {
         }
     }
 
+    private func advance(to page: OnboardingPage) {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+            currentPage = page
+        }
+    }
+
     private func openSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
     }
-
-    // MARK: - Cloud Layer (same pixel-art clouds as HomeView)
 
     private var cloudLayer: some View {
         GeometryReader { geo in
@@ -183,21 +170,19 @@ private struct OnboardingPageDots: View {
     }
 }
 
-// MARK: - Page 1: Welcome
+// MARK: - Story Pages
 
 private struct WelcomePage: View {
     let onContinue: () -> Void
 
     @State private var titleFlashOffset: CGFloat = -180
-    @State private var subtitleOpacity: Double = 0
-    @State private var tapPromptOpacity: Double = 0
+    @State private var contentAppeared = false
 
     var body: some View {
         GeometryReader { geo in
             VStack(spacing: 0) {
-                Spacer().frame(height: max(24, geo.size.height * 0.30))
+                Spacer().frame(height: max(24, geo.size.height * 0.14))
 
-                // Title with sheen
                 VStack(spacing: 4) {
                     titleLine("FLOPPY", color: .white, size: 36)
                     titleLine("DUCK", color: GK.Colors.scoreYellow, size: 36)
@@ -218,7 +203,8 @@ private struct WelcomePage: View {
                         Rectangle()
                             .fill(LinearGradient(
                                 colors: [.clear, .white.opacity(0.15), .white.opacity(0.65), .white.opacity(0.15), .clear],
-                                startPoint: .leading, endPoint: .trailing
+                                startPoint: .leading,
+                                endPoint: .trailing
                             ))
                             .frame(width: 60, height: 110)
                             .rotationEffect(.degrees(14))
@@ -239,51 +225,41 @@ private struct WelcomePage: View {
                         titleFlashOffset = 200
                     }
                 }
-
-                PixelOutlinedText(text: "WELCOME, NEW FLAPPER!", fontSize: 12,
-                                  fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 2)
-                    .padding(.top, 18)
-                    .opacity(subtitleOpacity)
-                    .onAppear {
-                        withAnimation(.easeIn(duration: 0.6).delay(0.4)) {
-                            subtitleOpacity = 1
-                        }
-                    }
+                .scaleEffect(contentAppeared ? 1 : 0.8)
+                .opacity(contentAppeared ? 1 : 0)
+                .animation(.spring(response: 0.55, dampingFraction: 0.55).delay(0.1), value: contentAppeared)
 
                 Spacer()
 
-                // Tap prompt with subtle dark plate
-                VStack(spacing: 6) {
-                    Image(uiImage: PixelIconFactory.shared.image(for: .tapHand, pixelScale: 3.0))
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 28, height: 28)
+                VStack(spacing: 16) {
+                    welcomeLine("Tap to flap.")
+                        .opacity(contentAppeared ? 1 : 0)
+                        .scaleEffect(contentAppeared ? 1 : 0.7)
+                        .offset(y: contentAppeared ? 0 : 22)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.58).delay(0.35), value: contentAppeared)
 
-                    PixelOutlinedText(text: "TAP TO BEGIN", fontSize: 10,
-                                      fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1)
+                    welcomeLine("Don't hit the pipes.")
+                        .opacity(contentAppeared ? 1 : 0)
+                        .scaleEffect(contentAppeared ? 1 : 0.7)
+                        .offset(y: contentAppeared ? 0 : 22)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.58).delay(0.55), value: contentAppeared)
                 }
-                .padding(.horizontal, 28)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.black.opacity(0.2))
-                )
-                .opacity(tapPromptOpacity)
-                .padding(.bottom, 40)
-                .onAppear {
-                    withAnimation(.easeIn(duration: 0.5).delay(0.8)) {
-                        tapPromptOpacity = 1
-                    }
+
+                Spacer()
+
+                onboardingContinueButton(title: "GET STARTED", color: GK.Colors.buttonGreen, enabled: true) {
+                    SoundManager.shared.play(.button)
+                    Haptic.buttonTap()
+                    onContinue()
                 }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 60)
+                .opacity(contentAppeared ? 1 : 0)
+                .animation(.easeOut(duration: 0.45).delay(0.85), value: contentAppeared)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            SoundManager.shared.play(.button)
-            Haptic.buttonTap()
-            onContinue()
-        }
+        .onAppear { contentAppeared = true }
         .accessibilityAction(named: "Continue") { onContinue() }
     }
 
@@ -297,21 +273,56 @@ private struct WelcomePage: View {
             .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -4, y: -4)
             .shadow(color: Color.black.opacity(0.25), radius: 0, x: 0, y: 6)
     }
+
+    private func welcomeLine(_ text: String) -> some View {
+        Text(text)
+            .font(.custom(GK.pixelFontName, size: 15))
+            .foregroundColor(.white)
+            .multilineTextAlignment(.center)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: 2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: -2)
+            .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: -2)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 11)
+            .background(onboardingCopyPlate())
+    }
 }
 
-// MARK: - Page 2: How To Play
-
-private struct HowToPlayPage: View {
+private struct MasterFlapPage: View {
     let onContinue: () -> Void
     let onBack: () -> Void
 
-    @State private var cardsAppeared = false
+    @State private var appeared = false
 
-    private let tips: [(PixelIcon, String, String)] = [
-        (.tapHand, "TAP TO FLAP", "Tap anywhere to keep\nyour duck airborne"),
-        (.bread, "COLLECT BREAD", "Grab bread mid-flight\nto spend in the shop"),
-        (.trophy, "RISE THE RANKS", "Challenge bots & friends\nto climb the ladder"),
-    ]
+    var body: some View {
+        StoryPage(
+            title: "HOW TO PLAY",
+            subtitle: "Tap to fly. Grab bread along the way.",
+            bodyText: nil,
+            buttonTitle: "NEXT",
+            onContinue: onContinue,
+            onBack: onBack
+        ) {
+            OnboardingVideoCard()
+                .opacity(appeared ? 1 : 0)
+                .scaleEffect(appeared ? 1 : 0.94)
+                .animation(.spring(response: 0.55, dampingFraction: 0.78).delay(0.1), value: appeared)
+                .onAppear { appeared = true }
+        }
+    }
+}
+
+private struct StoryPage<Visual: View>: View {
+    let title: String
+    let subtitle: String
+    let bodyText: String?
+    let buttonTitle: String
+    let onContinue: () -> Void
+    let onBack: () -> Void
+    @ViewBuilder let visual: () -> Visual
 
     var body: some View {
         GeometryReader { geo in
@@ -323,43 +334,19 @@ private struct HowToPlayPage: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
 
-                Spacer().frame(height: max(10, geo.size.height * 0.22))
+                Spacer().frame(height: max(10, geo.size.height * 0.09))
 
-                Text("HOW TO PLAY")
-                    .font(.custom(GK.pixelFontName, size: 24))
-                    .foregroundColor(.white)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: 3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: -3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: -3)
-                    .padding(.bottom, 8)
+                onboardingCopy(title: title, subtitle: subtitle, body: bodyText, compact: geo.size.height < 740)
+                    .padding(.horizontal, 24)
 
-                PixelOutlinedText(text: "IT'S SIMPLE, REALLY", fontSize: 9,
-                                  fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1.5)
-                    .padding(.bottom, 24)
+                Spacer().frame(height: max(18, geo.size.height * 0.045))
 
-                // Tip cards
-                VStack(spacing: 12) {
-                    ForEach(Array(tips.enumerated()), id: \.offset) { index, tip in
-                        tipCard(icon: tip.0, title: tip.1, subtitle: tip.2)
-                            .offset(x: cardsAppeared ? 0 : (index % 2 == 0 ? -60 : 60))
-                            .opacity(cardsAppeared ? 1 : 0)
-                            .animation(
-                                .spring(response: 0.5, dampingFraction: 0.75).delay(Double(index) * 0.12),
-                                value: cardsAppeared
-                            )
-                    }
-                }
-                .padding(.horizontal, 28)
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        cardsAppeared = true
-                    }
-                }
+                visual()
+                    .padding(.horizontal, 30)
 
                 Spacer()
 
-                onboardingContinueButton(title: "ALMOST DONE", color: GK.Colors.buttonGreen, enabled: true) {
+                onboardingContinueButton(title: buttonTitle, color: GK.Colors.buttonGreen, enabled: true) {
                     SoundManager.shared.play(.button)
                     Haptic.buttonTap()
                     onContinue()
@@ -370,39 +357,83 @@ private struct HowToPlayPage: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
+}
 
-    private func tipCard(icon: PixelIcon, title: String, subtitle: String) -> some View {
-        HStack(spacing: 14) {
-            Image(uiImage: PixelIconFactory.shared.image(for: icon, pixelScale: 3.5))
-                .interpolation(.none)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 30, height: 30)
+// MARK: - Video
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.custom(GK.pixelFontName, size: 10))
-                    .foregroundColor(GK.Colors.cardTextPrimary)
+private struct OnboardingVideoCard: View {
+    var body: some View {
+        LoopingOnboardingVideo()
+            .aspectRatio(1004.0 / 1614.0, contentMode: .fit)
+            .frame(maxHeight: 330)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.black.opacity(0.35), lineWidth: 2)
+            )
+            .shadow(color: Color.black.opacity(0.3), radius: 0, x: 0, y: 5)
+            .accessibilityLabel("Gameplay preview")
+    }
+}
 
-                Text(subtitle)
-                    .font(.custom(GK.pixelFontName, size: 7))
-                    .foregroundColor(GK.Colors.cardTextSecondary)
-                    .lineSpacing(3)
-            }
+private struct LoopingOnboardingVideo: UIViewRepresentable {
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
-            Spacer()
+    func makeUIView(context: Context) -> PlayerContainerView {
+        let view = PlayerContainerView()
+        view.playerLayer.videoGravity = .resizeAspectFill
+        view.backgroundColor = .clear
+
+        guard let url = Bundle.main.url(forResource: "onboarding_vid_final", withExtension: "mov") else {
+            return view
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(GK.Colors.panelCream)
-                .shadow(color: Color.black.opacity(0.12), radius: 0, x: 0, y: 3)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(GK.Colors.panelBorder.opacity(0.25), lineWidth: 2)
-        )
+
+        let player = AVQueuePlayer()
+        player.isMuted = true
+        player.actionAtItemEnd = .none
+
+        let item = AVPlayerItem(url: url)
+        context.coordinator.player = player
+        context.coordinator.looper = AVPlayerLooper(player: player, templateItem: item)
+        view.playerLayer.player = player
+
+        if !UIAccessibility.isReduceMotionEnabled {
+            player.play()
+        }
+
+        return view
+    }
+
+    func updateUIView(_ view: PlayerContainerView, context: Context) {
+        context.coordinator.player?.isMuted = true
+        if UIAccessibility.isReduceMotionEnabled {
+            context.coordinator.player?.pause()
+        } else if context.coordinator.player?.timeControlStatus != .playing {
+            context.coordinator.player?.play()
+        }
+    }
+
+    static func dismantleUIView(_ uiView: PlayerContainerView, coordinator: Coordinator) {
+        coordinator.player?.pause()
+        coordinator.player = nil
+        coordinator.looper = nil
+    }
+
+    final class Coordinator {
+        var player: AVQueuePlayer?
+        var looper: AVPlayerLooper?
+    }
+
+    final class PlayerContainerView: UIView {
+        override static var layerClass: AnyClass {
+            AVPlayerLayer.self
+        }
+
+        var playerLayer: AVPlayerLayer {
+            layer as! AVPlayerLayer
+        }
     }
 }
 
@@ -423,6 +454,7 @@ private struct AuthChoicePage: View {
 
     var body: some View {
         GeometryReader { geo in
+            let compact = geo.size.height < 740
             VStack(spacing: 0) {
                 HStack {
                     onboardingBackButton(action: onBack)
@@ -431,27 +463,31 @@ private struct AuthChoicePage: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
 
-                Spacer().frame(height: max(10, geo.size.height * 0.22))
+                Spacer().frame(height: max(10, geo.size.height * (compact ? 0.055 : 0.095)))
 
-                Text("ONE LAST THING")
-                    .font(.custom(GK.pixelFontName, size: 22))
-                    .foregroundColor(.white)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: 3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: 3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 3, y: -3)
-                    .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -3, y: -3)
-                    .padding(.bottom, 6)
+                onboardingCopy(
+                    title: "MAKE IT YOURS",
+                    subtitle: "Sign in to save everything you earn.",
+                    body: nil,
+                    compact: compact
+                )
+                .padding(.horizontal, 24)
+                .padding(.bottom, compact ? 14 : 22)
 
-                PixelOutlinedText(text: "SYNC YOUR PROGRESS", fontSize: 9,
-                                  fillColor: GK.Colors.titleCream, outlineColor: GK.Colors.pipeBorder, outlineWidth: 1.5)
-                    .padding(.bottom, 24)
+                VStack(spacing: compact ? 7 : 9) {
+                    onboardingPillLabel("KEEP YOUR BREAD & SKINS", fontSize: 9, horizontalPadding: 16, verticalPadding: 8)
+                    onboardingPillLabel("RANKED & LEADERBOARDS", fontSize: 9, horizontalPadding: 16, verticalPadding: 8)
+                    onboardingPillLabel("SYNC ACROSS DEVICES", fontSize: 9, horizontalPadding: 16, verticalPadding: 8)
+                }
+                .frame(maxWidth: 300)
+                .padding(.horizontal, 26)
+                .padding(.bottom, compact ? 16 : 24)
 
-                // Auth buttons
-                VStack(spacing: 12) {
+                VStack(spacing: compact ? 9 : 12) {
                     authOptionButton(
                         icon: .trophy,
                         title: "GAME CENTER",
-                        subtitle: "Sync scores & play ranked",
+                        subtitle: "SAVE BREAD, SKINS & RANKED",
                         color: GK.Colors.buttonBlue,
                         isBusy: busyAction == .gameCenter,
                         action: onGameCenter
@@ -463,7 +499,7 @@ private struct AuthChoicePage: View {
                     authOptionButton(
                         icon: .play,
                         title: "PLAY AS GUEST",
-                        subtitle: "Jump right in, sign in later",
+                        subtitle: "FLAP NOW, SIGN IN LATER",
                         color: Color(red: 0.45, green: 0.45, blue: 0.50),
                         isBusy: busyAction == .guest,
                         action: onGuest
@@ -478,20 +514,6 @@ private struct AuthChoicePage: View {
                         buttonsAppeared = true
                     }
                 }
-
-                // Fine print on a subtle card
-                Text("Game Center syncs your scores across devices\nand enables ranked multiplayer.")
-                    .font(.custom(GK.pixelFontName, size: 7))
-                    .foregroundColor(GK.Colors.titleCream)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.25))
-                    )
-                    .padding(.horizontal, 30)
-                    .padding(.top, 16)
 
                 if let statusMessage {
                     VStack(spacing: 8) {
@@ -524,20 +546,18 @@ private struct AuthChoicePage: View {
                         }
                     }
                     .padding(.horizontal, 30)
-                    .padding(.top, 8)
+                    .padding(.top, 12)
                 }
 
                 Spacer()
-
-                // Spacer for page dots
-                Spacer().frame(height: 50)
+                Spacer().frame(height: compact ? 34 : 50)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
     private func authOptionButton(icon: PixelIcon, title: String, subtitle: String,
-                                   color: Color, isBusy: Bool, action: @escaping () -> Void) -> some View {
+                                  color: Color, isBusy: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(uiImage: PixelIconFactory.shared.image(for: icon, pixelScale: 2.5))
@@ -557,6 +577,8 @@ private struct AuthChoicePage: View {
                     Text(subtitle)
                         .font(.custom(GK.pixelFontName, size: 7))
                         .foregroundColor(GK.Colors.titleCream)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
                 }
 
                 Spacer()
@@ -591,6 +613,81 @@ private struct AuthChoicePage: View {
 
 // MARK: - Shared Onboarding Components
 
+private func onboardingCopy(title: String?, subtitle: String, body: String?, compact: Bool) -> some View {
+    VStack(spacing: compact ? 8 : 10) {
+        if let title {
+            Text(title)
+                .font(.custom(GK.pixelFontName, size: compact ? 18 : 21))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.72)
+                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: 2)
+                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: 2)
+                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: 2, y: -2)
+                .shadow(color: GK.Colors.pipeBorder, radius: 0, x: -2, y: -2)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(onboardingCopyPlate())
+        }
+
+        Text(subtitle)
+            .font(.custom(GK.pixelFontName, size: compact ? 8 : 9))
+            .foregroundColor(GK.Colors.titleCream)
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .minimumScaleFactor(0.7)
+            .shadow(color: Color.black.opacity(0.75), radius: 0, x: 1, y: 1)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(onboardingCopyPlate())
+
+        if let body {
+            Text(body)
+                .font(.custom(GK.pixelFontName, size: compact ? 8 : 9))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .lineLimit(3)
+                .minimumScaleFactor(0.72)
+                .shadow(color: Color.black.opacity(0.85), radius: 0, x: 1, y: 1)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(onboardingCopyPlate())
+        }
+    }
+    .frame(maxWidth: .infinity)
+}
+
+private func onboardingCopyPlate(opacity: Double = onboardingPlateOpacity) -> some View {
+    RoundedRectangle(cornerRadius: 8)
+        .fill(Color.black.opacity(opacity))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+        )
+}
+
+private func onboardingPillLabel(_ text: String,
+                                 fontSize: CGFloat,
+                                 horizontalPadding: CGFloat,
+                                 verticalPadding: CGFloat) -> some View {
+    Text(text)
+        .font(.custom(GK.pixelFontName, size: fontSize))
+        .foregroundColor(GK.Colors.titleCream)
+        .multilineTextAlignment(.center)
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
+        .shadow(color: Color.black.opacity(0.75), radius: 0, x: 1, y: 1)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.black.opacity(0.28))
+        )
+}
+
 private func onboardingBackButton(action: @escaping () -> Void) -> some View {
     Button {
         SoundManager.shared.play(.button)
@@ -612,7 +709,7 @@ private func onboardingBackButton(action: @escaping () -> Void) -> some View {
 }
 
 private func onboardingContinueButton(title: String, color: Color, enabled: Bool,
-                                       action: @escaping () -> Void) -> some View {
+                                      action: @escaping () -> Void) -> some View {
     Button(action: action) {
         Text(title)
             .font(.custom(GK.pixelFontName, size: 13))

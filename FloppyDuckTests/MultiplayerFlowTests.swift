@@ -286,15 +286,15 @@ final class MultiplayerFlowTests: XCTestCase {
         manager.authManager = auth
 
         await auth.bootstrapIdentityIfNeeded()
-        if case .failed = auth.authState {
-            // Expected after the first bootstrap failure.
+        if case .authenticated(.guest) = auth.authState {
+            // Expected local guest fallback after the first bootstrap failure.
         } else {
-            XCTFail("Expected initial bootstrap to fail")
+            XCTFail("Expected initial bootstrap to fall back to guest")
         }
 
         await auth.retryBootstrap()
         if case .authenticated(.guest) = auth.authState {
-            // Expected after retry.
+            // Expected server-backed guest profile after retry.
         } else {
             XCTFail("Expected retry to authenticate guest session")
         }

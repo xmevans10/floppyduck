@@ -36,7 +36,8 @@ export default defineSchema({
     .index("by_gameCenterPlayerId", ["gameCenterPlayerId"])
     .index("by_username", ["username"])
     .index("by_usernameKey", ["usernameKey"])
-    .index("by_bestScore", ["bestScore"]),
+    .index("by_bestScore", ["bestScore"])
+    .index("by_provider", ["provider"]),
 
   sessions: defineTable({
     userId: v.id("users"),

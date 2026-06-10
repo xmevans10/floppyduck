@@ -60,7 +60,7 @@ export const searchUsers = query({
     const scanned = await ctx.db
       .query("users")
       .withIndex("by_usernameKey")
-      .paginate({ numItems: 200 });
+      .paginate({ numItems: 200, cursor: null });
 
     for (const user of scanned.page) {
       if (results.length >= 10) break;

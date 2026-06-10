@@ -1,5 +1,6 @@
-- Fixed tap-related gameplay stutter in TestFlight builds
-- Disabled production touch instrumentation that could add work to every gameplay tap
-- Prewarmed flap audio playback to reduce per-tap audio overhead
-- Reprepared haptics after impacts for smoother repeated tapping
-- Kept bread pickup crunch audio separate from the pipe score sound
+Floppy Duck 1.0 is ready for takeoff.
+
+- Play Classic, VS Bot, and real-time Head to Head
+- Beat 17 boss ducks and unlock rewards
+- Collect skins, pipe styles, backgrounds, and banners
+- Track achievements, stats, leaderboards, and friends
