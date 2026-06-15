@@ -8,60 +8,69 @@ import { pruneRatings } from "./ratings";
 
 const STALE_QUEUE_MS = 30 * 1000;
 const ABANDONED_MATCH_MS = 5 * 60 * 1000;
+const CLEANUP_BATCH_SIZE = 100;
 
 export const run = internalMutation({
   handler: async (ctx) => {
     const now = Date.now();
 
-    // Purge matchmaking queue entries that have been "searching" for >2 min.
     // Players who force-quit never call leaveQueue, leaving zombie entries.
-    const queueEntries = await ctx.db
+    const staleSearchingQueueEntries = await ctx.db
       .query("matchmakingQueue")
-      .collect();
+      .withIndex("by_status_lastSeenAt", (q: any) =>
+        q.eq("status", "searching").lt("lastSeenAt", now - STALE_QUEUE_MS)
+      )
+      .take(CLEANUP_BATCH_SIZE);
 
-    for (const entry of queueEntries) {
-      const lastActivity = entry.lastSeenAt ?? entry.createdAt;
-      // Purge stale "searching" entries (player force-quit)
-      if (entry.status === "searching" && now - lastActivity > STALE_QUEUE_MS) {
-        await ctx.db.delete(entry._id);
-      }
-      // Purge "matched" entries older than the abandoned-match window —
-      // these were never cleaned up after match resolution.
-      if (entry.status === "matched" && now - lastActivity > ABANDONED_MATCH_MS) {
-        await ctx.db.delete(entry._id);
-      }
+    for (const entry of staleSearchingQueueEntries) {
+      await ctx.db.delete(entry._id);
+    }
+
+    // Purge "matched" entries older than the abandoned-match window. These
+    // were never cleaned up after match resolution.
+    const staleMatchedQueueEntries = await ctx.db
+      .query("matchmakingQueue")
+      .withIndex("by_status_lastSeenAt", (q: any) =>
+        q.eq("status", "matched").lt("lastSeenAt", now - ABANDONED_MATCH_MS)
+      )
+      .take(CLEANUP_BATCH_SIZE);
+
+    for (const entry of staleMatchedQueueEntries) {
+      await ctx.db.delete(entry._id);
     }
 
     // Purge stale rooms that have been "waiting" for >2 min (host left without cancelling).
-    const rooms = await ctx.db.query("rooms").collect();
+    const rooms = await ctx.db
+      .query("rooms")
+      .withIndex("by_status_createdAt", (q: any) =>
+        q.eq("status", "waiting").lt("createdAt", now - STALE_QUEUE_MS)
+      )
+      .take(CLEANUP_BATCH_SIZE);
     for (const room of rooms) {
-      if (room.status === "waiting" && now - room.createdAt > STALE_QUEUE_MS) {
-        await ctx.db.delete(room._id);
-      }
+      await ctx.db.delete(room._id);
     }
 
-    // Purge expired or revoked sessions.  Sessions expire after 30 days
-    // but accumulate indefinitely otherwise.
+    // Purge expired sessions. Sessions expire after 30 days but accumulate
+    // indefinitely otherwise.
     const sessions = await ctx.db
       .query("sessions")
-      .collect();
+      .withIndex("by_expiresAt", (q: any) => q.lt("expiresAt", now))
+      .take(CLEANUP_BATCH_SIZE);
 
     for (const session of sessions) {
-      if (session.revokedAt || session.expiresAt < now) {
-        await ctx.db.delete(session._id);
-      }
+      await ctx.db.delete(session._id);
     }
 
     // Auto-resolve matches that have been "active" with no update for >5 min.
     // This handles players who disconnect or crash before calling finishMatch.
     const activeMatches = await ctx.db
       .query("matches")
-      .withIndex("by_status_createdAt", (q) => q.eq("status", "active"))
-      .collect();
+      .withIndex("by_status_updatedAt", (q: any) =>
+        q.eq("status", "active").lt("updatedAt", now - ABANDONED_MATCH_MS)
+      )
+      .take(CLEANUP_BATCH_SIZE);
 
     for (const match of activeMatches) {
-      if (now - match.updatedAt <= ABANDONED_MATCH_MS) continue;
-
       // If one player finished, give them the win — the other forfeits.
       // If neither finished, 0-0 draw with no rating or bread change.
       const shouldPatchBoth =
@@ -101,8 +110,9 @@ export const run = internalMutation({
     await cleanupBattleRoyale(ctx, now);
     await cleanupBattleRoyaleV2(ctx, now);
 
-    const ratingPrune = await pruneRatings(ctx);
-    const botCleanup = await cleanupOrphanedBotUsers(ctx);
+    const hourlyMaintenance = new Date(now).getUTCMinutes() === 7;
+    const ratingPrune = hourlyMaintenance ? await pruneRatings(ctx) : { skipped: true };
+    const botCleanup = hourlyMaintenance ? await cleanupOrphanedBotUsers(ctx) : { skipped: true };
 
     // Purge diagnostic events older than 7 days.
     const DIAGNOSTIC_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;

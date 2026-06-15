@@ -47,7 +47,8 @@ export default defineSchema({
     revokedAt: v.optional(v.number()),
   })
     .index("by_token", ["token"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_expiresAt", ["expiresAt"]),
 
   matchmakingQueue: defineTable({
     userId: v.id("users"),
@@ -60,7 +61,8 @@ export default defineSchema({
   })
     .index("by_ticketId", ["ticketId"])
     .index("by_userId", ["userId"])
-    .index("by_mode_status_createdAt", ["mode", "status", "createdAt"]),
+    .index("by_mode_status_createdAt", ["mode", "status", "createdAt"])
+    .index("by_status_lastSeenAt", ["status", "lastSeenAt"]),
 
   rooms: defineTable({
     code: v.string(),
@@ -72,7 +74,8 @@ export default defineSchema({
   })
     .index("by_code", ["code"])
     .index("by_hostUserId", ["hostUserId"])
-    .index("by_guestUserId", ["guestUserId"]),
+    .index("by_guestUserId", ["guestUserId"])
+    .index("by_status_createdAt", ["status", "createdAt"]),
 
   matches: defineTable({
     mode: v.union(v.literal("quick"), v.literal("ranked"), v.literal("private")),
@@ -99,7 +102,8 @@ export default defineSchema({
     .index("by_p1UserId", ["p1UserId"])
     .index("by_p2UserId", ["p2UserId"])
     .index("by_roomCode", ["roomCode"])
-    .index("by_status_createdAt", ["status", "createdAt"]),
+    .index("by_status_createdAt", ["status", "createdAt"])
+    .index("by_status_updatedAt", ["status", "updatedAt"]),
 
   battleRoyaleLobbies: defineTable({
     status: v.union(v.literal("open"), v.literal("active"), v.literal("finished"), v.literal("cancelled")),

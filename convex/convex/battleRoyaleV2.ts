@@ -17,8 +17,10 @@ const ACTIVE_HUMAN_WINDOW_MS = 60 * 1000;
 const BOT_FILL_ACTIVE_HUMAN_WEIGHT = 0.02;
 const BOT_FILL_MIN_COEFFICIENT = 0.30;
 const STALE_AFTER_MS = 30 * 1000;
+const SCORE_HEARTBEAT_MS = 5 * 1000;
 const FINISHED_RETENTION_MS = 5 * 60 * 1000;
 const EMPTY_OPEN_RETENTION_MS = 60 * 1000;
+const CLEANUP_BATCH_SIZE = 50;
 const ALIVE_SNAPSHOT_LOG_LIMIT = 260;
 // Fixed bread payouts by placement (top 10 paid)
 const PAYOUTS = [750, 500, 350, 250, 175, 125, 100, 75, 63, 50];
@@ -191,11 +193,21 @@ export const reportScore = mutation({
     }
 
     const now = Date.now();
+    const nextScore = Math.max(entrant.score, safeInt(args.score));
+    const scoreChanged = nextScore > entrant.score;
+    const heartbeatDue = now - entrant.lastSeenAt >= SCORE_HEARTBEAT_MS;
+    if (!scoreChanged && !heartbeatDue) {
+      return { ok: true, throttled: true };
+    }
+
     await ctx.db.patch(entrant._id, {
-      score: Math.max(entrant.score, safeInt(args.score)),
+      score: nextScore,
       lastSeenAt: now,
     });
-    await syncBotRowsForLobby(ctx, lobby, now, { source: "reportScore", userId: user._id });
+
+    if ((lobby.lastAliveSyncAt ?? 0) <= now - SCORE_HEARTBEAT_MS) {
+      await syncBotRowsForLobby(ctx, lobby, now, { source: "reportScore", userId: user._id });
+    }
     return { ok: true };
   },
 });
@@ -300,13 +312,13 @@ export const getAliveCount = query({
       throw new Error("Battle royale lobby not found.");
     }
 
-    const entrants = await entrantsForLobby(ctx, args.lobbyId);
-    if (!entrants.some((entrant: Entrant) => entrant.userId === user._id)) {
+    const entrant = await entrantForUser(ctx, args.lobbyId, user._id);
+    if (!entrant) {
       throw new ConvexError("You are not in this battle royale.");
     }
 
     const now = Date.now();
-    const alive = computeAlive(lobby, entrants, now, { projectPendingDead: true });
+    const alive = computeAliveFromLobbyCache(lobby, now);
     return {
       lobbyId: lobby._id,
       roomCode: lobby.roomCode,
@@ -739,18 +751,104 @@ async function botFillTarget(ctx: Ctx, lobby: Lobby, now: number, humanCount: nu
 }
 
 async function activeBattleRoyaleHumanCount(ctx: Ctx, now: number) {
-  const entrants = await ctx.db
-    .query("battleRoyaleEntrantsV2")
+  const openLobbies = await ctx.db
+    .query("battleRoyaleLobbiesV2")
+    .withIndex("by_status_createdAt", (q: any) => q.eq("status", "open"))
     .collect();
+  const activeLobbies = await ctx.db
+    .query("battleRoyaleLobbiesV2")
+    .withIndex("by_status_createdAt", (q: any) => q.eq("status", "active"))
+    .collect();
+
   const userIds = new Set<string>();
-  for (const entrant of entrants) {
-    if (entrant.isBot || !entrant.userId) continue;
-    if (now - entrant.lastSeenAt > ACTIVE_HUMAN_WINDOW_MS) continue;
-    const lobby = await ctx.db.get(entrant.lobbyId);
-    if (!lobby || (lobby.status !== "open" && lobby.status !== "active")) continue;
-    userIds.add(String(entrant.userId));
+  for (const lobby of [...openLobbies, ...activeLobbies]) {
+    const entrants = await entrantsForLobby(ctx, lobby._id);
+    for (const entrant of entrants) {
+      if (entrant.isBot || !entrant.userId) continue;
+      if (now - entrant.lastSeenAt > ACTIVE_HUMAN_WINDOW_MS) continue;
+      userIds.add(String(entrant.userId));
+    }
   }
   return userIds.size;
+}
+
+function computeAliveFromLobbyCache(lobby: Lobby, now: number) {
+  const elapsedMs = lobby.startedAt ? Math.max(0, now - lobby.startedAt) : 0;
+  const totalRows = lobby.humanCount + lobby.botCount;
+
+  if (lobby.status === "finished" || lobby.status === "cancelled") {
+    return {
+      aliveCount: 0,
+      humanAliveCount: 0,
+      botAliveCount: 0,
+      elapsedMs: Math.max(0, (lobby.finishedAt ?? now) - (lobby.startedAt ?? now)),
+      nextBotDeathInMs: undefined,
+      debug: debugAlive({
+        elapsedMs,
+        aliveCount: 0,
+        humanAliveCount: 0,
+        botAliveCount: 0,
+        nextBotDeathInMs: undefined,
+        dbAliveCount: lobby.aliveCount ?? 0,
+        totalRows,
+        humanRows: lobby.humanCount,
+        botRows: lobby.botCount,
+        pendingDeadRows: 0,
+      }),
+    };
+  }
+
+  if (lobby.status !== "active" || !lobby.startedAt) {
+    const aliveCount = lobby.humanAliveCount + lobby.botCount;
+    return {
+      aliveCount,
+      humanAliveCount: lobby.humanAliveCount,
+      botAliveCount: lobby.botCount,
+      elapsedMs,
+      nextBotDeathInMs: undefined,
+      debug: debugAlive({
+        elapsedMs,
+        aliveCount,
+        humanAliveCount: lobby.humanAliveCount,
+        botAliveCount: lobby.botCount,
+        nextBotDeathInMs: undefined,
+        dbAliveCount: aliveCount,
+        totalRows,
+        humanRows: lobby.humanCount,
+        botRows: lobby.botCount,
+        pendingDeadRows: 0,
+      }),
+    };
+  }
+
+  const botDeathTimes = lobby.botTimeline.map(botCrashAtMs);
+  const botAliveCount = botDeathTimes.filter((deathAtMs: number) => elapsedMs < deathAtMs).length;
+  const nextBotDeathInMs = botDeathTimes
+    .map((deathAtMs: number) => deathAtMs - elapsedMs)
+    .filter((remainingMs: number) => remainingMs > 0)
+    .sort((a: number, b: number) => a - b)[0];
+  const pendingDeadRows = Math.max(0, (lobby.botAliveCount ?? lobby.botCount) - botAliveCount);
+  const aliveCount = lobby.humanAliveCount + botAliveCount;
+
+  return {
+    aliveCount,
+    humanAliveCount: lobby.humanAliveCount,
+    botAliveCount,
+    elapsedMs,
+    nextBotDeathInMs,
+    debug: debugAlive({
+      elapsedMs,
+      aliveCount,
+      humanAliveCount: lobby.humanAliveCount,
+      botAliveCount,
+      nextBotDeathInMs,
+      dbAliveCount: lobby.aliveCount ?? aliveCount,
+      totalRows,
+      humanRows: lobby.humanCount,
+      botRows: lobby.botCount,
+      pendingDeadRows,
+    }),
+  };
 }
 
 function computeAlive(lobby: Lobby,
@@ -1219,7 +1317,7 @@ export async function cleanupBattleRoyaleV2(ctx: Ctx, now: number) {
   const open = await ctx.db
     .query("battleRoyaleLobbiesV2")
     .withIndex("by_status_createdAt", (q: any) => q.eq("status", "open"))
-    .collect();
+    .take(CLEANUP_BATCH_SIZE);
 
   for (const lobby of open) {
     const entrants = await entrantsForLobby(ctx, lobby._id);
@@ -1235,7 +1333,7 @@ export async function cleanupBattleRoyaleV2(ctx: Ctx, now: number) {
   const active = await ctx.db
     .query("battleRoyaleLobbiesV2")
     .withIndex("by_status_createdAt", (q: any) => q.eq("status", "active"))
-    .collect();
+    .take(CLEANUP_BATCH_SIZE);
 
   for (const lobby of active) {
     const sync = await syncBotRowsForLobby(ctx, lobby, now, { source: "cleanup" });
@@ -1264,7 +1362,7 @@ export async function cleanupBattleRoyaleV2(ctx: Ctx, now: number) {
   const finished = await ctx.db
     .query("battleRoyaleLobbiesV2")
     .withIndex("by_status_createdAt", (q: any) => q.eq("status", "finished"))
-    .collect();
+    .take(CLEANUP_BATCH_SIZE);
 
   for (const lobby of finished) {
     const cleanupAfter = lobby.cleanupAfter ?? ((lobby.finishedAt ?? lobby.updatedAt) + FINISHED_RETENTION_MS);

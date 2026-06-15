@@ -828,12 +828,13 @@ struct GameContainerView: View {
         battleRoyaleRemainingCount = nil
         battleRoyaleCountAnomalyLogged = false
         battleRoyalePollTask = Task {
-            let maxPostDeathPolls = 240
+            let maxPostDeathPolls = 30
             var postDeathPollCount = 0
             var pollCount = 0
             while !Task.isCancelled {
+                var isPostDeath = false
                 do {
-                    let isPostDeath = await MainActor.run { phase == .gameOver || battleRoyalePlacement != nil }
+                    isPostDeath = await MainActor.run { phase == .gameOver || battleRoyalePlacement != nil }
                     if isPostDeath {
                         guard postDeathPollCount < maxPostDeathPolls else {
 #if DEBUG
@@ -889,7 +890,7 @@ struct GameContainerView: View {
                     // Transient polling failures should not interrupt a run.
                 }
 
-                try? await Task.sleep(nanoseconds: 500_000_000)
+                try? await Task.sleep(nanoseconds: isPostDeath ? 2_000_000_000 : 1_000_000_000)
             }
         }
     }
@@ -955,33 +956,6 @@ struct GameContainerView: View {
             )
         }
 
-        if source == "finishRun" || pollCount == 1 || (pollCount.map { $0 % 10 == 0 } ?? false) {
-            MultiplayerDiagnostics.record(
-                category: "battle_royale",
-                event: "alive_count_poll",
-                level: "debug",
-                message: "Battle Royale alive-count HUD poll sample.",
-                matchId: lobbyId,
-                mode: GameMode.battleRoyale.rawValue,
-                metadata: [
-                    "source": source,
-                    "poll": pollCount.map(String.init) ?? "-",
-                    "status": status?.rawValue ?? "nil",
-                    "phase": "\(phase)",
-                    "previous": previous.map(String.init) ?? "nil",
-                    "raw": "\(rawCount)",
-                    "applied": "\(applied)",
-                    "elapsedMs": "\(debug?.elapsedMs ?? -1)",
-                    "humanAlive": "\(debug?.humanAliveCount ?? -1)",
-                    "botAlive": "\(debug?.botAliveCount ?? -1)",
-                    "totalRows": "\(debug?.totalRows ?? -1)",
-                    "aliveRows": "\(debug?.aliveRows ?? -1)",
-                    "deadRows": "\(debug?.deadRows ?? -1)",
-                    "nextBotDeathMs": debug?.nextBotDeathInMs.map(String.init) ?? "nil"
-                ]
-            )
-        }
-
         logBattleRoyaleHUD(
             source: source,
             pollCount: pollCount,
@@ -1006,12 +980,26 @@ struct GameContainerView: View {
     private func startBattleRoyaleReporting(lobbyId: String, scene: GameScene) {
         battleRoyaleReportTask?.cancel()
         battleRoyaleReportTask = Task {
+            var lastReportedBattleRoyaleScore = -1
+            var lastBattleRoyaleReportTime = Date.distantPast
+            let minChangedScoreInterval: TimeInterval = 1.5
+            let heartbeatInterval: TimeInterval = 5
+
             while !Task.isCancelled {
-                if phase == .playing {
-                    await manager.reportBattleRoyaleState(lobbyId: lobbyId, score: score)
+                let scoreSnapshot = await MainActor.run { phase == .playing ? score : nil }
+                if let scoreSnapshot {
+                    let now = Date()
+                    let scoreChanged = scoreSnapshot != lastReportedBattleRoyaleScore
+                    let elapsed = now.timeIntervalSince(lastBattleRoyaleReportTime)
+
+                    if (scoreChanged && elapsed >= minChangedScoreInterval) || elapsed >= heartbeatInterval {
+                        lastReportedBattleRoyaleScore = scoreSnapshot
+                        lastBattleRoyaleReportTime = now
+                        await manager.reportBattleRoyaleState(lobbyId: lobbyId, score: scoreSnapshot)
+                    }
                 }
 
-                try? await Task.sleep(nanoseconds: 250_000_000)
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
         }
     }

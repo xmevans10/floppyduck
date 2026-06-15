@@ -15,6 +15,7 @@ const START_AFTER_MS = 60 * 1000;
 const CANCEL_AFTER_MS = 5 * 60 * 1000;
 const STALE_AFTER_MS = 30 * 1000;
 const FINISHED_RETENTION_MS = 5 * 60 * 1000;
+const CLEANUP_BATCH_SIZE = 50;
 // Fixed bread payouts by placement (top 10 paid)
 const PAYOUTS = [750, 500, 350, 250, 175, 125, 100, 75, 63, 50];
 
@@ -655,7 +656,7 @@ export async function cleanupBattleRoyale(ctx: any, now: number) {
   const active = await ctx.db
     .query("battleRoyaleLobbies")
     .withIndex("by_status_createdAt", (q: any) => q.eq("status", "active"))
-    .collect();
+    .take(CLEANUP_BATCH_SIZE);
 
   for (const lobby of active) {
     const entrants = await entrantsForLobby(ctx, lobby._id);
@@ -675,7 +676,7 @@ export async function cleanupBattleRoyale(ctx: any, now: number) {
   const open = await ctx.db
     .query("battleRoyaleLobbies")
     .withIndex("by_status_createdAt", (q: any) => q.eq("status", "open"))
-    .collect();
+    .take(CLEANUP_BATCH_SIZE);
   for (const lobby of open) {
     const entrants = await entrantsForLobby(ctx, lobby._id);
 
@@ -690,7 +691,7 @@ export async function cleanupBattleRoyale(ctx: any, now: number) {
   const finished = await ctx.db
     .query("battleRoyaleLobbies")
     .withIndex("by_status_createdAt", (q: any) => q.eq("status", "finished"))
-    .collect();
+    .take(CLEANUP_BATCH_SIZE);
 
   for (const lobby of finished) {
     const finishedAt = lobby.finishedAt ?? lobby.updatedAt;
